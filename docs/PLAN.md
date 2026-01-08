@@ -710,7 +710,7 @@ The architecture introduces:
 
 1. **Agent Driver Abstraction** — SDK, ACP, and Tmux backends behind a unified interface
 2. **Command Registry & Parity Gate** — Single source of truth for REST, WebSocket, tRPC, and OpenAPI (with AI hints)
-3. **REST API Layer** — A performant, well-documented HTTP API across **all 8 flywheel tools**
+3. **REST API Layer** — A performant, well-documented HTTP API across **all flywheel tools**
 4. **WebSocket Layer** — Real-time streaming with durable buffering, ack/replay, and cursor-based resume
 5. **Job Orchestration** — First-class handling for long-running operations with progress events
 6. **Web UI Layer** — A world-class Vite 7.3 / React 19.2 interface with Stripe-level polish, providing unified access to the entire flywheel ecosystem
@@ -751,6 +751,9 @@ The design prioritizes:
 15. [UBS Scanner Integration](#15-ubs-scanner-integration)
 16. [CAAM Account & Profile Management (BYOA + BYOK)](#16-caam-account--profile-management-byoa--byok)
 17. [SLB Safety Guardrails](#17-slb-safety-guardrails)
+    - [17.5 RU Integration](#175-ru-repo-updater-integration)
+    - [17.6 DCG Integration](#176-dcg-destructive-command-guard-integration)
+    - [17.7 Developer Utilities Integration](#177-developer-utilities-integration)
 18. [Git Coordination](#18-git-coordination)
 19. [History & Output System](#19-history--output-system)
 20. [Pipeline & Workflow Engine](#20-pipeline--workflow-engine)
@@ -1028,7 +1031,7 @@ For a dashboard/control panel application:
 2. **Protocol flexibility** — Agent Driver abstraction supports multiple backends
 3. **Flywheel-first** — Every feature accelerates the virtuous cycle
 4. **Streaming-first** — WebSocket for all real-time data; REST for commands/queries
-5. **Unified ecosystem** — All 8 tools accessible from single UI
+5. **Unified ecosystem** — All flywheel tools accessible from single UI
 6. **Type-safe end-to-end** — TypeScript from database to UI
 7. **Progressive enhancement** — Web UI enhances but doesn't replace CLI workflows
 
