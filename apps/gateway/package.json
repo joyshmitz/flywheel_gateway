@@ -1,0 +1,17 @@
+{
+  "name": "@flywheel/gateway",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --hot src/index.ts",
+    "build": "bun build src/index.ts --outdir dist",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@flywheel/shared": "workspace:*",
+    "hono": "^4.11.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
