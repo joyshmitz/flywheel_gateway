@@ -1,6 +1,6 @@
-import type { ErrorCode } from './codes';
+import type { ErrorCode } from "./codes";
 
-export type AIHintSeverity = 'recoverable' | 'terminal' | 'retry';
+export type AIHintSeverity = "recoverable" | "terminal" | "retry";
 
 export interface AIHint {
   severity: AIHintSeverity;
@@ -17,7 +17,7 @@ export interface ErrorContext {
   requestId?: string;
 }
 
-export type ErrorContextInput = Omit<ErrorContext, 'timestamp'> & {
+export type ErrorContextInput = Omit<ErrorContext, "timestamp"> & {
   timestamp?: string;
 };
 

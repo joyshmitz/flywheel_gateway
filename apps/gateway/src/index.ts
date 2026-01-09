@@ -1,8 +1,8 @@
-import { Hono } from 'hono';
+import { Hono } from "hono";
 
 const app = new Hono();
 
-app.get('/health', (c) => {
+app.get("/health", (c) => {
   return c.json({
     ok: true,
     timestamp: new Date().toISOString(),
@@ -12,7 +12,7 @@ app.get('/health', (c) => {
 export default app;
 
 if (import.meta.main) {
-  const port = Number(process.env.PORT) || 3000;
+  const port = Number(process.env["PORT"]) || 3000;
   Bun.serve({
     fetch: app.fetch,
     port,
