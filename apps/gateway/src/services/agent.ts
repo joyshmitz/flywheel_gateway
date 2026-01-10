@@ -6,7 +6,7 @@
  */
 
 import { createClaudeDriver, type ClaudeSDKDriver } from "@flywheel/agent-drivers";
-import type { Agent, AgentConfig, SendResult, OutputLine } from "@flywheel/agent-drivers";
+import type { Agent, AgentConfig } from "@flywheel/agent-drivers";
 import { getLogger } from "../middleware/correlation";
 import { audit } from "./audit";
 
@@ -20,7 +20,9 @@ interface AgentRecord {
   agent: Agent;
   createdAt: Date;
   timeout: number;
+  /** Count of messages sent TO the agent (from users) */
   messagesReceived: number;
+  /** Count of messages sent BY the agent - TODO: implement when output streaming is added */
   messagesSent: number;
   toolCalls: number;
 }
@@ -301,7 +303,7 @@ export async function sendMessage(
   }
 
   if (record.agent.activityState === "error") {
-    throw new AgentError("AGENT_TERMINATED", `Agent ${agentId} is in error state`);
+    throw new AgentError("AGENT_ERROR_STATE", `Agent ${agentId} is in error state`);
   }
 
   const drv = await getDriver();
