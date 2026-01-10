@@ -39,6 +39,16 @@ function createMockAgent(
   tokenUsage: TokenUsage,
   maxTokens = 100000
 ): Agent {
+  const usagePercent = (tokenUsage.totalTokens / maxTokens) * 100;
+  let contextHealth: "healthy" | "warning" | "critical" | "emergency" = "healthy";
+  if (usagePercent >= 95) {
+    contextHealth = "emergency";
+  } else if (usagePercent >= 85) {
+    contextHealth = "critical";
+  } else if (usagePercent >= 75) {
+    contextHealth = "warning";
+  }
+
   return {
     id,
     config: {
@@ -49,15 +59,13 @@ function createMockAgent(
       workingDirectory: "/tmp",
       maxTokens,
     },
+    driverId: `driver_${id}`,
     driverType: "sdk",
     activityState: "idle",
     startedAt: new Date(),
     lastActivityAt: new Date(),
     tokenUsage,
-    contextHealth: {
-      usagePercent: (tokenUsage.totalTokens / maxTokens) * 100,
-      warningLevel: "none",
-    },
+    contextHealth,
   };
 }
 

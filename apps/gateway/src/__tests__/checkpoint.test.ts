@@ -182,7 +182,7 @@ describe("Checkpoint Service", () => {
       });
 
       // Small delay to ensure different createdAt timestamps
-      await new Promise((r) => setTimeout(r, 10));
+      await new Promise((r) => setTimeout(r, 100));
 
       const second = await createCheckpoint(uniqueAgentId, {
         conversationHistory: [{ role: "user", content: "Second" }],

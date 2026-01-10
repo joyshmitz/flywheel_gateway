@@ -1,10 +1,28 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+import { router } from "./router";
+import { RouterProvider } from "@tanstack/react-router";
+import { WebSocketProvider } from "./lib/websocket-context";
+import { useThemeEffect } from "./hooks/useThemeEffect";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5_000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
 export function App() {
+  useThemeEffect();
+
   return (
-    <div style={{ padding: "2rem", fontFamily: "system-ui, sans-serif" }}>
-      <h1>Flywheel Gateway</h1>
-      <p>
-        Web UI scaffold is live. Replace this placeholder with the app shell.
-      </p>
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <WebSocketProvider>
+        <RouterProvider router={router} />
+      </WebSocketProvider>
+    </QueryClientProvider>
   );
 }

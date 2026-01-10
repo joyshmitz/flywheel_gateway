@@ -34,20 +34,36 @@ export type RotationStrategy =
   | "graceful_handoff"; // New agent picks up from summary
 
 /**
+ * Threshold configuration for context health levels.
+ */
+export interface RotationThresholds {
+  warning: number; // Default 75%
+  critical: number; // Default 85%
+  emergency: number; // Default 95%
+}
+
+/**
  * Configuration for context rotation.
  */
 export interface RotationConfig {
   /** Strategy to use for rotation */
   strategy: RotationStrategy;
   /** Threshold percentages for health levels */
-  thresholds: {
-    warning: number; // Default 75%
-    critical: number; // Default 85%
-    emergency: number; // Default 95%
-  };
+  thresholds: RotationThresholds;
   /** Whether to auto-rotate on emergency */
   autoRotate: boolean;
   /** Custom summarization prompt */
+  summarizationPrompt?: string;
+}
+
+/**
+ * Partial configuration for updating rotation settings.
+ * Allows partial thresholds unlike Partial<RotationConfig>.
+ */
+export interface RotationConfigUpdate {
+  strategy?: RotationStrategy;
+  thresholds?: Partial<RotationThresholds>;
+  autoRotate?: boolean;
   summarizationPrompt?: string;
 }
 
@@ -118,7 +134,7 @@ const agentConfigs = new Map<string, RotationConfig>();
 /**
  * Set rotation configuration for an agent.
  */
-export function setRotationConfig(agentId: string, config: Partial<RotationConfig>): void {
+export function setRotationConfig(agentId: string, config: RotationConfigUpdate): void {
   const existing = agentConfigs.get(agentId) || { ...DEFAULT_CONFIG };
   agentConfigs.set(agentId, {
     ...existing,
