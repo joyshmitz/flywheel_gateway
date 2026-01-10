@@ -172,10 +172,12 @@ export function checkCommandParity(cmd: RegisteredCommand): ParityCheckResult {
 export function runParityCheck(registry: CommandRegistry): ParityCheckReport {
   const results: ParityCheckResult[] = [];
   let warnings = 0;
+  let hasRegistryError = false;
 
   // First, run built-in registry validation
   const registryValidation = validateRegistry(registry);
   if (!registryValidation.valid) {
+    hasRegistryError = true;
     // Convert registry validation issues to a pseudo-command result
     results.push({
       command: "__registry__",
@@ -194,17 +196,23 @@ export function runParityCheck(registry: CommandRegistry): ParityCheckReport {
     }
   }
 
-  const passed = results.filter((r) => r.passed).length;
-  const failed = results.filter((r) => !r.passed).length;
+  // Count only actual command results (exclude __registry__ pseudo-result)
+  const commandResults = results.filter((r) => r.command !== "__registry__");
+  const passed = commandResults.filter((r) => r.passed).length;
+  const failed = commandResults.filter((r) => !r.passed).length;
 
   let summary: string;
-  if (failed === 0) {
+  if (failed === 0 && !hasRegistryError) {
     summary = `✅ All ${passed} commands passed parity checks`;
     if (warnings > 0) {
       summary += ` (${warnings} warnings)`;
     }
+  } else if (hasRegistryError && failed === 0) {
+    summary = `❌ Registry validation failed (${registryValidation.issues.length} issues)`;
+  } else if (hasRegistryError) {
+    summary = `❌ ${failed} command(s) failed + registry validation errors`;
   } else {
-    summary = `❌ ${failed} of ${results.length} commands failed parity checks`;
+    summary = `❌ ${failed} of ${registry.size} commands failed parity checks`;
   }
 
   return {
