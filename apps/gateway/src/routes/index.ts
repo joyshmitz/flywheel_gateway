@@ -9,6 +9,7 @@ import { alerts } from "./alerts";
 import { context } from "./context";
 import { health } from "./health";
 import { metrics } from "./metrics";
+import { utilities } from "./utilities";
 
 const routes = new Hono();
 
@@ -19,5 +20,6 @@ routes.route("/alerts", alerts);
 routes.route("/health", health);
 routes.route("/metrics", metrics);
 routes.route("/sessions", context);
+routes.route("/utilities", utilities);
 
 export { routes };
