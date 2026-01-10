@@ -15,7 +15,16 @@ export type AuditAction =
   | "auth.logout"
   | "auth.token_refresh"
   | "api_key.create"
-  | "api_key.revoke";
+  | "api_key.revoke"
+  // CAAM profile actions
+  | "profile.create"
+  | "profile.update"
+  | "profile.delete"
+  | "profile.activate"
+  | "profile.verify"
+  | "profile.cooldown"
+  // CAAM pool actions
+  | "pool.rotate";
 
 /**
  * Resource types for audit events.
@@ -26,7 +35,10 @@ export type ResourceType =
   | "checkpoint"
   | "api_key"
   | "user"
-  | "account";
+  | "account"
+  // CAAM resources
+  | "account_profile"
+  | "account_pool";
 
 /**
  * Audit event structure.
@@ -76,11 +88,12 @@ export interface AuditEventOptions {
 export function audit(options: AuditEventOptions): AuditEvent {
   const log = getLogger();
   const correlationId = getCorrelationId();
+  const now = new Date();
 
   // Build event with only defined optional properties to satisfy exactOptionalPropertyTypes
   const event: AuditEvent = {
     id: crypto.randomUUID(),
-    timestamp: new Date().toISOString(),
+    timestamp: now.toISOString(),
     correlationId,
     action: options.action,
     resource: options.resource,
@@ -117,7 +130,13 @@ export function audit(options: AuditEventOptions): AuditEvent {
       resource: event.resource,
       resourceType: event.resourceType,
       outcome: event.outcome,
-      metadata: options.metadata,
+      metadata: {
+        ...options.metadata,
+        ...(options.workspaceId && { workspaceId: options.workspaceId }),
+        ...(options.apiKeyId && { apiKeyId: options.apiKeyId }),
+        ...(options.ipAddress && { ipAddress: options.ipAddress }),
+        ...(options.userAgent && { userAgent: options.userAgent }),
+      },
       createdAt: new Date(),
     })
     .catch((error) => {

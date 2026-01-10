@@ -5,9 +5,9 @@
  */
 
 import { eq } from "drizzle-orm";
-import { getDb } from "../db/connection";
+import { db } from "../db";
 import { accountPools } from "../db/schema";
-import { auditLog } from "../services/audit";
+import { audit } from "../services/audit";
 import { getLogger } from "../middleware/correlation";
 import {
   activateProfile,
@@ -149,7 +149,6 @@ export async function rotate(
   reason?: string,
 ): Promise<RotationResult> {
   const log = getLogger();
-  const db = getDb();
   const now = new Date();
 
   // Get pool
@@ -183,13 +182,14 @@ export async function rotate(
   );
 
   if (!nextProfile) {
-    return {
+    const failResult: RotationResult = {
       success: false,
-      previousProfileId: currentProfileId,
       newProfileId: "",
       reason: "No available profiles (all in cooldown or error state)",
       retriesRemaining: 0,
     };
+    if (currentProfileId) failResult.previousProfileId = currentProfileId;
+    return failResult;
   }
 
   // Update pool
@@ -206,8 +206,8 @@ export async function rotate(
   await activateProfile(nextProfile.id);
 
   // Log audit
-  await auditLog({
-    action: "rotate",
+  audit({
+    action: "pool.rotate",
     resourceType: "account_pool",
     resource: pool.id,
     outcome: "success",
@@ -233,13 +233,15 @@ export async function rotate(
   // Calculate retries remaining
   const availableCount = profiles.filter(isProfileAvailable).length;
 
-  return {
+  const successResult: RotationResult = {
     success: true,
-    previousProfileId: currentProfileId,
     newProfileId: nextProfile.id,
     reason: reason ?? "Manual rotation",
     retriesRemaining: Math.max(0, availableCount - 1),
   };
+  if (currentProfileId) successResult.previousProfileId = currentProfileId;
+
+  return successResult;
 }
 
 /**

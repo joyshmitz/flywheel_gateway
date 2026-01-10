@@ -15,9 +15,11 @@ interface Toast {
 const toastStore = {
   toasts: [] as Toast[],
   listeners: new Set<() => void>(),
-  subscribe(listener: () => void) {
+  subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   },
   emit() {
     for (const listener of this.listeners) {

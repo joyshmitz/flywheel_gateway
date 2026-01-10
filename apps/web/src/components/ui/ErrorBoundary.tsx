@@ -23,7 +23,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return { hasError: true, error, correlationId };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("[ErrorBoundary] Caught error:", {
       error: error.message,
       correlationId: extractCorrelationId(error),
@@ -35,7 +35,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     this.setState({ hasError: false, error: null, correlationId: null });
   };
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
         return this.props.fallback;
@@ -74,10 +74,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 function extractCorrelationId(error: Error): string | null {
   const cause = error.cause as Record<string, unknown> | undefined;
   if (cause && typeof cause === "object" && "correlationId" in cause) {
-    return String(cause.correlationId);
+    return String(cause["correlationId"]);
   }
   if ("correlationId" in error) {
-    return String((error as Record<string, unknown>).correlationId);
+    return String((error as Record<string, unknown>)["correlationId"]);
   }
   return null;
 }

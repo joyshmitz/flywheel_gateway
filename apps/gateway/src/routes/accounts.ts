@@ -136,12 +136,14 @@ accounts.get("/profiles", async (c) => {
     const statusParam = c.req.query("status");
     const limitParam = c.req.query("limit");
 
-    const result = await listProfiles({
-      ...(workspaceId && { workspaceId }),
-      ...(provider && { provider }),
-      ...(statusParam && { status: statusParam.split(",") as any }),
-      limit: limitParam ? parseInt(limitParam, 10) : undefined,
-    });
+    // Build options object conditionally (for exactOptionalPropertyTypes)
+    const options: Parameters<typeof listProfiles>[0] = {};
+    if (workspaceId) options.workspaceId = workspaceId;
+    if (provider) options.provider = provider;
+    if (statusParam) options.status = statusParam.split(",") as any;
+    if (limitParam) options.limit = parseInt(limitParam, 10);
+
+    const result = await listProfiles(options);
 
     return c.json(result);
   } catch (error) {
@@ -156,7 +158,17 @@ accounts.post("/profiles", async (c) => {
   try {
     const body = await c.req.json();
     const validated = CreateProfileSchema.parse(body);
-    const profile = await createProfile(validated);
+
+    // Build options object conditionally (for exactOptionalPropertyTypes)
+    const options: Parameters<typeof createProfile>[0] = {
+      workspaceId: validated.workspaceId,
+      provider: validated.provider,
+      name: validated.name,
+      authMode: validated.authMode,
+    };
+    if (validated.labels) options.labels = validated.labels;
+
+    const profile = await createProfile(options);
     return c.json({ profile }, 201);
   } catch (error) {
     return handleError(error, c);
@@ -199,7 +211,13 @@ accounts.patch("/profiles/:id", async (c) => {
     const id = c.req.param("id");
     const body = await c.req.json();
     const validated = UpdateProfileSchema.parse(body);
-    const profile = await updateProfile(id, validated);
+
+    // Build options object conditionally (for exactOptionalPropertyTypes)
+    const options: Parameters<typeof updateProfile>[1] = {};
+    if (validated.name !== undefined) options.name = validated.name;
+    if (validated.labels !== undefined) options.labels = validated.labels;
+
+    const profile = await updateProfile(id, options);
 
     if (!profile) {
       return c.json(
