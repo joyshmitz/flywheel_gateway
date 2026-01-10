@@ -73,7 +73,11 @@ describe("REST codegen", () => {
   it("generates route metadata", () => {
     const metadata = getRouteMetadata(registry);
     expect(metadata).toHaveLength(2);
-    expect(metadata[0].permissions).toContain("test:write");
+    const first = metadata[0];
+    expect(first).toBeDefined();
+    if (first) {
+      expect(first.permissions).toContain("test:write");
+    }
   });
 });
 
@@ -109,8 +113,11 @@ describe("OpenAPI codegen", () => {
       title: "Test API",
       version: "1.0.0",
     });
-    expect(spec.paths["/tests"]).toBeDefined();
-    expect(spec.paths["/tests"].post).toBeDefined();
+    const testPath = spec.paths["/tests"];
+    expect(testPath).toBeDefined();
+    if (testPath) {
+      expect(testPath.post).toBeDefined();
+    }
   });
 
   it("includes AI hints as extension", () => {
@@ -118,9 +125,13 @@ describe("OpenAPI codegen", () => {
       title: "Test API",
       version: "1.0.0",
     });
-    const operation = spec.paths["/tests"].post;
-    expect(operation?.["x-ai-hints"]).toBeDefined();
-    expect(operation?.["x-ai-hints"]?.whenToUse).toBe("Create a test");
+    const testPath = spec.paths["/tests"];
+    expect(testPath).toBeDefined();
+    if (testPath) {
+      const operation = testPath.post;
+      expect(operation?.["x-ai-hints"]).toBeDefined();
+      expect(operation?.["x-ai-hints"]?.whenToUse).toBe("Create a test");
+    }
   });
 
   it("generates JSON string", () => {
