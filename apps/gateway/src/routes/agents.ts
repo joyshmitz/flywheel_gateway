@@ -257,7 +257,7 @@ agents.post("/:agentId/interrupt", async (c) => {
       const validated = InterruptRequestSchema.parse(body);
       signal = validated.signal;
     } catch {
-      // Use default signal if no body
+      // Use default SIGINT if no body provided or parsing fails
     }
 
     const result = await interruptAgent(agentId, signal);

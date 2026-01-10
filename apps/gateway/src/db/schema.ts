@@ -1,4 +1,20 @@
-import { blob, integer, sqliteTable, text, index, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { blob, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+
+export const accounts = sqliteTable(
+  "accounts",
+  {
+    id: text("id").primaryKey(),
+    email: text("email").notNull(),
+    apiKeyHash: text("api_key_hash").notNull(),
+    role: text("role").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("accounts_email_idx").on(table.email),
+    uniqueIndex("accounts_api_key_hash_idx").on(table.apiKeyHash),
+  ],
+);
 
 export const agents = sqliteTable(
   "agents",
@@ -32,22 +48,6 @@ export const checkpoints = sqliteTable(
   (table) => [
     index("checkpoints_agent_idx").on(table.agentId),
     index("checkpoints_created_at_idx").on(table.createdAt),
-  ],
-);
-
-export const accounts = sqliteTable(
-  "accounts",
-  {
-    id: text("id").primaryKey(),
-    email: text("email").notNull(),
-    apiKeyHash: text("api_key_hash").notNull(),
-    role: text("role").notNull(),
-    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-  },
-  (table) => [
-    uniqueIndex("accounts_email_idx").on(table.email),
-    uniqueIndex("accounts_api_key_hash_idx").on(table.apiKeyHash),
   ],
 );
 

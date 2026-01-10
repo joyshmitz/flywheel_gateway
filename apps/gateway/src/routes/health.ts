@@ -47,12 +47,8 @@ health.get("/ready", async (c) => {
   checks["drivers"] = { status: "pass", message: "SDK driver available" };
 
   // Determine overall status
-  const allPass = Object.values(checks).every(
-    (check) => (check as CheckResult).status === "pass"
-  );
-  const anyFail = Object.values(checks).some(
-    (check) => (check as CheckResult).status === "fail"
-  );
+  const allPass = Object.values(checks).every((check) => check.status === "pass");
+  const anyFail = Object.values(checks).some((check) => check.status === "fail");
 
   const status = anyFail ? "unhealthy" : allPass ? "ready" : "degraded";
   const httpStatus = anyFail ? 503 : 200;

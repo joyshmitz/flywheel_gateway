@@ -351,7 +351,15 @@ export async function getAgentOutput(
   }
 
   const drv = await getDriver();
-  const since = options.cursor ? new Date(parseInt(options.cursor, 10)) : undefined;
+
+  // Safely parse cursor timestamp - invalid values result in no filtering
+  let since: Date | undefined;
+  if (options.cursor) {
+    const parsed = parseInt(options.cursor, 10);
+    if (!Number.isNaN(parsed)) {
+      since = new Date(parsed);
+    }
+  }
   const limit = options.limit ?? 100;
 
   const output = await drv.getOutput(agentId, since, limit);
