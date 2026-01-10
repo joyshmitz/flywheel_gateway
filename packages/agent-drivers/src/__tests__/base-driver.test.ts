@@ -188,12 +188,32 @@ describe("BaseDriver", () => {
       expect(driver.sent).toBe(true);
     });
 
-    it("should throw when agent is busy", async () => {
+    it("should throw when agent is working", async () => {
       const agentConfig = createTestConfig();
       await driver.spawn(agentConfig);
 
       // Set state to working
       driver.testUpdateState(agentConfig.id, { activityState: "working" });
+
+      await expect(driver.send(agentConfig.id, "Hello")).rejects.toThrow("busy");
+    });
+
+    it("should throw when agent is thinking", async () => {
+      const agentConfig = createTestConfig();
+      await driver.spawn(agentConfig);
+
+      // Set state to thinking (processing a previous message)
+      driver.testUpdateState(agentConfig.id, { activityState: "thinking" });
+
+      await expect(driver.send(agentConfig.id, "Hello")).rejects.toThrow("busy");
+    });
+
+    it("should throw when agent is calling tools", async () => {
+      const agentConfig = createTestConfig();
+      await driver.spawn(agentConfig);
+
+      // Set state to tool_calling
+      driver.testUpdateState(agentConfig.id, { activityState: "tool_calling" });
 
       await expect(driver.send(agentConfig.id, "Hello")).rejects.toThrow("busy");
     });

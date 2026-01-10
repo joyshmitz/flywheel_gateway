@@ -188,7 +188,12 @@ export abstract class BaseDriver implements AgentDriver {
       throw new Error(`Agent not found: ${agentId}`);
     }
 
-    if (state.activityState === "working" || state.activityState === "tool_calling") {
+    // Agent is busy if it's processing (thinking), actively working, or calling tools
+    if (
+      state.activityState === "thinking" ||
+      state.activityState === "working" ||
+      state.activityState === "tool_calling"
+    ) {
       throw new Error(`Agent ${agentId} is busy`);
     }
 
