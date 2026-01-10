@@ -201,8 +201,9 @@ export async function getCheckpoint(checkpointId: string): Promise<Checkpoint | 
     .where(eq(checkpointsTable.id, checkpointId))
     .limit(1);
 
-  if (result.length === 0) return undefined;
-  return normalizeCheckpoint(result[0].state as DeltaCheckpoint);
+  const row = result[0];
+  if (!row) return undefined;
+  return normalizeCheckpoint(row.state as DeltaCheckpoint);
 }
 
 /**
@@ -239,8 +240,9 @@ export async function getLatestCheckpoint(agentId: string): Promise<Checkpoint |
     .orderBy(desc(checkpointsTable.id))
     .limit(1);
 
-  if (result.length === 0) return undefined;
-  return normalizeCheckpoint(result[0].state as DeltaCheckpoint);
+  const row = result[0];
+  if (!row) return undefined;
+  return normalizeCheckpoint(row.state as DeltaCheckpoint);
 }
 
 // ============================================================================
