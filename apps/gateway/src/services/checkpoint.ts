@@ -223,13 +223,17 @@ export async function getCheckpoint(checkpointId: string): Promise<Checkpoint | 
  * Get all checkpoints for an agent.
  */
 export async function getAgentCheckpoints(agentId: string): Promise<CheckpointMetadata[]> {
-  const results = await db.select()
+  const results = await db
+    .select()
     .from(checkpointsTable)
     .where(eq(checkpointsTable.agentId, agentId))
     .orderBy(desc(checkpointsTable.createdAt));
 
-  return results.map(row => {
+  agentCheckpoints.set(agentId, results.map((row) => row.id));
+
+  return results.map((row) => {
     const chk = row.state as Checkpoint;
+    checkpoints.set(row.id, chk as DeltaCheckpoint);
     return {
       id: chk.id,
       agentId: chk.agentId,
@@ -245,14 +249,22 @@ export async function getAgentCheckpoints(agentId: string): Promise<CheckpointMe
  * Get the latest checkpoint for an agent.
  */
 export async function getLatestCheckpoint(agentId: string): Promise<Checkpoint | undefined> {
-  const result = await db.select()
+  const result = await db
+    .select()
     .from(checkpointsTable)
     .where(eq(checkpointsTable.agentId, agentId))
     .orderBy(desc(checkpointsTable.createdAt))
     .limit(1);
 
   if (result.length === 0) return undefined;
-  return result[0].state as Checkpoint;
+  const chk = result[0].state as Checkpoint;
+  checkpoints.set(result[0].id, chk as DeltaCheckpoint);
+  const list = agentCheckpoints.get(agentId) ?? [];
+  if (!list.includes(result[0].id)) {
+    list.unshift(result[0].id);
+    agentCheckpoints.set(agentId, list);
+  }
+  return chk;
 }
 
 // ============================================================================
