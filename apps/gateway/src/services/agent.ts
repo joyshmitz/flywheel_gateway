@@ -172,6 +172,9 @@ export async function spawnAgent(config: {
     };
   } catch (error) {
     if (spawned) {
+      // Stop output streaming if it was started
+      stopOutputStreaming(agentId);
+      cleanupOutputBuffer(agentId);
       try {
         await drv.terminate(agentId, true);
       } catch {
@@ -184,16 +187,6 @@ export async function spawnAgent(config: {
       code: "SPAWN_FAILED",
       message: String(error),
     });
-
-    // Best-effort cleanup to avoid leaking agents on partial failures.
-    if (agents.has(agentId)) {
-      try {
-        await drv.terminate(agentId, true);
-      } catch {
-        // Ignore cleanup failures; we already have a spawn failure.
-      }
-      agents.delete(agentId);
-    }
 
     log.error({ error, agentId }, "Failed to spawn agent");
     audit({
