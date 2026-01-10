@@ -7,15 +7,14 @@
 
 import { getCorrelationId, getLogger } from "../middleware/correlation";
 import {
+  getValidTransitions,
+  InvalidStateTransitionError,
+  isTerminalState,
+  isValidTransition,
   LifecycleState,
   type StateTransition,
   type TransitionReason,
-  InvalidStateTransitionError,
-  isValidTransition,
-  isTerminalState,
-  getValidTransitions,
 } from "../models/agent-state";
-import { logger } from "./logger";
 
 /**
  * Agent state record with history.
@@ -82,7 +81,7 @@ export function initializeAgentState(agentId: string): AgentStateRecord {
       state: LifecycleState.SPAWNING,
       correlationId,
     },
-    `[LIFECYCLE] Agent ${agentId} initialized in SPAWNING state`
+    `[LIFECYCLE] Agent ${agentId} initialized in SPAWNING state`,
   );
 
   return record;
@@ -98,7 +97,7 @@ export function transitionState(
   newState: LifecycleState,
   reason: TransitionReason,
   error?: { code: string; message: string },
-  metadata?: Record<string, unknown>
+  metadata?: Record<string, unknown>,
 ): StateTransition {
   const correlationId = getCorrelationId();
   const log = getLogger();
@@ -122,7 +121,7 @@ export function transitionState(
         validTransitions: validTargets,
         correlationId,
       },
-      `[LIFECYCLE] Invalid state transition rejected: ${previousState} -> ${newState}`
+      `[LIFECYCLE] Invalid state transition rejected: ${previousState} -> ${newState}`,
     );
     throw new InvalidStateTransitionError(previousState, newState, agentId);
   }
@@ -166,7 +165,7 @@ export function transitionState(
       correlationId,
       ...(error && { error }),
     },
-    `[LIFECYCLE] Agent ${agentId}: ${previousState} -> ${newState} (${reason})`
+    `[LIFECYCLE] Agent ${agentId}: ${previousState} -> ${newState} (${reason})`,
   );
 
   // Emit event to listeners
@@ -190,7 +189,7 @@ export function transitionState(
     // In production, you'd want a TTL-based cleanup
     log.debug(
       { agentId, finalState: newState },
-      `Agent reached terminal state`
+      `Agent reached terminal state`,
     );
   }
 
@@ -245,15 +244,13 @@ export function onStateChange(listener: StateChangeListener): () => void {
  * Emit a state change event to all listeners.
  */
 function emitStateChange(event: StateChangeEvent): void {
+  const log = getLogger();
   for (const listener of listeners) {
     try {
       listener(event);
     } catch (error) {
       // Don't let listener errors break the state machine
-      logger.error(
-        { error, event },
-        "State change listener threw an error"
-      );
+      log.error({ error, event }, "State change listener threw an error");
     }
   }
 }
@@ -296,7 +293,7 @@ export function markAgentTerminating(agentId: string): StateTransition {
   return transitionState(
     agentId,
     LifecycleState.TERMINATING,
-    "terminate_requested"
+    "terminate_requested",
   );
 }
 
@@ -307,7 +304,7 @@ export function markAgentTerminated(agentId: string): StateTransition {
   return transitionState(
     agentId,
     LifecycleState.TERMINATED,
-    "terminate_complete"
+    "terminate_complete",
   );
 }
 
@@ -317,7 +314,7 @@ export function markAgentTerminated(agentId: string): StateTransition {
 export function markAgentFailed(
   agentId: string,
   reason: TransitionReason,
-  error: { code: string; message: string }
+  error: { code: string; message: string },
 ): StateTransition {
   return transitionState(agentId, LifecycleState.FAILED, reason, error);
 }

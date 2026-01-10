@@ -7,6 +7,8 @@
 
 import { createClaudeDriver, type ClaudeSDKDriver } from "@flywheel/agent-drivers";
 import type { Agent, AgentConfig } from "@flywheel/agent-drivers";
+import { eq } from "drizzle-orm";
+import { db, agents as agentsTable } from "../db";
 import { getLogger } from "../middleware/correlation";
 import { audit } from "./audit";
 import {
@@ -34,6 +36,21 @@ interface AgentRecord {
   /** Count of messages sent BY the agent - TODO: implement when output streaming is added */
   messagesSent: number;
   toolCalls: number;
+}
+
+async function refreshAgentRecord(
+  record: AgentRecord,
+  drv: ClaudeSDKDriver
+): Promise<void> {
+  try {
+    const state = await drv.getState(record.agent.id);
+    record.agent.activityState = state.activityState;
+    record.agent.lastActivityAt = state.lastActivityAt;
+    record.agent.tokenUsage = state.tokenUsage;
+    record.agent.contextHealth = state.contextHealth;
+  } catch {
+    // Ignore refresh failures; caller can proceed with cached state.
+  }
 }
 
 /**
@@ -106,6 +123,17 @@ export async function spawnAgent(config: {
 
     agents.set(agentId, record);
 
+    // Persist to DB
+    await db.insert(agentsTable).values({
+      id: agentId,
+      repoUrl: config.workingDirectory,
+      task: config.systemPrompt?.slice(0, 100) ?? "Interactive Session",
+      model: agentConfig.model,
+      status: "spawning",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
     // Transition to READY state
     markAgentReady(agentId);
 
@@ -150,6 +178,8 @@ export async function spawnAgent(config: {
 export async function listAgents(options: {
   state?: string[];
   driver?: string[];
+  createdAfter?: string;
+  createdBefore?: string;
   limit?: number;
   cursor?: string;
 }): Promise<{
@@ -168,6 +198,10 @@ export async function listAgents(options: {
 }> {
   const limit = options.limit ?? 50;
   let agentList = Array.from(agents.values());
+  if (agentList.length > 0) {
+    const drv = await getDriver();
+    await Promise.all(agentList.map((record) => refreshAgentRecord(record, drv)));
+  }
 
   // Filter by state
   if (options.state?.length) {
@@ -177,6 +211,20 @@ export async function listAgents(options: {
   // Filter by driver
   if (options.driver?.length) {
     agentList = agentList.filter((r) => options.driver!.includes(r.agent.driverType));
+  }
+
+  // Filter by createdAt time range
+  if (options.createdAfter) {
+    const parsed = new Date(options.createdAfter);
+    if (!Number.isNaN(parsed.getTime())) {
+      agentList = agentList.filter((r) => r.createdAt >= parsed);
+    }
+  }
+  if (options.createdBefore) {
+    const parsed = new Date(options.createdBefore);
+    if (!Number.isNaN(parsed.getTime())) {
+      agentList = agentList.filter((r) => r.createdAt <= parsed);
+    }
   }
 
   // Sort by createdAt descending
@@ -238,6 +286,8 @@ export async function getAgent(agentId: string): Promise<{
     throw new AgentError("AGENT_NOT_FOUND", `Agent ${agentId} not found`);
   }
 
+  const drv = await getDriver();
+  await refreshAgentRecord(record, drv);
   const { agent } = record;
 
   return {
@@ -286,6 +336,11 @@ export async function terminateAgent(
   try {
     await drv.terminate(agentId, graceful);
     agents.delete(agentId);
+
+    // Update DB status
+    await db.update(agentsTable)
+      .set({ status: "terminated", updatedAt: new Date() })
+      .where(eq(agentsTable.id, agentId));
 
     // Mark as fully terminated
     markAgentTerminated(agentId);
@@ -336,7 +391,7 @@ export async function sendMessage(
   }
 
   if (record.agent.activityState === "error") {
-    throw new AgentError("AGENT_ERROR_STATE", `Agent ${agentId} is in error state`);
+    throw new AgentError("AGENT_NOT_READY", `Agent ${agentId} is in error state`);
   }
 
   // Transition to EXECUTING state when processing a message
@@ -372,6 +427,11 @@ export async function sendMessage(
       state: result.queued ? "queued" : "processing",
     };
   } catch (error) {
+    try {
+      markAgentIdle(agentId);
+    } catch {
+      // Ignore invalid transitions on failure recovery.
+    }
     log.error({ error, agentId }, "Failed to send message");
     throw new AgentError("DRIVER_COMMUNICATION_ERROR", `Failed to send: ${error}`);
   }
@@ -385,6 +445,7 @@ export async function getAgentOutput(
   options: {
     cursor?: string;
     limit?: number;
+    types?: string[];
   }
 ): Promise<{
   chunks: Array<{
@@ -416,7 +477,10 @@ export async function getAgentOutput(
   }
   const limit = options.limit ?? 100;
 
-  const output = await drv.getOutput(agentId, since, limit);
+  let output = await drv.getOutput(agentId, since, limit);
+  if (options.types && options.types.length > 0) {
+    output = output.filter((line) => options.types!.includes(line.type));
+  }
 
   const chunks = output.map((line) => ({
     cursor: String(line.timestamp.getTime()),

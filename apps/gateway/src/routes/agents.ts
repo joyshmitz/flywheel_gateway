@@ -2,26 +2,26 @@
  * Agent Routes - REST API endpoints for agent lifecycle and communication.
  */
 
-import { Hono, type Context } from "hono";
+import { type ErrorCode, getHttpStatus } from "@flywheel/shared";
+import { type Context, Hono } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
+import { getCorrelationId, getLogger } from "../middleware/correlation";
+import { isAlive } from "../models/agent-state";
 import {
-  spawnAgent,
-  listAgents,
+  AgentError,
   getAgent,
-  terminateAgent,
-  sendMessage,
   getAgentOutput,
   interruptAgent,
-  AgentError,
+  listAgents,
+  sendMessage,
+  spawnAgent,
+  terminateAgent,
 } from "../services/agent";
 import {
   getAgentState,
   getAgentStateHistory,
 } from "../services/agent-state-machine";
-import { LifecycleState, isAlive } from "../models/agent-state";
-import { getCorrelationId, getLogger } from "../middleware/correlation";
-import { type ErrorCode, getHttpStatus } from "@flywheel/shared";
 
 const agents = new Hono();
 
@@ -56,7 +56,9 @@ const InterruptRequestSchema = z.object({
  * Handles both http→ws and https→wss correctly.
  */
 function toWebSocketUrl(httpUrl: string): string {
-  return httpUrl.replace(/^http/, "ws");
+  const url = new URL(httpUrl);
+  const protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${url.host}`;
 }
 
 /**
@@ -81,7 +83,10 @@ function handleAgentError(error: unknown, c: Context) {
     } catch {
       // Unknown error code, use 500
     }
-    log.warn({ error: error.code, message: error.message }, "Agent operation failed");
+    log.warn(
+      { error: error.code, message: error.message },
+      "Agent operation failed",
+    );
     return c.json(
       {
         error: {
@@ -91,7 +96,7 @@ function handleAgentError(error: unknown, c: Context) {
           timestamp: new Date().toISOString(),
         },
       },
-      httpStatus
+      httpStatus,
     );
   }
 
@@ -106,7 +111,7 @@ function handleAgentError(error: unknown, c: Context) {
           details: error.issues,
         },
       },
-      400
+      400,
     );
   }
 
@@ -121,7 +126,7 @@ function handleAgentError(error: unknown, c: Context) {
           timestamp: new Date().toISOString(),
         },
       },
-      400
+      400,
     );
   }
 
@@ -135,7 +140,7 @@ function handleAgentError(error: unknown, c: Context) {
         timestamp: new Date().toISOString(),
       },
     },
-    500
+    500,
   );
 }
 
@@ -169,7 +174,7 @@ agents.post("/", async (c) => {
           ws: `${toWebSocketUrl(baseUrl)}/agents/${result.agentId}/ws`,
         },
       },
-      201
+      201,
     );
   } catch (error) {
     return handleAgentError(error, c);
@@ -183,12 +188,16 @@ agents.get("/", async (c) => {
   try {
     const stateParam = c.req.query("state");
     const driverParam = c.req.query("driver");
+    const createdAfterParam = c.req.query("createdAfter");
+    const createdBeforeParam = c.req.query("createdBefore");
     const limitParam = c.req.query("limit");
     const cursorParam = c.req.query("cursor");
 
     const result = await listAgents({
       ...(stateParam && { state: stateParam.split(",") }),
       ...(driverParam && { driver: driverParam.split(",") }),
+      ...(createdAfterParam && { createdAfter: createdAfterParam }),
+      ...(createdBeforeParam && { createdBefore: createdBeforeParam }),
       limit: safeParseInt(limitParam, 50),
       ...(cursorParam && { cursor: cursorParam }),
     });
@@ -255,12 +264,12 @@ agents.get("/:agentId/status", async (c) => {
             timestamp: new Date().toISOString(),
           },
         },
-        404
+        404,
       );
     }
 
     // Get agent details for additional metrics
-    let agentDetails;
+    let agentDetails: Awaited<ReturnType<typeof getAgent>> | null;
     try {
       agentDetails = await getAgent(agentId);
     } catch {
@@ -271,7 +280,7 @@ agents.get("/:agentId/status", async (c) => {
     const now = new Date();
     const stateEnteredAt = stateRecord.stateEnteredAt;
     const uptime = Math.floor(
-      (now.getTime() - stateRecord.createdAt.getTime()) / 1000
+      (now.getTime() - stateRecord.createdAt.getTime()) / 1000,
     );
 
     // Build health checks based on state
@@ -295,7 +304,8 @@ agents.get("/:agentId/status", async (c) => {
       stateEnteredAt: stateEnteredAt.toISOString(),
       uptime,
       createdAt: stateRecord.createdAt.toISOString(),
-      lastActivity: agentDetails?.lastActivityAt ?? stateEnteredAt.toISOString(),
+      lastActivity:
+        agentDetails?.lastActivityAt ?? stateEnteredAt.toISOString(),
       healthChecks,
       metrics: agentDetails
         ? {
@@ -342,7 +352,11 @@ agents.post("/:agentId/send", async (c) => {
     const agentId = c.req.param("agentId");
     const body = await c.req.json();
     const validated = SendRequestSchema.parse(body);
-    const result = await sendMessage(agentId, validated.type, validated.content);
+    const result = await sendMessage(
+      agentId,
+      validated.type,
+      validated.content,
+    );
 
     return c.json(result);
   } catch (error) {
@@ -362,8 +376,12 @@ agents.post("/:agentId/interrupt", async (c) => {
       const body = await c.req.json();
       const validated = InterruptRequestSchema.parse(body);
       signal = validated.signal;
-    } catch {
-      // Use default SIGINT if no body provided or parsing fails
+    } catch (parseError) {
+      // Use default SIGINT if no body or empty body, but propagate validation errors
+      if (parseError instanceof z.ZodError) {
+        throw parseError;
+      }
+      // SyntaxError or other JSON parsing issues - use default signal
     }
 
     const result = await interruptAgent(agentId, signal);
@@ -381,10 +399,12 @@ agents.get("/:agentId/output", async (c) => {
     const agentId = c.req.param("agentId");
     const cursorParam = c.req.query("cursor");
     const limitParam = c.req.query("limit");
+    const typesParam = c.req.query("types");
 
     const result = await getAgentOutput(agentId, {
       ...(cursorParam && { cursor: cursorParam }),
       limit: safeParseInt(limitParam, 100),
+      ...(typesParam && { types: typesParam.split(",") }),
     });
     return c.json(result);
   } catch (error) {
