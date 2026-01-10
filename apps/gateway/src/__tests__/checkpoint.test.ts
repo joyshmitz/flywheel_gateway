@@ -138,6 +138,7 @@ describe("Checkpoint Service", () => {
   describe("getAgentCheckpoints", () => {
     test("returns all checkpoints for an agent", async () => {
       const uniqueAgentId = `agent-list-${Date.now()}`;
+      await ensureAgent(uniqueAgentId);
 
       await createCheckpoint(uniqueAgentId, {
         conversationHistory: [],
@@ -166,6 +167,7 @@ describe("Checkpoint Service", () => {
   describe("getLatestCheckpoint", () => {
     test("returns most recent checkpoint", async () => {
       const uniqueAgentId = `agent-latest-${Date.now()}`;
+      await ensureAgent(uniqueAgentId);
 
       await createCheckpoint(uniqueAgentId, {
         conversationHistory: [{ role: "user", content: "First" }],
@@ -290,6 +292,7 @@ describe("Checkpoint Service", () => {
   describe("importCheckpoint", () => {
     test("imports exported checkpoint", async () => {
       const originalAgentId = `original-${Date.now()}`;
+      await ensureAgent(originalAgentId);
       const metadata = await createCheckpoint(originalAgentId, {
         conversationHistory: [{ role: "user", content: "Import test" }],
         toolState: { imported: false },
