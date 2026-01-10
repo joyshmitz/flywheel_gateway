@@ -12,6 +12,7 @@ import { health } from "./health";
 import { history } from "./history";
 import { mail } from "./mail";
 import { metrics } from "./metrics";
+import { reservations } from "./reservations";
 import { utilities } from "./utilities";
 
 const routes = new Hono();
@@ -25,6 +26,7 @@ routes.route("/health", health);
 routes.route("/history", history);
 routes.route("/mail", mail);
 routes.route("/metrics", metrics);
+routes.route("/reservations", reservations);
 routes.route("/sessions", context);
 routes.route("/utilities", utilities);
 
