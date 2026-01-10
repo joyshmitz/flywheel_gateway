@@ -64,15 +64,20 @@ export interface ConflictCheckResult {
  * @returns RegExp for matching
  */
 function globToRegex(pattern: string): RegExp {
+  // Use placeholder to avoid ** replacement affecting later * replacement
+  const GLOBSTAR_PLACEHOLDER = "\x00GLOBSTAR\x00";
+
   let regex = pattern
+    // First, replace ** with placeholder to protect it
+    .replace(/\*\*/g, GLOBSTAR_PLACEHOLDER)
     // Escape regex special chars (except glob chars)
     .replace(/[.+^${}()|[\]\\]/g, "\\$&")
-    // ** matches any number of path segments
-    .replace(/\*\*/g, ".*")
     // * matches anything except path separator
     .replace(/\*/g, "[^/]*")
     // ? matches single character
-    .replace(/\?/g, ".");
+    .replace(/\?/g, ".")
+    // Now replace placeholder with .* (matches any path segments)
+    .replace(new RegExp(GLOBSTAR_PLACEHOLDER, "g"), ".*");
 
   return new RegExp(`^${regex}$`);
 }
