@@ -320,6 +320,7 @@ export function getMetricsSnapshot(): MetricSnapshot {
 
 /**
  * Calculate percentile from histogram buckets.
+ * Note: Buckets are cumulative (each bucket.count = count of values <= bucket.le)
  */
 function calculatePercentile(
   histogram: { buckets: HistogramBucket[]; count: number },
@@ -328,11 +329,11 @@ function calculatePercentile(
   if (histogram.count === 0) return 0;
 
   const targetCount = (percentile / 100) * histogram.count;
-  let cumulative = 0;
 
+  // Buckets are already cumulative, so find the first bucket
+  // where the cumulative count meets the target
   for (const bucket of histogram.buckets) {
-    cumulative += bucket.count;
-    if (cumulative >= targetCount) {
+    if (bucket.count >= targetCount) {
       return bucket.le;
     }
   }
