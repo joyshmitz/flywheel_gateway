@@ -2,7 +2,8 @@
  * Unit tests for the Checkpoint Service.
  */
 
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect, beforeEach, beforeAll } from "bun:test";
+import { db, agents } from "../db";
 import {
   createCheckpoint,
   getCheckpoint,
@@ -18,6 +19,22 @@ import {
   type CreateCheckpointOptions,
 } from "../services/checkpoint";
 
+async function ensureAgent(agentId: string) {
+  try {
+    await db.insert(agents).values({
+      id: agentId,
+      repoUrl: "/test",
+      task: "test",
+      status: "idle",
+      model: "test-model",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  } catch (e) {
+    // Ignore if already exists (primary key constraint)
+  }
+}
+
 describe("Checkpoint Service", () => {
   const testAgentId = `test-agent-${Date.now()}`;
   const testTokenUsage = {
@@ -25,6 +42,10 @@ describe("Checkpoint Service", () => {
     completionTokens: 500,
     totalTokens: 1500,
   };
+
+  beforeAll(async () => {
+    await ensureAgent(testAgentId);
+  });
 
   describe("createCheckpoint", () => {
     test("creates a checkpoint with required fields", async () => {

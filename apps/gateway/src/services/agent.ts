@@ -142,10 +142,6 @@ export async function spawnAgent(config: {
       .update(agentsTable)
       .set({ status: "ready", updatedAt: new Date() })
       .where(eq(agentsTable.id, agentId));
-    await db
-      .update(agentsTable)
-      .set({ status: "ready", updatedAt: new Date() })
-      .where(eq(agentsTable.id, agentId));
 
     log.info({ agentId, workingDirectory: config.workingDirectory }, "Agent spawned");
 
