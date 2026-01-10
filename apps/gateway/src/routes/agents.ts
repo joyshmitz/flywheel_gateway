@@ -26,8 +26,8 @@ const agents = new Hono();
 
 const SpawnRequestSchema = z.object({
   workingDirectory: z.string().min(1),
-  agentId: z.string().optional(),
-  systemPrompt: z.string().optional(),
+  agentId: z.string().min(1).optional(),
+  systemPrompt: z.string().min(1).optional(),
   timeout: z.number().min(1000).max(86400000).optional(),
   maxTokens: z.number().min(1000).max(1000000).optional(),
 });
