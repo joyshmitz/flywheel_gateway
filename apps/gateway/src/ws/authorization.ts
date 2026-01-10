@@ -189,10 +189,14 @@ export function createGuestAuthContext(): AuthContext {
  * Ensures required fields are present.
  */
 export function validateAuthContext(auth: Partial<AuthContext>): AuthContext {
+  const workspaceIds = Array.isArray(auth.workspaceIds)
+    ? auth.workspaceIds.filter((id): id is string => typeof id === "string")
+    : [];
+
   return {
     userId: auth.userId,
     apiKeyId: auth.apiKeyId,
-    workspaceIds: auth.workspaceIds ?? [],
+    workspaceIds,
     isAdmin: auth.isAdmin ?? false,
   };
 }

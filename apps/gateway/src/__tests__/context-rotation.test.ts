@@ -374,6 +374,7 @@ describe("Context Rotation Service", () => {
 
     test("uses agent's configured strategy when not specified", async () => {
       const agentId = `default-strategy-${Date.now()}`;
+      await ensureAgent(agentId);
       const agent = createMockAgent(agentId, testAgent.tokenUsage);
 
       setRotationConfig(agentId, { strategy: "fresh_start" });
@@ -415,6 +416,7 @@ describe("Context Rotation Service", () => {
   describe("Integration: Health-based auto-rotation", () => {
     test("full cycle: detect emergency and trigger rotation", async () => {
       const agentId = `full-cycle-${Date.now()}`;
+      await ensureAgent(agentId);
       const agent = createMockAgent(agentId, {
         promptTokens: 70000,
         completionTokens: 27000,

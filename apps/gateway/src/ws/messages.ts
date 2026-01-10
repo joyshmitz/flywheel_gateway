@@ -315,7 +315,10 @@ export function parseClientMessage(json: string): ClientMessage | undefined {
 
       case "reconnect":
         if (!parsed.cursors || typeof parsed.cursors !== "object") return undefined;
-        return { type: "reconnect", cursors: parsed.cursors as Record<string, string> };
+        const entries = Object.entries(parsed.cursors as Record<string, unknown>)
+          .filter(([, value]) => typeof value === "string")
+          .map(([key, value]) => [key, value] as [string, string]);
+        return { type: "reconnect", cursors: Object.fromEntries(entries) };
 
       default:
         return undefined;

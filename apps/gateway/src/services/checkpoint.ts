@@ -121,7 +121,7 @@ async function ensureAgentCheckpointList(agentId: string): Promise<string[]> {
     .select()
     .from(checkpointsTable)
     .where(eq(checkpointsTable.agentId, agentId))
-    .orderBy(desc(checkpointsTable.createdAt));
+    .orderBy(desc(checkpointsTable.id));
 
   const ids = results.map((row) => row.id);
   agentCheckpoints.set(agentId, ids);
@@ -245,7 +245,7 @@ export async function getAgentCheckpoints(agentId: string): Promise<CheckpointMe
     .select()
     .from(checkpointsTable)
     .where(eq(checkpointsTable.agentId, agentId))
-    .orderBy(desc(checkpointsTable.createdAt));
+    .orderBy(desc(checkpointsTable.id));
 
   agentCheckpoints.set(agentId, results.map((row) => row.id));
 

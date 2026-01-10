@@ -184,8 +184,10 @@ export class WebSocketHub {
 
     let missedMessages: HubMessage[] | undefined;
     if (cursor) {
-      // Replay messages since the cursor
-      missedMessages = buffer.slice(cursor);
+      // Replay messages since the cursor (or full buffer if cursor expired/invalid)
+      missedMessages = buffer.isValidCursor(cursor)
+        ? buffer.slice(cursor)
+        : buffer.getAll();
     }
 
     logger.debug(
