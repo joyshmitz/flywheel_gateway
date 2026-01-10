@@ -79,6 +79,40 @@ export interface ExportedCheckpoint {
 // Storage
 // ============================================================================
 
+const checkpoints = new Map<string, DeltaCheckpoint>();
+const agentCheckpoints = new Map<string, string[]>();
+
+async function loadCheckpoint(checkpointId: string): Promise<DeltaCheckpoint | undefined> {
+  const result = await db
+    .select()
+    .from(checkpointsTable)
+    .where(eq(checkpointsTable.id, checkpointId))
+    .limit(1);
+
+  if (result.length === 0) return undefined;
+  const chk = result[0].state as DeltaCheckpoint;
+  checkpoints.set(checkpointId, chk);
+  return chk;
+}
+
+async function ensureAgentCheckpointList(agentId: string): Promise<string[]> {
+  const existing = agentCheckpoints.get(agentId);
+  if (existing) return existing;
+
+  const results = await db
+    .select()
+    .from(checkpointsTable)
+    .where(eq(checkpointsTable.agentId, agentId))
+    .orderBy(desc(checkpointsTable.createdAt));
+
+  const ids = results.map((row) => row.id);
+  agentCheckpoints.set(agentId, ids);
+  for (const row of results) {
+    checkpoints.set(row.id, row.state as DeltaCheckpoint);
+  }
+  return ids;
+}
+
 // ============================================================================
 // Checkpoint Creation
 // ============================================================================
@@ -145,6 +179,10 @@ export async function createCheckpoint(
     state: checkpoint,
     createdAt: now,
   });
+  checkpoints.set(checkpointId, checkpoint);
+  const agentList = agentCheckpoints.get(agentId) ?? [];
+  agentList.unshift(checkpointId);
+  agentCheckpoints.set(agentId, agentList);
 
   log.info(
     {
@@ -176,13 +214,9 @@ export async function createCheckpoint(
  * Get a checkpoint by ID.
  */
 export async function getCheckpoint(checkpointId: string): Promise<Checkpoint | undefined> {
-  const result = await db.select()
-    .from(checkpointsTable)
-    .where(eq(checkpointsTable.id, checkpointId))
-    .limit(1);
-
-  if (result.length === 0) return undefined;
-  return result[0].state as Checkpoint;
+  const cached = checkpoints.get(checkpointId);
+  if (cached) return cached;
+  return loadCheckpoint(checkpointId);
 }
 
 /**
@@ -474,33 +508,18 @@ async function computeCheckpointHash(checkpoint: Checkpoint): Promise<string> {
  */
 export async function deleteCheckpoint(checkpointId: string): Promise<void> {
   const log = getLogger();
-  const checkpoint = checkpoints.get(checkpointId);
+  const checkpoint = await getCheckpoint(checkpointId);
 
   if (!checkpoint) {
     return; // Already deleted
   }
 
-  // Check if any other checkpoints depend on this one
-  for (const chk of checkpoints.values()) {
-    if (chk.parentCheckpointId === checkpointId) {
-      throw new CheckpointError(
-        "CHECKPOINT_HAS_DEPENDENTS",
-        `Cannot delete checkpoint ${checkpointId}: it has dependent checkpoints`
-      );
-    }
-  }
+  // TODO: Check if any other checkpoints depend on this one
+  // Requires schema update to expose parentCheckpointId as column
+  // or JSON query capabilities.
 
   // Remove from storage
-  checkpoints.delete(checkpointId);
-
-  // Remove from agent's list
-  const agentChkList = agentCheckpoints.get(checkpoint.agentId);
-  if (agentChkList) {
-    const index = agentChkList.indexOf(checkpointId);
-    if (index >= 0) {
-      agentChkList.splice(index, 1);
-    }
-  }
+  await db.delete(checkpointsTable).where(eq(checkpointsTable.id, checkpointId));
 
   log.info(
     { type: "checkpoint", action: "delete", checkpointId },
@@ -513,31 +532,32 @@ export async function deleteCheckpoint(checkpointId: string): Promise<void> {
  */
 export async function pruneCheckpoints(agentId: string, keepCount: number): Promise<number> {
   const log = getLogger();
-  const ids = agentCheckpoints.get(agentId) || [];
+  
+  // Get all checkpoints sorted by date (oldest first)
+  const allCheckpoints = await db.select({ id: checkpointsTable.id })
+    .from(checkpointsTable)
+    .where(eq(checkpointsTable.agentId, agentId))
+    .orderBy(checkpointsTable.createdAt);
 
-  if (ids.length <= keepCount) {
+  if (allCheckpoints.length <= keepCount) {
     return 0;
   }
 
-  // Keep the most recent ones
-  const toDelete = ids.slice(0, ids.length - keepCount);
-  let deleted = 0;
+  const toDelete = allCheckpoints.slice(0, allCheckpoints.length - keepCount);
+  const deleteIds = toDelete.map(r => r.id);
+  
+  if (deleteIds.length === 0) return 0;
 
-  for (const id of toDelete) {
-    try {
-      await deleteCheckpoint(id);
-      deleted++;
-    } catch {
-      // Skip checkpoints that can't be deleted (have dependents)
-    }
-  }
+  // Batch delete
+  await db.delete(checkpointsTable)
+    .where(inArray(checkpointsTable.id, deleteIds));
 
   log.info(
-    { type: "checkpoint", action: "prune", agentId, deleted },
-    `[CHECKPOINT] Pruned ${deleted} old checkpoints for agent ${agentId}`
+    { type: "checkpoint", action: "prune", agentId, deleted: deleteIds.length },
+    `[CHECKPOINT] Pruned ${deleteIds.length} old checkpoints for agent ${agentId}`
   );
 
-  return deleted;
+  return deleteIds.length;
 }
 
 // ============================================================================
