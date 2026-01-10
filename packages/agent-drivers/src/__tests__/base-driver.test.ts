@@ -236,7 +236,7 @@ describe("BaseDriver", () => {
 
       const output = await driver.getOutput(agentConfig.id);
       expect(output.length).toBe(1);
-      expect(output[0].content).toBe("Hello");
+      expect(output[0]!.content).toBe("Hello");
     });
 
     it("should filter by timestamp", async () => {
@@ -259,7 +259,7 @@ describe("BaseDriver", () => {
 
       const filtered = await driver.getOutput(agentConfig.id, new Date(Date.now() - 5000));
       expect(filtered.length).toBe(1);
-      expect(filtered[0].content).toBe("New");
+      expect(filtered[0]!.content).toBe("New");
     });
   });
 

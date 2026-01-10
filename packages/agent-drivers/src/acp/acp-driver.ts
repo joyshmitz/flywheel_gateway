@@ -270,8 +270,13 @@ export class AcpDriver extends BaseDriver {
     const stdinMessage = `${message}\n`;
 
     try {
-      session.process.stdin.write(stdinMessage);
-      session.process.stdin.flush();
+      const stdin = session.process.stdin;
+      if (stdin && typeof stdin !== "number") {
+        stdin.write(stdinMessage);
+        stdin.flush();
+      } else {
+        throw new Error("stdin not available");
+      }
     } catch (err) {
       throw new Error(`Failed to send message to agent: ${err}`);
     }
@@ -458,35 +463,18 @@ export class AcpDriver extends BaseDriver {
    * Read and process output from the agent process.
    */
   private async readProcessOutput(agentId: string, session: AcpAgentSession): Promise<void> {
-    const decoder = new TextDecoder();
     const stdout = session.process.stdout;
     const stderr = session.process.stderr;
 
     // Read stdout for main output
-    (async () => {
-      try {
-        for await (const chunk of stdout) {
-          const text = decoder.decode(chunk);
-          this.processStdout(agentId, session, text);
-        }
-      } catch (err) {
-        if (!this.sessions.has(agentId)) return; // Session was terminated
-        console.error("[DRIVER] stdout read error:", err);
-      }
-    })();
+    if (stdout && typeof stdout !== "number") {
+      this.readStream(agentId, session, stdout, "stdout");
+    }
 
     // Read stderr for errors/warnings
-    (async () => {
-      try {
-        for await (const chunk of stderr) {
-          const text = decoder.decode(chunk);
-          this.processStderr(agentId, session, text);
-        }
-      } catch (err) {
-        if (!this.sessions.has(agentId)) return; // Session was terminated
-        console.error("[DRIVER] stderr read error:", err);
-      }
-    })();
+    if (stderr && typeof stderr !== "number") {
+      this.readStream(agentId, session, stderr, "stderr");
+    }
 
     // Handle process exit
     session.process.exited.then((exitCode) => {
@@ -501,6 +489,42 @@ export class AcpDriver extends BaseDriver {
         this.sessions.delete(agentId);
       }
     });
+  }
+
+  /**
+   * Read from a stream and process the output.
+   */
+  private readStream(
+    agentId: string,
+    session: AcpAgentSession,
+    stream: ReadableStream<Uint8Array>,
+    type: "stdout" | "stderr"
+  ): void {
+    const decoder = new TextDecoder();
+    const reader = stream.getReader();
+
+    const read = async (): Promise<void> => {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const text = decoder.decode(value);
+          if (type === "stdout") {
+            this.processStdout(agentId, session, text);
+          } else {
+            this.processStderr(agentId, session, text);
+          }
+        }
+      } catch (err) {
+        if (!this.sessions.has(agentId)) return; // Session was terminated
+        console.error(`[DRIVER] ${type} read error:`, err);
+      } finally {
+        reader.releaseLock();
+      }
+    };
+
+    read();
   }
 
   /**
@@ -554,7 +578,7 @@ export class AcpDriver extends BaseDriver {
       console.debug("[DRIVER] acp_event:", JSON.stringify(event));
     }
 
-    const eventType = event.type as string;
+    const eventType = event["type"] as string;
 
     switch (eventType) {
       case "message_start":
@@ -602,10 +626,10 @@ export class AcpDriver extends BaseDriver {
   }
 
   private handleContentBlockStart(agentId: string, session: AcpAgentSession, event: Record<string, unknown>): void {
-    const contentBlock = event.content_block as Record<string, unknown>;
+    const contentBlock = event["content_block"] as Record<string, unknown>;
     if (!contentBlock) return;
 
-    const blockType = contentBlock.type as string;
+    const blockType = contentBlock["type"] as string;
 
     if (blockType === "tool_use") {
       // Starting a tool call
@@ -614,21 +638,21 @@ export class AcpDriver extends BaseDriver {
         type: "tool_call_start",
         agentId,
         timestamp: new Date(),
-        toolName: contentBlock.name as string,
-        toolId: contentBlock.id as string,
+        toolName: contentBlock["name"] as string,
+        toolId: contentBlock["id"] as string,
         input: {},
       });
     }
   }
 
   private handleContentBlockDelta(agentId: string, session: AcpAgentSession, event: Record<string, unknown>): void {
-    const delta = event.delta as Record<string, unknown>;
+    const delta = event["delta"] as Record<string, unknown>;
     if (!delta) return;
 
-    const deltaType = delta.type as string;
+    const deltaType = delta["type"] as string;
 
     if (deltaType === "text_delta") {
-      const text = delta.text as string;
+      const text = delta["text"] as string;
       if (text) {
         this.addOutput(agentId, {
           timestamp: new Date(),
@@ -637,7 +661,7 @@ export class AcpDriver extends BaseDriver {
         });
       }
     } else if (deltaType === "thinking_delta") {
-      const thinking = delta.thinking as string;
+      const thinking = delta["thinking"] as string;
       if (thinking) {
         this.addOutput(agentId, {
           timestamp: new Date(),
@@ -649,14 +673,14 @@ export class AcpDriver extends BaseDriver {
       // Tool input being streamed - we could accumulate this
       // For now, just log in verbose mode
       if (this.verboseProtocol) {
-        console.debug("[DRIVER] tool input delta:", delta.partial_json);
+        console.debug("[DRIVER] tool input delta:", delta["partial_json"]);
       }
     }
   }
 
   private handleContentBlockStop(agentId: string, session: AcpAgentSession, event: Record<string, unknown>): void {
     // Content block completed
-    const index = event.index as number;
+    const index = event["index"] as number;
     if (this.verboseProtocol) {
       console.debug("[DRIVER] content block stop:", index);
     }
@@ -664,12 +688,12 @@ export class AcpDriver extends BaseDriver {
 
   private handleMessageDelta(agentId: string, session: AcpAgentSession, event: Record<string, unknown>): void {
     // Update token usage if provided
-    const usage = event.usage as Record<string, number> | undefined;
+    const usage = event["usage"] as Record<string, number> | undefined;
     if (usage) {
       const tokenUsage: TokenUsage = {
-        promptTokens: usage.input_tokens ?? session.tokenUsage.promptTokens,
-        completionTokens: usage.output_tokens ?? session.tokenUsage.completionTokens,
-        totalTokens: (usage.input_tokens ?? 0) + (usage.output_tokens ?? 0),
+        promptTokens: usage["input_tokens"] ?? session.tokenUsage.promptTokens,
+        completionTokens: usage["output_tokens"] ?? session.tokenUsage.completionTokens,
+        totalTokens: (usage["input_tokens"] ?? 0) + (usage["output_tokens"] ?? 0),
       };
       session.tokenUsage = tokenUsage;
       this.updateTokenUsage(agentId, tokenUsage);
@@ -678,9 +702,9 @@ export class AcpDriver extends BaseDriver {
 
   private handleToolUse(agentId: string, session: AcpAgentSession, event: Record<string, unknown>): void {
     const toolCall: AcpToolCall = {
-      tool_id: event.id as string,
-      tool_name: event.name as string,
-      input: event.input as Record<string, unknown>,
+      tool_id: event["id"] as string,
+      tool_name: event["name"] as string,
+      input: event["input"] as Record<string, unknown>,
     };
 
     this.updateState(agentId, { activityState: "tool_calling" });
@@ -710,9 +734,9 @@ export class AcpDriver extends BaseDriver {
 
   private handleToolResult(agentId: string, session: AcpAgentSession, event: Record<string, unknown>): void {
     const toolResult: AcpToolResult = {
-      tool_id: event.tool_use_id as string,
-      output: event.content,
-      is_error: event.is_error as boolean ?? false,
+      tool_id: event["tool_use_id"] as string,
+      output: event["content"],
+      is_error: event["is_error"] as boolean ?? false,
     };
 
     this.emitEvent(agentId, {
@@ -738,7 +762,7 @@ export class AcpDriver extends BaseDriver {
   }
 
   private handleError(agentId: string, event: Record<string, unknown>): void {
-    const error = new Error(event.message as string ?? "Unknown ACP error");
+    const error = new Error(event["message"] as string ?? "Unknown ACP error");
 
     this.emitEvent(agentId, {
       type: "error",
@@ -763,15 +787,15 @@ export class AcpDriver extends BaseDriver {
     switch (toolCall.tool_name) {
       case "Read":
         operation = "read";
-        path = toolCall.input.file_path as string ?? "";
+        path = toolCall.input["file_path"] as string ?? "";
         break;
       case "Write":
         operation = "write";
-        path = toolCall.input.file_path as string ?? "";
+        path = toolCall.input["file_path"] as string ?? "";
         break;
       case "Edit":
         operation = "edit";
-        path = toolCall.input.file_path as string ?? "";
+        path = toolCall.input["file_path"] as string ?? "";
         break;
       default:
         return; // Not a simple file operation
@@ -818,8 +842,13 @@ export class AcpDriver extends BaseDriver {
       session.pendingRequests.set(id, { resolve, reject, timeout });
 
       try {
-        session.process.stdin.write(JSON.stringify(request) + "\n");
-        session.process.stdin.flush();
+        const stdin = session.process.stdin;
+        if (stdin && typeof stdin !== "number") {
+          stdin.write(JSON.stringify(request) + "\n");
+          stdin.flush();
+        } else {
+          throw new Error("stdin not available");
+        }
       } catch (err) {
         clearTimeout(timeout);
         session.pendingRequests.delete(id);
@@ -843,8 +872,13 @@ export class AcpDriver extends BaseDriver {
     };
 
     try {
-      session.process.stdin.write(JSON.stringify(notification) + "\n");
-      session.process.stdin.flush();
+      const stdin = session.process.stdin;
+      if (stdin && typeof stdin !== "number") {
+        stdin.write(JSON.stringify(notification) + "\n");
+        stdin.flush();
+      } else {
+        console.error("[DRIVER] stdin not available for notification");
+      }
     } catch (err) {
       console.error("[DRIVER] Failed to send RPC notification:", err);
     }

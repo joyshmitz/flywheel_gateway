@@ -161,7 +161,7 @@ describe("AcpDriver", () => {
         // List checkpoints
         const checkpoints = await driver.listCheckpoints(config.id);
         expect(checkpoints.length).toBe(1);
-        expect(checkpoints[0].id).toBe(checkpoint.id);
+        expect(checkpoints[0]!.id).toBe(checkpoint.id);
 
         await driver.terminate(config.id);
       } catch (err) {
