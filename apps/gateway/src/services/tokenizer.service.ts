@@ -76,6 +76,7 @@ export function truncateToTokens(
   ellipsis: string = "..."
 ): string {
   if (!text) return text;
+  if (maxTokens <= 0) return "";
 
   const currentTokens = countTokens(text);
   if (currentTokens <= maxTokens) return text;
@@ -83,6 +84,9 @@ export function truncateToTokens(
   // Estimate characters to keep
   const ratio = maxTokens / currentTokens;
   const ellipsisTokens = countTokens(ellipsis);
+  if (ellipsisTokens >= maxTokens) {
+    return ellipsisTokens === maxTokens ? ellipsis : "";
+  }
   const targetTokens = maxTokens - ellipsisTokens;
   const targetChars = Math.floor(text.length * (targetTokens / currentTokens));
 
@@ -108,6 +112,7 @@ export function truncateToTokens(
  */
 export function splitIntoChunks(text: string, maxTokensPerChunk: number): string[] {
   if (!text) return [];
+  if (maxTokensPerChunk <= 0) return [];
 
   const totalTokens = countTokens(text);
   if (totalTokens <= maxTokensPerChunk) return [text];
@@ -117,12 +122,17 @@ export function splitIntoChunks(text: string, maxTokensPerChunk: number): string
   let currentChunk = "";
   let currentTokens = 0;
 
+  // Token cost of separators
+  const paragraphSeparatorTokens = countTokens("\n\n");
+  const sentenceSeparatorTokens = countTokens(" ");
+
   for (const para of paragraphs) {
     const paraTokens = countTokens(para);
+    const separatorCost = currentChunk ? paragraphSeparatorTokens : 0;
 
-    if (currentTokens + paraTokens <= maxTokensPerChunk) {
+    if (currentTokens + separatorCost + paraTokens <= maxTokensPerChunk) {
       currentChunk += (currentChunk ? "\n\n" : "") + para;
-      currentTokens += paraTokens;
+      currentTokens += separatorCost + paraTokens;
     } else {
       if (currentChunk) {
         chunks.push(currentChunk);
@@ -136,16 +146,26 @@ export function splitIntoChunks(text: string, maxTokensPerChunk: number): string
 
         for (const sentence of sentences) {
           const sentTokens = countTokens(sentence);
+          const sentSeparatorCost = currentChunk ? sentenceSeparatorTokens : 0;
 
-          if (currentTokens + sentTokens <= maxTokensPerChunk) {
+          if (currentTokens + sentSeparatorCost + sentTokens <= maxTokensPerChunk) {
             currentChunk += (currentChunk ? " " : "") + sentence;
-            currentTokens += sentTokens;
+            currentTokens += sentSeparatorCost + sentTokens;
           } else {
             if (currentChunk) {
               chunks.push(currentChunk);
             }
-            currentChunk = sentence;
-            currentTokens = sentTokens;
+            if (sentTokens > maxTokensPerChunk) {
+              const truncated = truncateToTokens(sentence, maxTokensPerChunk);
+              if (truncated) {
+                chunks.push(truncated);
+              }
+              currentChunk = "";
+              currentTokens = 0;
+            } else {
+              currentChunk = sentence;
+              currentTokens = sentTokens;
+            }
           }
         }
       } else {

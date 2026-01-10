@@ -85,7 +85,11 @@ export interface ContextHealthStatus {
 export type RotationHandlers = {
   spawnAgent?: (config: unknown) => Promise<{ agentId: string }>;
   terminateAgent?: (agentId: string) => Promise<void>;
-  sendMessage?: (agentId: string, message: string) => Promise<void>;
+  sendMessage?: (
+    agentId: string,
+    type: "user" | "system",
+    message: string
+  ) => Promise<void>;
   getConversationHistory?: (agentId: string) => Promise<unknown[]>;
   getToolState?: (agentId: string) => Promise<Record<string, unknown>>;
 };
@@ -296,7 +300,7 @@ async function rotateSummarizeAndContinue(
 This summary will be used to refresh your context.`;
 
   if (handlers?.sendMessage) {
-    await handlers.sendMessage(agent.id, summarizationPrompt);
+    await handlers.sendMessage(agent.id, "system", summarizationPrompt);
     // Note: In a real implementation, we'd wait for the response
     // and inject it as the new context start
   }
@@ -438,7 +442,7 @@ Please prepare a handoff summary that includes:
 Format this as a clear handoff document.`;
 
   if (handlers?.sendMessage) {
-    await handlers.sendMessage(agent.id, handoffPrompt);
+    await handlers.sendMessage(agent.id, "system", handoffPrompt);
     // Note: Would wait for response in real implementation
   }
 
