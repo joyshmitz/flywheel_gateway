@@ -200,6 +200,25 @@ reservations.post("/check", async (c) => {
 });
 
 // ============================================================================
+// Statistics (must be before /:id to avoid matching "stats" as an ID)
+// ============================================================================
+
+/**
+ * GET /reservations/stats - Get reservation statistics
+ */
+reservations.get("/stats", async (c) => {
+  try {
+    const stats = getReservationStats();
+    return c.json({
+      stats,
+      correlationId: getCorrelationId(),
+    });
+  } catch (error) {
+    return handleError(error, c);
+  }
+});
+
+// ============================================================================
 // List Reservations
 // ============================================================================
 
@@ -389,25 +408,6 @@ reservations.post("/:id/renew", async (c) => {
       renewed: true,
       reservationId: id,
       newExpiresAt: result.newExpiresAt?.toISOString(),
-      correlationId: getCorrelationId(),
-    });
-  } catch (error) {
-    return handleError(error, c);
-  }
-});
-
-// ============================================================================
-// Statistics
-// ============================================================================
-
-/**
- * GET /reservations/stats - Get reservation statistics
- */
-reservations.get("/stats", async (c) => {
-  try {
-    const stats = getReservationStats();
-    return c.json({
-      stats,
       correlationId: getCorrelationId(),
     });
   } catch (error) {

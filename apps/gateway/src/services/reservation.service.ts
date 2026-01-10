@@ -14,12 +14,9 @@ import type { Channel } from "../ws/channels";
 import { logger } from "./logger";
 import { getCorrelationId } from "../middleware/correlation";
 import {
-  ReservationConflictEngine,
   createReservationConflictEngine,
-  patternsOverlap,
   type Reservation,
   type ReservationConflict,
-  type ConflictCheckResult,
 } from "./reservation-conflicts";
 
 // ============================================================================
@@ -134,6 +131,9 @@ const conflictEngine = createReservationConflictEngine();
 /** Cleanup interval handle */
 let cleanupInterval: Timer | null = null;
 
+/** Track which reservations have been warned about expiring (to avoid spam) */
+const warnedExpiringReservations: Set<string> = new Set();
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -241,8 +241,9 @@ function fileMatchesPatterns(filePath: string, patterns: string[]): boolean {
       if (regex.test(normalizedPath) || regex.test(filePath)) {
         return true;
       }
-    } catch {
-      // Skip invalid patterns
+    } catch (err) {
+      // Skip invalid patterns but log for debugging
+      logger.debug({ pattern, error: err }, "Invalid glob pattern skipped");
     }
   }
   return false;
@@ -479,9 +480,10 @@ export async function releaseReservation(
     };
   }
 
-  // Remove from both stores
+  // Remove from both stores and warning tracker
   reservationStore.delete(params.reservationId);
   conflictEngine.removeReservation(reservation.projectId, params.reservationId);
+  warnedExpiringReservations.delete(params.reservationId);
 
   log.info(
     { projectId: reservation.projectId, patterns: reservation.patterns },
@@ -561,6 +563,9 @@ export async function renewReservation(
   // Update reservation
   reservation.expiresAt = newExpiresAt;
   reservation.renewCount++;
+
+  // Reset warning flag so we warn again when next expiration approaches
+  warnedExpiringReservations.delete(reservation.id);
 
   // Update in conflict engine (re-register with new expiration)
   conflictEngine.removeReservation(reservation.projectId, reservation.id);
@@ -691,7 +696,10 @@ async function cleanupExpiredReservations(): Promise<number> {
         resolution: "expired",
         resolvedAt: now.toISOString(),
       });
-    } else if (reservation.expiresAt <= warningThreshold) {
+
+      // Remove from warned set
+      warnedExpiringReservations.delete(id);
+    } else if (reservation.expiresAt <= warningThreshold && !warnedExpiringReservations.has(id)) {
       // About to expire - publish warning
       publishReservationEvent(reservation.projectId, "reservation.expiring", {
         reservationId: id,
@@ -700,6 +708,7 @@ async function cleanupExpiredReservations(): Promise<number> {
         expiresAt: reservation.expiresAt.toISOString(),
         expiresInMs: reservation.expiresAt.getTime() - now.getTime(),
       });
+      warnedExpiringReservations.add(id);
     }
   }
 
@@ -791,6 +800,7 @@ export function _clearAllReservations(): void {
     conflictEngine.removeReservation(reservation.projectId, id);
   }
   reservationStore.clear();
+  warnedExpiringReservations.clear();
 }
 
 /**
