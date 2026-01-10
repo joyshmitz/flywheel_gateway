@@ -9,11 +9,23 @@ import {
   buildContextPack,
   previewContextPack,
   renderContextPack,
-  getContextPackSummary,
 } from "../services/context.service";
 import type { ContextPackRequest, BudgetStrategy } from "../types/context.types";
 
 const context = new Hono();
+
+// ============================================================================
+// Utilities
+// ============================================================================
+
+/**
+ * Remove undefined values from an object (for exactOptionalPropertyTypes compatibility).
+ */
+function removeUndefined<T extends object>(obj: T): T {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined)
+  ) as T;
+}
 
 // ============================================================================
 // Validation Schemas
@@ -22,24 +34,24 @@ const context = new Hono();
 const BudgetStrategySchema = z.object({
   fixed: z
     .object({
-      system: z.number().min(0),
-      reserved: z.number().min(0),
+      system: z.number().min(0).optional(),
+      reserved: z.number().min(0).optional(),
     })
     .optional(),
   proportional: z
     .object({
-      triage: z.number().min(0).max(1),
-      memory: z.number().min(0).max(1),
-      search: z.number().min(0).max(1),
-      history: z.number().min(0).max(1),
+      triage: z.number().min(0).max(1).optional(),
+      memory: z.number().min(0).max(1).optional(),
+      search: z.number().min(0).max(1).optional(),
+      history: z.number().min(0).max(1).optional(),
     })
     .optional(),
   minimums: z
     .object({
-      triage: z.number().min(0),
-      memory: z.number().min(0),
-      search: z.number().min(0),
-      history: z.number().min(0),
+      triage: z.number().min(0).optional(),
+      memory: z.number().min(0).optional(),
+      search: z.number().min(0).optional(),
+      history: z.number().min(0).optional(),
     })
     .optional(),
   priority: z
@@ -125,10 +137,10 @@ context.post("/:sessionId/context/build", async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const validated = ContextBuildRequestSchema.parse(body);
 
-    const request: ContextPackRequest = {
+    const request = {
       sessionId,
-      ...validated,
-    };
+      ...removeUndefined(validated),
+    } as ContextPackRequest;
 
     const pack = await buildContextPack(request);
 
@@ -183,10 +195,10 @@ context.post("/:sessionId/context/preview", async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const validated = ContextBuildRequestSchema.parse(body);
 
-    const request: ContextPackRequest = {
+    const request = {
       sessionId,
-      ...validated,
-    };
+      ...removeUndefined(validated),
+    } as ContextPackRequest;
 
     const preview = await previewContextPack(request);
 
@@ -209,10 +221,10 @@ context.post("/:sessionId/context/render", async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const validated = ContextBuildRequestSchema.parse(body);
 
-    const request: ContextPackRequest = {
+    const request = {
       sessionId,
-      ...validated,
-    };
+      ...removeUndefined(validated),
+    } as ContextPackRequest;
 
     const pack = await buildContextPack(request);
     const rendered = renderContextPack(pack);

@@ -46,7 +46,7 @@ describe("Checkpoint Service", () => {
 
   beforeAll(async () => {
     try {
-      await migrate(db, { migrationsFolder: "src/db/migrations" });
+      await migrate(db, { migrationsFolder: "apps/gateway/src/db/migrations" });
     } catch (e) {
       console.warn("Migration failed or not needed:", e);
     }
@@ -61,7 +61,7 @@ describe("Checkpoint Service", () => {
         tokenUsage: testTokenUsage,
       });
 
-      expect(metadata.id).toMatch(/^chk_\d+_[a-z0-9]+$/);
+      expect(metadata.id).toMatch(/^chk_[a-z0-9]+$/);
       expect(metadata.agentId).toBe(testAgentId);
       expect(metadata.createdAt).toBeInstanceOf(Date);
       expect(metadata.tokenUsage).toEqual(testTokenUsage);
@@ -180,6 +180,9 @@ describe("Checkpoint Service", () => {
         toolState: {},
         tokenUsage: testTokenUsage,
       });
+
+      // Small delay to ensure different createdAt timestamps
+      await new Promise((r) => setTimeout(r, 10));
 
       const second = await createCheckpoint(uniqueAgentId, {
         conversationHistory: [{ role: "user", content: "Second" }],

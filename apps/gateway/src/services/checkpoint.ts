@@ -12,6 +12,7 @@ import { getLogger, getCorrelationId } from "../middleware/correlation";
 import type { Checkpoint, CheckpointMetadata, TokenUsage } from "@flywheel/agent-drivers";
 import { eq, desc, and, lt, inArray } from "drizzle-orm";
 import { db, checkpoints as checkpointsTable } from "../db";
+import { ulid } from "ulid";
 
 // ============================================================================
 // Types
@@ -79,9 +80,6 @@ export interface ExportedCheckpoint {
 // Storage
 // ============================================================================
 
-const checkpoints = new Map<string, DeltaCheckpoint>();
-const agentCheckpoints = new Map<string, string[]>();
-
 function normalizeCheckpoint(checkpoint: DeltaCheckpoint): DeltaCheckpoint {
   const createdAt =
     checkpoint.createdAt instanceof Date
@@ -100,37 +98,6 @@ function normalizeCheckpoint(checkpoint: DeltaCheckpoint): DeltaCheckpoint {
   };
 }
 
-async function loadCheckpoint(checkpointId: string): Promise<DeltaCheckpoint | undefined> {
-  const result = await db
-    .select()
-    .from(checkpointsTable)
-    .where(eq(checkpointsTable.id, checkpointId))
-    .limit(1);
-
-  if (result.length === 0) return undefined;
-  const chk = normalizeCheckpoint(result[0].state as DeltaCheckpoint);
-  checkpoints.set(checkpointId, chk);
-  return chk;
-}
-
-async function ensureAgentCheckpointList(agentId: string): Promise<string[]> {
-  const existing = agentCheckpoints.get(agentId);
-  if (existing) return existing;
-
-  const results = await db
-    .select()
-    .from(checkpointsTable)
-    .where(eq(checkpointsTable.agentId, agentId))
-    .orderBy(desc(checkpointsTable.id));
-
-  const ids = results.map((row) => row.id);
-  agentCheckpoints.set(agentId, ids);
-  for (const row of results) {
-    checkpoints.set(row.id, normalizeCheckpoint(row.state as DeltaCheckpoint));
-  }
-  return ids;
-}
-
 // ============================================================================
 // Checkpoint Creation
 // ============================================================================
@@ -139,7 +106,7 @@ async function ensureAgentCheckpointList(agentId: string): Promise<string[]> {
  * Generate a unique checkpoint ID.
  */
 function generateCheckpointId(): string {
-  return `chk_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  return `chk_${ulid().toLowerCase()}`;
 }
 
 /**
@@ -197,10 +164,6 @@ export async function createCheckpoint(
     state: checkpoint,
     createdAt: now,
   });
-  checkpoints.set(checkpointId, checkpoint);
-  const agentList = agentCheckpoints.get(agentId) ?? [];
-  agentList.unshift(checkpointId);
-  agentCheckpoints.set(agentId, agentList);
 
   log.info(
     {
@@ -232,9 +195,14 @@ export async function createCheckpoint(
  * Get a checkpoint by ID.
  */
 export async function getCheckpoint(checkpointId: string): Promise<Checkpoint | undefined> {
-  const cached = checkpoints.get(checkpointId);
-  if (cached) return cached;
-  return loadCheckpoint(checkpointId);
+  const result = await db
+    .select()
+    .from(checkpointsTable)
+    .where(eq(checkpointsTable.id, checkpointId))
+    .limit(1);
+
+  if (result.length === 0) return undefined;
+  return normalizeCheckpoint(result[0].state as DeltaCheckpoint);
 }
 
 /**
@@ -247,16 +215,13 @@ export async function getAgentCheckpoints(agentId: string): Promise<CheckpointMe
     .where(eq(checkpointsTable.agentId, agentId))
     .orderBy(desc(checkpointsTable.id));
 
-  agentCheckpoints.set(agentId, results.map((row) => row.id));
-
   return results.map((row) => {
-  const chk = normalizeCheckpoint(row.state as DeltaCheckpoint);
-  checkpoints.set(row.id, chk);
-  return {
-    id: chk.id,
-    agentId: chk.agentId,
-    createdAt: chk.createdAt,
-    tokenUsage: chk.tokenUsage,
+    const chk = normalizeCheckpoint(row.state as DeltaCheckpoint);
+    return {
+      id: chk.id,
+      agentId: chk.agentId,
+      createdAt: chk.createdAt,
+      tokenUsage: chk.tokenUsage,
       description: chk.description,
       tags: chk.tags,
     };
@@ -271,18 +236,11 @@ export async function getLatestCheckpoint(agentId: string): Promise<Checkpoint |
     .select()
     .from(checkpointsTable)
     .where(eq(checkpointsTable.agentId, agentId))
-    .orderBy(desc(checkpointsTable.createdAt))
+    .orderBy(desc(checkpointsTable.id))
     .limit(1);
 
   if (result.length === 0) return undefined;
-  const chk = normalizeCheckpoint(result[0].state as DeltaCheckpoint);
-  checkpoints.set(result[0].id, chk);
-  const list = agentCheckpoints.get(agentId) ?? [];
-  if (!list.includes(result[0].id)) {
-    list.unshift(result[0].id);
-    agentCheckpoints.set(agentId, list);
-  }
-  return chk;
+  return normalizeCheckpoint(result[0].state as DeltaCheckpoint);
 }
 
 // ============================================================================

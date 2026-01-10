@@ -340,7 +340,7 @@ describe("Context Pack Builder", () => {
       });
 
       expect(pack.budget.total).toBe(
-        DEFAULT_CONTEXT_BUILDER_CONFIG.modelLimits["sonnet-4"]
+        DEFAULT_CONTEXT_BUILDER_CONFIG.modelLimits["sonnet-4"] ?? 200000
       );
     });
   });

@@ -82,7 +82,6 @@ export function truncateToTokens(
   if (currentTokens <= maxTokens) return text;
 
   // Estimate characters to keep
-  const ratio = maxTokens / currentTokens;
   const ellipsisTokens = countTokens(ellipsis);
   if (ellipsisTokens >= maxTokens) {
     return ellipsisTokens === maxTokens ? ellipsis : "";
