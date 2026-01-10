@@ -68,7 +68,7 @@ export interface AuditEventOptions {
  *
  * Audit events are:
  * 1. Logged to the structured log stream
- * 2. (Future) Written to an audit table in the database
+ * 2. Persisted to the audit_logs table (fire-and-forget)
  *
  * @param options - Audit event options
  * @returns The created audit event
@@ -107,7 +107,8 @@ export function audit(options: AuditEventOptions): AuditEvent {
   );
 
   // Persist to audit table (fire-and-forget to avoid blocking the request)
-  db.insert(auditLogs)
+  void db
+    .insert(auditLogs)
     .values({
       id: event.id,
       correlationId: event.correlationId,

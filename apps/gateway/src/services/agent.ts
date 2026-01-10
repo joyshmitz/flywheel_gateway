@@ -19,6 +19,7 @@ let driver: ClaudeSDKDriver | undefined;
 interface AgentRecord {
   agent: Agent;
   createdAt: Date;
+  timeout: number;
   messagesReceived: number;
   messagesSent: number;
   toolCalls: number;
@@ -83,6 +84,7 @@ export async function spawnAgent(config: {
     const record: AgentRecord = {
       agent,
       createdAt: new Date(),
+      timeout: config.timeout ?? 3600000, // Default 1 hour
       messagesReceived: 0,
       messagesSent: 0,
       toolCalls: 0,
@@ -159,7 +161,13 @@ export async function listAgents(options: {
 
   // Apply pagination
   const total = agentList.length;
-  const startIndex = options.cursor ? parseInt(options.cursor, 10) : 0;
+  let startIndex = 0;
+  if (options.cursor) {
+    const parsed = parseInt(options.cursor, 10);
+    if (!Number.isNaN(parsed)) {
+      startIndex = parsed;
+    }
+  }
   const paginatedList = agentList.slice(startIndex, startIndex + limit);
   const hasMore = startIndex + limit < total;
   const nextCursor = hasMore ? String(startIndex + limit) : undefined;
@@ -217,7 +225,7 @@ export async function getAgent(agentId: string): Promise<{
     lastActivityAt: agent.lastActivityAt.toISOString(),
     config: {
       workingDirectory: agent.config.workingDirectory,
-      timeout: 3600000,
+      timeout: record.timeout,
       maxTokens: agent.config.maxTokens ?? 100000,
       pty: false,
     },
