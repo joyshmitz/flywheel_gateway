@@ -37,8 +37,11 @@ if (jsonOutput || robot) {
   console.log(formatReport(report));
 }
 
+// Check if any result failed (including registry validation)
+const hasAnyFailure = report.results.some((r) => !r.passed);
+
 // Log for structured logging systems
-if (report.failed === 0) {
+if (!hasAnyFailure) {
   console.error(
     `[PARITY] check=registry status=pass commands=${report.totalCommands} warnings=${report.warnings}`,
   );
@@ -48,5 +51,5 @@ if (report.failed === 0) {
   );
 }
 
-// Exit with appropriate code
-process.exit(report.failed > 0 ? 1 : 0);
+// Exit with appropriate code (fail if any result failed, including registry)
+process.exit(hasAnyFailure ? 1 : 0);
