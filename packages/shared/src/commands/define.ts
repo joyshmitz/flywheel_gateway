@@ -57,10 +57,10 @@ export function defineCommand<
   TInput extends z.ZodType,
   TOutput extends z.ZodType,
 >(input: CommandDefinitionInput<TInput, TOutput>): RegisteredCommand<TInput, TOutput> {
-  // Validate command name format (category.action or just category)
-  if (!/^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)?$/i.test(input.name)) {
+  // Validate command name format (category.action or just category, lowercase only)
+  if (!/^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)?$/.test(input.name)) {
     throw new Error(
-      `Invalid command name "${input.name}". Must be in format "category.action" or "category".`,
+      `Invalid command name "${input.name}". Must be lowercase in format "category.action" or "category".`,
     );
   }
 

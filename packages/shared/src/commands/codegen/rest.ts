@@ -89,7 +89,7 @@ function generateHandlerCode(cmd: RegisteredCommand): string {
   }
 
   // Handler name (replace . with _)
-  const handlerName = name.replace(".", "_");
+  const handlerName = name.replace(/\./g, "_");
 
   // Build handler
   const lines: string[] = [

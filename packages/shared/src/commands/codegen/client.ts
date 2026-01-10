@@ -24,7 +24,7 @@ export interface GeneratedClientMethod {
 export function generateClientMethods(registry: CommandRegistry): GeneratedClientMethod[] {
   return registry.all().map((cmd) => ({
     commandName: cmd.name,
-    methodName: cmd.name.replace(".", "_"),
+    methodName: cmd.name.replace(/\./g, "_"),
     httpMethod: cmd.rest.method,
     path: cmd.rest.path,
     pathParams: cmd.pathParams,

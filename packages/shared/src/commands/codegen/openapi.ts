@@ -132,7 +132,7 @@ function generateOperation(cmd: RegisteredCommand): Operation {
 
   // Build operation with conditional optional properties
   const operation: Operation = {
-    operationId: name.replace(".", "_"),
+    operationId: name.replace(/\./g, "_"),
     summary: description,
     tags: [cmd.category],
     responses: {

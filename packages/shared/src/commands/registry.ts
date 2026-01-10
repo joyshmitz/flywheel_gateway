@@ -90,13 +90,6 @@ export function validateRegistry(
       issues.push(`Command "${cmd.name}" has no permissions defined.`);
     }
 
-    // Long-running commands should return a job ID
-    if (cmd.metadata.longRunning) {
-      // This is a validation hint; actual schema check would be more complex
-      issues.push(
-        `Command "${cmd.name}" is marked as long-running. Ensure output includes jobId.`,
-      );
-    }
 
     // Check for related commands that don't exist
     for (const related of cmd.aiHints.relatedCommands) {

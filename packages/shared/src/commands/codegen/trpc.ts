@@ -45,7 +45,7 @@ export function generateTrpcProcedures(registry: CommandRegistry): GeneratedProc
  */
 function generateProcedureCode(cmd: RegisteredCommand): string {
   const { name } = cmd;
-  const procedureName = name.replace(".", "_");
+  const procedureName = name.replace(/\./g, "_");
   const procedureType = getProcedureType(cmd);
 
   const lines = [
@@ -99,7 +99,7 @@ export function generateTrpcRouterFile(registry: CommandRegistry): string {
     routerLines.push(`  ${category}: t.router({`);
     for (const proc of procs) {
       const actionName = proc.commandName.split(".")[1] ?? proc.commandName;
-      const procedureName = proc.commandName.replace(".", "_");
+      const procedureName = proc.commandName.replace(/\./g, "_");
       routerLines.push(`    ${actionName}: ${procedureName},`);
     }
     routerLines.push("  }),");
