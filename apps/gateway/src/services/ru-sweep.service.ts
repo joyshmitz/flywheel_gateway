@@ -19,8 +19,18 @@ import {
   fleetRepos,
 } from "../db/schema";
 import { getCorrelationId } from "../middleware/correlation";
-import { getHub } from "../ws/hub";
 import { logger } from "./logger";
+import {
+  publishSweepCancelled,
+  publishSweepCompleted,
+  publishSweepCreated,
+  publishSweepFailed,
+  publishSweepPlanApproved,
+  publishSweepPlanCreated,
+  publishSweepPlanRejected,
+  publishSweepProgress,
+  publishSweepStarted,
+} from "./ru-events";
 import type { FleetRepo } from "./ru-fleet.service";
 
 // ============================================================================
@@ -169,8 +179,6 @@ function generateId(prefix: string, length = 12): string {
   }
   return `${prefix}${result}`;
 }
-
-const fleetChannel = { type: "system:fleet" as const };
 
 /**
  * Log a sweep event to the database.
@@ -326,12 +334,12 @@ export async function startAgentSweep(
   });
 
   // Publish event
-  getHub().publish(
-    fleetChannel,
-    "fleet.sweep_created",
-    { sessionId, repoCount: repos.length, triggeredBy },
-    { correlationId },
-  );
+  publishSweepCreated({
+    sessionId,
+    repoCount: repos.length,
+    triggeredBy,
+    requiresApproval: !config.autoApprove,
+  });
 
   // If auto-approve, start immediately
   if (config.autoApprove) {
@@ -431,12 +439,7 @@ export async function cancelSweepSession(sessionId: string): Promise<void> {
 
   await logSweepEvent(sessionId, "info", "Session cancelled");
 
-  getHub().publish(
-    fleetChannel,
-    "fleet.sweep_cancelled",
-    { sessionId },
-    { correlationId },
-  );
+  publishSweepCancelled(sessionId);
 
   logger.info({ correlationId, sessionId }, "Sweep session cancelled");
 }
@@ -467,12 +470,7 @@ async function runSweepPhases(
       })
       .where(eq(agentSweepSessions.id, sessionId));
 
-    getHub().publish(
-      fleetChannel,
-      "fleet.sweep_started",
-      { sessionId },
-      { correlationId },
-    );
+    publishSweepStarted(sessionId);
 
     // Phase 1: Analysis
     await runPhase1Analysis(sessionId, repos, config);
@@ -507,12 +505,7 @@ async function runSweepPhases(
       })
       .where(eq(agentSweepSessions.id, sessionId));
 
-    getHub().publish(
-      fleetChannel,
-      "fleet.sweep_completed",
-      { sessionId, totalDurationMs },
-      { correlationId },
-    );
+    publishSweepCompleted({ sessionId, totalDurationMs });
 
     logger.info(
       { correlationId, sessionId, totalDurationMs },
@@ -533,12 +526,7 @@ async function runSweepPhases(
       error: errorMessage,
     });
 
-    getHub().publish(
-      fleetChannel,
-      "fleet.sweep_failed",
-      { sessionId, error: errorMessage },
-      { correlationId },
-    );
+    publishSweepFailed(sessionId, errorMessage);
 
     logger.error({ correlationId, sessionId, error }, "Agent sweep failed");
     throw error;
@@ -635,12 +623,12 @@ async function runPhase1Analysis(
       .set({ reposAnalyzed: analyzed, updatedAt: new Date() })
       .where(eq(agentSweepSessions.id, sessionId));
 
-    getHub().publish(
-      fleetChannel,
-      "fleet.sweep_progress",
-      { sessionId, phase: "phase1", analyzed, total: repos.length },
-      { correlationId },
-    );
+    publishSweepProgress({
+      sessionId,
+      phase: "phase1",
+      analyzed,
+      total: repos.length,
+    });
   }
 
   await db
@@ -747,18 +735,13 @@ async function runPhase2Planning(
         planned++;
 
         // Publish plan created event
-        getHub().publish(
-          fleetChannel,
-          "fleet.plan_created",
-          {
-            sessionId,
-            planId: planRecord.id,
-            repoFullName: repo.fullName,
-            actionCount: planRecord.actionCount,
-            riskLevel,
-          },
-          { correlationId },
-        );
+        publishSweepPlanCreated({
+          sessionId,
+          planId: planRecord.id,
+          repoFullName: repo.fullName,
+          actionCount: planRecord.actionCount,
+          riskLevel,
+        });
 
         await logSweepEvent(
           sessionId,
@@ -801,12 +784,12 @@ async function runPhase2Planning(
       .set({ reposPlanned: planned, updatedAt: new Date() })
       .where(eq(agentSweepSessions.id, sessionId));
 
-    getHub().publish(
-      fleetChannel,
-      "fleet.sweep_progress",
-      { sessionId, phase: "phase2", planned, total: repos.length },
-      { correlationId },
-    );
+    publishSweepProgress({
+      sessionId,
+      phase: "phase2",
+      planned,
+      total: repos.length,
+    });
   }
 
   await db
@@ -987,12 +970,13 @@ async function runPhase3Execution(
       })
       .where(eq(agentSweepSessions.id, sessionId));
 
-    getHub().publish(
-      fleetChannel,
-      "fleet.sweep_progress",
-      { sessionId, phase: "phase3", executed, failed, total: plans.length },
-      { correlationId },
-    );
+    publishSweepProgress({
+      sessionId,
+      phase: "phase3",
+      executed,
+      failed,
+      total: plans.length,
+    });
   }
 
   await db
@@ -1040,12 +1024,14 @@ export async function approveSweepPlan(
     .where(eq(agentSweepPlans.id, planId))
     .get();
 
-  getHub().publish(
-    fleetChannel,
-    "fleet.plan_approved",
-    { planId, approvedBy, repoFullName: plan?.repoFullName },
-    { correlationId },
-  );
+  // Build event data conditionally for exactOptionalPropertyTypes
+  const approvedEventData: Parameters<typeof publishSweepPlanApproved>[0] = {
+    planId,
+    approvedBy,
+  };
+  if (plan?.sessionId) approvedEventData.sessionId = plan.sessionId;
+  if (plan?.repoFullName) approvedEventData.repoFullName = plan.repoFullName;
+  publishSweepPlanApproved(approvedEventData);
 
   logger.info({ correlationId, planId, approvedBy }, "Sweep plan approved");
 }
@@ -1075,12 +1061,15 @@ export async function rejectSweepPlan(
     .where(eq(agentSweepPlans.id, planId))
     .get();
 
-  getHub().publish(
-    fleetChannel,
-    "fleet.plan_rejected",
-    { planId, rejectedBy, reason, repoFullName: plan?.repoFullName },
-    { correlationId },
-  );
+  // Build event data conditionally for exactOptionalPropertyTypes
+  const rejectedEventData: Parameters<typeof publishSweepPlanRejected>[0] = {
+    planId,
+    rejectedBy,
+    reason,
+  };
+  if (plan?.sessionId) rejectedEventData.sessionId = plan.sessionId;
+  if (plan?.repoFullName) rejectedEventData.repoFullName = plan.repoFullName;
+  publishSweepPlanRejected(rejectedEventData);
 
   logger.info(
     { correlationId, planId, rejectedBy, reason },

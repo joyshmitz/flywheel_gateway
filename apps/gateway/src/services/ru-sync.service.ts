@@ -10,8 +10,13 @@ import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db";
 import { fleetRepos, fleetSyncOps } from "../db/schema";
 import { getCorrelationId } from "../middleware/correlation";
-import { getHub } from "../ws/hub";
 import { logger } from "./logger";
+import {
+  publishSyncCancelled,
+  publishSyncCompleted,
+  publishSyncProgress,
+  publishSyncStarted,
+} from "./ru-events";
 import {
   type FleetRepo,
   type RepoStatus,
@@ -121,7 +126,6 @@ function generateId(prefix: string, length = 12): string {
   return `${prefix}${result}`;
 }
 
-const fleetChannel = { type: "system:fleet" as const };
 
 // ============================================================================
 // Sync Operations
@@ -197,12 +201,11 @@ export async function startFleetSync(
   });
 
   // Publish start event
-  getHub().publish(
-    fleetChannel,
-    "fleet.sync_started",
-    { sessionId, repoCount: repos.length, triggeredBy },
-    { correlationId },
-  );
+  publishSyncStarted({
+    sessionId,
+    repoCount: repos.length,
+    triggeredBy,
+  });
 
   // Start sync process (non-blocking)
   runSyncProcess(sessionId, repos, options).catch((error) => {
@@ -264,20 +267,15 @@ async function runSyncProcess(
               ),
             );
 
-          getHub().publish(
-            fleetChannel,
-            "fleet.sync_progress",
-            {
-              sessionId,
-              repoId: repo.id,
-              fullName: repo.fullName,
-              status: "running",
-              completed,
-              failed,
-              total: repos.length,
-            },
-            { correlationId },
-          );
+          publishSyncProgress({
+            sessionId,
+            repoId: repo.id,
+            fullName: repo.fullName,
+            status: "running",
+            completed,
+            failed,
+            total: repos.length,
+          });
 
           // Determine operation
           const operation: SyncOperation = repo.isCloned ? "pull" : "clone";
@@ -361,21 +359,16 @@ async function runSyncProcess(
           }
 
           // Publish progress
-          getHub().publish(
-            fleetChannel,
-            "fleet.sync_progress",
-            {
-              sessionId,
-              repoId: repo.id,
-              fullName: repo.fullName,
-              status: exitCode === 0 ? "success" : "failed",
-              completed,
-              failed,
-              total: repos.length,
-              duration,
-            },
-            { correlationId },
-          );
+          publishSyncProgress({
+            sessionId,
+            repoId: repo.id,
+            fullName: repo.fullName,
+            status: exitCode === 0 ? "success" : "failed",
+            completed,
+            failed,
+            total: repos.length,
+            duration,
+          });
 
           logger.info(
             {
@@ -405,19 +398,14 @@ async function runSyncProcess(
   const totalDuration = Date.now() - session.startTime;
 
   // Publish completion
-  getHub().publish(
-    fleetChannel,
-    "fleet.sync_completed",
-    {
-      sessionId,
-      completed,
-      failed,
-      cancelled,
-      total: repos.length,
-      durationMs: totalDuration,
-    },
-    { correlationId },
-  );
+  publishSyncCompleted({
+    sessionId,
+    completed,
+    failed,
+    cancelled,
+    total: repos.length,
+    durationMs: totalDuration,
+  });
 
   logger.info(
     {
@@ -469,12 +457,7 @@ export async function cancelSync(sessionId: string): Promise<void> {
     );
 
   // Publish cancellation
-  getHub().publish(
-    fleetChannel,
-    "fleet.sync_cancelled",
-    { sessionId },
-    { correlationId },
-  );
+  publishSyncCancelled(sessionId);
 
   logger.info({ correlationId, sessionId }, "Sync session cancelled");
 }

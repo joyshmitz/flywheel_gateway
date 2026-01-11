@@ -39,13 +39,24 @@ export type SystemChannel =
   | { type: "system:fleet" };
 
 /**
+ * Fleet-scoped channels for RU (Repo Updater) operations.
+ */
+export type FleetChannel =
+  | { type: "fleet:repos" }
+  | { type: "fleet:sync" }
+  | { type: "fleet:sync:session"; sessionId: string }
+  | { type: "fleet:sweep" }
+  | { type: "fleet:sweep:session"; sessionId: string };
+
+/**
  * All channel types.
  */
 export type Channel =
   | AgentChannel
   | WorkspaceChannel
   | UserChannel
-  | SystemChannel;
+  | SystemChannel
+  | FleetChannel;
 
 /**
  * Channel type prefixes for categorization.
@@ -63,7 +74,12 @@ export type ChannelTypePrefix =
   | "system:health"
   | "system:metrics"
   | "system:dcg"
-  | "system:fleet";
+  | "system:fleet"
+  | "fleet:repos"
+  | "fleet:sync"
+  | "fleet:sync:session"
+  | "fleet:sweep"
+  | "fleet:sweep:session";
 
 /**
  * Convert a channel to its string representation.
@@ -94,6 +110,17 @@ export function channelToString(channel: Channel): string {
     case "system:dcg":
     case "system:fleet":
       return channel.type;
+
+    case "fleet:repos":
+    case "fleet:sync":
+    case "fleet:sweep":
+      return channel.type;
+
+    case "fleet:sync:session":
+      return `fleet:sync:session:${channel.sessionId}`;
+
+    case "fleet:sweep:session":
+      return `fleet:sweep:session:${channel.sessionId}`;
   }
 }
 
@@ -116,6 +143,31 @@ export function parseChannel(str: string): Channel | undefined {
   }
   if (str === "system:fleet") {
     return { type: "system:fleet" };
+  }
+
+  // Fleet channels (some with IDs)
+  if (str === "fleet:repos") {
+    return { type: "fleet:repos" };
+  }
+  if (str === "fleet:sync") {
+    return { type: "fleet:sync" };
+  }
+  if (str === "fleet:sweep") {
+    return { type: "fleet:sweep" };
+  }
+
+  // Fleet session-specific channels: fleet:sync:session:<id> or fleet:sweep:session:<id>
+  if (str.startsWith("fleet:sync:session:")) {
+    const sessionId = str.substring("fleet:sync:session:".length);
+    if (sessionId) {
+      return { type: "fleet:sync:session", sessionId };
+    }
+  }
+  if (str.startsWith("fleet:sweep:session:")) {
+    const sessionId = str.substring("fleet:sweep:session:".length);
+    if (sessionId) {
+      return { type: "fleet:sweep:session", sessionId };
+    }
   }
 
   // Channels with IDs: split into type and ID
@@ -167,10 +219,11 @@ export function getChannelTypePrefix(channel: Channel): ChannelTypePrefix {
  */
 export function getChannelScope(
   channel: Channel,
-): "agent" | "workspace" | "user" | "system" {
+): "agent" | "workspace" | "user" | "system" | "fleet" {
   if (channel.type.startsWith("agent:")) return "agent";
   if (channel.type.startsWith("workspace:")) return "workspace";
   if (channel.type.startsWith("user:")) return "user";
+  if (channel.type.startsWith("fleet:")) return "fleet";
   return "system";
 }
 
@@ -199,6 +252,13 @@ export function getChannelResourceId(channel: Channel): string | undefined {
     case "system:dcg":
     case "system:fleet":
       return undefined;
+    case "fleet:repos":
+    case "fleet:sync":
+    case "fleet:sweep":
+      return undefined;
+    case "fleet:sync:session":
+    case "fleet:sweep:session":
+      return channel.sessionId;
   }
 }
 

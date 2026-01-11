@@ -9,8 +9,12 @@ import { and, count, desc, eq, sql } from "drizzle-orm";
 import { db } from "../db";
 import { fleetRepos } from "../db/schema";
 import { getCorrelationId } from "../middleware/correlation";
-import { getHub } from "../ws/hub";
 import { logger } from "./logger";
+import {
+  publishRepoAdded,
+  publishRepoRemoved,
+  publishRepoUpdated,
+} from "./ru-events";
 
 // ============================================================================
 // Types
@@ -131,7 +135,6 @@ function generateId(prefix: string, length = 12): string {
   return `${prefix}${result}`;
 }
 
-const fleetChannel = { type: "system:fleet" as const };
 
 // ============================================================================
 // Fleet Repository CRUD
@@ -303,8 +306,11 @@ export async function addRepoToFleet(
   await db.insert(fleetRepos).values(repo);
 
   // Publish event
-  getHub().publish(fleetChannel, "fleet.repo_added", repo, {
-    correlationId,
+  publishRepoAdded({
+    repoId: repo.id,
+    fullName: repo.fullName,
+    owner: repo.owner,
+    name: repo.name,
   });
 
   logger.info(
@@ -339,12 +345,10 @@ export async function removeRepoFromFleet(repoId: string): Promise<void> {
   await db.delete(fleetRepos).where(eq(fleetRepos.id, repoId));
 
   // Publish event
-  getHub().publish(
-    fleetChannel,
-    "fleet.repo_removed",
-    { repoId, fullName: repo.fullName },
-    { correlationId },
-  );
+  publishRepoRemoved({
+    repoId,
+    fullName: repo.fullName,
+  });
 
   logger.info(
     { correlationId, repoId, fullName: repo.fullName },
@@ -424,12 +428,13 @@ export async function updateFleetRepo(
     .get();
 
   // Publish event
-  getHub().publish(
-    fleetChannel,
-    "fleet.repo_updated",
-    { repoId, updates, repo: updated },
-    { correlationId },
-  );
+  if (updated) {
+    publishRepoUpdated({
+      repoId,
+      fullName: updated.fullName,
+      status: updated.status,
+    });
+  }
 
   logger.info(
     {
