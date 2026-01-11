@@ -11,7 +11,7 @@
  */
 
 import { getCorrelationId, getLogger } from "../middleware/correlation";
-import { createCheckpoint, getLatestCheckpoint } from "./checkpoint";
+import { createCheckpoint } from "./checkpoint";
 import type { Channel } from "../ws/channels";
 import { getHub } from "../ws/hub";
 

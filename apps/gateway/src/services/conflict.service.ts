@@ -79,16 +79,6 @@ export interface RecommendedAction {
 }
 
 /**
- * Git conflict info.
- */
-export interface GitConflict {
-  type: "git_merge_conflict" | "git_potential_conflict";
-  files: string[];
-  branches?: [string, string];
-  severity: ConflictSeverity;
-}
-
-/**
  * Resource access record for contention detection.
  */
 export interface ResourceAccess {
@@ -137,9 +127,6 @@ const activeConflicts = new Map<string, Conflict>();
 /** Conflict history (most recent first) */
 const conflictHistory: Conflict[] = [];
 const MAX_HISTORY_SIZE = 500;
-
-/** Last alert time per conflict source (for cooldown) */
-const lastAlertTime = new Map<string, number>();
 
 /** Recent resource accesses for contention detection */
 const recentAccesses: ResourceAccess[] = [];
@@ -947,6 +934,5 @@ export function getAlertConfig(): ConflictAlertConfig {
 export function clearConflictState(): void {
   activeConflicts.clear();
   conflictHistory.length = 0;
-  lastAlertTime.clear();
   recentAccesses.length = 0;
 }
