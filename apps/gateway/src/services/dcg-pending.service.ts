@@ -386,13 +386,17 @@ export async function denyPendingException(
 
   log.info({ deniedBy, reason }, "Denied pending exception");
 
-  return {
+  const result: PendingException = {
     ...exception,
     status: "denied",
     deniedBy,
     deniedAt: now,
-    denyReason: reason,
   };
+  if (reason !== undefined) {
+    result.denyReason = reason;
+  }
+
+  return result;
 }
 
 /**
@@ -469,6 +473,44 @@ export async function cleanupExpiredExceptions(): Promise<number> {
   }
 
   return expiredCount;
+}
+
+// ============================================================================
+// Cleanup Job
+// ============================================================================
+
+const CLEANUP_INTERVAL_MS = 60_000; // 1 minute
+let cleanupInterval: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Start the periodic cleanup job for expired pending exceptions.
+ * Safe to call multiple times - will only start one job.
+ */
+export function startDCGCleanupJob(): void {
+  if (cleanupInterval) {
+    return; // Already running
+  }
+
+  cleanupInterval = setInterval(() => {
+    cleanupExpiredExceptions().catch((err) => {
+      logger.error({ error: err }, "Error in DCG pending cleanup job");
+    });
+  }, CLEANUP_INTERVAL_MS);
+
+  logger.info(
+    { intervalMs: CLEANUP_INTERVAL_MS },
+    "DCG pending exceptions cleanup job started",
+  );
+}
+
+/**
+ * Stop the cleanup job (for tests).
+ */
+export function stopDCGCleanupJob(): void {
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval);
+    cleanupInterval = null;
+  }
 }
 
 // ============================================================================

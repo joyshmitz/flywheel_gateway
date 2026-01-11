@@ -7,6 +7,7 @@ import { routes } from "./routes";
 import { startAgentEvents } from "./services/agent-events";
 import { logger } from "./services/logger";
 import { registerAgentMailToolCallerFromEnv } from "./services/mcp-agentmail";
+import { startDCGCleanupJob } from "./services/dcg-pending.service";
 import { startCleanupJob } from "./services/reservation.service";
 import { createGuestAuthContext } from "./ws/authorization";
 import { handleWSClose, handleWSMessage, handleWSOpen } from "./ws/handlers";
@@ -38,6 +39,7 @@ if (import.meta.main) {
 
   // Start background jobs
   startCleanupJob();
+  startDCGCleanupJob();
   startHeartbeat();
   startAgentEvents(getHub());
 

@@ -32,6 +32,11 @@ export type MessageType =
   | "dcg.warn"
   | "dcg.false_positive"
   | "dcg.allowlist_added"
+  | "dcg.pending_created"
+  | "dcg.pending_approved"
+  | "dcg.pending_denied"
+  | "dcg.pending_expired"
+  | "dcg.pending_executed"
   // Checkpoints
   | "checkpoint.created"
   | "checkpoint.auto_created"

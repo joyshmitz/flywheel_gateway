@@ -230,7 +230,7 @@ export async function paginate<T>(
 
   // Generate cursors for navigation
   if (pageItems.length > 0) {
-    const lastItem = pageItems[pageItems.length - 1];
+    const lastItem = pageItems[pageItems.length - 1]!;
     if (hasMore) {
       pagination.nextCursor = createCursor(
         getIdFn(lastItem),
@@ -238,7 +238,7 @@ export async function paginate<T>(
       );
     }
 
-    const firstItem = pageItems[0];
+    const firstItem = pageItems[0]!;
     pagination.prevCursor = createCursor(
       getIdFn(firstItem),
       getSortValueFn ? getSortValueFn(firstItem) : undefined,
