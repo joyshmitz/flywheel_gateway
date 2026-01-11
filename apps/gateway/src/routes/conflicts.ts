@@ -193,6 +193,72 @@ conflicts.get("/stats", async (c) => {
 });
 
 /**
+ * GET /conflicts/config - Get alert configuration
+ * NOTE: Must be defined before /:conflictId to avoid route conflict
+ */
+conflicts.get("/config", async (c) => {
+  const config = getAlertConfig();
+
+  return c.json({
+    config,
+    correlationId: getCorrelationId(),
+  });
+});
+
+/**
+ * PATCH /conflicts/config - Update alert configuration
+ * NOTE: Must be defined before /:conflictId to avoid route conflict
+ */
+conflicts.patch("/config", async (c) => {
+  const log = getLogger();
+
+  try {
+    const body = await c.req.json();
+    const validated = AlertConfigSchema.parse(body);
+
+    // Build config update object, only including defined properties
+    const configUpdate: Partial<{
+      minSeverity: ConflictSeverity;
+      cooldownMs: number;
+      escalationTimeoutMs: number;
+    }> = {};
+    if (validated.minSeverity !== undefined) {
+      configUpdate.minSeverity = validated.minSeverity;
+    }
+    if (validated.cooldownMs !== undefined) {
+      configUpdate.cooldownMs = validated.cooldownMs;
+    }
+    if (validated.escalationTimeoutMs !== undefined) {
+      configUpdate.escalationTimeoutMs = validated.escalationTimeoutMs;
+    }
+
+    const updated = updateAlertConfig(configUpdate);
+
+    return c.json({
+      config: updated,
+      correlationId: getCorrelationId(),
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return c.json(
+        {
+          error: {
+            code: "INVALID_REQUEST",
+            message: "Validation failed",
+            correlationId: getCorrelationId(),
+            timestamp: new Date().toISOString(),
+            details: error.issues,
+          },
+        },
+        400,
+      );
+    }
+    log.error({ error }, "Error updating alert configuration");
+    throw error;
+  }
+});
+
+/**
  * GET /conflicts/:conflictId - Get conflict details
  */
 conflicts.get("/:conflictId", async (c) => {
@@ -250,7 +316,11 @@ conflicts.post("/:conflictId/resolve", async (c) => {
     const validated = ResolveConflictSchema.parse(body);
 
     // Build resolution object, only including resolvedBy if present
-    const resolution: { type: typeof validated.type; description: string; resolvedBy?: string } = {
+    const resolution: {
+      type: typeof validated.type;
+      description: string;
+      resolvedBy?: string;
+    } = {
       type: validated.type,
       description: validated.description,
     };
@@ -477,70 +547,6 @@ conflicts.post("/scan/contention", async (c) => {
     });
   } catch (error) {
     log.error({ error }, "Error scanning for resource contention");
-    throw error;
-  }
-});
-
-/**
- * GET /conflicts/config - Get alert configuration
- */
-conflicts.get("/config", async (c) => {
-  const config = getAlertConfig();
-
-  return c.json({
-    config,
-    correlationId: getCorrelationId(),
-  });
-});
-
-/**
- * PATCH /conflicts/config - Update alert configuration
- */
-conflicts.patch("/config", async (c) => {
-  const log = getLogger();
-
-  try {
-    const body = await c.req.json();
-    const validated = AlertConfigSchema.parse(body);
-
-    // Build config update object, only including defined properties
-    const configUpdate: Partial<{
-      minSeverity: ConflictSeverity;
-      cooldownMs: number;
-      escalationTimeoutMs: number;
-    }> = {};
-    if (validated.minSeverity !== undefined) {
-      configUpdate.minSeverity = validated.minSeverity;
-    }
-    if (validated.cooldownMs !== undefined) {
-      configUpdate.cooldownMs = validated.cooldownMs;
-    }
-    if (validated.escalationTimeoutMs !== undefined) {
-      configUpdate.escalationTimeoutMs = validated.escalationTimeoutMs;
-    }
-
-    const updated = updateAlertConfig(configUpdate);
-
-    return c.json({
-      config: updated,
-      correlationId: getCorrelationId(),
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return c.json(
-        {
-          error: {
-            code: "INVALID_REQUEST",
-            message: "Validation failed",
-            correlationId: getCorrelationId(),
-            timestamp: new Date().toISOString(),
-            details: error.issues,
-          },
-        },
-        400,
-      );
-    }
-    log.error({ error }, "Error updating alert configuration");
     throw error;
   }
 });

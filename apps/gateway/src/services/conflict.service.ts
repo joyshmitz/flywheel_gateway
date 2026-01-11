@@ -865,6 +865,7 @@ export function getConflictStats(): {
   let last24h = 0;
   let resolved24h = 0;
 
+  // Count active conflicts (for byType, bySeverity, and last24h)
   for (const conflict of activeConflicts.values()) {
     byType[conflict.type]++;
     bySeverity[conflict.severity]++;
@@ -873,19 +874,13 @@ export function getConflictStats(): {
     }
   }
 
+  // Count historical conflicts (resolved ones not in active)
   for (const conflict of conflictHistory) {
-    if (conflict.detectedAt.getTime() >= dayAgo) {
-      if (!activeConflicts.has(conflict.id)) {
-        // Counted in last24h via activeConflicts
-      }
-    }
+    // Count resolved conflicts in last 24h
     if (conflict.resolvedAt && conflict.resolvedAt.getTime() >= dayAgo) {
       resolved24h++;
     }
-  }
-
-  // Add history conflicts to last24h count
-  for (const conflict of conflictHistory) {
+    // Count detected conflicts in last 24h that are no longer active
     if (
       conflict.detectedAt.getTime() >= dayAgo &&
       !activeConflicts.has(conflict.id)

@@ -123,6 +123,7 @@ async function handleAgentEvents(
           // We might have already initiated termination, so check state first?
           // Actually markAgentTerminated is idempotent-ish safe
           markAgentTerminated(agentId);
+          stopAutoCheckpoint(agentId);
           cleanupOutputBuffer(agentId);
           agents.delete(agentId);
         } catch (err) {
