@@ -1,4 +1,5 @@
 export * from "./agent";
+export * from "./api";
 export * from "./commands";
 export * from "./errors";
 export * from "./schemas";
