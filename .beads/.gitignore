@@ -20,7 +20,19 @@ bd.db
 # Compressed daemon logs
 daemon-*.log.gz
 
+# Merge artifacts (temporary files during 3-way merge)
+beads.base.jsonl
+beads.left.jsonl
+beads.right.jsonl
+beads.base.meta.json
+beads.left.meta.json
+beads.right.meta.json
+
+# Additional runtime files
+redirect
+last-touched
+
 # Keep JSONL exports and config (source of truth for git)
-!*.jsonl
+!issues.jsonl
 !config.json
 !metadata.json
