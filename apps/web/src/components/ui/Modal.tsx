@@ -66,19 +66,17 @@ export function Modal({
 
   // Track modal in store and handle escape
   useEffect(() => {
-    if (open) {
-      pushModal(id);
-      document.addEventListener("keydown", handleKeyDown);
-      // Prevent body scroll
-      document.body.style.overflow = "hidden";
-    }
+    if (!open) return;
+
+    pushModal(id);
+    document.addEventListener("keydown", handleKeyDown);
+    // Prevent body scroll
+    document.body.style.overflow = "hidden";
 
     return () => {
-      if (open) {
-        popModal();
-        document.removeEventListener("keydown", handleKeyDown);
-        document.body.style.overflow = "";
-      }
+      popModal();
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
     };
   }, [open, id, pushModal, popModal, handleKeyDown]);
 

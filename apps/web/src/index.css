@@ -458,34 +458,6 @@ input {
   color: var(--ink-muted);
 }
 
-@media (max-width: 960px) {
-  .sidebar {
-    width: 210px;
-  }
-  .grid--3 {
-    grid-template-columns: 1fr;
-  }
-  .grid--2 {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 720px) {
-  .sidebar {
-    display: none;
-  }
-  .topbar {
-    padding: 20px;
-  }
-  .app-content {
-    padding: 0 20px 32px;
-  }
-  .table__row {
-    grid-template-columns: 1fr;
-    gap: 6px;
-  }
-}
-
 .error-boundary {
   display: flex;
   flex-direction: column;
@@ -807,6 +779,10 @@ input {
 
 .data-table__container {
   overflow-x: auto;
+}
+
+.data-table__cards {
+  display: none;
 }
 
 .data-table__table {

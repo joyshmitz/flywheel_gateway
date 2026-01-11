@@ -4,7 +4,7 @@
  * Handles sorting, filtering, pagination, search, and data processing.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   Column,
   Filter,
@@ -268,7 +268,7 @@ export function useDataTable<T>(
   }, [data, searchQuery, filters, sortState, columns]);
 
   // Update pagination total when processed data changes
-  useMemo(() => {
+  useEffect(() => {
     if (!externalPagination && processedData.length !== pagination.total) {
       setInternalPagination((prev) => ({
         ...prev,
