@@ -930,4 +930,5 @@ export function clearConflictState(): void {
   activeConflicts.clear();
   conflictHistory.length = 0;
   recentAccesses.length = 0;
+  reservationEngine.clear();
 }

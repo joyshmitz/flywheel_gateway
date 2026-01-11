@@ -398,6 +398,13 @@ export class ReservationConflictEngine {
       activeReservations: active,
     };
   }
+
+  /**
+   * Clear all reservations (for testing).
+   */
+  clear(): void {
+    this.reservations.clear();
+  }
 }
 
 /**
