@@ -355,11 +355,12 @@ export async function detectGitConflicts(
     for (const line of lines) {
       // In porcelain v2, unmerged entries start with "u"
       // Format: u <XY> <sub> <m1> <m2> <m3> <mW> <h1> <h2> <h3> <path>
-      // Fields are space-separated, with path as the last field (index 10)
+      // Fields are space-separated, with path as the last field (index 10+)
+      // Note: path may contain spaces, so we join all parts from index 10 onwards
       if (line.startsWith("u ")) {
         const parts = line.split(" ");
-        // Path is at index 10 (the 11th field)
-        const filePath = parts[10];
+        // Path starts at index 10 and may contain spaces
+        const filePath = parts.slice(10).join(" ");
         if (filePath) {
           conflictedFiles.push(filePath);
         }
