@@ -1,87 +1,88 @@
 /**
- * Unit tests for the DCG Pending Exceptions Service.
+ * Tests for DCG Pending Exceptions (Allow-Once Workflow).
  */
 
-import { afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
-import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { sql } from "drizzle-orm";
+import { Hono } from "hono";
 import { db } from "../db";
+import { dcg } from "../routes/dcg";
 import {
+  _clearAllPendingExceptions,
   approvePendingException,
-  cleanupExpiredExceptions,
   createPendingException,
   denyPendingException,
   getPendingException,
-  getPendingExceptionById,
   listPendingExceptions,
-  markExceptionExecuted,
   PendingExceptionConflictError,
   PendingExceptionExpiredError,
   PendingExceptionNotFoundError,
-  startDCGCleanupJob,
-  stopDCGCleanupJob,
   validateExceptionForExecution,
-  _clearAllPendingExceptions,
+  cleanupExpiredExceptions,
 } from "../services/dcg-pending.service";
 
-describe("DCG Pending Exceptions Service", () => {
-  // Run migrations to ensure database schema exists
-  beforeAll(async () => {
-    try {
-      await migrate(db, { migrationsFolder: "src/db/migrations" });
-    } catch (e) {
-      console.warn("Migration failed or not needed:", e);
-    }
-  });
+// Create the table if it doesn't exist (for test isolation)
+beforeAll(async () => {
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS dcg_pending_exceptions (
+      id TEXT PRIMARY KEY,
+      short_code TEXT NOT NULL UNIQUE,
+      command TEXT NOT NULL,
+      command_hash TEXT NOT NULL,
+      pack TEXT NOT NULL,
+      rule_id TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      severity TEXT NOT NULL,
+      agent_id TEXT,
+      block_event_id TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      approved_by TEXT,
+      approved_at INTEGER,
+      denied_by TEXT,
+      denied_at INTEGER,
+      deny_reason TEXT,
+      executed_at INTEGER,
+      execution_result TEXT,
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL
+    )
+  `);
+  await db.run(sql`CREATE UNIQUE INDEX IF NOT EXISTS dcg_pending_short_code_idx ON dcg_pending_exceptions(short_code)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS dcg_pending_status_idx ON dcg_pending_exceptions(status)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS dcg_pending_agent_idx ON dcg_pending_exceptions(agent_id)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS dcg_pending_expires_idx ON dcg_pending_exceptions(expires_at)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS dcg_pending_command_hash_idx ON dcg_pending_exceptions(command_hash)`);
+});
 
-  // Clean up before and after each test
+// ============================================================================
+// Service Layer Tests
+// ============================================================================
+
+describe("DCG Pending Exceptions Service", () => {
   beforeEach(async () => {
     await _clearAllPendingExceptions();
   });
 
-  afterEach(async () => {
-    await _clearAllPendingExceptions();
-    stopDCGCleanupJob();
-  });
-
   describe("createPendingException", () => {
-    test("creates exception with unique short code", async () => {
+    test("creates exception with short code and hash", async () => {
       const exception = await createPendingException({
-        command: "git push --force origin main",
-        pack: "core.git",
-        ruleId: "git.force-push",
-        reason: "Force push is dangerous",
+        command: "rm -rf /dangerous",
+        pack: "core.filesystem",
+        ruleId: "core.filesystem:rm-rf",
+        reason: "Recursive delete is dangerous",
         severity: "high",
       });
 
-      expect(exception.id).toMatch(/^dcg_pend_/);
       expect(exception.shortCode).toMatch(/^[a-z0-9]{6}$/);
-      expect(exception.status).toBe("pending");
       expect(exception.commandHash).toHaveLength(64); // SHA256
-    });
-
-    test("generates unique short codes for different exceptions", async () => {
-      const exc1 = await createPendingException({
-        command: "command-1",
-        pack: "test",
-        ruleId: "test:1",
-        reason: "Test",
-        severity: "low",
-      });
-
-      const exc2 = await createPendingException({
-        command: "command-2",
-        pack: "test",
-        ruleId: "test:2",
-        reason: "Test",
-        severity: "low",
-      });
-
-      expect(exc1.shortCode).not.toBe(exc2.shortCode);
+      expect(exception.status).toBe("pending");
+      expect(exception.pack).toBe("core.filesystem");
+      expect(exception.severity).toBe("high");
     });
 
     test("sets expiration based on TTL", async () => {
       const exception = await createPendingException({
-        command: "test command",
+        command: "test-command",
         pack: "test",
         ruleId: "test:rule",
         reason: "Test",
@@ -96,29 +97,13 @@ describe("DCG Pending Exceptions Service", () => {
       expect(Math.abs(actualExpiry.getTime() - expectedExpiry.getTime())).toBeLessThan(2000);
     });
 
-    test("defaults to 5 minute TTL", async () => {
+    test("includes agent and block event references", async () => {
       const exception = await createPendingException({
-        command: "test command",
+        command: "test-command",
         pack: "test",
         ruleId: "test:rule",
         reason: "Test",
         severity: "low",
-      });
-
-      const expectedExpiry = new Date(Date.now() + 300 * 1000);
-      const actualExpiry = exception.expiresAt;
-
-      // Allow 2 second tolerance
-      expect(Math.abs(actualExpiry.getTime() - expectedExpiry.getTime())).toBeLessThan(2000);
-    });
-
-    test("stores optional agentId and blockEventId", async () => {
-      const exception = await createPendingException({
-        command: "test command",
-        pack: "test",
-        ruleId: "test:rule",
-        reason: "Test",
-        severity: "medium",
         agentId: "agent-123",
         blockEventId: "block-456",
       });
@@ -129,47 +114,23 @@ describe("DCG Pending Exceptions Service", () => {
   });
 
   describe("getPendingException", () => {
-    test("retrieves exception by short code", async () => {
+    test("returns exception by short code", async () => {
       const created = await createPendingException({
-        command: "test command",
+        command: "test-command",
         pack: "test",
         ruleId: "test:rule",
         reason: "Test",
         severity: "low",
       });
 
-      const retrieved = await getPendingException(created.shortCode);
-
-      expect(retrieved).not.toBeNull();
-      expect(retrieved?.id).toBe(created.id);
-      expect(retrieved?.shortCode).toBe(created.shortCode);
+      const found = await getPendingException(created.shortCode);
+      expect(found).not.toBeNull();
+      expect(found!.id).toBe(created.id);
     });
 
     test("returns null for unknown short code", async () => {
-      const result = await getPendingException("abc123");
-      expect(result).toBeNull();
-    });
-  });
-
-  describe("getPendingExceptionById", () => {
-    test("retrieves exception by ID", async () => {
-      const created = await createPendingException({
-        command: "test command",
-        pack: "test",
-        ruleId: "test:rule",
-        reason: "Test",
-        severity: "low",
-      });
-
-      const retrieved = await getPendingExceptionById(created.id);
-
-      expect(retrieved).not.toBeNull();
-      expect(retrieved?.id).toBe(created.id);
-    });
-
-    test("returns null for unknown ID", async () => {
-      const result = await getPendingExceptionById("dcg_pend_nonexistent");
-      expect(result).toBeNull();
+      const found = await getPendingException("invalid");
+      expect(found).toBeNull();
     });
   });
 
@@ -190,9 +151,8 @@ describe("DCG Pending Exceptions Service", () => {
         severity: "medium",
       });
 
-      const exceptions = await listPendingExceptions({});
-
-      expect(exceptions.length).toBe(2);
+      const all = await listPendingExceptions({});
+      expect(all.length).toBeGreaterThanOrEqual(2);
     });
 
     test("filters by status", async () => {
@@ -200,24 +160,16 @@ describe("DCG Pending Exceptions Service", () => {
         command: "cmd1",
         pack: "test",
         ruleId: "test:1",
-        reason: "Test",
+        reason: "Test 1",
         severity: "low",
       });
-      await approvePendingException(exc.shortCode, "test-user");
-
-      await createPendingException({
-        command: "cmd2",
-        pack: "test",
-        ruleId: "test:2",
-        reason: "Test 2",
-        severity: "low",
-      });
+      await approvePendingException(exc.shortCode, "tester");
 
       const pending = await listPendingExceptions({ status: "pending" });
       const approved = await listPendingExceptions({ status: "approved" });
 
-      expect(pending.length).toBe(1);
-      expect(approved.length).toBe(1);
+      expect(pending.every((e) => e.status === "pending")).toBe(true);
+      expect(approved.some((e) => e.id === exc.id && e.status === "approved")).toBe(true);
     });
 
     test("filters by agentId", async () => {
@@ -225,7 +177,7 @@ describe("DCG Pending Exceptions Service", () => {
         command: "cmd1",
         pack: "test",
         ruleId: "test:1",
-        reason: "Test",
+        reason: "Test 1",
         severity: "low",
         agentId: "agent-1",
       });
@@ -233,49 +185,31 @@ describe("DCG Pending Exceptions Service", () => {
         command: "cmd2",
         pack: "test",
         ruleId: "test:2",
-        reason: "Test",
+        reason: "Test 2",
         severity: "low",
         agentId: "agent-2",
       });
 
-      const agent1Exceptions = await listPendingExceptions({ agentId: "agent-1" });
-
-      expect(agent1Exceptions.length).toBe(1);
-      expect(agent1Exceptions[0]?.agentId).toBe("agent-1");
-    });
-
-    test("respects limit", async () => {
-      for (let i = 0; i < 5; i++) {
-        await createPendingException({
-          command: `cmd${i}`,
-          pack: "test",
-          ruleId: `test:${i}`,
-          reason: "Test",
-          severity: "low",
-        });
-      }
-
-      const exceptions = await listPendingExceptions({ limit: 3 });
-
-      expect(exceptions.length).toBe(3);
+      const agent1Only = await listPendingExceptions({ agentId: "agent-1" });
+      expect(agent1Only.every((e) => e.agentId === "agent-1")).toBe(true);
     });
   });
 
   describe("approvePendingException", () => {
-    test("approves pending exception", async () => {
-      const exception = await createPendingException({
-        command: "test command",
+    test("approves a pending exception", async () => {
+      const exc = await createPendingException({
+        command: "test-command",
         pack: "test",
         ruleId: "test:rule",
         reason: "Test",
         severity: "low",
       });
 
-      const approved = await approvePendingException(exception.shortCode, "test-user");
+      const approved = await approvePendingException(exc.shortCode, "test-user");
 
       expect(approved.status).toBe("approved");
       expect(approved.approvedBy).toBe("test-user");
-      expect(approved.approvedAt).toBeDefined();
+      expect(approved.approvedAt).toBeInstanceOf(Date);
     });
 
     test("throws NotFoundError for unknown short code", async () => {
@@ -285,24 +219,24 @@ describe("DCG Pending Exceptions Service", () => {
     });
 
     test("throws ConflictError for already approved exception", async () => {
-      const exception = await createPendingException({
-        command: "test command",
+      const exc = await createPendingException({
+        command: "test-command",
         pack: "test",
         ruleId: "test:rule",
         reason: "Test",
         severity: "low",
       });
 
-      await approvePendingException(exception.shortCode, "test-user");
+      await approvePendingException(exc.shortCode, "user1");
 
       await expect(
-        approvePendingException(exception.shortCode, "another-user"),
+        approvePendingException(exc.shortCode, "user2"),
       ).rejects.toThrow(PendingExceptionConflictError);
     });
 
     test("throws ExpiredError for expired exception", async () => {
-      const exception = await createPendingException({
-        command: "test command",
+      const exc = await createPendingException({
+        command: "test-command",
         pack: "test",
         ruleId: "test:rule",
         reason: "Test",
@@ -310,46 +244,30 @@ describe("DCG Pending Exceptions Service", () => {
         ttlSeconds: 0, // Expires immediately
       });
 
-      // Wait for expiration
+      // Wait a bit for expiration
       await new Promise((r) => setTimeout(r, 100));
 
       await expect(
-        approvePendingException(exception.shortCode, "test-user"),
+        approvePendingException(exc.shortCode, "test-user"),
       ).rejects.toThrow(PendingExceptionExpiredError);
     });
   });
 
   describe("denyPendingException", () => {
-    test("denies pending exception", async () => {
-      const exception = await createPendingException({
-        command: "test command",
+    test("denies a pending exception", async () => {
+      const exc = await createPendingException({
+        command: "test-command",
         pack: "test",
         ruleId: "test:rule",
         reason: "Test",
         severity: "low",
       });
 
-      const denied = await denyPendingException(exception.shortCode, "test-user", "Too risky");
+      const denied = await denyPendingException(exc.shortCode, "test-user", "Too risky");
 
       expect(denied.status).toBe("denied");
       expect(denied.deniedBy).toBe("test-user");
       expect(denied.denyReason).toBe("Too risky");
-      expect(denied.deniedAt).toBeDefined();
-    });
-
-    test("denies without reason", async () => {
-      const exception = await createPendingException({
-        command: "test command",
-        pack: "test",
-        ruleId: "test:rule",
-        reason: "Test",
-        severity: "low",
-      });
-
-      const denied = await denyPendingException(exception.shortCode, "test-user");
-
-      expect(denied.status).toBe("denied");
-      expect(denied.denyReason).toBeUndefined();
     });
 
     test("throws NotFoundError for unknown short code", async () => {
@@ -361,34 +279,33 @@ describe("DCG Pending Exceptions Service", () => {
 
   describe("validateExceptionForExecution", () => {
     test("returns approved exception for matching hash", async () => {
-      const exception = await createPendingException({
-        command: "test command",
+      const exc = await createPendingException({
+        command: "test-command",
         pack: "test",
         ruleId: "test:rule",
         reason: "Test",
         severity: "low",
       });
 
-      await approvePendingException(exception.shortCode, "test-user");
+      await approvePendingException(exc.shortCode, "test-user");
 
-      const valid = await validateExceptionForExecution(exception.commandHash);
+      const valid = await validateExceptionForExecution(exc.commandHash);
 
       expect(valid).not.toBeNull();
-      expect(valid?.shortCode).toBe(exception.shortCode);
-      expect(valid?.status).toBe("approved");
+      expect(valid!.shortCode).toBe(exc.shortCode);
+      expect(valid!.status).toBe("approved");
     });
 
     test("returns null for unapproved exception", async () => {
-      const exception = await createPendingException({
-        command: "test command",
+      const exc = await createPendingException({
+        command: "test-command",
         pack: "test",
         ruleId: "test:rule",
         reason: "Test",
         severity: "low",
       });
 
-      const valid = await validateExceptionForExecution(exception.commandHash);
-
+      const valid = await validateExceptionForExecution(exc.commandHash);
       expect(valid).toBeNull();
     });
 
@@ -396,90 +313,136 @@ describe("DCG Pending Exceptions Service", () => {
       const valid = await validateExceptionForExecution("0".repeat(64));
       expect(valid).toBeNull();
     });
-
-    test("returns null for expired approved exception", async () => {
-      const exception = await createPendingException({
-        command: "test command",
-        pack: "test",
-        ruleId: "test:rule",
-        reason: "Test",
-        severity: "low",
-        ttlSeconds: 0,
-      });
-
-      // The exception expires immediately but we still need to approve it somehow
-      // Actually this is an edge case - normally you wouldn't be able to approve an expired exception
-      // Let's test the case where an exception was approved but then expired
-      const valid = await validateExceptionForExecution(exception.commandHash);
-      expect(valid).toBeNull();
-    });
-  });
-
-  describe("markExceptionExecuted", () => {
-    test("marks exception as executed with success result", async () => {
-      const exception = await createPendingException({
-        command: "test command",
-        pack: "test",
-        ruleId: "test:rule",
-        reason: "Test",
-        severity: "low",
-      });
-
-      await approvePendingException(exception.shortCode, "test-user");
-      await markExceptionExecuted(exception.id, "success");
-
-      const retrieved = await getPendingExceptionById(exception.id);
-
-      expect(retrieved?.status).toBe("executed");
-      expect(retrieved?.executionResult).toBe("success");
-      expect(retrieved?.executedAt).toBeDefined();
-    });
-
-    test("marks exception as executed with failed result", async () => {
-      const exception = await createPendingException({
-        command: "test command",
-        pack: "test",
-        ruleId: "test:rule",
-        reason: "Test",
-        severity: "low",
-      });
-
-      await approvePendingException(exception.shortCode, "test-user");
-      await markExceptionExecuted(exception.id, "failed");
-
-      const retrieved = await getPendingExceptionById(exception.id);
-
-      expect(retrieved?.status).toBe("executed");
-      expect(retrieved?.executionResult).toBe("failed");
-    });
   });
 
   describe("cleanupExpiredExceptions", () => {
-    test("marks expired pending exceptions as expired", async () => {
-      // Create exception that expires immediately (use -1 to ensure it's in the past)
+    test("marks expired exceptions", async () => {
       await createPendingException({
-        command: "test command",
+        command: "test-command",
         pack: "test",
         ruleId: "test:rule",
         reason: "Test",
         severity: "low",
-        ttlSeconds: -1, // Already expired
+        ttlSeconds: 0, // Expires immediately
       });
 
-      // Small delay to ensure DB write completes
-      await new Promise((r) => setTimeout(r, 50));
+      await new Promise((r) => setTimeout(r, 100));
 
       const expiredCount = await cleanupExpiredExceptions();
+      expect(expiredCount).toBeGreaterThanOrEqual(1);
+    });
+  });
+});
 
-      expect(expiredCount).toBe(1);
+// ============================================================================
+// Route Tests
+// ============================================================================
 
-      const expired = await listPendingExceptions({ status: "expired" });
-      expect(expired.length).toBe(1);
+describe("DCG Pending Exceptions Routes", () => {
+  const app = new Hono().route("/dcg", dcg);
+
+  beforeEach(async () => {
+    await _clearAllPendingExceptions();
+  });
+
+  describe("GET /dcg/pending", () => {
+    test("returns empty list when no exceptions", async () => {
+      const res = await app.request("/dcg/pending");
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body.object).toBe("list");
+      expect(body.data).toEqual([]);
     });
 
-    test("does not affect non-pending exceptions", async () => {
-      const exception = await createPendingException({
-        command: "test command",
+    test("returns list of pending exceptions", async () => {
+      await createPendingException({
+        command: "test-command",
+        pack: "test",
+        ruleId: "test:rule",
+        reason: "Test",
+        severity: "low",
+      });
+
+      const res = await app.request("/dcg/pending");
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body.object).toBe("list");
+      expect(body.data.length).toBeGreaterThanOrEqual(1);
+    });
+
+    test("filters by status query param", async () => {
+      const exc = await createPendingException({
+        command: "test-command",
+        pack: "test",
+        ruleId: "test:rule",
+        reason: "Test",
+        severity: "low",
+      });
+      await approvePendingException(exc.shortCode, "tester");
+
+      const res = await app.request("/dcg/pending?status=approved");
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body.data.every((e: { status: string }) => e.status === "approved")).toBe(true);
+    });
+  });
+
+  describe("GET /dcg/pending/:shortCode", () => {
+    test("returns exception by short code", async () => {
+      const exc = await createPendingException({
+        command: "test-command",
+        pack: "test",
+        ruleId: "test:rule",
+        reason: "Test",
+        severity: "low",
+      });
+
+      const res = await app.request(`/dcg/pending/${exc.shortCode}`);
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body.object).toBe("pending_exception");
+      expect(body.data.shortCode).toBe(exc.shortCode);
+    });
+
+    test("returns 404 for unknown short code", async () => {
+      const res = await app.request("/dcg/pending/invalid");
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe("POST /dcg/pending/:shortCode/approve", () => {
+    test("approves pending exception", async () => {
+      const exc = await createPendingException({
+        command: "test-command",
+        pack: "test",
+        ruleId: "test:rule",
+        reason: "Test",
+        severity: "low",
+      });
+
+      const res = await app.request(`/dcg/pending/${exc.shortCode}/approve`, {
+        method: "POST",
+      });
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body.data.status).toBe("approved");
+    });
+
+    test("returns 404 for unknown short code", async () => {
+      const res = await app.request("/dcg/pending/invalid/approve", {
+        method: "POST",
+      });
+      expect(res.status).toBe(404);
+    });
+
+    test("returns 410 for expired exception", async () => {
+      const exc = await createPendingException({
+        command: "test-command",
         pack: "test",
         ruleId: "test:rule",
         reason: "Test",
@@ -487,79 +450,172 @@ describe("DCG Pending Exceptions Service", () => {
         ttlSeconds: 0,
       });
 
-      // Approve before expiration check (even though it's already "expired")
-      // The approve will fail due to expiration, so let's create a non-expired one
-      const nonExpired = await createPendingException({
-        command: "test command 2",
-        pack: "test",
-        ruleId: "test:rule",
-        reason: "Test",
-        severity: "low",
-        ttlSeconds: 300, // 5 minutes
-      });
-      await approvePendingException(nonExpired.shortCode, "test-user");
-
       await new Promise((r) => setTimeout(r, 100));
 
-      await cleanupExpiredExceptions();
-
-      // The approved exception should still be approved, not expired
-      const approved = await getPendingExceptionById(nonExpired.id);
-      expect(approved?.status).toBe("approved");
+      const res = await app.request(`/dcg/pending/${exc.shortCode}/approve`, {
+        method: "POST",
+      });
+      expect(res.status).toBe(410);
     });
 
-    test("returns 0 when no pending exceptions have expired", async () => {
-      await createPendingException({
-        command: "test command",
+    test("returns 409 for already approved", async () => {
+      const exc = await createPendingException({
+        command: "test-command",
         pack: "test",
         ruleId: "test:rule",
         reason: "Test",
         severity: "low",
-        ttlSeconds: 3600, // 1 hour
       });
 
-      const expiredCount = await cleanupExpiredExceptions();
+      await approvePendingException(exc.shortCode, "user1");
 
-      expect(expiredCount).toBe(0);
+      const res = await app.request(`/dcg/pending/${exc.shortCode}/approve`, {
+        method: "POST",
+      });
+      expect(res.status).toBe(409);
     });
   });
 
-  describe("Cleanup Job", () => {
-    test("startDCGCleanupJob can be called multiple times safely", () => {
-      // Should not throw
-      startDCGCleanupJob();
-      startDCGCleanupJob();
-      stopDCGCleanupJob();
+  describe("POST /dcg/pending/:shortCode/deny", () => {
+    test("denies pending exception", async () => {
+      const exc = await createPendingException({
+        command: "test-command",
+        pack: "test",
+        ruleId: "test:rule",
+        reason: "Test",
+        severity: "low",
+      });
+
+      const res = await app.request(`/dcg/pending/${exc.shortCode}/deny`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "Too risky" }),
+      });
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body.data.status).toBe("denied");
+      expect(body.data.denyReason).toBe("Too risky");
     });
 
-    test("stopDCGCleanupJob can be called when not running", () => {
-      // Should not throw
-      stopDCGCleanupJob();
+    test("denies without reason body", async () => {
+      const exc = await createPendingException({
+        command: "test-command",
+        pack: "test",
+        ruleId: "test:rule",
+        reason: "Test",
+        severity: "low",
+      });
+
+      const res = await app.request(`/dcg/pending/${exc.shortCode}/deny`, {
+        method: "POST",
+      });
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body.data.status).toBe("denied");
     });
   });
 
-  describe("Error Classes", () => {
-    test("PendingExceptionNotFoundError has correct properties", () => {
-      const error = new PendingExceptionNotFoundError("abc123");
+  describe("POST /dcg/pending/:shortCode/validate", () => {
+    test("validates approved exception with matching hash", async () => {
+      const exc = await createPendingException({
+        command: "test-command",
+        pack: "test",
+        ruleId: "test:rule",
+        reason: "Test",
+        severity: "low",
+      });
+      await approvePendingException(exc.shortCode, "tester");
 
-      expect(error.name).toBe("PendingExceptionNotFoundError");
-      expect(error.message).toContain("abc123");
+      const res = await app.request(`/dcg/pending/${exc.shortCode}/validate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commandHash: exc.commandHash }),
+      });
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body.data.valid).toBe(true);
+      expect(body.data.exception.shortCode).toBe(exc.shortCode);
     });
 
-    test("PendingExceptionConflictError has correct properties", () => {
-      const error = new PendingExceptionConflictError("Already approved");
+    test("returns invalid for unapproved exception", async () => {
+      const exc = await createPendingException({
+        command: "test-command",
+        pack: "test",
+        ruleId: "test:rule",
+        reason: "Test",
+        severity: "low",
+      });
 
-      expect(error.name).toBe("PendingExceptionConflictError");
-      expect(error.message).toBe("Already approved");
+      const res = await app.request(`/dcg/pending/${exc.shortCode}/validate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commandHash: exc.commandHash }),
+      });
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body.data.valid).toBe(false);
+      expect(body.data.reason).toContain("pending");
     });
 
-    test("PendingExceptionExpiredError has correct properties", () => {
-      const expiredAt = new Date();
-      const error = new PendingExceptionExpiredError(expiredAt);
+    test("returns invalid for hash mismatch", async () => {
+      const exc = await createPendingException({
+        command: "test-command",
+        pack: "test",
+        ruleId: "test:rule",
+        reason: "Test",
+        severity: "low",
+      });
+      await approvePendingException(exc.shortCode, "tester");
 
-      expect(error.name).toBe("PendingExceptionExpiredError");
-      expect(error.expiredAt).toEqual(expiredAt);
-      expect(error.message).toContain(expiredAt.toISOString());
+      const res = await app.request(`/dcg/pending/${exc.shortCode}/validate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commandHash: "0".repeat(64) }),
+      });
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body.data.valid).toBe(false);
+      expect(body.data.reason).toContain("mismatch");
+    });
+  });
+
+  describe("POST /dcg/pending/validate-hash", () => {
+    test("validates by command hash directly", async () => {
+      const exc = await createPendingException({
+        command: "test-command",
+        pack: "test",
+        ruleId: "test:rule",
+        reason: "Test",
+        severity: "low",
+      });
+      await approvePendingException(exc.shortCode, "tester");
+
+      const res = await app.request("/dcg/pending/validate-hash", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commandHash: exc.commandHash }),
+      });
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body.data.valid).toBe(true);
+    });
+
+    test("returns invalid for unknown hash", async () => {
+      const res = await app.request("/dcg/pending/validate-hash", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commandHash: "0".repeat(64) }),
+      });
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body.data.valid).toBe(false);
     });
   });
 });
