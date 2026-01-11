@@ -334,11 +334,14 @@ export function normalizePaginationParams(
     };
   }
 
-  return {
+  const result: NormalizedPaginationParams = {
     limit,
-    cursor: params.startingAfter,
     direction: "forward",
   };
+  if (params.startingAfter !== undefined) {
+    result.cursor = params.startingAfter;
+  }
+  return result;
 }
 
 /**
@@ -416,7 +419,7 @@ export function buildPaginationMeta<T>(
   };
 
   if (hasMore && pageItems.length > 0) {
-    const lastItem = pageItems[pageItems.length - 1];
+    const lastItem = pageItems[pageItems.length - 1]!;
     meta.nextCursor = createCursor(
       getIdFn(lastItem),
       getSortValueFn ? getSortValueFn(lastItem) : undefined,
@@ -424,7 +427,7 @@ export function buildPaginationMeta<T>(
   }
 
   if (pageItems.length > 0) {
-    const firstItem = pageItems[0];
+    const firstItem = pageItems[0]!;
     meta.prevCursor = createCursor(
       getIdFn(firstItem),
       getSortValueFn ? getSortValueFn(firstItem) : undefined,

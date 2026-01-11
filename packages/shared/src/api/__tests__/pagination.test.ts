@@ -374,7 +374,7 @@ describe("pagination", () => {
     });
 
     it("should handle single item", () => {
-      const meta = buildPaginationMeta([testItems[0]], 10, (item) => item.id);
+      const meta = buildPaginationMeta([testItems[0]!], 10, (item) => item.id);
 
       expect(meta.hasMore).toBe(false);
       expect(meta.prevCursor).toBeDefined();
