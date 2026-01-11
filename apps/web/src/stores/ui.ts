@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 export type ThemeName = "dawn" | "dusk";
 
-const DEFAULT_MOCK = import.meta.env.VITE_MOCK_DATA === "true";
+const DEFAULT_MOCK = import.meta.env["VITE_MOCK_DATA"] === "true";
 
 const readTheme = (): ThemeName => {
   if (typeof window === "undefined") return "dawn";

@@ -33,17 +33,18 @@ export function createTestClient(options: TestClientOptions): TestClient {
       ...(reqOptions.headers ?? {}),
     };
 
-    let body: BodyInit | undefined;
+    // Build fetch options conditionally (for exactOptionalPropertyTypes)
+    const fetchOptions: RequestInit = {
+      method,
+      headers,
+    };
+
     if (reqOptions.body !== undefined) {
-      body = JSON.stringify(reqOptions.body);
+      fetchOptions.body = JSON.stringify(reqOptions.body);
       headers["content-type"] = headers["content-type"] ?? "application/json";
     }
 
-    return fetch(`${baseUrl}${path}`, {
-      method,
-      headers,
-      body,
-    });
+    return fetch(`${baseUrl}${path}`, fetchOptions);
   };
 
   return {

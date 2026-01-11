@@ -45,7 +45,8 @@ export async function createTestDatabase(
       db,
       execute: ({ sql, params }) => {
         if (params && params.length > 0) {
-          db.query(sql).run(...params);
+          // Cast params to expected type for bun:sqlite
+          db.query(sql).run(...(params as Parameters<typeof db.query>[0][]));
         } else {
           db.exec(sql);
         }

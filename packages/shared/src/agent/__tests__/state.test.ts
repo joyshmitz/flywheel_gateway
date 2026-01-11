@@ -16,14 +16,14 @@ import {
 
 describe("AgentState enum", () => {
   it("defines all expected states", () => {
-    expect(AgentState.SPAWNING).toBe("spawning");
-    expect(AgentState.INITIALIZING).toBe("initializing");
-    expect(AgentState.READY).toBe("ready");
-    expect(AgentState.EXECUTING).toBe("executing");
-    expect(AgentState.PAUSED).toBe("paused");
-    expect(AgentState.TERMINATING).toBe("terminating");
-    expect(AgentState.TERMINATED).toBe("terminated");
-    expect(AgentState.FAILED).toBe("failed");
+    expect(AgentState.SPAWNING).toBe("spawning" as AgentState);
+    expect(AgentState.INITIALIZING).toBe("initializing" as AgentState);
+    expect(AgentState.READY).toBe("ready" as AgentState);
+    expect(AgentState.EXECUTING).toBe("executing" as AgentState);
+    expect(AgentState.PAUSED).toBe("paused" as AgentState);
+    expect(AgentState.TERMINATING).toBe("terminating" as AgentState);
+    expect(AgentState.TERMINATED).toBe("terminated" as AgentState);
+    expect(AgentState.FAILED).toBe("failed" as AgentState);
   });
 });
 

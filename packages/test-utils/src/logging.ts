@@ -25,12 +25,14 @@ export function createTestLogger(): TestLogger {
     message: string,
     meta?: Record<string, unknown>,
   ) => {
-    entries.push({
+    // Build entry conditionally (for exactOptionalPropertyTypes)
+    const entry: TestLogEntry = {
       level,
       message,
       timestamp: new Date().toISOString(),
-      meta,
-    });
+    };
+    if (meta !== undefined) entry.meta = meta;
+    entries.push(entry);
   };
 
   return {
