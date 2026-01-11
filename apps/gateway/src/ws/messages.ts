@@ -19,9 +19,17 @@ export type MessageType =
   // File reservations
   | "reservation.acquired"
   | "reservation.released"
+  | "reservation.renewed"
+  | "reservation.expired"
+  | "reservation.expiring"
   // Conflicts
   | "conflict.detected"
   | "conflict.resolved"
+  // DCG
+  | "dcg.block"
+  | "dcg.warn"
+  | "dcg.false_positive"
+  | "dcg.allowlist_added"
   // Agent mail
   | "mail.received"
   // System
@@ -267,7 +275,7 @@ export function createHubMessage(
 ): Omit<HubMessage, "cursor"> {
   return {
     id: crypto.randomUUID(),
-    cursor: "", // Will be set by ring buffer
+    // cursor: "", // Will be set by ring buffer
     timestamp: new Date().toISOString(),
     channel,
     type,

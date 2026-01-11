@@ -210,7 +210,10 @@ export class WebSocketHub {
       "Connection subscribed to channel",
     );
 
-    return { cursor: currentCursor, missedMessages };
+    return {
+      ...(currentCursor !== undefined && { cursor: currentCursor }),
+      ...(missedMessages !== undefined && { missedMessages }),
+    };
   }
 
   /**
@@ -331,11 +334,12 @@ export class WebSocketHub {
       const messages = buffer.getAll(limit + 1);
       const hasMore = messages.length > limit;
       const trimmed = hasMore ? messages.slice(0, limit) : messages;
+      const lastCursor = trimmed.length > 0 ? trimmed[trimmed.length - 1]!.cursor : undefined;
+      
       return {
         messages: trimmed,
         hasMore,
-        lastCursor:
-          trimmed.length > 0 ? trimmed[trimmed.length - 1]!.cursor : undefined,
+        ...(lastCursor !== undefined && { lastCursor }),
         expired: true,
       };
     }
@@ -344,12 +348,12 @@ export class WebSocketHub {
     const messages = buffer.slice(cursor, limit + 1);
     const hasMore = messages.length > limit;
     const trimmed = hasMore ? messages.slice(0, limit) : messages;
+    const lastCursor = trimmed.length > 0 ? trimmed[trimmed.length - 1]!.cursor : undefined;
 
     return {
       messages: trimmed,
       hasMore,
-      lastCursor:
-        trimmed.length > 0 ? trimmed[trimmed.length - 1]!.cursor : undefined,
+      ...(lastCursor !== undefined && { lastCursor }),
       expired: false,
     };
   }
