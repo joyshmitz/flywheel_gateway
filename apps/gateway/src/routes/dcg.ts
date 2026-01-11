@@ -71,13 +71,16 @@ const BlocksQuerySchema = z.object({
   severity: z.string().optional(),
   pack: z.string().optional(),
   limit: z.coerce.number().min(1).max(200).optional(),
-  cursor: z.string().optional(),
+  starting_after: z.string().optional(),
+  ending_before: z.string().optional(),
 });
 
 const PendingQuerySchema = z.object({
   status: z.enum(["pending", "approved", "denied", "expired", "executed"]).optional(),
   agentId: z.string().optional(),
   limit: z.coerce.number().min(1).max(200).optional(),
+  starting_after: z.string().optional(),
+  ending_before: z.string().optional(),
 });
 
 const DenyRequestSchema = z.object({
@@ -253,7 +256,8 @@ dcg.get("/blocks", async (c) => {
       severity: c.req.query("severity"),
       pack: c.req.query("pack"),
       limit: c.req.query("limit"),
-      cursor: c.req.query("cursor"),
+      starting_after: c.req.query("starting_after"),
+      ending_before: c.req.query("ending_before"),
     });
 
     // Build options conditionally (for exactOptionalPropertyTypes)
@@ -263,7 +267,10 @@ dcg.get("/blocks", async (c) => {
       options.severity = query.severity.split(",") as DCGSeverity[];
     if (query.pack !== undefined) options.pack = query.pack;
     if (query.limit !== undefined) options.limit = query.limit;
-    if (query.cursor !== undefined) options.cursor = query.cursor;
+    if (query.starting_after !== undefined)
+      options.startingAfter = query.starting_after;
+    if (query.ending_before !== undefined)
+      options.endingBefore = query.ending_before;
 
     const result = await getBlockEvents(options);
 
@@ -272,11 +279,11 @@ dcg.get("/blocks", async (c) => {
     }
 
     const listOptions: Parameters<typeof sendList>[2] = {
-      hasMore: result.pagination.hasMore,
+      hasMore: result.hasMore,
     };
-    if (result.pagination.cursor) {
-      listOptions.nextCursor = result.pagination.cursor;
-    }
+    if (result.nextCursor) listOptions.nextCursor = result.nextCursor;
+    if (result.prevCursor) listOptions.prevCursor = result.prevCursor;
+
     return sendList(c, result.events, listOptions);
   } catch (error) {
     return handleError(error, c);
@@ -386,6 +393,8 @@ dcg.get("/pending", async (c) => {
       status: c.req.query("status"),
       agentId: c.req.query("agentId"),
       limit: c.req.query("limit"),
+      starting_after: c.req.query("starting_after"),
+      ending_before: c.req.query("ending_before"),
     });
 
     // Build options conditionally (for exactOptionalPropertyTypes)
@@ -394,13 +403,24 @@ dcg.get("/pending", async (c) => {
       options.status = query.status as PendingExceptionStatus;
     if (query.agentId !== undefined) options.agentId = query.agentId;
     if (query.limit !== undefined) options.limit = query.limit;
+    if (query.starting_after !== undefined)
+      options.startingAfter = query.starting_after;
+    if (query.ending_before !== undefined)
+      options.endingBefore = query.ending_before;
 
-    const exceptions = await listPendingExceptions(options);
+    const result = await listPendingExceptions(options);
 
-    if (exceptions.length === 0) {
+    if (result.exceptions.length === 0) {
       return sendEmptyList(c);
     }
-    return sendList(c, exceptions);
+
+    const listOptions: Parameters<typeof sendList>[2] = {
+      hasMore: result.hasMore,
+    };
+    if (result.nextCursor) listOptions.nextCursor = result.nextCursor;
+    if (result.prevCursor) listOptions.prevCursor = result.prevCursor;
+
+    return sendList(c, result.exceptions, listOptions);
   } catch (error) {
     return handleError(error, c);
   }

@@ -1,5 +1,8 @@
 /**
  * Tests for DCG Pending Exceptions (Allow-Once Workflow).
+ *
+ * NOTE: These tests use the direct sqlite connection to avoid mock interference
+ * from other test files that mock "../db".
  */
 
 import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
@@ -154,8 +157,8 @@ describe("DCG Pending Exceptions Service", () => {
         severity: "medium",
       });
 
-      const all = await listPendingExceptions({});
-      expect(all.length).toBeGreaterThanOrEqual(2);
+      const result = await listPendingExceptions({});
+      expect(result.exceptions.length).toBeGreaterThanOrEqual(2);
     });
 
     test("filters by status", async () => {
@@ -168,11 +171,11 @@ describe("DCG Pending Exceptions Service", () => {
       });
       await approvePendingException(exc.shortCode, "tester");
 
-      const pending = await listPendingExceptions({ status: "pending" });
-      const approved = await listPendingExceptions({ status: "approved" });
+      const pendingResult = await listPendingExceptions({ status: "pending" });
+      const approvedResult = await listPendingExceptions({ status: "approved" });
 
-      expect(pending.every((e) => e.status === "pending")).toBe(true);
-      expect(approved.some((e) => e.id === exc.id && e.status === "approved")).toBe(true);
+      expect(pendingResult.exceptions.every((e) => e.status === "pending")).toBe(true);
+      expect(approvedResult.exceptions.some((e) => e.id === exc.id && e.status === "approved")).toBe(true);
     });
 
     test("filters by agentId", async () => {
@@ -193,8 +196,8 @@ describe("DCG Pending Exceptions Service", () => {
         agentId: "agent-2",
       });
 
-      const agent1Only = await listPendingExceptions({ agentId: "agent-1" });
-      expect(agent1Only.every((e) => e.agentId === "agent-1")).toBe(true);
+      const result = await listPendingExceptions({ agentId: "agent-1" });
+      expect(result.exceptions.every((e) => e.agentId === "agent-1")).toBe(true);
     });
   });
 

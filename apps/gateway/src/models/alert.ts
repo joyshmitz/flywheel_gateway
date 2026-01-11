@@ -137,7 +137,8 @@ export interface AlertFilter {
   since?: Date;
   until?: Date;
   limit?: number;
-  cursor?: string;
+  startingAfter?: string;
+  endingBefore?: string;
 }
 
 /**
@@ -145,11 +146,10 @@ export interface AlertFilter {
  */
 export interface AlertListResponse {
   alerts: Alert[];
-  pagination: {
-    cursor?: string;
-    hasMore: boolean;
-    total: number;
-  };
+  hasMore: boolean;
+  total: number;
+  nextCursor?: string;
+  prevCursor?: string;
 }
 
 /**

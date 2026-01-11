@@ -286,8 +286,8 @@ describe("Conflict Service", () => {
       });
       checkReservationConflicts("project-1", "agent-2", ["src/**/*.ts"], true);
 
-      const active = getActiveConflicts();
-      expect(active.length).toBeGreaterThan(0);
+      const result = getActiveConflicts();
+      expect(result.conflicts.length).toBeGreaterThan(0);
     });
 
     test("filters conflicts by type", () => {
@@ -319,18 +319,18 @@ describe("Conflict Service", () => {
       });
       detectResourceContention("project-1");
 
-      const reservationConflicts = getActiveConflicts({
+      const reservationResult = getActiveConflicts({
         type: ["reservation_overlap"],
       });
-      const contentionConflicts = getActiveConflicts({
+      const contentionResult = getActiveConflicts({
         type: ["resource_contention"],
       });
 
       expect(
-        reservationConflicts.every((c) => c.type === "reservation_overlap"),
+        reservationResult.conflicts.every((c) => c.type === "reservation_overlap"),
       ).toBe(true);
       expect(
-        contentionConflicts.every((c) => c.type === "resource_contention"),
+        contentionResult.conflicts.every((c) => c.type === "resource_contention"),
       ).toBe(true);
     });
 
@@ -347,11 +347,11 @@ describe("Conflict Service", () => {
       });
       checkReservationConflicts("project-1", "agent-2", ["src/**/*.ts"], true);
 
-      const warningConflicts = getActiveConflicts({
+      const warningResult = getActiveConflicts({
         severity: ["warning"],
       });
 
-      expect(warningConflicts.every((c) => c.severity === "warning")).toBe(
+      expect(warningResult.conflicts.every((c) => c.severity === "warning")).toBe(
         true,
       );
     });
@@ -380,13 +380,13 @@ describe("Conflict Service", () => {
       });
       checkReservationConflicts("project-2", "agent-4", ["lib/**/*.ts"], true);
 
-      const project1Conflicts = getActiveConflicts({ projectId: "project-1" });
-      const project2Conflicts = getActiveConflicts({ projectId: "project-2" });
+      const project1Result = getActiveConflicts({ projectId: "project-1" });
+      const project2Result = getActiveConflicts({ projectId: "project-2" });
 
-      expect(project1Conflicts.every((c) => c.projectId === "project-1")).toBe(
+      expect(project1Result.conflicts.every((c) => c.projectId === "project-1")).toBe(
         true,
       );
-      expect(project2Conflicts.every((c) => c.projectId === "project-2")).toBe(
+      expect(project2Result.conflicts.every((c) => c.projectId === "project-2")).toBe(
         true,
       );
     });
@@ -471,14 +471,14 @@ describe("Conflict Service", () => {
       );
 
       const conflictId = result.conflicts[0]!.id;
-      const beforeCount = getActiveConflicts().length;
+      const beforeCount = getActiveConflicts().conflicts.length;
 
       resolveConflict(conflictId, {
         type: "manual",
         description: "Resolved manually",
       });
 
-      const afterCount = getActiveConflicts().length;
+      const afterCount = getActiveConflicts().conflicts.length;
       expect(afterCount).toBe(beforeCount - 1);
     });
 
@@ -610,13 +610,15 @@ describe("Conflict Service", () => {
         );
       }
 
-      const { conflicts, total, hasMore } = getConflictHistory(5, 0);
+      const page1 = getConflictHistory({ limit: 5 });
 
-      expect(conflicts.length).toBe(5);
-      expect(total).toBe(10);
-      expect(hasMore).toBe(true);
+      expect(page1.conflicts.length).toBe(5);
+      expect(page1.total).toBe(10);
+      expect(page1.hasMore).toBe(true);
 
-      const page2 = getConflictHistory(5, 5);
+      // Use the nextCursor for page 2
+      expect(page1.nextCursor).toBeDefined();
+      const page2 = getConflictHistory({ limit: 5, startingAfter: page1.nextCursor! });
       expect(page2.conflicts.length).toBe(5);
       expect(page2.hasMore).toBe(false);
     });

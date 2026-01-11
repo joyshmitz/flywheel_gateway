@@ -11,6 +11,11 @@
  */
 
 import { and, desc, eq, gte, sql } from "drizzle-orm";
+import {
+  createCursor,
+  decodeCursor,
+  DEFAULT_PAGINATION,
+} from "@flywheel/shared/api/pagination";
 import { db } from "../db";
 import { dcgAllowlist, dcgBlocks } from "../db/schema";
 import { getCorrelationId } from "../middleware/correlation";
@@ -218,12 +223,15 @@ export async function getBlockEvents(options: {
   severity?: DCGSeverity[];
   pack?: string;
   limit?: number;
-  cursor?: string;
+  startingAfter?: string;
+  endingBefore?: string;
 }): Promise<{
   events: DCGBlockEvent[];
-  pagination: { cursor?: string; hasMore: boolean };
+  hasMore: boolean;
+  nextCursor?: string;
+  prevCursor?: string;
 }> {
-  const limit = options.limit ?? 50;
+  const limit = options.limit ?? DEFAULT_PAGINATION.limit;
 
   // For now, use in-memory blocks
   let events = [...recentBlocks];
@@ -238,25 +246,55 @@ export async function getBlockEvents(options: {
     events = events.filter((e) => e.pack === options.pack);
   }
 
-  // Apply cursor (event ID)
-  if (options.cursor) {
-    const cursorIndex = events.findIndex((e) => e.id === options.cursor);
-    if (cursorIndex >= 0) {
-      events = events.slice(cursorIndex + 1);
+  // Apply cursor-based pagination
+  let startIndex = 0;
+  if (options.startingAfter) {
+    const decoded = decodeCursor(options.startingAfter);
+    if (decoded) {
+      const cursorIndex = events.findIndex((e) => e.id === decoded.id);
+      if (cursorIndex >= 0) {
+        startIndex = cursorIndex + 1;
+      }
+    }
+  } else if (options.endingBefore) {
+    const decoded = decodeCursor(options.endingBefore);
+    if (decoded) {
+      const cursorIndex = events.findIndex((e) => e.id === decoded.id);
+      if (cursorIndex >= 0) {
+        startIndex = Math.max(0, cursorIndex - limit);
+      }
     }
   }
 
-  const hasMore = events.length > limit;
-  const result = events.slice(0, limit);
-  const lastEvent = result[result.length - 1];
+  // Get page items (fetch limit + 1 to determine hasMore)
+  const pageItems = events.slice(startIndex, startIndex + limit + 1);
+  const hasMore = pageItems.length > limit;
+  const resultItems = hasMore ? pageItems.slice(0, limit) : pageItems;
 
-  return {
-    events: result,
-    pagination: {
-      ...(lastEvent && { cursor: lastEvent.id }),
-      hasMore,
-    },
+  const result: {
+    events: DCGBlockEvent[];
+    hasMore: boolean;
+    nextCursor?: string;
+    prevCursor?: string;
+  } = {
+    events: resultItems,
+    hasMore,
   };
+
+  // Add cursors if there are results
+  if (resultItems.length > 0) {
+    const lastItem = resultItems[resultItems.length - 1]!;
+    const firstItem = resultItems[0]!;
+
+    if (hasMore) {
+      result.nextCursor = createCursor(lastItem.id);
+    }
+    if (startIndex > 0) {
+      result.prevCursor = createCursor(firstItem.id);
+    }
+  }
+
+  return result;
 }
 
 /**

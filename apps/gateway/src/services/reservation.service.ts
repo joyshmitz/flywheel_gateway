@@ -158,6 +158,15 @@ export interface ListConflictsParams {
   projectId: string;
   status?: ConflictStatus;
   limit?: number;
+  startingAfter?: string;
+  endingBefore?: string;
+}
+
+export interface ListConflictsResult {
+  conflicts: ReservationConflictRecord[];
+  hasMore: boolean;
+  nextCursor?: string;
+  prevCursor?: string;
 }
 
 export interface ResolveConflictParams {
@@ -753,12 +762,12 @@ export async function listReservations(
   };
 
   if (hasMore && pageItems.length > 0) {
-    const lastItem = pageItems[pageItems.length - 1];
+    const lastItem = pageItems[pageItems.length - 1]!;
     result.nextCursor = createCursor(lastItem.id, lastItem.createdAt.getTime());
   }
 
   if (pageItems.length > 0) {
-    const firstItem = pageItems[0];
+    const firstItem = pageItems[0]!;
     result.prevCursor = createCursor(firstItem.id, firstItem.createdAt.getTime());
   }
 
@@ -766,20 +775,73 @@ export async function listReservations(
 }
 
 /**
- * List conflicts for a project with optional status filter.
+ * List conflicts for a project with optional status filter and pagination.
  */
 export async function listConflicts(
   params: ListConflictsParams,
-): Promise<ReservationConflictRecord[]> {
-  const limit = Math.min(params.limit ?? 100, 1000);
+): Promise<ListConflictsResult> {
+  const limit = Math.min(
+    Math.max(1, params.limit ?? DEFAULT_PAGINATION.limit),
+    DEFAULT_PAGINATION.maxLimit,
+  );
+
   const conflicts = Array.from(conflictStore.values()).filter((conflict) => {
     if (conflict.projectId !== params.projectId) return false;
     if (params.status && conflict.status !== params.status) return false;
     return true;
   });
 
+  // Sort by detection time (newest first)
   conflicts.sort((a, b) => b.detectedAt.getTime() - a.detectedAt.getTime());
-  return conflicts.slice(0, limit);
+
+  // Handle cursor-based pagination
+  let startIndex = 0;
+  if (params.startingAfter) {
+    const cursor = decodeCursor(params.startingAfter);
+    if (cursor) {
+      const cursorIndex = conflicts.findIndex((c) => c.conflictId === cursor.id);
+      if (cursorIndex !== -1) {
+        startIndex = cursorIndex + 1;
+      }
+    }
+  } else if (params.endingBefore) {
+    const cursor = decodeCursor(params.endingBefore);
+    if (cursor) {
+      const cursorIndex = conflicts.findIndex((c) => c.conflictId === cursor.id);
+      if (cursorIndex !== -1) {
+        startIndex = Math.max(0, cursorIndex - limit);
+      }
+    }
+  }
+
+  // Get limit+1 to check if there are more
+  const sliced = conflicts.slice(startIndex, startIndex + limit + 1);
+  const hasMore = sliced.length > limit;
+  const pageItems = hasMore ? sliced.slice(0, limit) : sliced;
+
+  // Build result with cursors
+  const result: ListConflictsResult = {
+    conflicts: pageItems,
+    hasMore,
+  };
+
+  if (hasMore && pageItems.length > 0) {
+    const lastItem = pageItems[pageItems.length - 1]!;
+    result.nextCursor = createCursor(
+      lastItem.conflictId,
+      lastItem.detectedAt.getTime(),
+    );
+  }
+
+  if (pageItems.length > 0) {
+    const firstItem = pageItems[0]!;
+    result.prevCursor = createCursor(
+      firstItem.conflictId,
+      firstItem.detectedAt.getTime(),
+    );
+  }
+
+  return result;
 }
 
 /**

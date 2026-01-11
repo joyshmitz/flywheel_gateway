@@ -9,6 +9,11 @@
  * Implements PLAN.md §12 Conflict Management requirements.
  */
 
+import {
+  createCursor,
+  decodeCursor,
+  DEFAULT_PAGINATION,
+} from "@flywheel/shared/api/pagination";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
 import type { Channel } from "../ws/channels";
 import { getHub } from "../ws/hub";
@@ -620,30 +625,50 @@ function hasContention(accesses: ResourceAccess[]): boolean {
 // ============================================================================
 
 /**
- * Get all active conflicts.
- *
- * @param filter - Optional filter criteria
+ * Parameters for listing active conflicts.
  */
-export function getActiveConflicts(filter?: {
+export interface ListActiveConflictsParams {
   type?: ConflictType[];
   severity?: ConflictSeverity[];
   projectId?: string;
   agentId?: string;
-}): Conflict[] {
+  limit?: number;
+  startingAfter?: string;
+  endingBefore?: string;
+}
+
+/**
+ * Result of listing active conflicts.
+ */
+export interface ListActiveConflictsResult {
+  conflicts: Conflict[];
+  hasMore: boolean;
+  nextCursor?: string;
+  prevCursor?: string;
+}
+
+/**
+ * Get all active conflicts with cursor-based pagination.
+ *
+ * @param params - Filter and pagination criteria
+ */
+export function getActiveConflicts(
+  params: ListActiveConflictsParams = {},
+): ListActiveConflictsResult {
   let conflicts = Array.from(activeConflicts.values());
 
-  if (filter?.type?.length) {
-    conflicts = conflicts.filter((c) => filter.type!.includes(c.type));
+  if (params.type?.length) {
+    conflicts = conflicts.filter((c) => params.type!.includes(c.type));
   }
-  if (filter?.severity?.length) {
-    conflicts = conflicts.filter((c) => filter.severity!.includes(c.severity));
+  if (params.severity?.length) {
+    conflicts = conflicts.filter((c) => params.severity!.includes(c.severity));
   }
-  if (filter?.projectId) {
-    conflicts = conflicts.filter((c) => c.projectId === filter.projectId);
+  if (params.projectId) {
+    conflicts = conflicts.filter((c) => c.projectId === params.projectId);
   }
-  if (filter?.agentId) {
+  if (params.agentId) {
     conflicts = conflicts.filter((c) =>
-      c.involvedAgents.includes(filter.agentId!),
+      c.involvedAgents.includes(params.agentId!),
     );
   }
 
@@ -655,7 +680,52 @@ export function getActiveConflicts(filter?: {
     return b.detectedAt.getTime() - a.detectedAt.getTime();
   });
 
-  return conflicts;
+  // Apply cursor-based pagination
+  const limit = params.limit ?? DEFAULT_PAGINATION.limit;
+  let startIndex = 0;
+
+  if (params.startingAfter) {
+    const decoded = decodeCursor(params.startingAfter);
+    if (decoded) {
+      const cursorIndex = conflicts.findIndex((c) => c.id === decoded.id);
+      if (cursorIndex >= 0) {
+        startIndex = cursorIndex + 1;
+      }
+    }
+  } else if (params.endingBefore) {
+    const decoded = decodeCursor(params.endingBefore);
+    if (decoded) {
+      const cursorIndex = conflicts.findIndex((c) => c.id === decoded.id);
+      if (cursorIndex >= 0) {
+        startIndex = Math.max(0, cursorIndex - limit);
+      }
+    }
+  }
+
+  // Get page items (fetch limit + 1 to determine hasMore)
+  const pageItems = conflicts.slice(startIndex, startIndex + limit + 1);
+  const hasMore = pageItems.length > limit;
+  const resultItems = hasMore ? pageItems.slice(0, limit) : pageItems;
+
+  const result: ListActiveConflictsResult = {
+    conflicts: resultItems,
+    hasMore,
+  };
+
+  // Add cursors if there are items
+  if (resultItems.length > 0) {
+    const lastItem = resultItems[resultItems.length - 1]!;
+    const firstItem = resultItems[0]!;
+
+    if (hasMore) {
+      result.nextCursor = createCursor(lastItem.id);
+    }
+    if (startIndex > 0) {
+      result.prevCursor = createCursor(firstItem.id);
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -669,20 +739,80 @@ export function getConflict(conflictId: string): Conflict | undefined {
 }
 
 /**
- * Get conflict history.
+ * Parameters for listing conflict history.
+ */
+export interface ListConflictHistoryParams {
+  limit?: number;
+  startingAfter?: string;
+  endingBefore?: string;
+}
+
+/**
+ * Result of listing conflict history.
+ */
+export interface ListConflictHistoryResult {
+  conflicts: Conflict[];
+  total: number;
+  hasMore: boolean;
+  nextCursor?: string;
+  prevCursor?: string;
+}
+
+/**
+ * Get conflict history with cursor-based pagination.
  *
- * @param limit - Maximum number of conflicts to return
- * @param offset - Number of conflicts to skip
+ * @param params - Pagination parameters
  */
 export function getConflictHistory(
-  limit = 50,
-  offset = 0,
-): { conflicts: Conflict[]; total: number; hasMore: boolean } {
+  params: ListConflictHistoryParams = {},
+): ListConflictHistoryResult {
   const total = conflictHistory.length;
-  const conflicts = conflictHistory.slice(offset, offset + limit);
-  const hasMore = offset + limit < total;
+  const limit = params.limit ?? DEFAULT_PAGINATION.limit;
+  let startIndex = 0;
 
-  return { conflicts, total, hasMore };
+  if (params.startingAfter) {
+    const decoded = decodeCursor(params.startingAfter);
+    if (decoded) {
+      const cursorIndex = conflictHistory.findIndex((c) => c.id === decoded.id);
+      if (cursorIndex >= 0) {
+        startIndex = cursorIndex + 1;
+      }
+    }
+  } else if (params.endingBefore) {
+    const decoded = decodeCursor(params.endingBefore);
+    if (decoded) {
+      const cursorIndex = conflictHistory.findIndex((c) => c.id === decoded.id);
+      if (cursorIndex >= 0) {
+        startIndex = Math.max(0, cursorIndex - limit);
+      }
+    }
+  }
+
+  // Get page items (fetch limit + 1 to determine hasMore)
+  const pageItems = conflictHistory.slice(startIndex, startIndex + limit + 1);
+  const hasMore = pageItems.length > limit;
+  const resultItems = hasMore ? pageItems.slice(0, limit) : pageItems;
+
+  const result: ListConflictHistoryResult = {
+    conflicts: resultItems,
+    total,
+    hasMore,
+  };
+
+  // Add cursors if there are items
+  if (resultItems.length > 0) {
+    const lastItem = resultItems[resultItems.length - 1]!;
+    const firstItem = resultItems[0]!;
+
+    if (hasMore) {
+      result.nextCursor = createCursor(lastItem.id);
+    }
+    if (startIndex > 0) {
+      result.prevCursor = createCursor(firstItem.id);
+    }
+  }
+
+  return result;
 }
 
 /**

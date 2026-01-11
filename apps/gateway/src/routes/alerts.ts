@@ -115,8 +115,10 @@ alerts.get("/", (c) => {
     if (sinceParam) filter.since = sinceParam;
     const untilParam = parseDateQuery(c.req.query("until"));
     if (untilParam) filter.until = untilParam;
-    const cursorParam = c.req.query("cursor");
-    if (cursorParam) filter.cursor = cursorParam;
+    const startingAfterParam = c.req.query("starting_after");
+    if (startingAfterParam) filter.startingAfter = startingAfterParam;
+    const endingBeforeParam = c.req.query("ending_before");
+    if (endingBeforeParam) filter.endingBefore = endingBeforeParam;
 
     const result = getActiveAlerts(filter);
 
@@ -133,12 +135,12 @@ alerts.get("/", (c) => {
     }));
 
     const listOptions: Parameters<typeof sendList>[2] = {
-      hasMore: result.pagination.hasMore,
-      total: result.pagination.total,
+      hasMore: result.hasMore,
+      total: result.total,
     };
-    if (result.pagination.cursor) {
-      listOptions.nextCursor = result.pagination.cursor;
-    }
+    if (result.nextCursor) listOptions.nextCursor = result.nextCursor;
+    if (result.prevCursor) listOptions.prevCursor = result.prevCursor;
+
     return sendList(c, serializedAlerts, listOptions);
   } catch (error) {
     return handleError(error, c);
@@ -162,8 +164,10 @@ alerts.get("/history", (c) => {
     if (sinceParam) filter.since = sinceParam;
     const untilParam = parseDateQuery(c.req.query("until"));
     if (untilParam) filter.until = untilParam;
-    const cursorParam = c.req.query("cursor");
-    if (cursorParam) filter.cursor = cursorParam;
+    const startingAfterParam = c.req.query("starting_after");
+    if (startingAfterParam) filter.startingAfter = startingAfterParam;
+    const endingBeforeParam = c.req.query("ending_before");
+    if (endingBeforeParam) filter.endingBefore = endingBeforeParam;
 
     const result = getAlertHistory(filter);
 
@@ -180,12 +184,12 @@ alerts.get("/history", (c) => {
     }));
 
     const listOptions: Parameters<typeof sendList>[2] = {
-      hasMore: result.pagination.hasMore,
-      total: result.pagination.total,
+      hasMore: result.hasMore,
+      total: result.total,
     };
-    if (result.pagination.cursor) {
-      listOptions.nextCursor = result.pagination.cursor;
-    }
+    if (result.nextCursor) listOptions.nextCursor = result.nextCursor;
+    if (result.prevCursor) listOptions.prevCursor = result.prevCursor;
+
     return sendList(c, serializedAlerts, listOptions);
   } catch (error) {
     return handleError(error, c);

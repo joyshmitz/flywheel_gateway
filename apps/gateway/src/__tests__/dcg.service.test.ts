@@ -143,7 +143,7 @@ describe("DCG Service", () => {
       const result = await getBlockEvents({ limit: 10 });
 
       expect(result.events.length).toBeGreaterThan(0);
-      expect(result.pagination).toBeDefined();
+      expect(typeof result.hasMore).toBe("boolean");
     });
 
     test("getBlockEvents filters by agentId", async () => {

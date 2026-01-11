@@ -97,6 +97,8 @@ export interface WrapListOptions {
   hasMore?: boolean;
   /** Cursor for the next page (when hasMore is true) */
   nextCursor?: string;
+  /** Cursor for the previous page */
+  prevCursor?: string;
   /** Total count of items across all pages */
   total?: number;
   /** URL for this list endpoint (without pagination params) */
@@ -140,6 +142,10 @@ export function wrapList<T>(
 
   if (options.nextCursor) {
     response.nextCursor = options.nextCursor;
+  }
+
+  if (options.prevCursor) {
+    response.prevCursor = options.prevCursor;
   }
 
   if (options.total !== undefined) {

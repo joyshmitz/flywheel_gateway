@@ -4,6 +4,11 @@
  * Manages alert rules, evaluates conditions, and tracks alert state.
  */
 
+import {
+  createCursor,
+  decodeCursor,
+  DEFAULT_PAGINATION,
+} from "@flywheel/shared/api/pagination";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
 import {
   type Alert,
@@ -261,27 +266,53 @@ export function getActiveAlerts(filter?: AlertFilter): AlertListResponse {
   });
 
   const total = alerts.length;
-  const limit = filter?.limit ?? 50;
+  const limit = filter?.limit ?? DEFAULT_PAGINATION.limit;
   let startIndex = 0;
 
-  if (filter?.cursor) {
-    const parsed = parseInt(filter.cursor, 10);
-    if (!Number.isNaN(parsed)) {
-      startIndex = parsed;
+  // Handle cursor-based pagination
+  if (filter?.startingAfter) {
+    const decoded = decodeCursor(filter.startingAfter);
+    if (decoded) {
+      const cursorIndex = alerts.findIndex((a) => a.id === decoded.id);
+      if (cursorIndex >= 0) {
+        startIndex = cursorIndex + 1;
+      }
+    }
+  } else if (filter?.endingBefore) {
+    const decoded = decodeCursor(filter.endingBefore);
+    if (decoded) {
+      const cursorIndex = alerts.findIndex((a) => a.id === decoded.id);
+      if (cursorIndex >= 0) {
+        startIndex = Math.max(0, cursorIndex - limit);
+      }
     }
   }
 
-  const paginatedAlerts = alerts.slice(startIndex, startIndex + limit);
-  const hasMore = startIndex + limit < total;
+  // Get page items (fetch limit + 1 to determine hasMore)
+  const pageItems = alerts.slice(startIndex, startIndex + limit + 1);
+  const hasMore = pageItems.length > limit;
+  const resultItems = hasMore ? pageItems.slice(0, limit) : pageItems;
 
-  return {
-    alerts: paginatedAlerts,
-    pagination: {
-      ...(hasMore && { cursor: String(startIndex + limit) }),
-      hasMore,
-      total,
-    },
+  const result: AlertListResponse = {
+    alerts: resultItems,
+    hasMore,
+    total,
   };
+
+  // Add cursors if there are results
+  if (resultItems.length > 0) {
+    const lastItem = resultItems[resultItems.length - 1]!;
+    const firstItem = resultItems[0]!;
+
+    if (hasMore) {
+      result.nextCursor = createCursor(lastItem.id);
+    }
+    if (startIndex > 0) {
+      result.prevCursor = createCursor(firstItem.id);
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -305,27 +336,53 @@ export function getAlertHistory(filter?: AlertFilter): AlertListResponse {
   }
 
   const total = alerts.length;
-  const limit = filter?.limit ?? 50;
+  const limit = filter?.limit ?? DEFAULT_PAGINATION.limit;
   let startIndex = 0;
 
-  if (filter?.cursor) {
-    const parsed = parseInt(filter.cursor, 10);
-    if (!Number.isNaN(parsed)) {
-      startIndex = parsed;
+  // Handle cursor-based pagination
+  if (filter?.startingAfter) {
+    const decoded = decodeCursor(filter.startingAfter);
+    if (decoded) {
+      const cursorIndex = alerts.findIndex((a) => a.id === decoded.id);
+      if (cursorIndex >= 0) {
+        startIndex = cursorIndex + 1;
+      }
+    }
+  } else if (filter?.endingBefore) {
+    const decoded = decodeCursor(filter.endingBefore);
+    if (decoded) {
+      const cursorIndex = alerts.findIndex((a) => a.id === decoded.id);
+      if (cursorIndex >= 0) {
+        startIndex = Math.max(0, cursorIndex - limit);
+      }
     }
   }
 
-  const paginatedAlerts = alerts.slice(startIndex, startIndex + limit);
-  const hasMore = startIndex + limit < total;
+  // Get page items (fetch limit + 1 to determine hasMore)
+  const pageItems = alerts.slice(startIndex, startIndex + limit + 1);
+  const hasMore = pageItems.length > limit;
+  const resultItems = hasMore ? pageItems.slice(0, limit) : pageItems;
 
-  return {
-    alerts: paginatedAlerts,
-    pagination: {
-      ...(hasMore && { cursor: String(startIndex + limit) }),
-      hasMore,
-      total,
-    },
+  const result: AlertListResponse = {
+    alerts: resultItems,
+    hasMore,
+    total,
   };
+
+  // Add cursors if there are results
+  if (resultItems.length > 0) {
+    const lastItem = resultItems[resultItems.length - 1]!;
+    const firstItem = resultItems[0]!;
+
+    if (hasMore) {
+      result.nextCursor = createCursor(lastItem.id);
+    }
+    if (startIndex > 0) {
+      result.prevCursor = createCursor(firstItem.id);
+    }
+  }
+
+  return result;
 }
 
 /**

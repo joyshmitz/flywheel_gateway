@@ -178,6 +178,12 @@ export interface ApiListResponse<T> {
   nextCursor?: string;
 
   /**
+   * Pagination cursor for previous page.
+   * Used for backward navigation.
+   */
+  prevCursor?: string;
+
+  /**
    * Total count of items across all pages.
    * May be omitted for performance on large collections.
    */

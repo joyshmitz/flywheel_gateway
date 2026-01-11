@@ -25,6 +25,8 @@ import {
   getConflictHistory,
   getConflictStats,
   getRecommendedActions,
+  type ListActiveConflictsParams,
+  type ListConflictHistoryParams,
   resolveConflict,
   updateAlertConfig,
 } from "../services/conflict.service";
@@ -98,30 +100,35 @@ const AlertConfigSchema = z.object({
 conflicts.get("/", async (c) => {
   const query = c.req.query();
 
-  // Parse filter from query params
-  const filter: {
-    type?: ConflictType[];
-    severity?: ConflictSeverity[];
-    projectId?: string;
-    agentId?: string;
-  } = {};
+  // Build params conditionally (for exactOptionalPropertyTypes)
+  const params: ListActiveConflictsParams = {};
 
   if (query["type"]) {
-    filter.type = query["type"].split(",") as ConflictType[];
+    params.type = query["type"].split(",") as ConflictType[];
   }
   if (query["severity"]) {
-    filter.severity = query["severity"].split(",") as ConflictSeverity[];
+    params.severity = query["severity"].split(",") as ConflictSeverity[];
   }
   if (query["projectId"]) {
-    filter.projectId = query["projectId"];
+    params.projectId = query["projectId"];
   }
   if (query["agentId"]) {
-    filter.agentId = query["agentId"];
+    params.agentId = query["agentId"];
+  }
+  if (query["limit"]) {
+    const limit = parseInt(query["limit"], 10);
+    if (!Number.isNaN(limit)) params.limit = Math.min(limit, 100);
+  }
+  if (query["starting_after"]) {
+    params.startingAfter = query["starting_after"];
+  }
+  if (query["ending_before"]) {
+    params.endingBefore = query["ending_before"];
   }
 
-  const activeList = getActiveConflicts(filter);
+  const result = getActiveConflicts(params);
 
-  const transformedConflicts = activeList.map((conflict) => ({
+  const transformedConflicts = result.conflicts.map((conflict) => ({
     id: conflict.id,
     type: conflict.type,
     severity: conflict.severity,
@@ -132,32 +139,38 @@ conflicts.get("/", async (c) => {
     recommendedActions: getRecommendedActions(conflict),
   }));
 
-  return sendList(c, transformedConflicts, {
-    total: activeList.length,
-    hasMore: false,
-  });
+  // Build pagination meta conditionally (for exactOptionalPropertyTypes)
+  const meta: { hasMore: boolean; nextCursor?: string; prevCursor?: string } = {
+    hasMore: result.hasMore,
+  };
+  if (result.nextCursor) meta.nextCursor = result.nextCursor;
+  if (result.prevCursor) meta.prevCursor = result.prevCursor;
+
+  return sendList(c, transformedConflicts, meta);
 });
 
 /**
  * GET /conflicts/history - Get conflict history
  */
 conflicts.get("/history", async (c) => {
+  // Build params conditionally (for exactOptionalPropertyTypes)
+  const params: ListConflictHistoryParams = {};
+
   const limitParam = c.req.query("limit");
-  const offsetParam = c.req.query("offset");
+  if (limitParam) {
+    const limit = parseInt(limitParam, 10);
+    if (!Number.isNaN(limit)) params.limit = Math.min(limit, 100);
+  }
 
-  const limit = limitParam ? Math.min(parseInt(limitParam, 10), 100) : 50;
-  const offset = offsetParam ? parseInt(offsetParam, 10) : 0;
+  const startingAfter = c.req.query("starting_after");
+  if (startingAfter) params.startingAfter = startingAfter;
 
-  const {
-    conflicts: historyList,
-    total,
-    hasMore,
-  } = getConflictHistory(
-    Number.isNaN(limit) ? 50 : limit,
-    Number.isNaN(offset) ? 0 : offset,
-  );
+  const endingBefore = c.req.query("ending_before");
+  if (endingBefore) params.endingBefore = endingBefore;
 
-  const transformedConflicts = historyList.map((conflict) => ({
+  const result = getConflictHistory(params);
+
+  const transformedConflicts = result.conflicts.map((conflict) => ({
     id: conflict.id,
     type: conflict.type,
     severity: conflict.severity,
@@ -176,10 +189,15 @@ conflicts.get("/history", async (c) => {
       : undefined,
   }));
 
-  return sendList(c, transformedConflicts, {
-    total,
-    hasMore,
-  });
+  // Build pagination meta conditionally (for exactOptionalPropertyTypes)
+  const meta: { total: number; hasMore: boolean; nextCursor?: string; prevCursor?: string } = {
+    total: result.total,
+    hasMore: result.hasMore,
+  };
+  if (result.nextCursor) meta.nextCursor = result.nextCursor;
+  if (result.prevCursor) meta.prevCursor = result.prevCursor;
+
+  return sendList(c, transformedConflicts, meta);
 });
 
 /**

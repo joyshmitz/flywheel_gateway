@@ -7,6 +7,11 @@
 
 import { createHash } from "crypto";
 import { and, desc, eq, gt, lt, sql } from "drizzle-orm";
+import {
+  createCursor,
+  decodeCursor,
+  DEFAULT_PAGINATION,
+} from "@flywheel/shared/api/pagination";
 import { db } from "../db";
 import { dcgPendingExceptions } from "../db/schema";
 import { getCorrelationId } from "../middleware/correlation";
@@ -59,6 +64,21 @@ export interface CreatePendingExceptionParams {
   agentId?: string;
   blockEventId?: string;
   ttlSeconds?: number;
+}
+
+export interface ListPendingExceptionsParams {
+  status?: PendingExceptionStatus;
+  agentId?: string;
+  limit?: number;
+  startingAfter?: string;
+  endingBefore?: string;
+}
+
+export interface ListPendingExceptionsResult {
+  exceptions: PendingException[];
+  hasMore: boolean;
+  nextCursor?: string;
+  prevCursor?: string;
 }
 
 // ============================================================================
@@ -261,35 +281,85 @@ export async function getPendingExceptionById(
 }
 
 /**
- * List pending exceptions with optional filters.
+ * List pending exceptions with optional filters and cursor-based pagination.
  */
-export async function listPendingExceptions(options: {
-  status?: PendingExceptionStatus;
-  agentId?: string;
-  limit?: number;
-}): Promise<PendingException[]> {
-  const limit = options.limit ?? 50;
+export async function listPendingExceptions(
+  params: ListPendingExceptionsParams = {},
+): Promise<ListPendingExceptionsResult> {
+  const limit = params.limit ?? DEFAULT_PAGINATION.limit;
+  const conditions = [];
 
+  // Add filter conditions
+  if (params.status) {
+    conditions.push(eq(dcgPendingExceptions.status, params.status));
+  }
+  if (params.agentId) {
+    conditions.push(eq(dcgPendingExceptions.agentId, params.agentId));
+  }
+
+  // Handle cursor-based pagination
+  if (params.startingAfter) {
+    const decoded = decodeCursor(params.startingAfter);
+    if (decoded) {
+      // Get the cursor item's createdAt for pagination
+      const cursorRow = await db
+        .select({ createdAt: dcgPendingExceptions.createdAt })
+        .from(dcgPendingExceptions)
+        .where(eq(dcgPendingExceptions.id, decoded.id))
+        .get();
+      if (cursorRow) {
+        conditions.push(lt(dcgPendingExceptions.createdAt, cursorRow.createdAt));
+      }
+    }
+  } else if (params.endingBefore) {
+    const decoded = decodeCursor(params.endingBefore);
+    if (decoded) {
+      const cursorRow = await db
+        .select({ createdAt: dcgPendingExceptions.createdAt })
+        .from(dcgPendingExceptions)
+        .where(eq(dcgPendingExceptions.id, decoded.id))
+        .get();
+      if (cursorRow) {
+        conditions.push(gt(dcgPendingExceptions.createdAt, cursorRow.createdAt));
+      }
+    }
+  }
+
+  // Build and execute query
   let query = db
     .select()
     .from(dcgPendingExceptions)
     .orderBy(desc(dcgPendingExceptions.createdAt))
-    .limit(limit);
-
-  const conditions = [];
-  if (options.status) {
-    conditions.push(eq(dcgPendingExceptions.status, options.status));
-  }
-  if (options.agentId) {
-    conditions.push(eq(dcgPendingExceptions.agentId, options.agentId));
-  }
+    .limit(limit + 1); // Fetch one extra to determine hasMore
 
   if (conditions.length > 0) {
     query = query.where(and(...conditions)) as typeof query;
   }
 
   const rows = await query;
-  return rows.map(rowToException);
+  const hasMore = rows.length > limit;
+  const resultRows = hasMore ? rows.slice(0, limit) : rows;
+  const exceptions = resultRows.map(rowToException);
+
+  const result: ListPendingExceptionsResult = {
+    exceptions,
+    hasMore,
+  };
+
+  // Add cursors if there are results
+  if (exceptions.length > 0) {
+    const lastItem = exceptions[exceptions.length - 1]!;
+    const firstItem = exceptions[0]!;
+
+    if (hasMore) {
+      result.nextCursor = createCursor(lastItem.id);
+    }
+    if (params.startingAfter) {
+      result.prevCursor = createCursor(firstItem.id);
+    }
+  }
+
+  return result;
 }
 
 /**

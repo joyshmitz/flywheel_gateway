@@ -82,7 +82,9 @@ const ListReservationsQuerySchema = z.object({
 const ListConflictsQuerySchema = z.object({
   projectId: z.string().min(1),
   status: z.enum(["open", "resolved"]).optional(),
-  limit: z.coerce.number().int().min(1).max(1000).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  starting_after: z.string().optional(),
+  ending_before: z.string().optional(),
 });
 
 const ResolveConflictSchema = z.object({
@@ -245,6 +247,8 @@ reservations.get("/conflicts", async (c) => {
       projectId: c.req.query("projectId"),
       status: c.req.query("status"),
       limit: c.req.query("limit"),
+      starting_after: c.req.query("starting_after"),
+      ending_before: c.req.query("ending_before"),
     });
 
     // Build params conditionally (for exactOptionalPropertyTypes)
@@ -253,10 +257,14 @@ reservations.get("/conflicts", async (c) => {
     };
     if (query.status !== undefined) conflictParams.status = query.status;
     if (query.limit !== undefined) conflictParams.limit = query.limit;
+    if (query.starting_after !== undefined)
+      conflictParams.startingAfter = query.starting_after;
+    if (query.ending_before !== undefined)
+      conflictParams.endingBefore = query.ending_before;
 
-    const results = await listConflicts(conflictParams);
+    const result = await listConflicts(conflictParams);
 
-    const conflicts = results.map((conflict) => ({
+    const conflicts = result.conflicts.map((conflict) => ({
       conflictId: conflict.conflictId,
       projectId: conflict.projectId,
       type: conflict.type,
@@ -283,7 +291,14 @@ reservations.get("/conflicts", async (c) => {
       },
     }));
 
-    return sendList(c, conflicts, { total: conflicts.length });
+    // Build pagination meta conditionally (for exactOptionalPropertyTypes)
+    const conflictsMeta: { hasMore: boolean; nextCursor?: string; prevCursor?: string } = {
+      hasMore: result.hasMore,
+    };
+    if (result.nextCursor) conflictsMeta.nextCursor = result.nextCursor;
+    if (result.prevCursor) conflictsMeta.prevCursor = result.prevCursor;
+
+    return sendList(c, conflicts, conflictsMeta);
   } catch (error) {
     return handleError(error, c);
   }
@@ -374,11 +389,14 @@ reservations.get("/", async (c) => {
       metadata: r.metadata,
     }));
 
-    return sendList(c, reservations_data, {
+    // Build pagination meta conditionally (for exactOptionalPropertyTypes)
+    const listMeta: { hasMore: boolean; nextCursor?: string; prevCursor?: string } = {
       hasMore: result.hasMore,
-      nextCursor: result.nextCursor,
-      prevCursor: result.prevCursor,
-    });
+    };
+    if (result.nextCursor) listMeta.nextCursor = result.nextCursor;
+    if (result.prevCursor) listMeta.prevCursor = result.prevCursor;
+
+    return sendList(c, reservations_data, listMeta);
   } catch (error) {
     return handleError(error, c);
   }

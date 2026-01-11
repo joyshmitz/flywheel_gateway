@@ -545,9 +545,9 @@ describe("Reservation Service", () => {
         mode: "shared",
       });
 
-      const reservations = await listReservations({ projectId: "project-1" });
+      const result = await listReservations({ projectId: "project-1" });
 
-      expect(reservations).toHaveLength(2);
+      expect(result.reservations).toHaveLength(2);
     });
 
     test("filters by agentId", async () => {
@@ -565,13 +565,13 @@ describe("Reservation Service", () => {
         mode: "shared",
       });
 
-      const reservations = await listReservations({
+      const result = await listReservations({
         projectId: "project-1",
         agentId: "agent-1",
       });
 
-      expect(reservations).toHaveLength(1);
-      expect(reservations[0]!.agentId).toBe("agent-1");
+      expect(result.reservations).toHaveLength(1);
+      expect(result.reservations[0]!.agentId).toBe("agent-1");
     });
 
     test("filters by filePath", async () => {
@@ -589,19 +589,19 @@ describe("Reservation Service", () => {
         mode: "shared",
       });
 
-      const reservations = await listReservations({
+      const result = await listReservations({
         projectId: "project-1",
         filePath: "src/index.ts",
       });
 
-      expect(reservations).toHaveLength(1);
-      expect(reservations[0]!.patterns).toContain("src/**/*.ts");
+      expect(result.reservations).toHaveLength(1);
+      expect(result.reservations[0]!.patterns).toContain("src/**/*.ts");
     });
 
     test("returns empty array for project with no reservations", async () => {
-      const reservations = await listReservations({ projectId: "project-999" });
+      const result = await listReservations({ projectId: "project-999" });
 
-      expect(reservations).toHaveLength(0);
+      expect(result.reservations).toHaveLength(0);
     });
 
     test("sorts by creation time (newest first)", async () => {
@@ -621,9 +621,9 @@ describe("Reservation Service", () => {
         mode: "shared",
       });
 
-      const reservations = await listReservations({ projectId: "project-1" });
+      const result = await listReservations({ projectId: "project-1" });
 
-      expect(reservations[0]!.agentId).toBe("agent-2"); // Newer one first
+      expect(result.reservations[0]!.agentId).toBe("agent-2"); // Newer one first
     });
   });
 
@@ -794,11 +794,11 @@ describe("Reservation Service", () => {
         mode: "exclusive",
       });
 
-      const conflicts = await listConflicts({ projectId: "project-1" });
-      expect(conflicts).toHaveLength(1);
-      expect(conflicts[0]!.status).toBe("open");
-      expect(conflicts[0]!.requesterId).toBe("agent-2");
-      expect(conflicts[0]!.existingReservationId).toBeDefined();
+      const result = await listConflicts({ projectId: "project-1" });
+      expect(result.conflicts).toHaveLength(1);
+      expect(result.conflicts[0]!.status).toBe("open");
+      expect(result.conflicts[0]!.requesterId).toBe("agent-2");
+      expect(result.conflicts[0]!.existingReservationId).toBeDefined();
     });
 
     test("resolves conflicts and filters by status", async () => {
@@ -816,8 +816,8 @@ describe("Reservation Service", () => {
         mode: "exclusive",
       });
 
-      const conflicts = await listConflicts({ projectId: "project-1" });
-      const conflictId = conflicts[0]!.conflictId;
+      const conflictsResult = await listConflicts({ projectId: "project-1" });
+      const conflictId = conflictsResult.conflicts[0]!.conflictId;
 
       const resolved = await resolveConflict({
         conflictId,
@@ -828,17 +828,17 @@ describe("Reservation Service", () => {
       expect(resolved.resolved).toBe(true);
       expect(resolved.conflict?.status).toBe("resolved");
 
-      const openConflicts = await listConflicts({
+      const openResult = await listConflicts({
         projectId: "project-1",
         status: "open",
       });
-      expect(openConflicts).toHaveLength(0);
+      expect(openResult.conflicts).toHaveLength(0);
 
-      const resolvedConflicts = await listConflicts({
+      const resolvedResult = await listConflicts({
         projectId: "project-1",
         status: "resolved",
       });
-      expect(resolvedConflicts).toHaveLength(1);
+      expect(resolvedResult.conflicts).toHaveLength(1);
     });
   });
 });
