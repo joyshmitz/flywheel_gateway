@@ -7,6 +7,11 @@
 
 import { type Context, Hono } from "hono";
 import { z } from "zod";
+import {
+  createCursor,
+  decodeCursor,
+  DEFAULT_PAGINATION,
+} from "@flywheel/shared/api/pagination";
 import { getLogger } from "../middleware/correlation";
 import {
   CheckpointError,
@@ -204,19 +209,45 @@ checkpoints.get("/:sessionId/checkpoints", async (c) => {
   try {
     const sessionId = c.req.param("sessionId");
     const limitParam = c.req.query("limit");
-    const parsedLimit = limitParam ? parseInt(limitParam, 10) : 50;
-    const limit = Number.isNaN(parsedLimit) ? 50 : Math.min(parsedLimit, 100);
+    const startingAfter = c.req.query("starting_after");
+    const endingBefore = c.req.query("ending_before");
+
+    const parsedLimit = limitParam ? parseInt(limitParam, 10) : DEFAULT_PAGINATION.limit;
+    const limit = Number.isNaN(parsedLimit)
+      ? DEFAULT_PAGINATION.limit
+      : Math.min(Math.max(1, parsedLimit), DEFAULT_PAGINATION.maxLimit);
 
     const allCheckpoints = await getAgentCheckpoints(sessionId);
 
-    // Apply limit
-    const checkpointList = allCheckpoints.slice(0, limit);
-    const hasMore = allCheckpoints.length > limit;
+    // Apply cursor-based pagination
+    let startIndex = 0;
+    if (startingAfter) {
+      const cursor = decodeCursor(startingAfter);
+      if (cursor) {
+        const cursorIndex = allCheckpoints.findIndex((chk) => chk.id === cursor.id);
+        if (cursorIndex !== -1) {
+          startIndex = cursorIndex + 1;
+        }
+      }
+    } else if (endingBefore) {
+      const cursor = decodeCursor(endingBefore);
+      if (cursor) {
+        const cursorIndex = allCheckpoints.findIndex((chk) => chk.id === cursor.id);
+        if (cursorIndex !== -1) {
+          startIndex = Math.max(0, cursorIndex - limit);
+        }
+      }
+    }
+
+    // Get limit+1 to check if there are more
+    const sliced = allCheckpoints.slice(startIndex, startIndex + limit + 1);
+    const hasMore = sliced.length > limit;
+    const pageItems = hasMore ? sliced.slice(0, limit) : sliced;
 
     const baseUrl = new URL(c.req.url).origin;
 
     // Add links to each checkpoint
-    const checkpointsWithLinks = checkpointList.map((chk) => ({
+    const checkpointsWithLinks = pageItems.map((chk) => ({
       id: chk.id,
       sessionId: chk.agentId,
       createdAt: chk.createdAt.toISOString(),
@@ -228,10 +259,24 @@ checkpoints.get("/:sessionId/checkpoints", async (c) => {
       },
     }));
 
-    return sendList(c, checkpointsWithLinks, {
+    // Build list options with cursors
+    const listOptions: Parameters<typeof sendList>[2] = {
       hasMore,
-      total: allCheckpoints.length,
-    });
+    };
+
+    if (pageItems.length > 0) {
+      const firstItem = pageItems[0]!;
+      const lastItem = pageItems[pageItems.length - 1]!;
+
+      if (hasMore) {
+        listOptions.nextCursor = createCursor(lastItem.id);
+      }
+      if (startIndex > 0) {
+        listOptions.prevCursor = createCursor(firstItem.id);
+      }
+    }
+
+    return sendList(c, checkpointsWithLinks, listOptions);
   } catch (error) {
     return handleError(error, c);
   }

@@ -416,11 +416,13 @@ export async function updateConfig(
 
   // Persist to database
   try {
-    await dcgConfigService.updateConfig({
-      enabledPacks: updates.enabledPacks,
-      disabledPacks: updates.disabledPacks,
+    const persistParams: dcgConfigService.UpdateConfigParams = {
       changeType: "bulk_update",
-    });
+    };
+    if (updates.enabledPacks) persistParams.enabledPacks = updates.enabledPacks;
+    if (updates.disabledPacks) persistParams.disabledPacks = updates.disabledPacks;
+
+    await dcgConfigService.updateConfig(persistParams);
   } catch (error) {
     log.debug({ error }, "Failed to persist config update (DB may not be available)");
   }
