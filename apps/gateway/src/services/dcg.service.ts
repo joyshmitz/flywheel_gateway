@@ -445,6 +445,7 @@ export async function addToAllowlist(entry: {
     id,
     ruleId: entry.ruleId,
     pattern: entry.pattern,
+    reason: entry.reason,
     approvedBy: entry.addedBy,
     expiresAt: entry.expiresAt,
     createdAt: now,
