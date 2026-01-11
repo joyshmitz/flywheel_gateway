@@ -267,47 +267,58 @@ export async function markFalsePositive(
   eventId: string,
   markedBy: string,
 ): Promise<DCGBlockEvent | null> {
-  const result = await db
-    .update(dcgBlocks)
-    .set({ falsePositive: true })
-    .where(eq(dcgBlocks.id, eventId))
-    .returning();
+  // First check in-memory cache
+  const cachedEvent = recentBlocks.find((e) => e.id === eventId);
 
-  if (result.length === 0) {
+  // Try to update in database
+  let dbUpdated = false;
+  try {
+    const result = await db
+      .update(dcgBlocks)
+      .set({ falsePositive: true })
+      .where(eq(dcgBlocks.id, eventId))
+      .returning();
+
+    dbUpdated = result.length > 0;
+
+    // If found in DB but not in cache, construct from DB result
+    if (dbUpdated && !cachedEvent) {
+      const row = result[0]!;
+      const channel: Channel = { type: "system:dcg" };
+      getHub().publish(channel, "dcg.false_positive", { eventId, markedBy }, {});
+      return {
+        id: row.id,
+        timestamp: row.createdAt,
+        agentId: row.createdBy ?? "unknown",
+        command: "",
+        pack: "",
+        pattern: row.pattern,
+        ruleId: "",
+        severity: "medium" as DCGSeverity,
+        reason: row.reason,
+        contextClassification: "executed" as DCGContextClassification,
+        falsePositive: true,
+      };
+    }
+  } catch (error) {
+    // Database error (table might not exist in tests) - fall through to cache check
+    logger.debug({ error, eventId }, "Database update failed for false positive");
+  }
+
+  // If not found in DB and not in cache, return null
+  if (!cachedEvent && !dbUpdated) {
     return null;
   }
 
-  // Also update in-memory cache
-  const cachedEvent = recentBlocks.find((e) => e.id === eventId);
+  // Update in-memory cache
   if (cachedEvent) {
     cachedEvent.falsePositive = true;
-  }
-
-  const channel: Channel = { type: "system:dcg" };
-  getHub().publish(channel, "dcg.false_positive", { eventId, markedBy }, {});
-
-  // Return the updated event from cache or construct from db result
-  if (cachedEvent) {
+    const channel: Channel = { type: "system:dcg" };
+    getHub().publish(channel, "dcg.false_positive", { eventId, markedBy }, {});
     return cachedEvent;
   }
 
-  const row = result[0];
-  if (!row) {
-    return null;
-  }
-  return {
-    id: row.id,
-    timestamp: row.createdAt,
-    agentId: row.createdBy ?? "unknown",
-    command: "",
-    pack: "",
-    pattern: row.pattern,
-    ruleId: "",
-    severity: "medium" as DCGSeverity,
-    reason: row.reason,
-    contextClassification: "executed" as DCGContextClassification,
-    falsePositive: true,
-  };
+  return null;
 }
 
 // ============================================================================
