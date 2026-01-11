@@ -427,6 +427,32 @@ describe("mail routes - conflict engine integration", () => {
     expect(data.error.code).toBe("MISSING_PARAMETERS");
   });
 
+  test("GET /mail/reservations/conflicts trims whitespace from patterns", async () => {
+    const { app } = createTestAppWithConflictEngine();
+
+    // Create a reservation
+    await app.request("/mail/reservations", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        projectId: "proj-1",
+        requesterId: "agent-1",
+        patterns: ["src/**/*.ts"],
+        exclusive: true,
+      }),
+    });
+
+    // Check with whitespace-padded patterns - should still detect conflict
+    const res = await app.request(
+      "/mail/reservations/conflicts?projectId=proj-1&requesterId=agent-2&patterns= src/index.ts , tests/foo.ts &exclusive=true",
+    );
+    expect(res.status).toBe(200);
+
+    const data = await res.json();
+    // Should detect the conflict despite leading/trailing whitespace in pattern
+    expect(data.data.hasConflicts).toBe(true);
+  });
+
   test("DELETE /mail/reservations/:id releases reservation", async () => {
     const { app, conflictEngine } = createTestAppWithConflictEngine();
 

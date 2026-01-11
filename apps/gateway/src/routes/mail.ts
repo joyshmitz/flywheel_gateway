@@ -25,7 +25,6 @@ import {
 } from "../services/agentmail";
 import {
   type ReservationConflictEngine,
-  type Reservation,
   createReservationConflictEngine,
 } from "../services/reservation-conflicts";
 import {
@@ -445,7 +444,7 @@ function createMailRoutes(
         );
       }
 
-      const patterns = patternsParam.split(",").filter((p) => p.trim());
+      const patterns = patternsParam.split(",").map((p) => p.trim()).filter((p) => p);
       const exclusive = exclusiveParam !== "false";
 
       const engine = c.get("conflictEngine");
