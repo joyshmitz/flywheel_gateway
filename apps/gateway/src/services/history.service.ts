@@ -576,7 +576,7 @@ export async function exportHistory(options: ExportOptions): Promise<string> {
     e.responseTokens,
     e.durationMs,
     e.outcome,
-    e.tags.join(";"),
+    escapeCSV(e.tags.join(";")),
     e.starred ? "true" : "false",
   ]);
 
