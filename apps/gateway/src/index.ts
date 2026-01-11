@@ -72,6 +72,7 @@ if (import.meta.main) {
             auth: createGuestAuthContext(), // TODO: Real auth
             subscriptions: initialSubscriptions,
             lastHeartbeat: new Date(),
+            pendingAcks: new Map(),
           },
         });
         if (upgraded) return undefined;

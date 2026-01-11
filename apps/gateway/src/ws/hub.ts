@@ -147,6 +147,7 @@ export class WebSocketHub {
       subscriptions: [],
       lastHeartbeat: ws.data.lastHeartbeat,
       cursors: {},
+      pendingAckCount: 0,
     };
   }
 
