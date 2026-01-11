@@ -35,7 +35,8 @@ export type UserChannel =
 export type SystemChannel =
   | { type: "system:health" }
   | { type: "system:metrics" }
-  | { type: "system:dcg" };
+  | { type: "system:dcg" }
+  | { type: "system:fleet" };
 
 /**
  * All channel types.
@@ -61,7 +62,8 @@ export type ChannelTypePrefix =
   | "user:notifications"
   | "system:health"
   | "system:metrics"
-  | "system:dcg";
+  | "system:dcg"
+  | "system:fleet";
 
 /**
  * Convert a channel to its string representation.
@@ -90,6 +92,7 @@ export function channelToString(channel: Channel): string {
     case "system:health":
     case "system:metrics":
     case "system:dcg":
+    case "system:fleet":
       return channel.type;
   }
 }
@@ -110,6 +113,9 @@ export function parseChannel(str: string): Channel | undefined {
   }
   if (str === "system:dcg") {
     return { type: "system:dcg" };
+  }
+  if (str === "system:fleet") {
+    return { type: "system:fleet" };
   }
 
   // Channels with IDs: split into type and ID
@@ -191,6 +197,7 @@ export function getChannelResourceId(channel: Channel): string | undefined {
     case "system:health":
     case "system:metrics":
     case "system:dcg":
+    case "system:fleet":
       return undefined;
   }
 }

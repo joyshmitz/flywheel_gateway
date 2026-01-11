@@ -41,6 +41,23 @@ export type MessageType =
   | "checkpoint.imported"
   // Agent mail
   | "mail.received"
+  // Fleet (RU)
+  | "fleet.repo_added"
+  | "fleet.repo_removed"
+  | "fleet.repo_updated"
+  | "fleet.sync_started"
+  | "fleet.sync_progress"
+  | "fleet.sync_completed"
+  | "fleet.sync_cancelled"
+  | "fleet.sweep_created"
+  | "fleet.sweep_started"
+  | "fleet.sweep_progress"
+  | "fleet.sweep_completed"
+  | "fleet.sweep_failed"
+  | "fleet.sweep_cancelled"
+  | "fleet.plan_created"
+  | "fleet.plan_approved"
+  | "fleet.plan_rejected"
   // System
   | "health.ping"
   | "error";
