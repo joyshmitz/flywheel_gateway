@@ -210,6 +210,36 @@ export function channelsEqual(a: Channel, b: Channel): boolean {
 }
 
 /**
+ * Channel types that require explicit acknowledgment.
+ * Messages on these channels will be replayed if not acknowledged before disconnection.
+ */
+export const ACK_REQUIRED_CHANNELS: ReadonlySet<ChannelTypePrefix> = new Set([
+  "workspace:conflicts",
+  "workspace:reservations",
+  "user:notifications",
+]);
+
+/**
+ * Check if a channel requires acknowledgment.
+ *
+ * @param channel - The channel to check
+ * @returns true if messages on this channel require ack
+ */
+export function channelRequiresAck(channel: Channel): boolean {
+  return ACK_REQUIRED_CHANNELS.has(channel.type);
+}
+
+/**
+ * Check if a channel type prefix requires acknowledgment.
+ *
+ * @param prefix - The channel type prefix
+ * @returns true if messages on channels with this prefix require ack
+ */
+export function channelPrefixRequiresAck(prefix: ChannelTypePrefix): boolean {
+  return ACK_REQUIRED_CHANNELS.has(prefix);
+}
+
+/**
  * Check if a channel matches a pattern.
  * Patterns can use '*' as wildcard for the ID part.
  *

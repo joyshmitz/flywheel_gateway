@@ -153,6 +153,16 @@ export interface ReconnectMessage {
 }
 
 /**
+ * Acknowledge receipt of a message.
+ * Required for channels with ackRequired flag.
+ */
+export interface AckMessage {
+  type: "ack";
+  /** Message ID(s) to acknowledge */
+  messageIds: string[];
+}
+
+/**
  * All client -> server message types.
  */
 export type ClientMessage =
@@ -160,7 +170,8 @@ export type ClientMessage =
   | UnsubscribeMessage
   | BackfillMessage
   | PingMessage
-  | ReconnectMessage;
+  | ReconnectMessage
+  | AckMessage;
 
 // ============================================================================
 // Server -> Client Messages
@@ -204,6 +215,8 @@ export interface ChannelMessage {
   type: "message";
   /** The hub message */
   message: HubMessage;
+  /** Whether this message requires acknowledgment */
+  ackRequired?: boolean;
 }
 
 /**
@@ -274,6 +287,17 @@ export interface ErrorMessage {
 }
 
 /**
+ * Acknowledgment response.
+ */
+export interface AckResponseMessage {
+  type: "ack_response";
+  /** Message IDs that were acknowledged */
+  acknowledged: string[];
+  /** Message IDs that were not found (already expired or invalid) */
+  notFound: string[];
+}
+
+/**
  * All server -> client message types.
  */
 export type ServerMessage =
@@ -285,7 +309,8 @@ export type ServerMessage =
   | PongMessage
   | HeartbeatMessage
   | ReconnectAckMessage
-  | ErrorMessage;
+  | ErrorMessage
+  | AckResponseMessage;
 
 // ============================================================================
 // Message Helpers
@@ -358,6 +383,15 @@ export function parseClientMessage(json: string): ClientMessage | undefined {
           .filter(([, value]) => typeof value === "string")
           .map(([key, value]) => [key, value] as [string, string]);
         return { type: "reconnect", cursors: Object.fromEntries(entries) };
+      }
+
+      case "ack": {
+        if (!Array.isArray(parsed.messageIds)) return undefined;
+        const messageIds = parsed.messageIds.filter(
+          (id: unknown) => typeof id === "string",
+        ) as string[];
+        if (messageIds.length === 0) return undefined;
+        return { type: "ack", messageIds };
       }
 
       default:

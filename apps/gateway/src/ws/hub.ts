@@ -14,11 +14,13 @@ import { logger } from "../services/logger";
 import {
   type Channel,
   type ChannelTypePrefix,
+  channelRequiresAck,
   channelToString,
   getChannelTypePrefix,
   parseChannel,
 } from "./channels";
 import {
+  type AckResponseMessage,
   type BackfillResponse,
   type ChannelMessage,
   createHubMessage,
@@ -50,6 +52,18 @@ export interface AuthContext {
 }
 
 /**
+ * A message pending acknowledgment.
+ */
+export interface PendingAck {
+  /** The message awaiting ack */
+  message: HubMessage;
+  /** When the message was sent */
+  sentAt: Date;
+  /** Number of times this message has been replayed */
+  replayCount: number;
+}
+
+/**
  * Data attached to each WebSocket connection.
  */
 export interface ConnectionData {
@@ -63,6 +77,8 @@ export interface ConnectionData {
   subscriptions: Map<string, string | undefined>;
   /** Last heartbeat received */
   lastHeartbeat: Date;
+  /** Messages pending acknowledgment (message ID -> pending ack) */
+  pendingAcks: Map<string, PendingAck>;
 }
 
 /**
@@ -74,6 +90,8 @@ export interface ConnectionHandle {
   subscriptions: string[];
   lastHeartbeat: Date;
   cursors: Record<string, string>;
+  /** Number of messages pending acknowledgment */
+  pendingAckCount: number;
 }
 
 /**
@@ -262,6 +280,7 @@ export class WebSocketHub {
     metadata?: MessageMetadata,
   ): HubMessage {
     const channelStr = channelToString(channel);
+    const requiresAck = channelRequiresAck(channel);
 
     // Create message (cursor will be set by buffer)
     const message = createHubMessage(
@@ -278,7 +297,11 @@ export class WebSocketHub {
     // Fan out to subscribers
     const subs = this.subscribers.get(channelStr);
     if (subs && subs.size > 0) {
-      const serverMessage: ChannelMessage = { type: "message", message };
+      const serverMessage: ChannelMessage = {
+        type: "message",
+        message,
+        ...(requiresAck && { ackRequired: true }),
+      };
       const json = serializeServerMessage(serverMessage);
 
       for (const connId of subs) {
@@ -288,6 +311,15 @@ export class WebSocketHub {
             ws.send(json);
             // Update the connection's cursor for this channel
             ws.data.subscriptions.set(channelStr, message.cursor);
+
+            // Track pending ack if required
+            if (requiresAck) {
+              ws.data.pendingAcks.set(message.id, {
+                message,
+                sentAt: new Date(),
+                replayCount: 0,
+              });
+            }
           } catch (err) {
             logger.warn(
               { connectionId: connId, channel: channelStr, error: err },
@@ -300,6 +332,104 @@ export class WebSocketHub {
 
     this.messageCount++;
     return message;
+  }
+
+  /**
+   * Handle acknowledgment of messages from a client.
+   *
+   * @param connectionId - The connection acknowledging messages
+   * @param messageIds - IDs of messages being acknowledged
+   * @returns Acknowledgment result
+   */
+  handleAck(
+    connectionId: string,
+    messageIds: string[],
+  ): AckResponseMessage {
+    const ws = this.connections.get(connectionId);
+    if (!ws) {
+      return {
+        type: "ack_response",
+        acknowledged: [],
+        notFound: messageIds,
+      };
+    }
+
+    const acknowledged: string[] = [];
+    const notFound: string[] = [];
+
+    for (const msgId of messageIds) {
+      if (ws.data.pendingAcks.has(msgId)) {
+        ws.data.pendingAcks.delete(msgId);
+        acknowledged.push(msgId);
+      } else {
+        notFound.push(msgId);
+      }
+    }
+
+    if (acknowledged.length > 0) {
+      logger.debug(
+        { connectionId, acknowledged: acknowledged.length },
+        "Messages acknowledged",
+      );
+    }
+
+    return {
+      type: "ack_response",
+      acknowledged,
+      notFound,
+    };
+  }
+
+  /**
+   * Get pending acks for a connection.
+   *
+   * @param connectionId - The connection ID
+   * @returns Array of pending ack messages
+   */
+  getPendingAcks(connectionId: string): PendingAck[] {
+    const ws = this.connections.get(connectionId);
+    if (!ws) return [];
+    return Array.from(ws.data.pendingAcks.values());
+  }
+
+  /**
+   * Replay pending acks for a connection (e.g., on reconnect).
+   *
+   * @param connectionId - The connection ID
+   * @returns Number of messages replayed
+   */
+  replayPendingAcks(connectionId: string): number {
+    const ws = this.connections.get(connectionId);
+    if (!ws) return 0;
+
+    let replayed = 0;
+    for (const [msgId, pending] of ws.data.pendingAcks) {
+      const serverMessage: ChannelMessage = {
+        type: "message",
+        message: pending.message,
+        ackRequired: true,
+      };
+      try {
+        ws.send(serializeServerMessage(serverMessage));
+        pending.replayCount++;
+        pending.sentAt = new Date();
+        replayed++;
+      } catch (err) {
+        logger.warn(
+          { connectionId, messageId: msgId, error: err },
+          "Failed to replay pending ack message",
+        );
+      }
+    }
+
+    if (replayed > 0) {
+      logger.info(
+        { connectionId, replayed },
+        "Replayed pending ack messages on reconnect",
+      );
+    }
+
+    return replayed;
   }
 
   /**
@@ -370,7 +500,7 @@ export class WebSocketHub {
   handleReconnect(
     connectionId: string,
     cursors: Record<string, string>,
-  ): ReconnectAckMessage {
+  ): ReconnectAckMessage & { pendingAcksReplayed?: number } {
     const ws = this.connections.get(connectionId);
     if (!ws) {
       return {
@@ -392,6 +522,9 @@ export class WebSocketHub {
       // Subscribe to the channel
       const result = this.subscribe(connectionId, channel, cursor);
 
+      // Check if this channel requires acks
+      const requiresAck = channelRequiresAck(channel);
+
       // Track results
       if (result.missedMessages) {
         replayed[channelStr] = result.missedMessages.length;
@@ -401,9 +534,19 @@ export class WebSocketHub {
           const serverMessage: ChannelMessage = {
             type: "message",
             message: msg,
+            ...(requiresAck && { ackRequired: true }),
           };
           try {
             ws.send(serializeServerMessage(serverMessage));
+
+            // Track as pending ack if required
+            if (requiresAck) {
+              ws.data.pendingAcks.set(msg.id, {
+                message: msg,
+                sentAt: new Date(),
+                replayCount: 1, // This is a replay
+              });
+            }
           } catch (err) {
             logger.warn(
               { connectionId, error: err },
@@ -425,8 +568,11 @@ export class WebSocketHub {
       }
     }
 
+    // Also replay any previously pending acks that weren't acknowledged
+    const pendingAcksReplayed = this.replayPendingAcks(connectionId);
+
     logger.info(
-      { connectionId, replayed, expired: expired.length },
+      { connectionId, replayed, expired: expired.length, pendingAcksReplayed },
       "Reconnection handled",
     );
 
@@ -435,6 +581,7 @@ export class WebSocketHub {
       replayed,
       expired,
       newCursors,
+      ...(pendingAcksReplayed > 0 && { pendingAcksReplayed }),
     };
   }
 
@@ -456,6 +603,7 @@ export class WebSocketHub {
       subscriptions: Array.from(ws.data.subscriptions.keys()),
       lastHeartbeat: ws.data.lastHeartbeat,
       cursors,
+      pendingAckCount: ws.data.pendingAcks.size,
     };
   }
 

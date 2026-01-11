@@ -208,6 +208,13 @@ export function handleWSMessage(
         break;
       }
 
+      case "ack": {
+        // Handle acknowledgment of messages
+        const ackResponse = hub.handleAck(connectionId, clientMsg.messageIds);
+        ws.send(serializeServerMessage(ackResponse));
+        break;
+      }
+
       default:
         logger.warn(
           { connectionId, type: (clientMsg as { type: string }).type },
