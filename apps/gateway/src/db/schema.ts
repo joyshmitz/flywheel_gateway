@@ -142,6 +142,61 @@ export const dcgAllowlist = sqliteTable(
   (table) => [uniqueIndex("dcg_allowlist_rule_id_idx").on(table.ruleId)],
 );
 
+/**
+ * DCG Pending Exceptions - Allow-once workflow for bypassing false positives.
+ *
+ * Workflow:
+ * 1. DCG blocks a command and generates a short code
+ * 2. User reviews blocked command and decides it's safe
+ * 3. User approves via API/UI using short code
+ * 4. DCG allows that specific command+hash once
+ * 5. Same command requires new approval
+ */
+export const dcgPendingExceptions = sqliteTable(
+  "dcg_pending_exceptions",
+  {
+    id: text("id").primaryKey(),
+    shortCode: text("short_code").unique().notNull(), // e.g., "abc123"
+
+    // Command details
+    command: text("command").notNull(), // The blocked command
+    commandHash: text("command_hash").notNull(), // SHA256 for verification
+
+    // Rule that triggered block
+    pack: text("pack").notNull(),
+    ruleId: text("rule_id").notNull(),
+    reason: text("reason").notNull(),
+    severity: text("severity").notNull(), // low | medium | high | critical
+
+    // Context
+    agentId: text("agent_id"),
+    blockEventId: text("block_event_id"), // Reference to dcgBlocks entry
+
+    // Status: pending | approved | denied | expired | executed
+    status: text("status").notNull().default("pending"),
+    approvedBy: text("approved_by"),
+    approvedAt: integer("approved_at", { mode: "timestamp" }),
+    deniedBy: text("denied_by"),
+    deniedAt: integer("denied_at", { mode: "timestamp" }),
+    denyReason: text("deny_reason"),
+
+    // Execution tracking
+    executedAt: integer("executed_at", { mode: "timestamp" }),
+    executionResult: text("execution_result"), // success | failed
+
+    // Timestamps
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(), // Short TTL
+  },
+  (table) => [
+    uniqueIndex("dcg_pending_short_code_idx").on(table.shortCode),
+    index("dcg_pending_status_idx").on(table.status),
+    index("dcg_pending_agent_idx").on(table.agentId),
+    index("dcg_pending_expires_idx").on(table.expiresAt),
+    index("dcg_pending_command_hash_idx").on(table.commandHash),
+  ],
+);
+
 // ============================================================================
 // RU (Repo Updater) Fleet Management Tables
 // ============================================================================
