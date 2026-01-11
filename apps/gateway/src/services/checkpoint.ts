@@ -6,6 +6,12 @@
  * - Disaster recovery
  * - Session handoffs
  * - Context window refreshes
+ *
+ * Features:
+ * - Delta-based progressive checkpointing
+ * - Optional compression (gzip) for storage efficiency
+ * - Auto-checkpointing triggers (interval, message count, token threshold)
+ * - Compaction for delta chain management
  */
 
 import type {
@@ -13,17 +19,67 @@ import type {
   CheckpointMetadata,
   TokenUsage,
 } from "@flywheel/agent-drivers";
-import { and, desc, eq, inArray, lt } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { ulid } from "ulid";
 import { checkpoints as checkpointsTable, db } from "../db";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
+
+// ============================================================================
+// Compression Utilities
+// ============================================================================
+
+/**
+ * Compression statistics for monitoring.
+ */
+export interface CompressionStats {
+  originalSize: number;
+  compressedSize: number;
+  ratio: number;
+  durationMs: number;
+}
+
+/**
+ * Compress data using gzip.
+ * Returns base64-encoded compressed data for JSON storage compatibility.
+ */
+export function compressData(data: string): {
+  compressed: string;
+  stats: CompressionStats;
+} {
+  const startTime = performance.now();
+  const encoder = new TextEncoder();
+  const inputBuffer = encoder.encode(data);
+  const compressed = Bun.gzipSync(inputBuffer);
+  const base64 = Buffer.from(compressed).toString("base64");
+  const durationMs = performance.now() - startTime;
+
+  return {
+    compressed: base64,
+    stats: {
+      originalSize: inputBuffer.length,
+      compressedSize: compressed.length,
+      ratio: inputBuffer.length / compressed.length,
+      durationMs,
+    },
+  };
+}
+
+/**
+ * Decompress gzip data from base64.
+ */
+export function decompressData(base64Data: string): string {
+  const compressed = Buffer.from(base64Data, "base64");
+  const decompressed = Bun.gunzipSync(compressed);
+  const decoder = new TextDecoder();
+  return decoder.decode(decompressed);
+}
 
 // ============================================================================
 // Types
 // ============================================================================
 
 /**
- * Extended checkpoint with delta support.
+ * Extended checkpoint with delta and compression support.
  */
 export interface DeltaCheckpoint extends Checkpoint {
   /** Parent checkpoint ID for delta chain */
@@ -36,6 +92,18 @@ export interface DeltaCheckpoint extends Checkpoint {
     timestamp: Date;
     content: unknown;
   }>;
+  /** Compression metadata */
+  compression?: {
+    enabled: boolean;
+    algorithm: "gzip";
+    originalSize: number;
+    compressedSize: number;
+    ratio: number;
+  };
+  /** Compressed conversation history (base64 gzip) */
+  compressedConversationHistory?: string;
+  /** Compressed tool state (base64 gzip) */
+  compressedToolState?: string;
 }
 
 /**
@@ -57,6 +125,8 @@ export interface CreateCheckpointOptions {
   delta?: boolean;
   /** Include file snapshots in checkpoint */
   includeFileSnapshots?: boolean;
+  /** Enable gzip compression for large checkpoints (recommended for >10KB) */
+  compress?: boolean;
 }
 
 /**
@@ -84,6 +154,9 @@ export interface ExportedCheckpoint {
 // Storage
 // ============================================================================
 
+/**
+ * Normalize checkpoint data, including decompression if needed.
+ */
 function normalizeCheckpoint(checkpoint: DeltaCheckpoint): DeltaCheckpoint {
   const createdAt =
     checkpoint.createdAt instanceof Date
@@ -98,9 +171,39 @@ function normalizeCheckpoint(checkpoint: DeltaCheckpoint): DeltaCheckpoint {
         : new Date(entry.timestamp),
   }));
 
+  // Handle decompression if checkpoint was compressed
+  let conversationHistory = checkpoint.conversationHistory;
+  let toolState = checkpoint.toolState;
+
+  if (checkpoint.compression?.enabled) {
+    try {
+      if (checkpoint.compressedConversationHistory) {
+        const decompressed = decompressData(
+          checkpoint.compressedConversationHistory,
+        );
+        conversationHistory = JSON.parse(decompressed);
+      }
+      if (checkpoint.compressedToolState) {
+        const decompressed = decompressData(checkpoint.compressedToolState);
+        toolState = JSON.parse(decompressed);
+      }
+    } catch (error) {
+      const log = getLogger();
+      log.error(
+        { error, checkpointId: checkpoint.id },
+        "[CHECKPOINT] Failed to decompress checkpoint data",
+      );
+      // Return checkpoint with empty data rather than crashing
+      conversationHistory = [];
+      toolState = {};
+    }
+  }
+
   return {
     ...checkpoint,
     createdAt,
+    conversationHistory,
+    toolState,
     ...(deltaEntries ? { deltaEntries } : {}),
   };
 }
@@ -133,7 +236,7 @@ export async function createCheckpoint(
     contextPack?: unknown;
   },
   options: CreateCheckpointOptions = {},
-): Promise<CheckpointMetadata> {
+): Promise<CheckpointMetadata & { compressionStats?: CompressionStats }> {
   const log = getLogger();
   const correlationId = getCorrelationId();
   const checkpointId = generateCheckpointId();
@@ -143,6 +246,54 @@ export async function createCheckpoint(
   const lastCheckpoint = await getLatestCheckpoint(agentId);
   const lastCheckpointId = lastCheckpoint?.id;
 
+  // Optionally compress large data
+  let compressionMeta: DeltaCheckpoint["compression"];
+  let compressedConversationHistory: string | undefined;
+  let compressedToolState: string | undefined;
+  let totalCompressionStats: CompressionStats | undefined;
+
+  if (options.compress) {
+    const historyJson = JSON.stringify(state.conversationHistory);
+    const toolStateJson = JSON.stringify(state.toolState);
+
+    const historyResult = compressData(historyJson);
+    const toolStateResult = compressData(toolStateJson);
+
+    compressedConversationHistory = historyResult.compressed;
+    compressedToolState = toolStateResult.compressed;
+
+    const totalOriginal =
+      historyResult.stats.originalSize + toolStateResult.stats.originalSize;
+    const totalCompressed =
+      historyResult.stats.compressedSize + toolStateResult.stats.compressedSize;
+
+    compressionMeta = {
+      enabled: true,
+      algorithm: "gzip",
+      originalSize: totalOriginal,
+      compressedSize: totalCompressed,
+      ratio: totalOriginal / totalCompressed,
+    };
+
+    totalCompressionStats = {
+      originalSize: totalOriginal,
+      compressedSize: totalCompressed,
+      ratio: totalOriginal / totalCompressed,
+      durationMs:
+        historyResult.stats.durationMs + toolStateResult.stats.durationMs,
+    };
+
+    log.debug(
+      {
+        agentId,
+        checkpointId,
+        compression: compressionMeta,
+        correlationId,
+      },
+      `[CHECKPOINT] Compressed checkpoint data (ratio: ${compressionMeta.ratio.toFixed(2)}x)`,
+    );
+  }
+
   // Build checkpoint
   const checkpoint: DeltaCheckpoint = {
     id: checkpointId,
@@ -151,10 +302,15 @@ export async function createCheckpoint(
     tokenUsage: state.tokenUsage,
     description: options.description,
     tags: options.tags,
-    conversationHistory: state.conversationHistory,
-    toolState: state.toolState,
+    // Store uncompressed if not compressing, or leave undefined if compressed
+    conversationHistory: options.compress ? [] : state.conversationHistory,
+    toolState: options.compress ? {} : state.toolState,
     contextPack: state.contextPack,
     isDelta: false,
+    // Compression fields
+    compression: compressionMeta,
+    compressedConversationHistory,
+    compressedToolState,
     parentCheckpointId: undefined,
   };
 
@@ -178,10 +334,12 @@ export async function createCheckpoint(
       agentId,
       checkpointId,
       isDelta: checkpoint.isDelta,
+      compressed: !!options.compress,
+      compressionRatio: compressionMeta?.ratio,
       tokenUsage: state.tokenUsage.totalTokens,
       correlationId,
     },
-    `[CHECKPOINT] Created checkpoint ${checkpointId} for agent ${agentId}`,
+    `[CHECKPOINT] Created checkpoint ${checkpointId} for agent ${agentId}${options.compress ? ` (compressed ${compressionMeta?.ratio.toFixed(2)}x)` : ""}`,
   );
 
   return {
@@ -191,6 +349,7 @@ export async function createCheckpoint(
     tokenUsage: state.tokenUsage,
     description: options.description,
     tags: options.tags,
+    compressionStats: totalCompressionStats,
   };
 }
 

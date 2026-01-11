@@ -8,7 +8,9 @@ import { agents, db } from "../db";
 import {
   CheckpointError,
   type CreateCheckpointOptions,
+  compressData,
   createCheckpoint,
+  decompressData,
   deleteCheckpoint,
   exportCheckpoint,
   getAgentCheckpoints,
@@ -435,6 +437,96 @@ describe("Checkpoint Service", () => {
 
       const deleted = await pruneCheckpoints(uniqueAgentId, 5);
       expect(deleted).toBe(0);
+    });
+  });
+
+  describe("compression", () => {
+    test("compressData and decompressData are inverse operations", () => {
+      const original = JSON.stringify({
+        messages: [
+          { role: "user", content: "Hello, how are you?" },
+          { role: "assistant", content: "I am doing well, thank you for asking!" },
+        ],
+        toolState: { files: ["file1.ts", "file2.ts"], workingDir: "/home/user" },
+      });
+
+      const { compressed, stats } = compressData(original);
+      expect(compressed).toBeDefined();
+      expect(stats.originalSize).toBeGreaterThan(0);
+      expect(stats.compressedSize).toBeGreaterThan(0);
+      expect(stats.ratio).toBeGreaterThan(0);
+
+      const decompressed = decompressData(compressed);
+      expect(decompressed).toBe(original);
+    });
+
+    test("compression achieves meaningful ratio for typical data", () => {
+      // Create a large-ish payload similar to real checkpoints
+      const largeContent = {
+        messages: Array.from({ length: 50 }, (_, i) => ({
+          role: i % 2 === 0 ? "user" : "assistant",
+          content: `This is message ${i} with some content that should compress well due to repetition.`,
+        })),
+        toolState: {
+          files: Array.from({ length: 20 }, (_, i) => `/path/to/file${i}.ts`),
+          workingDir: "/home/user/project",
+        },
+      };
+
+      const original = JSON.stringify(largeContent);
+      const { stats } = compressData(original);
+
+      // Expect at least 2x compression for repetitive JSON
+      expect(stats.ratio).toBeGreaterThan(2);
+    });
+
+    test("createCheckpoint with compression stores compressed data", async () => {
+      const uniqueAgentId = `agent-compress-${Date.now()}`;
+      await ensureAgent(uniqueAgentId);
+
+      const largeHistory = Array.from({ length: 20 }, (_, i) => ({
+        role: i % 2 === 0 ? "user" : "assistant",
+        content: `Message ${i} with some content.`,
+      }));
+
+      const metadata = await createCheckpoint(
+        uniqueAgentId,
+        {
+          conversationHistory: largeHistory,
+          toolState: { compressed: true },
+          tokenUsage: testTokenUsage,
+        },
+        { compress: true },
+      );
+
+      expect(metadata.id).toMatch(/^chk_[a-z0-9]+$/);
+      expect(metadata.compressionStats).toBeDefined();
+      expect(metadata.compressionStats?.ratio).toBeGreaterThan(1);
+
+      // Retrieve and verify decompression works
+      const restored = await restoreCheckpoint(metadata.id);
+      expect(restored.conversationHistory).toEqual(largeHistory);
+      expect(restored.toolState).toEqual({ compressed: true });
+    });
+
+    test("createCheckpoint without compression stores uncompressed data", async () => {
+      const uniqueAgentId = `agent-nocompress-${Date.now()}`;
+      await ensureAgent(uniqueAgentId);
+
+      const metadata = await createCheckpoint(
+        uniqueAgentId,
+        {
+          conversationHistory: [{ role: "user", content: "Test" }],
+          toolState: { test: true },
+          tokenUsage: testTokenUsage,
+        },
+        { compress: false },
+      );
+
+      expect(metadata.compressionStats).toBeUndefined();
+
+      const restored = await restoreCheckpoint(metadata.id);
+      expect(restored.conversationHistory).toEqual([{ role: "user", content: "Test" }]);
     });
   });
 });
