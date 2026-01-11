@@ -291,12 +291,16 @@ export async function spawnAgent(config: {
       }
       agents.delete(agentId);
     }
-    // Mark agent as failed in lifecycle state
-    markAgentFailed(agentId, "error", {
-      code: "SPAWN_FAILED",
-      message: String(error),
-    });
-    removeAgentState(agentId);
+    // Mark agent as failed in lifecycle state, then clean up state.
+    // Use try-finally to ensure removeAgentState is always called even if markAgentFailed throws.
+    try {
+      markAgentFailed(agentId, "error", {
+        code: "SPAWN_FAILED",
+        message: String(error),
+      });
+    } finally {
+      removeAgentState(agentId);
+    }
 
     // Update DB status to failed
     try {
@@ -489,29 +493,6 @@ export async function terminateAgent(
 
   try {
     await drv.terminate(agentId, graceful);
-    agents.delete(agentId);
-
-    // Stop event monitoring
-    const monitor = activeMonitors.get(agentId);
-    if (monitor) {
-      monitor.abort();
-      activeMonitors.delete(agentId);
-    }
-
-    // Stop auto-checkpointing
-    stopAutoCheckpoint(agentId);
-
-    // Clean up output buffer
-    cleanupOutputBuffer(agentId);
-
-    // Update DB status
-    await db
-      .update(agentsTable)
-      .set({ status: "terminated", updatedAt: new Date() })
-      .where(eq(agentsTable.id, agentId));
-
-    // Mark as fully terminated
-    markAgentTerminated(agentId);
 
     log.info({ agentId, graceful }, "Agent terminated");
 
@@ -539,6 +520,41 @@ export async function terminateAgent(
       "DRIVER_COMMUNICATION_ERROR",
       `Failed to terminate: ${error}`,
     );
+  } finally {
+    // Always clean up local state, even if driver termination fails.
+    // This prevents orphaned entries in the agents map and ensures
+    // resources are released regardless of the termination outcome.
+    agents.delete(agentId);
+
+    // Stop event monitoring
+    const monitor = activeMonitors.get(agentId);
+    if (monitor) {
+      monitor.abort();
+      activeMonitors.delete(agentId);
+    }
+
+    // Stop auto-checkpointing
+    stopAutoCheckpoint(agentId);
+
+    // Clean up output buffer
+    cleanupOutputBuffer(agentId);
+
+    // Update DB status - use terminated even on error since we've cleaned up
+    try {
+      await db
+        .update(agentsTable)
+        .set({ status: "terminated", updatedAt: new Date() })
+        .where(eq(agentsTable.id, agentId));
+    } catch (dbError) {
+      log.error({ dbError, agentId }, "Failed to update agent status in DB");
+    }
+
+    // Mark as fully terminated in state machine
+    try {
+      markAgentTerminated(agentId);
+    } catch {
+      // Ignore - may already be in terminal state from markAgentFailed
+    }
   }
 }
 

@@ -145,14 +145,21 @@ accounts.get("/byoa-status", async (c) => {
 accounts.get("/profiles", async (c) => {
   try {
     const workspaceId = c.req.query("workspaceId");
-    const provider = c.req.query("provider") as ProviderId | undefined;
+    const providerParam = c.req.query("provider");
     const statusParam = c.req.query("status");
     const limitParam = c.req.query("limit");
 
     // Build options object conditionally (for exactOptionalPropertyTypes)
     const options: Parameters<typeof listProfiles>[0] = {};
     if (workspaceId) options.workspaceId = workspaceId;
-    if (provider) options.provider = provider;
+    // Validate provider parameter - only include if valid
+    if (providerParam) {
+      const providerResult = ProviderSchema.safeParse(providerParam);
+      if (providerResult.success) {
+        options.provider = providerResult.data;
+      }
+      // Invalid provider values are silently ignored (filtered out)
+    }
     if (statusParam) {
       // Validate each status value, filtering out any invalid ones
       const validStatuses = statusParam
