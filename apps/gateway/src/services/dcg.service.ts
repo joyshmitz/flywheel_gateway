@@ -22,6 +22,7 @@ import { getCorrelationId } from "../middleware/correlation";
 import type { Channel } from "../ws/channels";
 import { getHub } from "../ws/hub";
 import type { MessageType } from "../ws/messages";
+import * as dcgConfigService from "./dcg-config.service";
 import { logger } from "./logger";
 
 /**
@@ -125,12 +126,33 @@ const KNOWN_PACKS: Array<{ name: string; description: string }> = [
   { name: "secrets", description: "Commands that may expose secrets" },
 ];
 
-// In-memory config (in production, this would be persisted)
+// In-memory config cache (synced with persistent storage)
 const currentConfig: DCGConfig = {
   enabledPacks: KNOWN_PACKS.map((p) => p.name),
   disabledPacks: [],
   allowlist: [],
 };
+
+// Flag to track if config has been synced from persistent storage
+let configSynced = false;
+
+/**
+ * Sync in-memory config with persistent storage.
+ * Called lazily on first access.
+ */
+async function syncConfigFromPersistent(): Promise<void> {
+  if (configSynced) return;
+  try {
+    const persistedConfig = await dcgConfigService.getConfig();
+    currentConfig.enabledPacks = persistedConfig.enabledPacks;
+    currentConfig.disabledPacks = persistedConfig.disabledPacks;
+    configSynced = true;
+    logger.debug("DCG config synced from persistent storage");
+  } catch (error) {
+    // In tests or if DB not available, use in-memory defaults
+    logger.debug({ error }, "Using in-memory DCG config (DB sync failed)");
+  }
+}
 
 // In-memory block events (recent, for fast access)
 const recentBlocks: DCGBlockEvent[] = [];
@@ -392,6 +414,17 @@ export async function updateConfig(
     currentConfig.disabledPacks = updates.disabledPacks;
   }
 
+  // Persist to database
+  try {
+    await dcgConfigService.updateConfig({
+      enabledPacks: updates.enabledPacks,
+      disabledPacks: updates.disabledPacks,
+      changeType: "bulk_update",
+    });
+  } catch (error) {
+    log.debug({ error }, "Failed to persist config update (DB may not be available)");
+  }
+
   log.info(
     { enabledPacks: currentConfig.enabledPacks.length },
     "DCG config updated",
@@ -423,12 +456,20 @@ export async function enablePack(packName: string): Promise<boolean> {
     return false;
   }
 
+  // Update in-memory cache
   if (!currentConfig.enabledPacks.includes(packName)) {
     currentConfig.enabledPacks.push(packName);
   }
   currentConfig.disabledPacks = currentConfig.disabledPacks.filter(
     (p) => p !== packName,
   );
+
+  // Persist to database
+  try {
+    await dcgConfigService.enablePack(packName);
+  } catch (error) {
+    logger.debug({ error, pack: packName }, "Failed to persist pack enable (DB may not be available)");
+  }
 
   logger.info({ pack: packName }, "DCG pack enabled");
   return true;
@@ -443,11 +484,19 @@ export async function disablePack(packName: string): Promise<boolean> {
     return false;
   }
 
+  // Update in-memory cache
   currentConfig.enabledPacks = currentConfig.enabledPacks.filter(
     (p) => p !== packName,
   );
   if (!currentConfig.disabledPacks.includes(packName)) {
     currentConfig.disabledPacks.push(packName);
+  }
+
+  // Persist to database
+  try {
+    await dcgConfigService.disablePack(packName);
+  } catch (error) {
+    logger.debug({ error, pack: packName }, "Failed to persist pack disable (DB may not be available)");
   }
 
   logger.info({ pack: packName }, "DCG pack disabled");

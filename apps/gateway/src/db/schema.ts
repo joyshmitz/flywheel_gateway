@@ -197,6 +197,44 @@ export const dcgPendingExceptions = sqliteTable(
   ],
 );
 
+/**
+ * DCG Configuration - Persisted pack settings and severity modes.
+ *
+ * Replaces in-memory config for persistence across restarts and
+ * consistent state across multiple instances.
+ */
+export const dcgConfig = sqliteTable("dcg_config", {
+  id: text("id").primaryKey(), // "current" for active config
+  enabledPacks: text("enabled_packs").notNull(), // JSON array
+  disabledPacks: text("disabled_packs").notNull(), // JSON array
+  criticalMode: text("critical_mode").notNull().default("deny"), // deny|warn|log
+  highMode: text("high_mode").notNull().default("deny"),
+  mediumMode: text("medium_mode").notNull().default("warn"),
+  lowMode: text("low_mode").notNull().default("log"),
+  updatedBy: text("updated_by"),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+/**
+ * DCG Configuration History - Audit trail of all config changes.
+ */
+export const dcgConfigHistory = sqliteTable(
+  "dcg_config_history",
+  {
+    id: text("id").primaryKey(),
+    configSnapshot: text("config_snapshot").notNull(), // Full JSON snapshot
+    previousSnapshot: text("previous_snapshot"), // For diff comparison
+    changedBy: text("changed_by"),
+    changedAt: integer("changed_at", { mode: "timestamp" }).notNull(),
+    changeReason: text("change_reason"),
+    changeType: text("change_type").notNull(), // pack_enabled|pack_disabled|severity_changed|bulk_update|initial
+  },
+  (table) => [
+    index("dcg_config_history_changed_at_idx").on(table.changedAt),
+    index("dcg_config_history_changed_by_idx").on(table.changedBy),
+  ],
+);
+
 // ============================================================================
 // RU (Repo Updater) Fleet Management Tables
 // ============================================================================
