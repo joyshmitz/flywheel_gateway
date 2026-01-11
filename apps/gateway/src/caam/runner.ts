@@ -11,16 +11,13 @@
 
 import { getLogger } from "../middleware/correlation";
 import type {
-  CaamAuthMode,
   CaamCliCooldown,
   CaamCliProfile,
   CaamCliProfileHealth,
   CaamCliRotationResult,
   CaamCliStatus,
-  HealthStatus,
   ProviderId,
 } from "./types";
-import { caamAuthModeToGateway, parseHealthStatus } from "./types";
 
 // ============================================================================
 // Types
@@ -211,6 +208,8 @@ export class CaamRunner implements ICaamRunner {
     }
 
     // Map to simplified profile format
+    // Note: `logged_in` is derived from health status since `caam ls` doesn't expose
+    // a direct logged_in field. Critical health indicates expired/invalid tokens.
     return result.data.profiles.map((p): CaamCliProfile => {
       const profile: CaamCliProfile = {
         provider: p.tool,
