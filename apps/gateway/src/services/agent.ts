@@ -5,14 +5,17 @@
  * coordinating between the REST API and agent drivers.
  */
 
-import type { Agent, AgentConfig } from "@flywheel/agent-drivers";
 import {
-  type ClaudeSDKDriver,
-  createClaudeDriver,
+  type Agent,
+  type AgentConfig,
+  type AgentDriver,
+  type AgentEvent,
+  selectDriver,
 } from "@flywheel/agent-drivers";
 import { eq } from "drizzle-orm";
 import { agents as agentsTable, db } from "../db";
 import { getLogger } from "../middleware/correlation";
+import { getHub } from "../ws/hub";
 import {
   initializeAgentState,
   markAgentExecuting,
@@ -25,18 +28,26 @@ import {
 } from "./agent-state-machine";
 import { audit } from "./audit";
 import {
+  createErrorCheckpoint,
+  initializeAutoCheckpoint,
+  onAgentMessage,
+  stopAutoCheckpoint,
+} from "./auto-checkpoint";
+import {
   cleanupOutputBuffer,
   type GetOutputOptions,
   getOutput as getOutputFromBuffer,
-  startOutputStreaming,
-  stopOutputStreaming,
+  pushOutput,
 } from "./output.service";
 
 // In-memory agent registry
 const agents = new Map<string, AgentRecord>();
 
-// Single driver instance (SDK driver for now)
-let driver: ClaudeSDKDriver | undefined;
+// Active monitoring subscriptions (agentId -> AbortController)
+const activeMonitors = new Map<string, AbortController>();
+
+// Single driver instance
+let driver: AgentDriver | undefined;
 
 interface AgentRecord {
   agent: Agent;
@@ -49,9 +60,91 @@ interface AgentRecord {
   toolCalls: number;
 }
 
+/**
+ * Handle agent events (output, state changes, etc.)
+ */
+async function handleAgentEvents(
+  agentId: string,
+  eventStream: AsyncIterable<AgentEvent>,
+): Promise<void> {
+  const log = getLogger();
+  const abortController = new AbortController();
+
+  // Clean up any existing monitor for this agent
+  if (activeMonitors.has(agentId)) {
+    activeMonitors.get(agentId)?.abort();
+  }
+  activeMonitors.set(agentId, abortController);
+
+  try {
+    for await (const event of eventStream) {
+      if (abortController.signal.aborted) break;
+
+      // 1. Handle Output
+      if (event.type === "output") {
+        let streamType: "stdout" | "stderr" | "system" = "stdout";
+        if (event.output.type === "error") {
+          streamType = "stderr";
+        } else if (event.output.type === "system") {
+          streamType = "system";
+        }
+        pushOutput(
+          agentId,
+          event.output.type,
+          event.output.content,
+          streamType,
+          event.output.metadata,
+        );
+      }
+
+      // 2. Handle State Changes
+      else if (event.type === "state_change") {
+        const { newState } = event;
+        // Map ActivityState to LifecycleState actions
+        if (["working", "thinking", "tool_calling"].includes(newState)) {
+          try {
+            markAgentExecuting(agentId);
+          } catch {
+            // Ignore if already executing
+          }
+        } else if (["idle", "waiting_input"].includes(newState)) {
+          try {
+            markAgentIdle(agentId);
+          } catch {
+            // Ignore if already ready
+          }
+        }
+      }
+
+      // 3. Handle Termination
+      else if (event.type === "terminated") {
+        // Driver reported termination
+        try {
+          // We might have already initiated termination, so check state first?
+          // Actually markAgentTerminated is idempotent-ish safe
+          markAgentTerminated(agentId);
+          cleanupOutputBuffer(agentId);
+          agents.delete(agentId);
+        } catch (err) {
+          log.error({ err, agentId }, "Error handling agent termination event");
+        }
+      }
+    }
+  } catch (error: unknown) {
+    if (!abortController.signal.aborted) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      log.error({ error: err, agentId }, "Error in agent event loop");
+    }
+  } finally {
+    if (activeMonitors.get(agentId) === abortController) {
+      activeMonitors.delete(agentId);
+    }
+  }
+}
+
 async function refreshAgentRecord(
   record: AgentRecord,
-  drv: ClaudeSDKDriver,
+  drv: AgentDriver,
 ): Promise<void> {
   try {
     const state = await drv.getState(record.agent.id);
@@ -67,9 +160,10 @@ async function refreshAgentRecord(
 /**
  * Get or create the agent driver.
  */
-async function getDriver(): Promise<ClaudeSDKDriver> {
+async function getDriver(): Promise<AgentDriver> {
   if (!driver) {
-    driver = await createClaudeDriver();
+    const result = await selectDriver({ preferredType: "sdk" });
+    driver = result.driver;
   }
   return driver;
 }
@@ -162,9 +256,12 @@ export async function spawnAgent(config: {
       "Agent spawned",
     );
 
-    // Start output streaming from the driver
+    // Start event monitoring (output + state)
     const eventStream = drv.subscribe(agentId);
-    startOutputStreaming(agentId, eventStream);
+    handleAgentEvents(agentId, eventStream);
+
+    // Initialize auto-checkpointing for the agent
+    initializeAutoCheckpoint(agentId);
 
     audit({
       action: "agent.spawn",
@@ -182,8 +279,9 @@ export async function spawnAgent(config: {
     };
   } catch (error) {
     if (spawned) {
-      // Stop output streaming if it was started
-      stopOutputStreaming(agentId);
+      // Stop monitoring
+      activeMonitors.get(agentId)?.abort();
+      stopAutoCheckpoint(agentId);
       cleanupOutputBuffer(agentId);
       try {
         await drv.terminate(agentId, true);
@@ -392,8 +490,17 @@ export async function terminateAgent(
     await drv.terminate(agentId, graceful);
     agents.delete(agentId);
 
-    // Stop output streaming and clean up buffer after successful termination
-    stopOutputStreaming(agentId);
+    // Stop event monitoring
+    const monitor = activeMonitors.get(agentId);
+    if (monitor) {
+      monitor.abort();
+      activeMonitors.delete(agentId);
+    }
+
+    // Stop auto-checkpointing
+    stopAutoCheckpoint(agentId);
+
+    // Clean up output buffer
     cleanupOutputBuffer(agentId);
 
     // Update DB status
@@ -473,6 +580,9 @@ export async function sendMessage(
     const result = await drv.send(agentId, content);
     record.messagesReceived++;
 
+    // Notify auto-checkpoint system of new message
+    onAgentMessage(agentId);
+
     // Note: Transition back to READY happens when agent finishes processing
     // This is typically detected through output events or polling
     // For now, we stay in EXECUTING until the next status check detects idle state
@@ -496,6 +606,12 @@ export async function sendMessage(
       state: result.queued ? "queued" : "processing",
     };
   } catch (error) {
+    // Create error checkpoint before propagating the error
+    await createErrorCheckpoint(agentId, {
+      code: "SEND_FAILED",
+      message: String(error),
+    });
+
     try {
       markAgentIdle(agentId);
     } catch {
@@ -542,7 +658,7 @@ export async function getAgentOutput(
 
   // Use the output buffer service for cursor-based pagination
   const result = getOutputFromBuffer(agentId, {
-    cursor: options.cursor,
+    ...(options.cursor !== undefined && { cursor: options.cursor }),
     limit: options.limit,
     types: options.types,
   });

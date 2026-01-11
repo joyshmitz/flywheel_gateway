@@ -24,12 +24,21 @@ export type MessageType =
   | "reservation.expiring"
   // Conflicts
   | "conflict.detected"
+  | "conflict.updated"
   | "conflict.resolved"
+  | "conflict.escalated"
   // DCG
   | "dcg.block"
   | "dcg.warn"
   | "dcg.false_positive"
   | "dcg.allowlist_added"
+  // Checkpoints
+  | "checkpoint.created"
+  | "checkpoint.auto_created"
+  | "checkpoint.restored"
+  | "checkpoint.deleted"
+  | "checkpoint.pruned"
+  | "checkpoint.imported"
   // Agent mail
   | "mail.received"
   // System
@@ -280,7 +289,7 @@ export function createHubMessage(
     channel,
     type,
     payload,
-    metadata,
+    ...(metadata !== undefined && { metadata }),
   };
 }
 
