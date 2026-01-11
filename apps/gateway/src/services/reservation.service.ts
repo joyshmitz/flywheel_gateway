@@ -9,6 +9,11 @@
  * Builds on the ReservationConflictEngine for conflict detection.
  */
 
+import {
+  createCursor,
+  decodeCursor,
+  DEFAULT_PAGINATION,
+} from "@flywheel/shared/api/pagination";
 import { getCorrelationId } from "../middleware/correlation";
 import type { Channel } from "../ws/channels";
 import { getHub } from "../ws/hub";
@@ -134,6 +139,19 @@ export interface ListReservationsParams {
   projectId: string;
   agentId?: string;
   filePath?: string;
+  /** Pagination limit (default 50, max 100) */
+  limit?: number;
+  /** Cursor for forward pagination (starting_after) */
+  startingAfter?: string;
+  /** Cursor for backward pagination (ending_before) */
+  endingBefore?: string;
+}
+
+export interface ListReservationsResult {
+  reservations: FileReservation[];
+  hasMore: boolean;
+  nextCursor?: string;
+  prevCursor?: string;
 }
 
 export interface ListConflictsParams {
@@ -667,14 +685,14 @@ export async function renewReservation(
 }
 
 /**
- * List reservations for a project with optional filters.
+ * List reservations for a project with optional filters and pagination.
  *
- * @param params - List parameters
- * @returns List of matching reservations
+ * @param params - List parameters including pagination
+ * @returns Paginated list of matching reservations
  */
 export async function listReservations(
   params: ListReservationsParams,
-): Promise<FileReservation[]> {
+): Promise<ListReservationsResult> {
   const now = new Date();
 
   let reservations = Array.from(reservationStore.values()).filter(
@@ -696,7 +714,55 @@ export async function listReservations(
   // Sort by creation time (newest first)
   reservations.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-  return reservations;
+  // Apply pagination
+  const limit = Math.min(
+    Math.max(1, params.limit ?? DEFAULT_PAGINATION.limit),
+    DEFAULT_PAGINATION.maxLimit,
+  );
+
+  // Handle cursor-based pagination
+  let startIndex = 0;
+  if (params.startingAfter) {
+    const cursor = decodeCursor(params.startingAfter);
+    if (cursor) {
+      const cursorIndex = reservations.findIndex((r) => r.id === cursor.id);
+      if (cursorIndex !== -1) {
+        startIndex = cursorIndex + 1;
+      }
+    }
+  } else if (params.endingBefore) {
+    const cursor = decodeCursor(params.endingBefore);
+    if (cursor) {
+      const cursorIndex = reservations.findIndex((r) => r.id === cursor.id);
+      if (cursorIndex !== -1) {
+        // Get items before the cursor
+        startIndex = Math.max(0, cursorIndex - limit);
+      }
+    }
+  }
+
+  // Get limit+1 to check if there are more
+  const sliced = reservations.slice(startIndex, startIndex + limit + 1);
+  const hasMore = sliced.length > limit;
+  const pageItems = hasMore ? sliced.slice(0, limit) : sliced;
+
+  // Build cursors
+  const result: ListReservationsResult = {
+    reservations: pageItems,
+    hasMore,
+  };
+
+  if (hasMore && pageItems.length > 0) {
+    const lastItem = pageItems[pageItems.length - 1];
+    result.nextCursor = createCursor(lastItem.id, lastItem.createdAt.getTime());
+  }
+
+  if (pageItems.length > 0) {
+    const firstItem = pageItems[0];
+    result.prevCursor = createCursor(firstItem.id, firstItem.createdAt.getTime());
+  }
+
+  return result;
 }
 
 /**

@@ -7,7 +7,6 @@ import { Hono } from "hono";
 import { sqlite } from "../db/connection";
 import { dcg } from "../routes/dcg";
 import {
-  _clearAllPendingExceptions,
   approvePendingException,
   createPendingException,
   denyPendingException,
@@ -19,6 +18,11 @@ import {
   validateExceptionForExecution,
   cleanupExpiredExceptions,
 } from "../services/dcg-pending.service";
+
+// Use direct sqlite to clear table (avoids mock interference from other tests)
+function clearPendingExceptions(): void {
+  sqlite.exec("DELETE FROM dcg_pending_exceptions");
+}
 
 // Create the table if it doesn't exist (for test isolation)
 beforeAll(() => {
@@ -59,7 +63,7 @@ beforeAll(() => {
 
 describe("DCG Pending Exceptions Service", () => {
   beforeEach(async () => {
-    await _clearAllPendingExceptions();
+    await clearPendingExceptions();
   });
 
   describe("createPendingException", () => {
@@ -341,7 +345,7 @@ describe("DCG Pending Exceptions Routes", () => {
   const app = new Hono().route("/dcg", dcg);
 
   beforeEach(async () => {
-    await _clearAllPendingExceptions();
+    await clearPendingExceptions();
   });
 
   describe("GET /dcg/pending", () => {

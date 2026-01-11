@@ -74,6 +74,9 @@ const ListReservationsQuerySchema = z.object({
   projectId: z.string().min(1),
   agentId: z.string().optional(),
   filePath: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  starting_after: z.string().optional(),
+  ending_before: z.string().optional(),
 });
 
 const ListConflictsQuerySchema = z.object({
@@ -339,6 +342,9 @@ reservations.get("/", async (c) => {
       projectId: c.req.query("projectId"),
       agentId: c.req.query("agentId"),
       filePath: c.req.query("filePath"),
+      limit: c.req.query("limit"),
+      starting_after: c.req.query("starting_after"),
+      ending_before: c.req.query("ending_before"),
     });
 
     // Build params conditionally (for exactOptionalPropertyTypes)
@@ -347,10 +353,15 @@ reservations.get("/", async (c) => {
     };
     if (query.agentId !== undefined) listParams.agentId = query.agentId;
     if (query.filePath !== undefined) listParams.filePath = query.filePath;
+    if (query.limit !== undefined) listParams.limit = query.limit;
+    if (query.starting_after !== undefined)
+      listParams.startingAfter = query.starting_after;
+    if (query.ending_before !== undefined)
+      listParams.endingBefore = query.ending_before;
 
-    const results = await listReservations(listParams);
+    const result = await listReservations(listParams);
 
-    const reservations_data = results.map((r) => ({
+    const reservations_data = result.reservations.map((r) => ({
       id: r.id,
       projectId: r.projectId,
       agentId: r.agentId,
@@ -363,7 +374,11 @@ reservations.get("/", async (c) => {
       metadata: r.metadata,
     }));
 
-    return sendList(c, reservations_data, { total: reservations_data.length });
+    return sendList(c, reservations_data, {
+      hasMore: result.hasMore,
+      nextCursor: result.nextCursor,
+      prevCursor: result.prevCursor,
+    });
   } catch (error) {
     return handleError(error, c);
   }
