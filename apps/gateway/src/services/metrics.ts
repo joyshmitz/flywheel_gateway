@@ -23,7 +23,10 @@ import { logger } from "./logger";
 interface MetricStore {
   counters: Map<string, number>;
   gauges: Map<string, number>;
-  histograms: Map<string, { buckets: number[]; sum: number; count: number }>;
+  histograms: Map<
+    string,
+    { buckets: number[]; boundaries: readonly number[]; sum: number; count: number }
+  >;
 }
 
 /** Time series data point */
@@ -126,6 +129,7 @@ export function recordHistogram(
   if (!histogram) {
     histogram = {
       buckets: new Array(bucketBoundaries.length).fill(0),
+      boundaries: bucketBoundaries,
       sum: 0,
       count: 0,
     };
@@ -197,18 +201,21 @@ export function getGauge(name: string, labels: Labels = {}): number {
 
 /**
  * Get histogram data.
+ *
+ * Note: The bucketBoundaries parameter is deprecated and ignored.
+ * The histogram uses the boundaries that were passed when recording.
  */
 export function getHistogram(
   name: string,
   labels: Labels = {},
-  bucketBoundaries: readonly number[] = LATENCY_BUCKETS,
+  _bucketBoundaries?: readonly number[],
 ): { buckets: HistogramBucket[]; sum: number; count: number } | undefined {
   const histogram = store.histograms.get(metricKey(name, labels));
   if (!histogram) return undefined;
 
   return {
     buckets: histogram.buckets.map((count, i) => ({
-      le: bucketBoundaries[i]!,
+      le: histogram.boundaries[i]!,
       count,
     })),
     sum: histogram.sum,
@@ -531,7 +538,7 @@ export function exportPrometheusFormat(): string {
     const labels = key.match(/\{.*\}$/)?.[0] ?? "";
 
     for (let i = 0; i < histogram.buckets.length; i++) {
-      const le = LATENCY_BUCKETS[i];
+      const le = histogram.boundaries[i];
       const bucketLabels = labels
         ? labels.replace("}", `,le="${le}"}`)
         : `{le="${le}"}`;
