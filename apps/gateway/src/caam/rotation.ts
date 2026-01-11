@@ -67,7 +67,15 @@ function selectRandom(profiles: AccountProfile[]): AccountProfile | null {
   const available = profiles.filter(isProfileAvailable);
   if (available.length === 0) return null;
 
-  const index = Math.floor(Math.random() * available.length);
+  // Use cryptographically secure random for consistent security practices
+  const randomBytes = new Uint8Array(4);
+  crypto.getRandomValues(randomBytes);
+  const randomValue =
+    (randomBytes[0]! << 24) |
+    (randomBytes[1]! << 16) |
+    (randomBytes[2]! << 8) |
+    randomBytes[3]!;
+  const index = Math.abs(randomValue) % available.length;
   return available[index]!;
 }
 

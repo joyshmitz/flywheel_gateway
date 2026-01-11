@@ -85,7 +85,14 @@ export interface HistoryQueryOptions {
 
 function generateHistoryId(): string {
   const timestamp = Date.now().toString(36);
-  const random = Math.random().toString(36).slice(2, 8);
+  // Use cryptographically secure random instead of Math.random()
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const randomBytes = new Uint8Array(8);
+  crypto.getRandomValues(randomBytes);
+  let random = "";
+  for (let i = 0; i < 8; i++) {
+    random += chars.charAt(randomBytes[i]! % chars.length);
+  }
   return `hist_${timestamp}_${random}`;
 }
 
