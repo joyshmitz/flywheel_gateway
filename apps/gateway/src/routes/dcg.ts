@@ -378,6 +378,195 @@ dcg.delete("/allowlist/:ruleId", async (c) => {
 });
 
 // ============================================================================
+// Pending Exception Routes (Allow-Once Workflow)
+// ============================================================================
+
+/**
+ * GET /dcg/pending - List pending exceptions
+ */
+dcg.get("/pending", async (c) => {
+  try {
+    const query = PendingQuerySchema.parse({
+      status: c.req.query("status"),
+      agentId: c.req.query("agentId"),
+      limit: c.req.query("limit"),
+    });
+
+    // Build options conditionally (for exactOptionalPropertyTypes)
+    const options: Parameters<typeof listPendingExceptions>[0] = {};
+    if (query.status !== undefined)
+      options.status = query.status as PendingExceptionStatus;
+    if (query.agentId !== undefined) options.agentId = query.agentId;
+    if (query.limit !== undefined) options.limit = query.limit;
+
+    const exceptions = await listPendingExceptions(options);
+
+    if (exceptions.length === 0) {
+      return sendEmptyList(c);
+    }
+    return sendList(c, exceptions);
+  } catch (error) {
+    return handleError(error, c);
+  }
+});
+
+/**
+ * GET /dcg/pending/:shortCode - Get specific pending exception
+ */
+dcg.get("/pending/:shortCode", async (c) => {
+  try {
+    const shortCode = c.req.param("shortCode");
+    const exception = await getPendingException(shortCode);
+
+    if (!exception) {
+      return sendNotFound(c, "pending_exception", shortCode);
+    }
+
+    return sendResource(c, "pending_exception", exception);
+  } catch (error) {
+    return handleError(error, c);
+  }
+});
+
+/**
+ * POST /dcg/pending/:shortCode/approve - Approve a pending exception
+ */
+dcg.post("/pending/:shortCode/approve", async (c) => {
+  try {
+    const shortCode = c.req.param("shortCode");
+    // In production, this would come from auth context
+    const approvedBy = "api-user";
+
+    const exception = await approvePendingException(shortCode, approvedBy);
+
+    return sendResource(c, "pending_exception", exception);
+  } catch (error) {
+    if (error instanceof PendingExceptionNotFoundError) {
+      return sendNotFound(c, "pending_exception", c.req.param("shortCode"));
+    }
+    if (error instanceof PendingExceptionExpiredError) {
+      return sendError(
+        c,
+        "EXCEPTION_EXPIRED",
+        error.message,
+        410, // Gone
+      );
+    }
+    if (error instanceof PendingExceptionConflictError) {
+      return sendError(c, "EXCEPTION_CONFLICT", error.message, 409);
+    }
+    return handleError(error, c);
+  }
+});
+
+/**
+ * POST /dcg/pending/:shortCode/deny - Deny a pending exception
+ */
+dcg.post("/pending/:shortCode/deny", async (c) => {
+  try {
+    const shortCode = c.req.param("shortCode");
+    // In production, this would come from auth context
+    const deniedBy = "api-user";
+
+    let reason: string | undefined;
+    try {
+      const body = await c.req.json();
+      const validated = DenyRequestSchema.parse(body);
+      reason = validated.reason;
+    } catch {
+      // Body is optional for deny
+    }
+
+    const exception = await denyPendingException(shortCode, deniedBy, reason);
+
+    return sendResource(c, "pending_exception", exception);
+  } catch (error) {
+    if (error instanceof PendingExceptionNotFoundError) {
+      return sendNotFound(c, "pending_exception", c.req.param("shortCode"));
+    }
+    return handleError(error, c);
+  }
+});
+
+/**
+ * POST /dcg/pending/:shortCode/validate - Validate exception for execution
+ *
+ * Used by DCG to check if a command hash has been approved before allowing execution.
+ */
+dcg.post("/pending/:shortCode/validate", async (c) => {
+  try {
+    const shortCode = c.req.param("shortCode");
+    const body = await c.req.json();
+    const validated = ValidateRequestSchema.parse(body);
+
+    const exception = await getPendingException(shortCode);
+
+    if (!exception) {
+      return sendResource(c, "validation_result", {
+        valid: false,
+        reason: "Not found",
+      });
+    }
+
+    if (exception.status !== "approved") {
+      return sendResource(c, "validation_result", {
+        valid: false,
+        reason: `Status is ${exception.status}`,
+      });
+    }
+
+    if (exception.commandHash !== validated.commandHash) {
+      return sendResource(c, "validation_result", {
+        valid: false,
+        reason: "Command hash mismatch",
+      });
+    }
+
+    if (exception.expiresAt < new Date()) {
+      return sendResource(c, "validation_result", {
+        valid: false,
+        reason: "Expired",
+      });
+    }
+
+    return sendResource(c, "validation_result", {
+      valid: true,
+      exception,
+    });
+  } catch (error) {
+    return handleError(error, c);
+  }
+});
+
+/**
+ * POST /dcg/pending/validate-hash - Validate by command hash directly
+ *
+ * Alternative endpoint that looks up by hash instead of short code.
+ */
+dcg.post("/pending/validate-hash", async (c) => {
+  try {
+    const body = await c.req.json();
+    const validated = ValidateRequestSchema.parse(body);
+
+    const exception = await validateExceptionForExecution(validated.commandHash);
+
+    if (!exception) {
+      return sendResource(c, "validation_result", {
+        valid: false,
+        reason: "No approved exception found for this command",
+      });
+    }
+
+    return sendResource(c, "validation_result", {
+      valid: true,
+      exception,
+    });
+  } catch (error) {
+    return handleError(error, c);
+  }
+});
+
+// ============================================================================
 // Statistics Routes
 // ============================================================================
 
