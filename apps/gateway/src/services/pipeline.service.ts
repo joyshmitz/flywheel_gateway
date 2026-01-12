@@ -263,28 +263,28 @@ async function executeAgentTask(
 
   const agentId = spawnResult.agentId;
 
+  // Send the prompt
+  const messageResult = await sendMessage(agentId, "user", prompt);
+
+  // If not waiting for completion, return immediately (agent stays alive for caller)
+  if (config.waitForCompletion === false) {
+    return {
+      agentId,
+      messageId: messageResult.messageId,
+      status: "submitted",
+    };
+  }
+
+  // Wait for agent to complete (simplified - in production would poll or use events)
+  // For now, return the message result and terminate the agent
   try {
-    // Send the prompt
-    const messageResult = await sendMessage(agentId, "user", prompt);
-
-    // If not waiting for completion, return immediately
-    if (config.waitForCompletion === false) {
-      return {
-        agentId,
-        messageId: messageResult.messageId,
-        status: "submitted",
-      };
-    }
-
-    // Wait for agent to complete (simplified - in production would poll or use events)
-    // For now, return the message result
     return {
       agentId,
       messageId: messageResult.messageId,
       status: "completed",
     };
   } finally {
-    // Terminate the agent
+    // Terminate the agent only when we waited for completion
     try {
       await terminateAgent(agentId, true);
     } catch (err) {
@@ -352,9 +352,10 @@ async function executeParallel(
         continue;
       }
 
-      const stepId = config.steps[index];
-      if (!stepId) continue;
+      const currentIndex = index;
       index++;
+      const stepId = config.steps[currentIndex];
+      if (!stepId) continue;
       running++;
 
       const promise = (async () => {
@@ -480,10 +481,10 @@ async function executeScript(
   _signal?: AbortSignal,
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   const log = getLogger();
-  const script = substituteVariables(
-    config.isPath ? config.script : config.script,
-    context,
-  );
+  // Only substitute variables in inline scripts, not file paths
+  const script = config.isPath
+    ? config.script
+    : substituteVariables(config.script, context);
 
   log.info(
     { isPath: config.isPath, workingDirectory: config.workingDirectory },
@@ -514,11 +515,15 @@ async function executeScript(
     stderr: "pipe",
   });
 
-  // Handle timeout
+  // Handle timeout with proper cleanup
   const timeoutMs = config.timeout ?? 300000; // 5 minute default
-  const timeoutPromise = sleep(timeoutMs).then(() => {
-    proc.kill();
-    throw new Error(`Script timeout after ${timeoutMs}ms`);
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      proc.kill();
+      reject(new Error(`Script timeout after ${timeoutMs}ms`));
+    }, timeoutMs);
   });
 
   const resultPromise = (async () => {
@@ -528,8 +533,12 @@ async function executeScript(
     return { exitCode, stdout, stderr };
   })();
 
-  const result = await Promise.race([resultPromise, timeoutPromise]);
-  return result as { exitCode: number; stdout: string; stderr: string };
+  try {
+    const result = await Promise.race([resultPromise, timeoutPromise]);
+    return result;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
 
 // ============================================================================
@@ -749,24 +758,31 @@ async function executePipeline(
       "[PIPELINE] Pipeline completed successfully",
     );
   } catch (error) {
-    // Mark run as failed
-    run.status = signal.aborted ? "cancelled" : "failed";
-    run.completedAt = new Date();
-    run.durationMs = run.completedAt.getTime() - run.startedAt.getTime();
-    run.error = {
-      code: signal.aborted ? "CANCELLED" : "EXECUTION_FAILED",
-      message: error instanceof Error ? error.message : String(error),
-    };
+    // Don't update status if paused (pauseRun sets status before aborting)
+    if (run.status !== "paused") {
+      run.status = signal.aborted ? "cancelled" : "failed";
+      run.completedAt = new Date();
+      run.durationMs = run.completedAt.getTime() - run.startedAt.getTime();
+      run.error = {
+        code: signal.aborted ? "CANCELLED" : "EXECUTION_FAILED",
+        message: error instanceof Error ? error.message : String(error),
+      };
 
-    // Update pipeline stats
-    pipeline.stats.totalRuns++;
-    pipeline.stats.failedRuns++;
-    pipeline.lastRunAt = new Date();
+      // Update pipeline stats only for actual failures/cancellations
+      pipeline.stats.totalRuns++;
+      pipeline.stats.failedRuns++;
+      pipeline.lastRunAt = new Date();
 
-    log.error(
-      { error, pipelineId: pipeline.id, runId: run.id },
-      "[PIPELINE] Pipeline failed",
-    );
+      log.error(
+        { error, pipelineId: pipeline.id, runId: run.id },
+        "[PIPELINE] Pipeline failed",
+      );
+    } else {
+      log.info(
+        { pipelineId: pipeline.id, runId: run.id },
+        "[PIPELINE] Pipeline paused",
+      );
+    }
 
     throw error;
   } finally {
@@ -1047,7 +1063,14 @@ export function pauseRun(runId: string): PipelineRun | undefined {
     return undefined;
   }
 
+  // Set status first, then abort (executePipeline checks status before overwriting)
   run.status = "paused";
+
+  // Abort the current execution - resume will restart from checkpoint
+  const controller = activeRunControllers.get(runId);
+  if (controller) {
+    controller.abort();
+  }
 
   const log = getLogger();
   log.info({ runId }, "[PIPELINE] Run paused");
