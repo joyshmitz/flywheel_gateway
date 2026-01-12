@@ -1715,3 +1715,120 @@ export const modelRateCards = sqliteTable(
     ),
   ],
 );
+
+// ============================================================================
+// Custom Dashboard Builder Tables
+// ============================================================================
+
+/**
+ * Dashboards - Custom dashboard definitions.
+ *
+ * Features:
+ * - Drag-and-drop widget placement via react-grid-layout
+ * - Multiple widget types (metrics, charts, tables, feeds)
+ * - Sharing and access control (private, team, public)
+ * - Auto-refresh with configurable intervals
+ */
+export const dashboards = sqliteTable(
+  "dashboards",
+  {
+    id: text("id").primaryKey(),
+
+    // Basic info
+    name: text("name").notNull(),
+    description: text("description"),
+    workspaceId: text("workspace_id").notNull(),
+    ownerId: text("owner_id").notNull(),
+
+    // Layout configuration (JSON blob)
+    layout: blob("layout", { mode: "json" }).notNull(),
+
+    // Widgets (JSON array)
+    widgets: blob("widgets", { mode: "json" }).notNull(),
+
+    // Sharing settings
+    visibility: text("visibility").notNull().default("private"), // 'private' | 'team' | 'public'
+    teamId: text("team_id"),
+    publicSlug: text("public_slug"),
+    requireAuth: integer("require_auth", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    embedEnabled: integer("embed_enabled", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    embedToken: text("embed_token"),
+
+    // Refresh settings
+    refreshInterval: integer("refresh_interval").notNull().default(60), // seconds, 0 = manual only
+
+    // Timestamps
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [
+    index("dashboards_workspace_idx").on(table.workspaceId),
+    index("dashboards_owner_idx").on(table.ownerId),
+    index("dashboards_visibility_idx").on(table.visibility),
+    index("dashboards_team_idx").on(table.teamId),
+    uniqueIndex("dashboards_public_slug_idx").on(table.publicSlug),
+    index("dashboards_created_at_idx").on(table.createdAt),
+  ],
+);
+
+/**
+ * Dashboard permissions - Granular access control for dashboards.
+ */
+export const dashboardPermissions = sqliteTable(
+  "dashboard_permissions",
+  {
+    id: text("id").primaryKey(),
+
+    // References
+    dashboardId: text("dashboard_id")
+      .notNull()
+      .references(() => dashboards.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+
+    // Permission level
+    permission: text("permission").notNull(), // 'view' | 'edit'
+
+    // Timestamps
+    grantedAt: integer("granted_at", { mode: "timestamp" }).notNull(),
+    grantedBy: text("granted_by"),
+  },
+  (table) => [
+    index("dashboard_permissions_dashboard_idx").on(table.dashboardId),
+    index("dashboard_permissions_user_idx").on(table.userId),
+    uniqueIndex("dashboard_permissions_unique_idx").on(
+      table.dashboardId,
+      table.userId,
+    ),
+  ],
+);
+
+/**
+ * Dashboard favorites - Quick access to favorite dashboards.
+ */
+export const dashboardFavorites = sqliteTable(
+  "dashboard_favorites",
+  {
+    id: text("id").primaryKey(),
+
+    // References
+    userId: text("user_id").notNull(),
+    dashboardId: text("dashboard_id")
+      .notNull()
+      .references(() => dashboards.id, { onDelete: "cascade" }),
+
+    // Timestamps
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [
+    index("dashboard_favorites_user_idx").on(table.userId),
+    index("dashboard_favorites_dashboard_idx").on(table.dashboardId),
+    uniqueIndex("dashboard_favorites_unique_idx").on(
+      table.userId,
+      table.dashboardId,
+    ),
+  ],
+);
