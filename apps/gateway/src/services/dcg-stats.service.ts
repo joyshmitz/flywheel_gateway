@@ -97,7 +97,6 @@ export async function getOverviewStats(): Promise<DCGOverviewStats> {
   const correlationId = getCorrelationId();
 
   try {
-    const now = new Date();
     const time24hAgo = getTimeAgo(24);
     const time7dAgo = getDaysAgo(7);
     const time30dAgo = getDaysAgo(30);
@@ -182,8 +181,6 @@ export async function getTrendStats(): Promise<DCGTrendStats> {
   const correlationId = getCorrelationId();
 
   try {
-    const now = new Date();
-
     // Define time ranges
     const time24hAgo = getTimeAgo(24);
     const time48hAgo = getTimeAgo(48);
@@ -349,15 +346,15 @@ export async function getTimeSeriesStats(): Promise<{
     const time30dAgo = getDaysAgo(30);
 
     // Get daily counts for the last 30 days
-    // SQLite date functions: strftime('%Y-%m-%d', datetime(createdAt, 'unixepoch'))
+    // Note: Drizzle stores timestamps in seconds (not ms) for SQLite
     const dailyCountsResult = await db
       .select({
-        date: sql<string>`strftime('%Y-%m-%d', datetime(${dcgBlocks.createdAt} / 1000, 'unixepoch'))`.as("date"),
+        date: sql<string>`strftime('%Y-%m-%d', datetime(${dcgBlocks.createdAt}, 'unixepoch'))`.as("date"),
         count: count(),
       })
       .from(dcgBlocks)
       .where(gte(dcgBlocks.createdAt, time30dAgo))
-      .groupBy(sql`strftime('%Y-%m-%d', datetime(${dcgBlocks.createdAt} / 1000, 'unixepoch'))`)
+      .groupBy(sql`strftime('%Y-%m-%d', datetime(${dcgBlocks.createdAt}, 'unixepoch'))`)
       .orderBy(sql`date ASC`);
 
     // Create a map of date -> count
