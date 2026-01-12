@@ -148,7 +148,9 @@ export interface PreferencesUpdateRequest {
   enabled?: boolean;
   defaultChannels?: NotificationChannel[];
   quietHours?: Partial<QuietHours>;
-  categories?: Partial<Record<NotificationCategory, Partial<CategoryPreference>>>;
+  categories?: Partial<
+    Record<NotificationCategory, Partial<CategoryPreference>>
+  >;
   digest?: Partial<DigestConfig>;
   channelConfig?: NotificationPreferences["channelConfig"];
 }
@@ -168,8 +170,18 @@ const mockNotifications: Notification[] = [
     recipientId: "user_001",
     source: { type: "agent", id: "ax7", name: "Code Assistant" },
     actions: [
-      { id: "retry", label: "Retry Now", style: "primary", action: "retry_agent" },
-      { id: "dismiss", label: "Dismiss", style: "secondary", action: "dismiss" },
+      {
+        id: "retry",
+        label: "Retry Now",
+        style: "primary",
+        action: "retry_agent",
+      },
+      {
+        id: "dismiss",
+        label: "Dismiss",
+        style: "secondary",
+        action: "dismiss",
+      },
     ],
     link: "/agents/ax7",
     status: "delivered",
@@ -188,8 +200,20 @@ const mockNotifications: Notification[] = [
     recipientId: "user_001",
     source: { type: "system", name: "Cost Monitor" },
     actions: [
-      { id: "view", label: "View Analytics", style: "primary", action: "navigate", payload: { url: "/analytics/costs" } },
-      { id: "adjust", label: "Adjust Budget", style: "secondary", action: "navigate", payload: { url: "/settings/billing" } },
+      {
+        id: "view",
+        label: "View Analytics",
+        style: "primary",
+        action: "navigate",
+        payload: { url: "/analytics/costs" },
+      },
+      {
+        id: "adjust",
+        label: "Adjust Budget",
+        style: "secondary",
+        action: "navigate",
+        payload: { url: "/settings/billing" },
+      },
     ],
     status: "sent",
     channels: ["in_app", "email"],
@@ -206,8 +230,19 @@ const mockNotifications: Notification[] = [
     recipientId: "user_001",
     source: { type: "system", name: "Conflict Detector" },
     actions: [
-      { id: "review", label: "Review Conflict", style: "primary", action: "navigate", payload: { url: "/conflicts/cf-123" } },
-      { id: "auto", label: "Auto-resolve", style: "secondary", action: "auto_resolve_conflict" },
+      {
+        id: "review",
+        label: "Review Conflict",
+        style: "primary",
+        action: "navigate",
+        payload: { url: "/conflicts/cf-123" },
+      },
+      {
+        id: "auto",
+        label: "Auto-resolve",
+        style: "secondary",
+        action: "auto_resolve_conflict",
+      },
     ],
     link: "/conflicts/cf-123",
     status: "read",
@@ -240,8 +275,19 @@ const mockNotifications: Notification[] = [
     recipientId: "user_001",
     source: { type: "system", name: "DCG" },
     actions: [
-      { id: "review", label: "Review Block", style: "primary", action: "navigate", payload: { url: "/dcg" } },
-      { id: "allow", label: "Allow Once", style: "danger", action: "dcg_allow_once" },
+      {
+        id: "review",
+        label: "Review Block",
+        style: "primary",
+        action: "navigate",
+        payload: { url: "/dcg" },
+      },
+      {
+        id: "allow",
+        label: "Allow Once",
+        style: "danger",
+        action: "dcg_allow_once",
+      },
     ],
     link: "/dcg",
     status: "sent",
@@ -264,10 +310,22 @@ const mockPreferences: NotificationPreferences = {
   },
   categories: {
     agents: { enabled: true, channels: ["in_app"], minPriority: "normal" },
-    coordination: { enabled: true, channels: ["in_app"], minPriority: "normal" },
+    coordination: {
+      enabled: true,
+      channels: ["in_app"],
+      minPriority: "normal",
+    },
     tasks: { enabled: true, channels: ["in_app"], minPriority: "low" },
-    costs: { enabled: true, channels: ["in_app", "email"], minPriority: "high" },
-    security: { enabled: true, channels: ["in_app", "email", "slack"], minPriority: "low" },
+    costs: {
+      enabled: true,
+      channels: ["in_app", "email"],
+      minPriority: "high",
+    },
+    security: {
+      enabled: true,
+      channels: ["in_app", "email", "slack"],
+      minPriority: "low",
+    },
     system: { enabled: true, channels: ["in_app"], minPriority: "high" },
   },
   digest: {
@@ -331,17 +389,21 @@ export function useNotifications(filter: NotificationFilter = {}) {
       let filtered = [...mockNotifications];
 
       if (filter.category?.length) {
-        filtered = filtered.filter((n) => filter.category!.includes(n.category));
+        filtered = filtered.filter((n) =>
+          filter.category!.includes(n.category),
+        );
       }
       if (filter.priority?.length) {
-        filtered = filtered.filter((n) => filter.priority!.includes(n.priority));
+        filtered = filtered.filter((n) =>
+          filter.priority!.includes(n.priority),
+        );
       }
       if (filter.status?.length) {
         filtered = filtered.filter((n) => filter.status!.includes(n.status));
       }
 
       const unreadCount = filtered.filter(
-        (n) => n.status !== "read" && n.status !== "actioned"
+        (n) => n.status !== "read" && n.status !== "actioned",
       ).length;
 
       setData({
@@ -358,17 +420,20 @@ export function useNotifications(filter: NotificationFilter = {}) {
       // Build query string
       const params = new URLSearchParams();
       if (filter.recipientId) params.set("recipient_id", filter.recipientId);
-      if (filter.category?.length) params.set("category", filter.category.join(","));
-      if (filter.priority?.length) params.set("priority", filter.priority.join(","));
+      if (filter.category?.length)
+        params.set("category", filter.category.join(","));
+      if (filter.priority?.length)
+        params.set("priority", filter.priority.join(","));
       if (filter.status?.length) params.set("status", filter.status.join(","));
       if (filter.since) params.set("since", filter.since);
       if (filter.until) params.set("until", filter.until);
       if (filter.limit) params.set("limit", filter.limit.toString());
-      if (filter.startingAfter) params.set("starting_after", filter.startingAfter);
+      if (filter.startingAfter)
+        params.set("starting_after", filter.startingAfter);
       if (filter.endingBefore) params.set("ending_before", filter.endingBefore);
 
       const result = await fetchApi<NotificationListResponse>(
-        `/notifications?${params.toString()}`
+        `/notifications?${params.toString()}`,
       );
       setData(result);
     } catch (err) {
@@ -401,7 +466,7 @@ export function useUnreadCount(recipientId: string) {
     if (mockMode) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       const unread = mockNotifications.filter(
-        (n) => n.status !== "read" && n.status !== "actioned"
+        (n) => n.status !== "read" && n.status !== "actioned",
       ).length;
       setCount(unread);
       setLoading(false);
@@ -410,7 +475,7 @@ export function useUnreadCount(recipientId: string) {
 
     try {
       const result = await fetchApi<{ data: { count: number } }>(
-        `/notifications?recipient_id=${recipientId}&limit=1`
+        `/notifications?recipient_id=${recipientId}&limit=1`,
       );
       setCount(result.data?.count ?? 0);
     } catch (err) {
@@ -449,7 +514,7 @@ export function useNotificationPreferences(userId: string) {
 
     try {
       const result = await fetchApi<{ data: NotificationPreferences }>(
-        `/notifications/preferences?user_id=${userId}`
+        `/notifications/preferences?user_id=${userId}`,
       );
       setData(result.data);
     } catch (err) {
@@ -498,7 +563,7 @@ export function useMarkAsRead() {
       try {
         const result = await fetchApi<{ data: Notification }>(
           `/notifications/${notificationId}/read?recipient_id=${recipientId}`,
-          { method: "POST" }
+          { method: "POST" },
         );
         return result.data;
       } catch (err) {
@@ -509,7 +574,7 @@ export function useMarkAsRead() {
         setLoading(false);
       }
     },
-    [mockMode]
+    [mockMode],
   );
 
   return { markAsRead, loading, error };
@@ -546,7 +611,7 @@ export function useMarkAllAsRead() {
       try {
         const result = await fetchApi<{ data: { markedCount: number } }>(
           `/notifications/read-all?recipient_id=${recipientId}`,
-          { method: "POST" }
+          { method: "POST" },
         );
         return result.data;
       } catch (err) {
@@ -557,7 +622,7 @@ export function useMarkAllAsRead() {
         setLoading(false);
       }
     },
-    [mockMode]
+    [mockMode],
   );
 
   return { markAllAsRead, loading, error };
@@ -591,13 +656,16 @@ export function useExecuteAction() {
 
       try {
         const result = await fetchApi<{
-          data: { notification: Notification; executedAction: NotificationAction };
+          data: {
+            notification: Notification;
+            executedAction: NotificationAction;
+          };
         }>(
           `/notifications/${notificationId}/action?recipient_id=${recipientId}`,
           {
             method: "POST",
             body: JSON.stringify({ actionId }),
-          }
+          },
         );
         return result.data;
       } catch (err) {
@@ -608,7 +676,7 @@ export function useExecuteAction() {
         setLoading(false);
       }
     },
-    [mockMode]
+    [mockMode],
   );
 
   return { executeAction, loading, error };
@@ -675,7 +743,7 @@ export function useUpdatePreferences() {
           {
             method: "PUT",
             body: JSON.stringify(update),
-          }
+          },
         );
         return result.data;
       } catch (err) {
@@ -686,7 +754,7 @@ export function useUpdatePreferences() {
         setLoading(false);
       }
     },
-    [mockMode]
+    [mockMode],
   );
 
   return { updatePreferences, loading, error };
@@ -717,7 +785,12 @@ export function useSendTestNotification() {
           recipientId,
           source: { type: "system", name: "notification-test" },
           actions: [
-            { id: "dismiss", label: "Dismiss", style: "secondary", action: "dismiss" },
+            {
+              id: "dismiss",
+              label: "Dismiss",
+              style: "secondary",
+              action: "dismiss",
+            },
           ],
           status: "sent",
           channels: channel ? [channel] : ["in_app"],
@@ -735,7 +808,7 @@ export function useSendTestNotification() {
           {
             method: "POST",
             body: JSON.stringify({ channel }),
-          }
+          },
         );
         return result.data;
       } catch (err) {
@@ -746,7 +819,7 @@ export function useSendTestNotification() {
         setLoading(false);
       }
     },
-    [mockMode]
+    [mockMode],
   );
 
   return { sendTest, loading, error };
@@ -781,10 +854,13 @@ export function useCreateNotification() {
       }
 
       try {
-        const result = await fetchApi<{ data: Notification }>("/notifications", {
-          method: "POST",
-          body: JSON.stringify(request),
-        });
+        const result = await fetchApi<{ data: Notification }>(
+          "/notifications",
+          {
+            method: "POST",
+            body: JSON.stringify(request),
+          },
+        );
         return result.data;
       } catch (err) {
         const error = err instanceof Error ? err : new Error("Unknown error");
@@ -794,7 +870,7 @@ export function useCreateNotification() {
         setLoading(false);
       }
     },
-    [mockMode]
+    [mockMode],
   );
 
   return { createNotification, loading, error };
@@ -809,10 +885,12 @@ export function useCreateNotification() {
  */
 export function useNotificationSubscription(
   recipientId: string,
-  onNotification?: (notification: Notification) => void
+  onNotification?: (notification: Notification) => void,
 ) {
   const [connected, setConnected] = useState(false);
-  const [lastNotification, setLastNotification] = useState<Notification | null>(null);
+  const [lastNotification, setLastNotification] = useState<Notification | null>(
+    null,
+  );
   const mockMode = useUiStore((state) => state.mockMode);
 
   useEffect(() => {
@@ -861,17 +939,14 @@ export function useNotificationSubscription(
           JSON.stringify({
             type: "subscribe",
             channel: `notifications:${recipientId}`,
-          })
+          }),
         );
       };
 
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          if (
-            message.type === "notification:new" &&
-            message.notification
-          ) {
+          if (message.type === "notification:new" && message.notification) {
             setLastNotification(message.notification);
             onNotification?.(message.notification);
           }
