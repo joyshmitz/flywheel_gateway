@@ -1,2 +1,2 @@
-// Placeholder - will export shared types as they're added
-export type SharedPlaceholder = Record<string, never>;
+// Shared types for Flywheel Gateway
+export * from "./handoff.types";

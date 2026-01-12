@@ -22,7 +22,8 @@ export type WorkspaceChannel =
   | { type: "workspace:reservations"; workspaceId: string }
   | { type: "workspace:conflicts"; workspaceId: string }
   | { type: "workspace:graph"; workspaceId: string }
-  | { type: "workspace:git"; workspaceId: string };
+  | { type: "workspace:git"; workspaceId: string }
+  | { type: "workspace:handoffs"; workspaceId: string };
 
 /**
  * User-scoped channels for per-user subscriptions.
@@ -74,6 +75,7 @@ export type ChannelTypePrefix =
   | "workspace:conflicts"
   | "workspace:graph"
   | "workspace:git"
+  | "workspace:handoffs"
   | "user:mail"
   | "user:notifications"
   | "system:health"
@@ -107,6 +109,7 @@ export function channelToString(channel: Channel): string {
     case "workspace:conflicts":
     case "workspace:graph":
     case "workspace:git":
+    case "workspace:handoffs":
       return `${channel.type}:${channel.workspaceId}`;
 
     case "user:mail":
@@ -211,6 +214,8 @@ export function parseChannel(str: string): Channel | undefined {
       return { type: "workspace:graph", workspaceId: id };
     case "workspace:git":
       return { type: "workspace:git", workspaceId: id };
+    case "workspace:handoffs":
+      return { type: "workspace:handoffs", workspaceId: id };
     case "user:mail":
       return { type: "user:mail", userId: id };
     case "user:notifications":
@@ -260,6 +265,7 @@ export function getChannelResourceId(channel: Channel): string | undefined {
     case "workspace:reservations":
     case "workspace:conflicts":
     case "workspace:graph":
+    case "workspace:handoffs":
       return channel.workspaceId;
     case "user:mail":
     case "user:notifications":
