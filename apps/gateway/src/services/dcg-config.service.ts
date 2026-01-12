@@ -357,7 +357,6 @@ export async function disablePack(
     changeType: "pack_disabled",
   };
   if (changedBy) params.changedBy = changedBy;
-  if (changeReason) params.changeReason = changeReason;
 
   return updateConfig(params);
 }
