@@ -8,6 +8,7 @@ import { Shell } from "./components/layout/Shell";
 import { AgentsPage } from "./pages/Agents";
 import { BeadsPage } from "./pages/Beads";
 import { DashboardPage } from "./pages/Dashboard";
+import { DCGPage } from "./pages/DCG";
 import { NotFoundPage } from "./pages/NotFound";
 import { SettingsPage } from "./pages/Settings";
 
@@ -39,6 +40,12 @@ const settingsRoute = createRoute({
   component: SettingsPage,
 });
 
+const dcgRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/dcg",
+  component: DCGPage,
+});
+
 const notFoundRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "*",
@@ -49,6 +56,7 @@ const routeTree = rootRoute.addChildren([
   dashboardRoute,
   agentsRoute,
   beadsRoute,
+  dcgRoute,
   settingsRoute,
   notFoundRoute,
 ]);

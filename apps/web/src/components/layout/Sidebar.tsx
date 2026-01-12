@@ -7,6 +7,7 @@ import {
   Command,
   Gauge,
   Settings,
+  Shield,
   Sparkles,
 } from "lucide-react";
 
@@ -18,6 +19,7 @@ const navItems = [
   { label: "Dashboard", icon: Gauge, to: "/" },
   { label: "Agents", icon: Bot, to: "/agents", badge: mockAgents.length },
   { label: "Beads", icon: CircleDot, to: "/beads", badge: mockBeads.length },
+  { label: "DCG", icon: Shield, to: "/dcg" },
   { label: "Settings", icon: Settings, to: "/settings" },
 ];
 
