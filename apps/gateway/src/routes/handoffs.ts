@@ -7,11 +7,6 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { getLogger } from "../middleware/correlation";
 import {
-  buildContext,
-  calculateContextSize,
-  validateContext,
-} from "../services/handoff-context.service";
-import {
   acceptHandoff,
   cancelHandoff,
   completeHandoff,
@@ -24,6 +19,10 @@ import {
   listHandoffsForTarget,
   rejectHandoff,
 } from "../services/handoff.service";
+import {
+  buildContext,
+  calculateContextSize,
+} from "../services/handoff-context.service";
 import {
   buildResourceManifest,
   transferResources,
@@ -131,7 +130,9 @@ const HandoffPreferencesSchema = z.object({
   requireAcknowledgment: z.boolean().optional(),
   allowPartialTransfer: z.boolean().optional(),
   timeoutMs: z.number().min(1000).max(1800000).optional(),
-  fallbackBehavior: z.enum(["retry", "broadcast", "escalate", "abort"]).optional(),
+  fallbackBehavior: z
+    .enum(["retry", "broadcast", "escalate", "abort"])
+    .optional(),
   priorityAgents: z.array(z.string()).optional(),
 });
 
@@ -163,7 +164,7 @@ const CancelHandoffSchema = z.object({
   reason: z.string().optional(),
 });
 
-const FailHandoffSchema = z.object({
+const _FailHandoffSchema = z.object({
   errorCode: z.string().min(1),
   errorMessage: z.string().min(1),
   recoverable: z.boolean(),
@@ -191,12 +192,14 @@ handoffs.post("/", async (c) => {
       taskDescription: data.context.taskDescription,
       currentPhase: data.context.currentPhase,
       progressPercentage: data.context.progressPercentage,
-      startedAt: data.context.startedAt ? new Date(data.context.startedAt as string) : undefined,
+      startedAt: data.context.startedAt
+        ? new Date(data.context.startedAt as string)
+        : undefined,
       filesModified: data.context.filesModified,
       filesCreated: data.context.filesCreated,
       filesDeleted: data.context.filesDeleted,
       uncommittedChanges: data.context.uncommittedChanges,
-      decisionsMade: data.context.decisionsMade?.map(d => ({
+      decisionsMade: data.context.decisionsMade?.map((d) => ({
         ...d,
         timestamp: new Date(d.timestamp as string),
       })),
@@ -242,7 +245,12 @@ handoffs.post("/", async (c) => {
     });
 
     if (!result.success) {
-      return sendError(c, "HANDOFF_FAILED", result.error ?? "Unknown error", 400);
+      return sendError(
+        c,
+        "HANDOFF_FAILED",
+        result.error ?? "Unknown error",
+        400,
+      );
     }
 
     log.info({ handoffId: result.handoffId }, "Handoff initiated");
@@ -334,11 +342,14 @@ handoffs.get("/:handoffId/audit", async (c) => {
     return sendNotFound(c, "Handoff not found");
   }
 
-  return sendList(c, handoff.auditTrail.map(entry => ({
-    timestamp: entry.timestamp.toISOString(),
-    event: entry.event,
-    details: entry.details,
-  })));
+  return sendList(
+    c,
+    handoff.auditTrail.map((entry) => ({
+      timestamp: entry.timestamp.toISOString(),
+      event: entry.event,
+      details: entry.details,
+    })),
+  );
 });
 
 /**
@@ -356,12 +367,19 @@ handoffs.post("/:handoffId/accept", async (c) => {
     const result = await acceptHandoff({
       handoffId,
       receivingAgentId: data.receivingAgentId,
-      estimatedResumeTime: data.estimatedResumeTime ? new Date(data.estimatedResumeTime) : undefined,
+      estimatedResumeTime: data.estimatedResumeTime
+        ? new Date(data.estimatedResumeTime)
+        : undefined,
       receiverNotes: data.receiverNotes,
     });
 
     if (!result.success) {
-      return sendError(c, "HANDOFF_ACCEPT_FAILED", result.error ?? "Unknown error", 400);
+      return sendError(
+        c,
+        "HANDOFF_ACCEPT_FAILED",
+        result.error ?? "Unknown error",
+        400,
+      );
     }
 
     // Get the handoff to transfer resources
@@ -376,9 +394,12 @@ handoffs.post("/:handoffId/accept", async (c) => {
           handoffId,
           transferSummary: {
             filesModified: handoff.request.context.filesModified.length,
-            reservationsTransferred: handoff.request.resourceManifest.fileReservations.length,
-            checkpointsTransferred: handoff.request.resourceManifest.checkpoints.length,
-            messagesForwarded: handoff.request.resourceManifest.pendingMessages.length,
+            reservationsTransferred:
+              handoff.request.resourceManifest.fileReservations.length,
+            checkpointsTransferred:
+              handoff.request.resourceManifest.checkpoints.length,
+            messagesForwarded:
+              handoff.request.resourceManifest.pendingMessages.length,
           },
         });
       } else {
@@ -392,7 +413,10 @@ handoffs.post("/:handoffId/accept", async (c) => {
       }
     }
 
-    log.info({ handoffId, receivingAgentId: data.receivingAgentId }, "Handoff accepted");
+    log.info(
+      { handoffId, receivingAgentId: data.receivingAgentId },
+      "Handoff accepted",
+    );
 
     return sendResource(c, {
       handoffId,
@@ -428,7 +452,12 @@ handoffs.post("/:handoffId/reject", async (c) => {
     });
 
     if (!result.success) {
-      return sendError(c, "HANDOFF_REJECT_FAILED", result.error ?? "Unknown error", 400);
+      return sendError(
+        c,
+        "HANDOFF_REJECT_FAILED",
+        result.error ?? "Unknown error",
+        400,
+      );
     }
 
     log.info({ handoffId, reason: data.reason }, "Handoff rejected");
@@ -466,7 +495,12 @@ handoffs.post("/:handoffId/cancel", async (c) => {
     });
 
     if (!result.success) {
-      return sendError(c, "HANDOFF_CANCEL_FAILED", result.error ?? "Unknown error", 400);
+      return sendError(
+        c,
+        "HANDOFF_CANCEL_FAILED",
+        result.error ?? "Unknown error",
+        400,
+      );
     }
 
     log.info({ handoffId, agentId: data.agentId }, "Handoff cancelled");
@@ -499,16 +533,19 @@ handoffs.get("/source/:agentId", async (c) => {
     limit: Math.min(limit, 100),
   });
 
-  return sendList(c, handoffsList.map(h => ({
-    id: h.id,
-    phase: h.phase,
-    targetAgentId: h.request.targetAgentId,
-    projectId: h.request.projectId,
-    reason: h.request.reason,
-    urgency: h.request.urgency,
-    expiresAt: h.request.expiresAt.toISOString(),
-    createdAt: h.createdAt.toISOString(),
-  })));
+  return sendList(
+    c,
+    handoffsList.map((h) => ({
+      id: h.id,
+      phase: h.phase,
+      targetAgentId: h.request.targetAgentId,
+      projectId: h.request.projectId,
+      reason: h.request.reason,
+      urgency: h.request.urgency,
+      expiresAt: h.request.expiresAt.toISOString(),
+      createdAt: h.createdAt.toISOString(),
+    })),
+  );
 });
 
 /**
@@ -525,16 +562,19 @@ handoffs.get("/target/:agentId", async (c) => {
     limit: Math.min(limit, 100),
   });
 
-  return sendList(c, handoffsList.map(h => ({
-    id: h.id,
-    phase: h.phase,
-    sourceAgentId: h.request.sourceAgentId,
-    projectId: h.request.projectId,
-    reason: h.request.reason,
-    urgency: h.request.urgency,
-    expiresAt: h.request.expiresAt.toISOString(),
-    createdAt: h.createdAt.toISOString(),
-  })));
+  return sendList(
+    c,
+    handoffsList.map((h) => ({
+      id: h.id,
+      phase: h.phase,
+      sourceAgentId: h.request.sourceAgentId,
+      projectId: h.request.projectId,
+      reason: h.request.reason,
+      urgency: h.request.urgency,
+      expiresAt: h.request.expiresAt.toISOString(),
+      createdAt: h.createdAt.toISOString(),
+    })),
+  );
 });
 
 /**
@@ -546,17 +586,20 @@ handoffs.get("/broadcast/:projectId", async (c) => {
 
   const handoffsList = listBroadcastHandoffs(projectId);
 
-  return sendList(c, handoffsList.map(h => ({
-    id: h.id,
-    phase: h.phase,
-    sourceAgentId: h.request.sourceAgentId,
-    beadId: h.request.beadId,
-    reason: h.request.reason,
-    urgency: h.request.urgency,
-    taskDescription: h.request.context.taskDescription,
-    expiresAt: h.request.expiresAt.toISOString(),
-    createdAt: h.createdAt.toISOString(),
-  })));
+  return sendList(
+    c,
+    handoffsList.map((h) => ({
+      id: h.id,
+      phase: h.phase,
+      sourceAgentId: h.request.sourceAgentId,
+      beadId: h.request.beadId,
+      reason: h.request.reason,
+      urgency: h.request.urgency,
+      taskDescription: h.request.context.taskDescription,
+      expiresAt: h.request.expiresAt.toISOString(),
+      createdAt: h.createdAt.toISOString(),
+    })),
+  );
 });
 
 /**

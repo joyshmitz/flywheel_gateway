@@ -11,9 +11,7 @@
 
 import type {
   CompleteHandoffResult,
-  HandoffAcknowledgment,
   HandoffContext,
-  HandoffFallbackBehavior,
   HandoffPhase,
   HandoffPreferences,
   HandoffReason,
@@ -21,9 +19,8 @@ import type {
   HandoffStats,
   HandoffUrgency,
   InitiateHandoffResult,
-  RespondHandoffResult,
   ResourceManifest,
-  VALID_HANDOFF_TRANSITIONS,
+  RespondHandoffResult,
 } from "@flywheel/shared/types";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
 import type { Channel } from "../ws/channels";
@@ -130,7 +127,11 @@ function publishHandoffEvent(
 /**
  * Add to index.
  */
-function addToIndex(index: Map<string, Set<string>>, key: string, id: string): void {
+function addToIndex(
+  index: Map<string, Set<string>>,
+  key: string,
+  id: string,
+): void {
   let set = index.get(key);
   if (!set) {
     set = new Set();
@@ -142,7 +143,11 @@ function addToIndex(index: Map<string, Set<string>>, key: string, id: string): v
 /**
  * Remove from index.
  */
-function removeFromIndex(index: Map<string, Set<string>>, key: string, id: string): void {
+function _removeFromIndex(
+  index: Map<string, Set<string>>,
+  key: string,
+  id: string,
+): void {
   const set = index.get(key);
   if (set) {
     set.delete(id);
@@ -330,13 +335,18 @@ async function transitionPhase(
   });
 
   // Handle terminal states
-  if (newPhase === "complete" || newPhase === "cancelled" || newPhase === "failed") {
+  if (
+    newPhase === "complete" ||
+    newPhase === "cancelled" ||
+    newPhase === "failed"
+  ) {
     record.completedAt = new Date();
 
     // Update stats
     if (newPhase === "complete") {
       stats.completedHandoffs++;
-      const transferTime = record.completedAt.getTime() - record.createdAt.getTime();
+      const transferTime =
+        record.completedAt.getTime() - record.createdAt.getTime();
       stats.totalTransferTimeMs += transferTime;
     } else if (newPhase === "failed") {
       stats.failedHandoffs++;
@@ -573,7 +583,9 @@ async function handleFallback(record: HandoffRecord): Promise<void> {
 
     case "abort":
       // Just cancel
-      await transitionPhase(record.id, "cancelled", { reason: "abort_fallback" });
+      await transitionPhase(record.id, "cancelled", {
+        reason: "abort_fallback",
+      });
       break;
   }
 }

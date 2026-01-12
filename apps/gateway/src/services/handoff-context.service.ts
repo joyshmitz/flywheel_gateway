@@ -225,7 +225,7 @@ function summarizeConversation(
 
   // Truncate if too long
   if (summary.length > MAX_SUMMARY_LENGTH) {
-    summary = summary.slice(0, MAX_SUMMARY_LENGTH) + "\n\n[Summary truncated]";
+    summary = `${summary.slice(0, MAX_SUMMARY_LENGTH)}\n\n[Summary truncated]`;
   }
 
   return summary;
@@ -307,7 +307,10 @@ export function validateContext(context: HandoffContext): ValidationResult {
   }
 
   // Warnings for missing optional but useful fields
-  if (!context.conversationSummary || context.conversationSummary.trim() === "") {
+  if (
+    !context.conversationSummary ||
+    context.conversationSummary.trim() === ""
+  ) {
     warnings.push("No conversation summary provided");
   }
 
@@ -366,7 +369,7 @@ export function calculateContextSize(context: HandoffContext): number {
  * Serialize context to JSON string.
  */
 export function serializeContext(context: HandoffContext): string {
-  return JSON.stringify(context, (key, value) => {
+  return JSON.stringify(context, (_key, value) => {
     // Handle Date serialization
     if (value instanceof Date) {
       return value.toISOString();
@@ -402,14 +405,12 @@ export function deserializeContext(json: string): HandoffContext {
 /**
  * Extract file modifications from git diff output.
  */
-export function extractFileModifications(
-  gitDiff: string,
-): FileModification[] {
+export function extractFileModifications(gitDiff: string): FileModification[] {
   const modifications: FileModification[] = [];
   const filePattern = /^diff --git a\/(.+) b\/(.+)$/gm;
 
-  let match;
-  while ((match = filePattern.exec(gitDiff)) !== null) {
+  let match: RegExpExecArray | null = filePattern.exec(gitDiff);
+  while (match !== null) {
     const path = match[2] ?? match[1] ?? "";
     modifications.push({
       path,
@@ -417,6 +418,7 @@ export function extractFileModifications(
       currentHash: "",
       changeDescription: `Modified: ${path}`,
     });
+    match = filePattern.exec(gitDiff);
   }
 
   return modifications;

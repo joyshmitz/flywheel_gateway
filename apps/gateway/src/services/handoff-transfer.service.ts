@@ -17,7 +17,6 @@ import { getCorrelationId, getLogger } from "../middleware/correlation";
 import type { Channel } from "../ws/channels";
 import { getHub } from "../ws/hub";
 import type { MessageType } from "../ws/messages";
-import { logger } from "./logger";
 import * as reservationService from "./reservation.service";
 
 // ============================================================================
@@ -61,7 +60,7 @@ interface SingleTransferResult {
 // ============================================================================
 
 /** Default transfer timeout in ms */
-const DEFAULT_TRANSFER_TIMEOUT_MS = 30_000;
+const _DEFAULT_TRANSFER_TIMEOUT_MS = 30_000;
 
 // ============================================================================
 // Helper Functions
@@ -221,10 +220,7 @@ export async function transferResources(
   // 3. Forward pending messages
   for (const message of manifest.pendingMessages) {
     try {
-      const result = await forwardMessage(
-        message.messageId,
-        targetAgentId,
-      );
+      const result = await forwardMessage(message.messageId, targetAgentId);
 
       results.push({
         resourceId: message.messageId,
@@ -313,18 +309,24 @@ export async function transferResources(
   );
 
   // Publish transfer completed event
-  publishTransferEvent(handoff.request.projectId, "handoff.transfer_completed", {
-    handoffId: handoff.id,
-    transferredResources: transferredCount,
-    failedResources: failedResources.length,
-    completedAt: new Date().toISOString(),
-  });
+  publishTransferEvent(
+    handoff.request.projectId,
+    "handoff.transfer_completed",
+    {
+      handoffId: handoff.id,
+      transferredResources: transferredCount,
+      failedResources: failedResources.length,
+      completedAt: new Date().toISOString(),
+    },
+  );
 
   return {
     success,
     transferredResources: transferredCount,
     failedResources,
-    error: success ? undefined : `${failedResources.length} resources failed to transfer`,
+    error: success
+      ? undefined
+      : `${failedResources.length} resources failed to transfer`,
   };
 }
 
