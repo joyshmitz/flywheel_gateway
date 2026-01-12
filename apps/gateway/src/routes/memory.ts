@@ -122,7 +122,7 @@ function handleError(error: unknown, c: Context) {
 // ============================================================================
 
 /**
- * Schema for boolean query parameters.
+ * Schema for boolean query parameters (string input from URL).
  * Note: z.coerce.boolean() uses Boolean() which treats any non-empty string as true,
  * so "false" would incorrectly become true. This transform handles "true"/"false" strings.
  */
@@ -135,6 +135,21 @@ const booleanQueryParam = z
     return undefined;
   });
 
+/**
+ * Schema for boolean fields in POST body (accepts both boolean and string).
+ * JSON bodies can have native boolean values, so we need to handle both cases.
+ */
+const booleanBodyParam = z
+  .union([z.boolean(), z.string()])
+  .optional()
+  .transform((val) => {
+    if (val === undefined) return undefined;
+    if (typeof val === "boolean") return val;
+    if (val === "true" || val === "1") return true;
+    if (val === "false" || val === "0") return false;
+    return undefined;
+  });
+
 const ContextQuerySchema = z.object({
   task: z.string().min(1, "Task description is required"),
   workspace: z.string().optional(),
@@ -142,7 +157,7 @@ const ContextQuerySchema = z.object({
   history: z.coerce.number().int().positive().max(20).optional(),
   days: z.coerce.number().int().positive().max(365).optional(),
   session: z.string().optional(),
-  logContext: booleanQueryParam,
+  logContext: booleanBodyParam,
 });
 
 const PlaybookListQuerySchema = z.object({
