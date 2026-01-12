@@ -13,7 +13,7 @@ import {
   DaemonNotFoundError,
   getSupervisor,
 } from "../services/supervisor.service";
-import { getLinkContext, daemonLinks } from "../utils/links";
+import { daemonLinks, getLinkContext } from "../utils/links";
 import {
   sendEmptyList,
   sendError,
@@ -82,12 +82,18 @@ supervisor.get("/:name/status", async (c) => {
     const status = svc.getDaemonStatus(name);
     const linkCtx = getLinkContext(c);
 
-    return sendResource(c, "daemon_status", {
-      ...status,
-      startedAt: status.startedAt?.toISOString(),
-      stoppedAt: status.stoppedAt?.toISOString(),
-      lastHealthCheck: status.lastHealthCheck?.toISOString(),
-    }, 200, { links: daemonLinks({ name: status.name }, linkCtx) });
+    return sendResource(
+      c,
+      "daemon_status",
+      {
+        ...status,
+        startedAt: status.startedAt?.toISOString(),
+        stoppedAt: status.stoppedAt?.toISOString(),
+        lastHealthCheck: status.lastHealthCheck?.toISOString(),
+      },
+      200,
+      { links: daemonLinks({ name: status.name }, linkCtx) },
+    );
   } catch (error) {
     return handleError(error, c);
   }
@@ -107,12 +113,18 @@ supervisor.post("/:name/start", async (c) => {
     const state = await svc.startDaemon(name);
     const linkCtx = getLinkContext(c);
 
-    return sendResource(c, "daemon_status", {
-      ...state,
-      startedAt: state.startedAt?.toISOString(),
-      stoppedAt: state.stoppedAt?.toISOString(),
-      lastHealthCheck: state.lastHealthCheck?.toISOString(),
-    }, 200, { links: daemonLinks({ name: state.name }, linkCtx) });
+    return sendResource(
+      c,
+      "daemon_status",
+      {
+        ...state,
+        startedAt: state.startedAt?.toISOString(),
+        stoppedAt: state.stoppedAt?.toISOString(),
+        lastHealthCheck: state.lastHealthCheck?.toISOString(),
+      },
+      200,
+      { links: daemonLinks({ name: state.name }, linkCtx) },
+    );
   } catch (error) {
     return handleError(error, c);
   }
@@ -128,12 +140,18 @@ supervisor.post("/:name/stop", async (c) => {
     const state = await svc.stopDaemon(name);
     const linkCtx = getLinkContext(c);
 
-    return sendResource(c, "daemon_status", {
-      ...state,
-      startedAt: state.startedAt?.toISOString(),
-      stoppedAt: state.stoppedAt?.toISOString(),
-      lastHealthCheck: state.lastHealthCheck?.toISOString(),
-    }, 200, { links: daemonLinks({ name: state.name }, linkCtx) });
+    return sendResource(
+      c,
+      "daemon_status",
+      {
+        ...state,
+        startedAt: state.startedAt?.toISOString(),
+        stoppedAt: state.stoppedAt?.toISOString(),
+        lastHealthCheck: state.lastHealthCheck?.toISOString(),
+      },
+      200,
+      { links: daemonLinks({ name: state.name }, linkCtx) },
+    );
   } catch (error) {
     return handleError(error, c);
   }
@@ -149,12 +167,18 @@ supervisor.post("/:name/restart", async (c) => {
     const state = await svc.restartDaemon(name);
     const linkCtx = getLinkContext(c);
 
-    return sendResource(c, "daemon_status", {
-      ...state,
-      startedAt: state.startedAt?.toISOString(),
-      stoppedAt: state.stoppedAt?.toISOString(),
-      lastHealthCheck: state.lastHealthCheck?.toISOString(),
-    }, 200, { links: daemonLinks({ name: state.name }, linkCtx) });
+    return sendResource(
+      c,
+      "daemon_status",
+      {
+        ...state,
+        startedAt: state.startedAt?.toISOString(),
+        stoppedAt: state.stoppedAt?.toISOString(),
+        lastHealthCheck: state.lastHealthCheck?.toISOString(),
+      },
+      200,
+      { links: daemonLinks({ name: state.name }, linkCtx) },
+    );
   } catch (error) {
     return handleError(error, c);
   }
@@ -210,16 +234,22 @@ supervisor.post("/start-all", async (c) => {
     const statuses = svc.getStatus();
     const linkCtx = getLinkContext(c);
 
-    return sendResource(c, "supervisor_status", {
-      message: "All daemons started",
-      daemons: statuses.map((s) => ({
-        ...s,
-        startedAt: s.startedAt?.toISOString(),
-        stoppedAt: s.stoppedAt?.toISOString(),
-        lastHealthCheck: s.lastHealthCheck?.toISOString(),
-        links: daemonLinks({ name: s.name }, linkCtx),
-      })),
-    }, 200, { links: { self: `${linkCtx.baseUrl}/supervisor/start-all` } });
+    return sendResource(
+      c,
+      "supervisor_status",
+      {
+        message: "All daemons started",
+        daemons: statuses.map((s) => ({
+          ...s,
+          startedAt: s.startedAt?.toISOString(),
+          stoppedAt: s.stoppedAt?.toISOString(),
+          lastHealthCheck: s.lastHealthCheck?.toISOString(),
+          links: daemonLinks({ name: s.name }, linkCtx),
+        })),
+      },
+      200,
+      { links: { self: `${linkCtx.baseUrl}/supervisor/start-all` } },
+    );
   } catch (error) {
     return handleError(error, c);
   }
@@ -235,16 +265,22 @@ supervisor.post("/stop-all", async (c) => {
     const statuses = svc.getStatus();
     const linkCtx = getLinkContext(c);
 
-    return sendResource(c, "supervisor_status", {
-      message: "All daemons stopped",
-      daemons: statuses.map((s) => ({
-        ...s,
-        startedAt: s.startedAt?.toISOString(),
-        stoppedAt: s.stoppedAt?.toISOString(),
-        lastHealthCheck: s.lastHealthCheck?.toISOString(),
-        links: daemonLinks({ name: s.name }, linkCtx),
-      })),
-    }, 200, { links: { self: `${linkCtx.baseUrl}/supervisor/stop-all` } });
+    return sendResource(
+      c,
+      "supervisor_status",
+      {
+        message: "All daemons stopped",
+        daemons: statuses.map((s) => ({
+          ...s,
+          startedAt: s.startedAt?.toISOString(),
+          stoppedAt: s.stoppedAt?.toISOString(),
+          lastHealthCheck: s.lastHealthCheck?.toISOString(),
+          links: daemonLinks({ name: s.name }, linkCtx),
+        })),
+      },
+      200,
+      { links: { self: `${linkCtx.baseUrl}/supervisor/stop-all` } },
+    );
   } catch (error) {
     return handleError(error, c);
   }
@@ -259,10 +295,13 @@ supervisor.get("/daemons", async (c) => {
     const names = svc.getDaemonNames();
     const linkCtx = getLinkContext(c);
 
-    return sendList(c, names.map((name) => ({
-      name,
-      links: daemonLinks({ name }, linkCtx),
-    })));
+    return sendList(
+      c,
+      names.map((name) => ({
+        name,
+        links: daemonLinks({ name }, linkCtx),
+      })),
+    );
   } catch (error) {
     return handleError(error, c);
   }

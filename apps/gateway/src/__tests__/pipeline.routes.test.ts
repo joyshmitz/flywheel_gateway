@@ -4,19 +4,19 @@
  * Tests for the pipeline workflow engine REST API endpoints and service.
  */
 
-import { afterEach, beforeEach, describe, expect, test, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { Hono } from "hono";
+import type { CreatePipelineInput } from "../models/pipeline";
 import { pipelines } from "../routes/pipelines";
 import {
+  cancelRun,
   clearAll,
   createPipeline,
   getPipeline,
-  runPipeline,
   pauseRun,
-  cancelRun,
+  runPipeline,
   submitApproval,
 } from "../services/pipeline.service";
-import type { CreatePipelineInput } from "../models/pipeline";
 
 // ============================================================================
 // Test Setup
@@ -460,11 +460,14 @@ describe("Pipeline Routes", () => {
     test("starts a pipeline run", async () => {
       const pipeline = createPipeline(createTestPipelineInput());
 
-      const res = await app.request(`/pipelines/${pipeline.id}/run?user_id=user_123`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ params: { env: "test" } }),
-      });
+      const res = await app.request(
+        `/pipelines/${pipeline.id}/run?user_id=user_123`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ params: { env: "test" } }),
+        },
+      );
 
       expect(res.status).toBe(201);
       const body = await res.json();
@@ -593,7 +596,9 @@ describe("Pipeline Routes", () => {
     test("returns 404 for unknown run", async () => {
       const pipeline = createPipeline(createTestPipelineInput());
 
-      const res = await app.request(`/pipelines/${pipeline.id}/runs/run_unknown`);
+      const res = await app.request(
+        `/pipelines/${pipeline.id}/runs/run_unknown`,
+      );
 
       expect(res.status).toBe(404);
     });
@@ -832,7 +837,10 @@ describe("Pipeline Triggers", () => {
 
     const pipeline = createPipeline(input);
     expect(pipeline.trigger.type).toBe("schedule");
-    const config = pipeline.trigger.config as { type: "schedule"; config: { cron: string } };
+    const config = pipeline.trigger.config as {
+      type: "schedule";
+      config: { cron: string };
+    };
     expect(config.config.cron).toBe("0 0 * * *");
   });
 
@@ -889,7 +897,10 @@ describe("Pipeline Triggers", () => {
 
     const pipeline = createPipeline(input);
     expect(pipeline.trigger.type).toBe("bead_event");
-    const config = pipeline.trigger.config as { type: "bead_event"; config: { events: string[] } };
+    const config = pipeline.trigger.config as {
+      type: "bead_event";
+      config: { events: string[] };
+    };
     expect(config.config.events).toContain("created");
   });
 });

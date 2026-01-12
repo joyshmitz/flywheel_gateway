@@ -6,9 +6,9 @@ import { describe, expect, test } from "bun:test";
 import {
   createThrottleMessage,
   createWSError,
+  type ErrorMessage,
   parseClientMessage,
   serializeServerMessage,
-  type ErrorMessage,
   type ThrottledMessage,
 } from "../messages";
 
@@ -16,7 +16,10 @@ describe("WebSocket messages", () => {
   describe("parseClientMessage", () => {
     test("parses subscribe message", () => {
       const msg = parseClientMessage(
-        JSON.stringify({ type: "subscribe", channel: "agent:output:agent-123" }),
+        JSON.stringify({
+          type: "subscribe",
+          channel: "agent:output:agent-123",
+        }),
       );
       expect(msg).toEqual({
         type: "subscribe",
@@ -42,7 +45,10 @@ describe("WebSocket messages", () => {
 
     test("parses unsubscribe message", () => {
       const msg = parseClientMessage(
-        JSON.stringify({ type: "unsubscribe", channel: "agent:output:agent-123" }),
+        JSON.stringify({
+          type: "unsubscribe",
+          channel: "agent:output:agent-123",
+        }),
       );
       expect(msg).toEqual({
         type: "unsubscribe",
@@ -65,12 +71,16 @@ describe("WebSocket messages", () => {
     });
 
     test("returns undefined for missing type", () => {
-      expect(parseClientMessage(JSON.stringify({ channel: "test" }))).toBeUndefined();
+      expect(
+        parseClientMessage(JSON.stringify({ channel: "test" })),
+      ).toBeUndefined();
     });
 
     test("returns undefined for unknown type", () => {
       expect(
-        parseClientMessage(JSON.stringify({ type: "unknown", channel: "test" })),
+        parseClientMessage(
+          JSON.stringify({ type: "unknown", channel: "test" }),
+        ),
       ).toBeUndefined();
     });
   });
@@ -84,7 +94,11 @@ describe("WebSocket messages", () => {
     });
 
     test("includes channel when provided", () => {
-      const error = createWSError("SOME_CODE", "Some message", "agent:output:123");
+      const error = createWSError(
+        "SOME_CODE",
+        "Some message",
+        "agent:output:123",
+      );
       expect(error.channel).toBe("agent:output:123");
     });
 
@@ -134,7 +148,10 @@ describe("WebSocket messages", () => {
     });
 
     test("includes hint for WS_AUTHENTICATION_REQUIRED", () => {
-      const error = createWSError("WS_AUTHENTICATION_REQUIRED", "Auth required");
+      const error = createWSError(
+        "WS_AUTHENTICATION_REQUIRED",
+        "Auth required",
+      );
       expect(error.severity).toBe("recoverable");
       expect(error.hint).toContain("authentication");
       expect(error.docs).toContain("authentication");

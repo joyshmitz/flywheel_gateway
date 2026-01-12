@@ -5,10 +5,10 @@
  * (fleet management, sync, and sweep) to WebSocket subscribers.
  */
 
+import { getCorrelationId } from "../middleware/correlation";
 import type { Channel } from "../ws/channels";
 import { getHub } from "../ws/hub";
 import type { MessageMetadata, MessageType } from "../ws/messages";
-import { getCorrelationId } from "../middleware/correlation";
 import { logger } from "./logger";
 
 // ============================================================================
@@ -208,14 +208,22 @@ export function publishRepoUpdated(data: RepoEventData): void {
 export function publishSyncStarted(data: SyncStartedEventData): void {
   // Publish to both general sync channel and session-specific channel
   publishEvent(getFleetSyncChannel(), "fleet.sync_started", data);
-  publishEvent(getSyncSessionChannel(data.sessionId), "fleet.sync_started", data);
+  publishEvent(
+    getSyncSessionChannel(data.sessionId),
+    "fleet.sync_started",
+    data,
+  );
 }
 
 /**
  * Publish sync progress event (per-repo progress).
  */
 export function publishSyncProgress(data: SyncRepoProgressEventData): void {
-  publishEvent(getSyncSessionChannel(data.sessionId), "fleet.sync_progress", data);
+  publishEvent(
+    getSyncSessionChannel(data.sessionId),
+    "fleet.sync_progress",
+    data,
+  );
 }
 
 /**
@@ -223,16 +231,27 @@ export function publishSyncProgress(data: SyncRepoProgressEventData): void {
  */
 export function publishSyncCompleted(data: SyncCompletedEventData): void {
   publishEvent(getFleetSyncChannel(), "fleet.sync_completed", data);
-  publishEvent(getSyncSessionChannel(data.sessionId), "fleet.sync_completed", data);
+  publishEvent(
+    getSyncSessionChannel(data.sessionId),
+    "fleet.sync_completed",
+    data,
+  );
 }
 
 /**
  * Publish sync cancelled event.
  */
-export function publishSyncCancelled(sessionId: string, cancelledBy?: string): void {
+export function publishSyncCancelled(
+  sessionId: string,
+  cancelledBy?: string,
+): void {
   const payload = { sessionId, cancelledBy };
   publishEvent(getFleetSyncChannel(), "fleet.sync_cancelled", payload);
-  publishEvent(getSyncSessionChannel(sessionId), "fleet.sync_cancelled", payload);
+  publishEvent(
+    getSyncSessionChannel(sessionId),
+    "fleet.sync_cancelled",
+    payload,
+  );
 }
 
 // ============================================================================
@@ -244,7 +263,11 @@ export function publishSyncCancelled(sessionId: string, cancelledBy?: string): v
  */
 export function publishSweepCreated(data: SweepCreatedEventData): void {
   publishEvent(getFleetSweepChannel(), "fleet.sweep_created", data);
-  publishEvent(getSweepSessionChannel(data.sessionId), "fleet.sweep_created", data);
+  publishEvent(
+    getSweepSessionChannel(data.sessionId),
+    "fleet.sweep_created",
+    data,
+  );
 }
 
 /**
@@ -253,14 +276,22 @@ export function publishSweepCreated(data: SweepCreatedEventData): void {
 export function publishSweepStarted(sessionId: string): void {
   const payload = { sessionId };
   publishEvent(getFleetSweepChannel(), "fleet.sweep_started", payload);
-  publishEvent(getSweepSessionChannel(sessionId), "fleet.sweep_started", payload);
+  publishEvent(
+    getSweepSessionChannel(sessionId),
+    "fleet.sweep_started",
+    payload,
+  );
 }
 
 /**
  * Publish sweep progress event.
  */
 export function publishSweepProgress(data: SweepProgressEventData): void {
-  publishEvent(getSweepSessionChannel(data.sessionId), "fleet.sweep_progress", data);
+  publishEvent(
+    getSweepSessionChannel(data.sessionId),
+    "fleet.sweep_progress",
+    data,
+  );
 }
 
 /**
@@ -269,7 +300,11 @@ export function publishSweepProgress(data: SweepProgressEventData): void {
 export function publishSweepPlanCreated(data: SweepPlanEventData): void {
   publishEvent(getFleetSweepChannel(), "fleet.plan_created", data);
   if (data.sessionId) {
-    publishEvent(getSweepSessionChannel(data.sessionId), "fleet.plan_created", data);
+    publishEvent(
+      getSweepSessionChannel(data.sessionId),
+      "fleet.plan_created",
+      data,
+    );
   }
 }
 
@@ -279,7 +314,11 @@ export function publishSweepPlanCreated(data: SweepPlanEventData): void {
 export function publishSweepPlanApproved(data: SweepPlanEventData): void {
   publishEvent(getFleetSweepChannel(), "fleet.plan_approved", data);
   if (data.sessionId) {
-    publishEvent(getSweepSessionChannel(data.sessionId), "fleet.plan_approved", data);
+    publishEvent(
+      getSweepSessionChannel(data.sessionId),
+      "fleet.plan_approved",
+      data,
+    );
   }
 }
 
@@ -289,7 +328,11 @@ export function publishSweepPlanApproved(data: SweepPlanEventData): void {
 export function publishSweepPlanRejected(data: SweepPlanEventData): void {
   publishEvent(getFleetSweepChannel(), "fleet.plan_rejected", data);
   if (data.sessionId) {
-    publishEvent(getSweepSessionChannel(data.sessionId), "fleet.plan_rejected", data);
+    publishEvent(
+      getSweepSessionChannel(data.sessionId),
+      "fleet.plan_rejected",
+      data,
+    );
   }
 }
 
@@ -298,7 +341,11 @@ export function publishSweepPlanRejected(data: SweepPlanEventData): void {
  */
 export function publishSweepCompleted(data: SweepCompletedEventData): void {
   publishEvent(getFleetSweepChannel(), "fleet.sweep_completed", data);
-  publishEvent(getSweepSessionChannel(data.sessionId), "fleet.sweep_completed", data);
+  publishEvent(
+    getSweepSessionChannel(data.sessionId),
+    "fleet.sweep_completed",
+    data,
+  );
 }
 
 /**
@@ -307,14 +354,25 @@ export function publishSweepCompleted(data: SweepCompletedEventData): void {
 export function publishSweepFailed(sessionId: string, error: string): void {
   const payload = { sessionId, error };
   publishEvent(getFleetSweepChannel(), "fleet.sweep_failed", payload);
-  publishEvent(getSweepSessionChannel(sessionId), "fleet.sweep_failed", payload);
+  publishEvent(
+    getSweepSessionChannel(sessionId),
+    "fleet.sweep_failed",
+    payload,
+  );
 }
 
 /**
  * Publish sweep cancelled event.
  */
-export function publishSweepCancelled(sessionId: string, cancelledBy?: string): void {
+export function publishSweepCancelled(
+  sessionId: string,
+  cancelledBy?: string,
+): void {
   const payload = { sessionId, cancelledBy };
   publishEvent(getFleetSweepChannel(), "fleet.sweep_cancelled", payload);
-  publishEvent(getSweepSessionChannel(sessionId), "fleet.sweep_cancelled", payload);
+  publishEvent(
+    getSweepSessionChannel(sessionId),
+    "fleet.sweep_cancelled",
+    payload,
+  );
 }

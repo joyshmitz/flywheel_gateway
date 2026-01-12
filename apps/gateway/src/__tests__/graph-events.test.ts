@@ -17,12 +17,12 @@ mock.module("../services/logger", () => ({
 
 // Import after mocking
 import {
+  type GraphEdgePayload,
   GraphEventsService,
+  type GraphNodePayload,
+  type GraphStatsPayload,
   getGraphEventsService,
   resetGraphEventsService,
-  type GraphNodePayload,
-  type GraphEdgePayload,
-  type GraphStatsPayload,
 } from "../services/graph-events";
 
 describe("Graph Events Service", () => {

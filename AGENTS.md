@@ -545,3 +545,61 @@ csctf "https://chatgpt.com/share/xxx" --publish-to-gh-pages  # Publish to GitHub
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
+
+---
+
+## Documentation
+
+The project maintains documentation in the `/docs` directory:
+
+| File | Description |
+|------|-------------|
+| `getting-started.md` | Setup guide, prerequisites, first steps |
+| `architecture.md` | System architecture overview with diagrams |
+| `api-guide.md` | REST API patterns, endpoints, WebSocket usage |
+
+Additional documentation:
+- `AGENTS.md` (this file) - Agent guidelines and conventions
+- `README.md` - Project overview and quick start
+- `/docs/openapi.json` - OpenAPI 3.1 specification (generated)
+
+Interactive API documentation is available at runtime:
+- Swagger UI: `/docs`
+- ReDoc: `/redoc`
+
+---
+
+## Recent Feature Areas
+
+### Cost Analytics (apps/gateway + apps/web)
+
+The cost analytics system provides comprehensive AI usage tracking:
+
+**Backend Services** (`apps/gateway/src/services/`):
+- `cost-tracker.service.ts` - Token usage tracking, rate cards
+- `budget.service.ts` - Budget creation, alerts, thresholds
+- `cost-forecast.service.ts` - 30-day forecasting, scenarios
+- `cost-optimization.service.ts` - AI-powered recommendations
+
+**Frontend Components** (`apps/web/src/components/analytics/`):
+- `CostDashboard.tsx` - Main dashboard assembling all components
+- `BudgetGauge.tsx` - Circular progress gauge for budget status
+- `CostTrendChart.tsx` - Line chart with period selection
+- `CostBreakdownChart.tsx` - Horizontal bar chart by dimension
+- `CostForecastChart.tsx` - 30-day forecast visualization
+- `OptimizationRecommendations.tsx` - Expandable recommendation cards
+
+**Routes**: `/cost-analytics` (frontend), `/cost-analytics/*` (API)
+
+### Notification System (apps/web)
+
+Real-time notification UI components:
+- `NotificationBell.tsx` - Topbar notification indicator
+- `NotificationPanel.tsx` - Slide-out notification list
+- Integration with WebSocket for real-time updates
+
+### OpenAPI Generation
+
+Auto-generated OpenAPI 3.1 schemas from Zod validators:
+- `apps/gateway/src/api/generate-openapi.ts` - Generation logic
+- `apps/gateway/src/routes/openapi.ts` - Serving endpoints

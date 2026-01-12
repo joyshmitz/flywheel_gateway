@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach, mock } from 'bun:test';
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import {
-  PerformanceMonitor,
   getPerformanceMonitor,
   mark,
   measure,
+  PerformanceMonitor,
   timeExecution,
-} from '../monitor';
+} from "../monitor";
 
 // Mock PerformanceObserver for Node/Bun environment
 const mockPerformanceObserver = {
@@ -13,7 +13,7 @@ const mockPerformanceObserver = {
   disconnect: mock(() => {}),
 };
 
-// @ts-ignore - mocking global
+// @ts-expect-error - mocking global
 globalThis.PerformanceObserver = class {
   constructor(callback: PerformanceObserverCallback) {
     // Store callback if needed
@@ -22,37 +22,37 @@ globalThis.PerformanceObserver = class {
   disconnect() {}
 } as unknown as typeof PerformanceObserver;
 
-describe('PerformanceMonitor', () => {
+describe("PerformanceMonitor", () => {
   let monitor: PerformanceMonitor;
 
   beforeEach(() => {
     monitor = new PerformanceMonitor();
   });
 
-  describe('getMetrics', () => {
-    it('should return metrics object', () => {
+  describe("getMetrics", () => {
+    it("should return metrics object", () => {
       const metrics = monitor.getMetrics();
 
       expect(metrics).toBeDefined();
-      expect(typeof metrics.longTasks).toBe('number');
+      expect(typeof metrics.longTasks).toBe("number");
       expect(metrics.fcp).toBeNull();
       expect(metrics.lcp).toBeNull();
     });
   });
 
-  describe('subscribe', () => {
-    it('should return unsubscribe function', () => {
+  describe("subscribe", () => {
+    it("should return unsubscribe function", () => {
       const callback = mock(() => {});
       const unsubscribe = monitor.subscribe(callback);
 
       // unsubscribe should be a function
-      expect(typeof unsubscribe).toBe('function');
+      expect(typeof unsubscribe).toBe("function");
       unsubscribe();
     });
   });
 
-  describe('updateRuntimeMetrics', () => {
-    it('should handle non-browser environment gracefully', () => {
+  describe("updateRuntimeMetrics", () => {
+    it("should handle non-browser environment gracefully", () => {
       // In test environment (no window/document), should not throw
       monitor.updateRuntimeMetrics();
       const metrics = monitor.getMetrics();
@@ -62,21 +62,21 @@ describe('PerformanceMonitor', () => {
     });
   });
 
-  describe('getReport', () => {
-    it('should return performance report', () => {
+  describe("getReport", () => {
+    it("should return performance report", () => {
       const report = monitor.getReport();
 
       expect(report.metrics).toBeDefined();
       expect(report.longTasks).toBeInstanceOf(Array);
-      expect(typeof report.timestamp).toBe('number');
+      expect(typeof report.timestamp).toBe("number");
       // url is empty string in non-browser environment
-      expect(typeof report.url).toBe('string');
-      expect(report.url).toBe('');
+      expect(typeof report.url).toBe("string");
+      expect(report.url).toBe("");
     });
   });
 
-  describe('checkThresholds', () => {
-    it('should pass when metrics are below thresholds', () => {
+  describe("checkThresholds", () => {
+    it("should pass when metrics are below thresholds", () => {
       const result = monitor.checkThresholds({
         longTasks: 100,
       });
@@ -85,7 +85,7 @@ describe('PerformanceMonitor', () => {
       expect(result.failures).toHaveLength(0);
     });
 
-    it('should fail when metrics exceed thresholds', () => {
+    it("should fail when metrics exceed thresholds", () => {
       // Manually set a metric that will fail
       // Since longTasks starts at 0, it should pass
       const result = monitor.checkThresholds({
@@ -97,25 +97,25 @@ describe('PerformanceMonitor', () => {
     });
   });
 
-  describe('getWebVitalsRating', () => {
-    it('should return ratings for all web vitals', () => {
+  describe("getWebVitalsRating", () => {
+    it("should return ratings for all web vitals", () => {
       const ratings = monitor.getWebVitalsRating();
 
-      expect(ratings).toHaveProperty('lcp');
-      expect(ratings).toHaveProperty('fid');
-      expect(ratings).toHaveProperty('cls');
-      expect(ratings).toHaveProperty('inp');
-      expect(ratings).toHaveProperty('ttfb');
+      expect(ratings).toHaveProperty("lcp");
+      expect(ratings).toHaveProperty("fid");
+      expect(ratings).toHaveProperty("cls");
+      expect(ratings).toHaveProperty("inp");
+      expect(ratings).toHaveProperty("ttfb");
 
       // All should be 'unknown' since no data collected
       Object.values(ratings).forEach((rating) => {
-        expect(rating).toBe('unknown');
+        expect(rating).toBe("unknown");
       });
     });
   });
 
-  describe('disconnect', () => {
-    it('should clean up observers', () => {
+  describe("disconnect", () => {
+    it("should clean up observers", () => {
       monitor.disconnect();
       // Should not throw
       expect(true).toBe(true);
@@ -123,8 +123,8 @@ describe('PerformanceMonitor', () => {
   });
 });
 
-describe('getPerformanceMonitor', () => {
-  it('should return singleton instance', () => {
+describe("getPerformanceMonitor", () => {
+  it("should return singleton instance", () => {
     const monitor1 = getPerformanceMonitor();
     const monitor2 = getPerformanceMonitor();
 
@@ -132,44 +132,44 @@ describe('getPerformanceMonitor', () => {
   });
 });
 
-describe('mark and measure', () => {
-  it('should create performance marks', () => {
-    mark('test-start');
-    mark('test-end');
+describe("mark and measure", () => {
+  it("should create performance marks", () => {
+    mark("test-start");
+    mark("test-end");
 
     // Should not throw
     expect(true).toBe(true);
   });
 
-  it('should measure between marks', () => {
-    mark('measure-start');
-    mark('measure-end');
+  it("should measure between marks", () => {
+    mark("measure-start");
+    mark("measure-end");
 
-    const duration = measure('test-measure', 'measure-start', 'measure-end');
+    const duration = measure("test-measure", "measure-start", "measure-end");
 
-    expect(typeof duration).toBe('number');
+    expect(typeof duration).toBe("number");
     expect(duration).toBeGreaterThanOrEqual(0);
   });
 });
 
-describe('timeExecution', () => {
-  it('should time synchronous function', async () => {
-    const { result, duration } = await timeExecution('sync-test', () => {
+describe("timeExecution", () => {
+  it("should time synchronous function", async () => {
+    const { result, duration } = await timeExecution("sync-test", () => {
       return 42;
     });
 
     expect(result).toBe(42);
-    expect(typeof duration).toBe('number');
+    expect(typeof duration).toBe("number");
     expect(duration).toBeGreaterThanOrEqual(0);
   });
 
-  it('should time async function', async () => {
-    const { result, duration } = await timeExecution('async-test', async () => {
+  it("should time async function", async () => {
+    const { result, duration } = await timeExecution("async-test", async () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
-      return 'done';
+      return "done";
     });
 
-    expect(result).toBe('done');
+    expect(result).toBe("done");
     expect(duration).toBeGreaterThanOrEqual(10);
   });
 });

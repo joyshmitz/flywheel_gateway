@@ -255,10 +255,14 @@ function parseJson<T>(
   try {
     parsed = JSON.parse(stdout);
   } catch (error) {
-    throw new CassClientError("parse_error", `Failed to parse CASS ${context}`, {
-      cause: error instanceof Error ? error.message : String(error),
-      stdout: stdout.slice(0, 500),
-    });
+    throw new CassClientError(
+      "parse_error",
+      `Failed to parse CASS ${context}`,
+      {
+        cause: error instanceof Error ? error.message : String(error),
+        stdout: stdout.slice(0, 500),
+      },
+    );
   }
 
   const result = schema.safeParse(parsed);
@@ -339,7 +343,9 @@ export function createCassClient(options: CassClientOptions): CassClient {
   const defaultTimeout = options.timeout ?? 30000;
 
   // Build run options, only including cwd if defined
-  const buildRunOptions = (timeout: number): { cwd?: string; timeout: number } => {
+  const buildRunOptions = (
+    timeout: number,
+  ): { cwd?: string; timeout: number } => {
     const opts: { cwd?: string; timeout: number } = { timeout };
     if (baseCwd !== undefined) opts.cwd = baseCwd;
     return opts;
@@ -453,7 +459,9 @@ export function createBunCommandRunner(): CassCommandRunner {
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => {
           proc.kill();
-          reject(new CassClientError("timeout", "Command timed out", { timeout }));
+          reject(
+            new CassClientError("timeout", "Command timed out", { timeout }),
+          );
         }, timeout);
       });
 

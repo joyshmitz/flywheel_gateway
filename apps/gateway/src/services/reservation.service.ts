@@ -11,8 +11,8 @@
 
 import {
   createCursor,
-  decodeCursor,
   DEFAULT_PAGINATION,
+  decodeCursor,
 } from "@flywheel/shared/api/pagination";
 import { getCorrelationId } from "../middleware/correlation";
 import type { Channel } from "../ws/channels";
@@ -768,7 +768,10 @@ export async function listReservations(
 
   if (pageItems.length > 0) {
     const firstItem = pageItems[0]!;
-    result.prevCursor = createCursor(firstItem.id, firstItem.createdAt.getTime());
+    result.prevCursor = createCursor(
+      firstItem.id,
+      firstItem.createdAt.getTime(),
+    );
   }
 
   return result;
@@ -799,7 +802,9 @@ export async function listConflicts(
   if (params.startingAfter) {
     const cursor = decodeCursor(params.startingAfter);
     if (cursor) {
-      const cursorIndex = conflicts.findIndex((c) => c.conflictId === cursor.id);
+      const cursorIndex = conflicts.findIndex(
+        (c) => c.conflictId === cursor.id,
+      );
       if (cursorIndex !== -1) {
         startIndex = cursorIndex + 1;
       }
@@ -807,7 +812,9 @@ export async function listConflicts(
   } else if (params.endingBefore) {
     const cursor = decodeCursor(params.endingBefore);
     if (cursor) {
-      const cursorIndex = conflicts.findIndex((c) => c.conflictId === cursor.id);
+      const cursorIndex = conflicts.findIndex(
+        (c) => c.conflictId === cursor.id,
+      );
       if (cursorIndex !== -1) {
         startIndex = Math.max(0, cursorIndex - limit);
       }

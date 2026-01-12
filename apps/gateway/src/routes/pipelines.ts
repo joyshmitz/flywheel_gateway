@@ -14,9 +14,9 @@ import { getLogger } from "../middleware/correlation";
 import {
   type CreatePipelineInput,
   type PipelineStatus,
-  type UpdatePipelineInput,
   serializePipeline,
   serializeRun,
+  type UpdatePipelineInput,
 } from "../models/pipeline";
 import {
   cancelRun,
@@ -126,15 +126,48 @@ const StepConfigSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("transform"),
     config: z.object({
-      operations: z.array(z.union([
-        z.object({ op: z.literal("set"), path: z.string().min(1), value: z.unknown() }),
-        z.object({ op: z.literal("delete"), path: z.string().min(1) }),
-        z.object({ op: z.literal("merge"), source: z.string().min(1), target: z.string().min(1) }),
-        z.object({ op: z.literal("map"), source: z.string().min(1), expression: z.string().min(1), target: z.string().min(1) }),
-        z.object({ op: z.literal("filter"), source: z.string().min(1), condition: z.string().min(1), target: z.string().min(1) }),
-        z.object({ op: z.literal("reduce"), source: z.string().min(1), expression: z.string().min(1), initial: z.unknown(), target: z.string().min(1) }),
-        z.object({ op: z.literal("extract"), source: z.string().min(1), query: z.string().min(1), target: z.string().min(1) }),
-      ])).min(1),
+      operations: z
+        .array(
+          z.union([
+            z.object({
+              op: z.literal("set"),
+              path: z.string().min(1),
+              value: z.unknown(),
+            }),
+            z.object({ op: z.literal("delete"), path: z.string().min(1) }),
+            z.object({
+              op: z.literal("merge"),
+              source: z.string().min(1),
+              target: z.string().min(1),
+            }),
+            z.object({
+              op: z.literal("map"),
+              source: z.string().min(1),
+              expression: z.string().min(1),
+              target: z.string().min(1),
+            }),
+            z.object({
+              op: z.literal("filter"),
+              source: z.string().min(1),
+              condition: z.string().min(1),
+              target: z.string().min(1),
+            }),
+            z.object({
+              op: z.literal("reduce"),
+              source: z.string().min(1),
+              expression: z.string().min(1),
+              initial: z.unknown(),
+              target: z.string().min(1),
+            }),
+            z.object({
+              op: z.literal("extract"),
+              source: z.string().min(1),
+              query: z.string().min(1),
+              target: z.string().min(1),
+            }),
+          ]),
+        )
+        .min(1),
       outputVariable: z.string().min(1),
     }),
   }),
@@ -145,14 +178,16 @@ const StepConfigSchema = z.discriminatedUnion("type", [
       method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]),
       headers: z.record(z.string(), z.string()).optional(),
       body: z.unknown().optional(),
-      auth: z.object({
-        type: z.enum(["none", "basic", "bearer", "api_key"]),
-        username: z.string().optional(),
-        password: z.string().optional(),
-        token: z.string().optional(),
-        headerName: z.string().optional(),
-        apiKey: z.string().optional(),
-      }).optional(),
+      auth: z
+        .object({
+          type: z.enum(["none", "basic", "bearer", "api_key"]),
+          username: z.string().optional(),
+          password: z.string().optional(),
+          token: z.string().optional(),
+          headerName: z.string().optional(),
+          apiKey: z.string().optional(),
+        })
+        .optional(),
       validateStatus: z.array(z.number()).optional(),
       timeout: z.number().positive().optional(),
       outputVariable: z.string().min(1),
@@ -200,7 +235,9 @@ const TriggerConfigSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("bead_event"),
     config: z.object({
-      events: z.array(z.enum(["created", "updated", "closed", "assigned"])).min(1),
+      events: z
+        .array(z.enum(["created", "updated", "closed", "assigned"]))
+        .min(1),
       beadType: z.array(z.string()).optional(),
       beadPriority: z.array(z.number()).optional(),
       beadLabels: z.array(z.string()).optional(),
@@ -220,7 +257,18 @@ const StepSchema = z.object({
   id: z.string().min(1).max(100),
   name: z.string().min(1).max(200),
   description: z.string().max(1000).optional(),
-  type: z.enum(["agent_task", "conditional", "parallel", "approval", "script", "loop", "wait", "transform", "webhook", "sub_pipeline"]),
+  type: z.enum([
+    "agent_task",
+    "conditional",
+    "parallel",
+    "approval",
+    "script",
+    "loop",
+    "wait",
+    "transform",
+    "webhook",
+    "sub_pipeline",
+  ]),
   config: StepConfigSchema,
   dependsOn: z.array(z.string()).optional(),
   retryPolicy: RetryPolicySchema.optional(),
@@ -248,11 +296,13 @@ const UpdatePipelineSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   description: z.string().max(2000).optional(),
   enabled: z.boolean().optional(),
-  trigger: z.object({
-    type: z.enum(["manual", "schedule", "webhook", "bead_event"]).optional(),
-    config: TriggerConfigSchema.optional(),
-    enabled: z.boolean().optional(),
-  }).optional(),
+  trigger: z
+    .object({
+      type: z.enum(["manual", "schedule", "webhook", "bead_event"]).optional(),
+      config: TriggerConfigSchema.optional(),
+      enabled: z.boolean().optional(),
+    })
+    .optional(),
   steps: z.array(StepSchema).min(1).optional(),
   contextDefaults: z.record(z.string(), z.unknown()).optional(),
   retryPolicy: RetryPolicySchema.optional(),
@@ -299,10 +349,7 @@ function parseDateQuery(value: string | undefined): Date | undefined {
   return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
-function safeParseInt(
-  value: string | undefined,
-  defaultValue: number,
-): number {
+function safeParseInt(value: string | undefined, defaultValue: number): number {
   if (!value) return defaultValue;
   const parsed = parseInt(value, 10);
   return Number.isNaN(parsed) ? defaultValue : parsed;
@@ -489,7 +536,12 @@ pipelines.post("/:id/pause", (c) => {
     const run = pauseRun(runId);
 
     if (!run) {
-      return sendError(c, "INVALID_STATE", "Run is not in running state or not found", 400);
+      return sendError(
+        c,
+        "INVALID_STATE",
+        "Run is not in running state or not found",
+        400,
+      );
     }
 
     return sendResource(c, "pipeline_run", serializeRun(run));
@@ -512,7 +564,12 @@ pipelines.post("/:id/resume", async (c) => {
     const run = await resumeRun(runId);
 
     if (!run) {
-      return sendError(c, "INVALID_STATE", "Run is not in paused state or not found", 400);
+      return sendError(
+        c,
+        "INVALID_STATE",
+        "Run is not in paused state or not found",
+        400,
+      );
     }
 
     return sendResource(c, "pipeline_run", serializeRun(run));
@@ -535,7 +592,12 @@ pipelines.post("/:id/cancel", (c) => {
     const run = cancelRun(runId);
 
     if (!run) {
-      return sendError(c, "INVALID_STATE", "Run is not in running or paused state or not found", 400);
+      return sendError(
+        c,
+        "INVALID_STATE",
+        "Run is not in running or paused state or not found",
+        400,
+      );
     }
 
     return sendResource(c, "pipeline_run", serializeRun(run));
@@ -617,7 +679,9 @@ pipelines.get("/:id/runs/:runId", (c) => {
         status: step.status,
         result: step.result,
         ...(step.startedAt && { startedAt: step.startedAt.toISOString() }),
-        ...(step.completedAt && { completedAt: step.completedAt.toISOString() }),
+        ...(step.completedAt && {
+          completedAt: step.completedAt.toISOString(),
+        }),
       })),
     });
   } catch (error) {

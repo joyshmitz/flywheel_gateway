@@ -12,10 +12,31 @@ import { useUiStore } from "../stores/ui";
 // Types
 // ============================================================================
 
-export type RepoStatus = "healthy" | "dirty" | "behind" | "ahead" | "diverged" | "unknown";
-export type SweepStatus = "pending" | "running" | "paused" | "completed" | "failed" | "cancelled";
-export type PlanApprovalStatus = "pending" | "approved" | "rejected" | "auto_approved";
-export type PlanExecutionStatus = "pending" | "running" | "completed" | "failed" | "skipped";
+export type RepoStatus =
+  | "healthy"
+  | "dirty"
+  | "behind"
+  | "ahead"
+  | "diverged"
+  | "unknown";
+export type SweepStatus =
+  | "pending"
+  | "running"
+  | "paused"
+  | "completed"
+  | "failed"
+  | "cancelled";
+export type PlanApprovalStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "auto_approved";
+export type PlanExecutionStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed"
+  | "skipped";
 
 export interface FleetStats {
   totalRepos: number;
@@ -353,7 +374,10 @@ const mockSweepPlans: SweepPlan[] = [
 
 const API_BASE = "/api/ru";
 
-async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
+async function fetchAPI<T>(
+  endpoint: string,
+  options?: RequestInit,
+): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     headers: {
       "Content-Type": "application/json",
@@ -363,7 +387,9 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: "Request failed" }));
+    const error = await response
+      .json()
+      .catch(() => ({ message: "Request failed" }));
     throw new Error(error.message || `HTTP ${response.status}`);
   }
 
@@ -441,14 +467,23 @@ export function useFleetRepos(options?: {
   if (options?.group) params.set("group", options.group);
   if (options?.limit) params.set("limit", String(options.limit));
   const query = params.toString() ? `?${params.toString()}` : "";
-  return useQuery(`/fleet${query}`, mockFleetRepos, [options?.status, options?.group, options?.limit]);
+  return useQuery(`/fleet${query}`, mockFleetRepos, [
+    options?.status,
+    options?.group,
+    options?.limit,
+  ]);
 }
 
 /**
  * Hook to fetch fleet groups.
  */
 export function useFleetGroups(): UseQueryResult<string[]> {
-  return useQuery("/fleet/groups", ["core", "services", "packages", "archived"]);
+  return useQuery("/fleet/groups", [
+    "core",
+    "services",
+    "packages",
+    "archived",
+  ]);
 }
 
 /**
@@ -472,13 +507,18 @@ export function useSweepSessions(options?: {
   if (options?.status) params.set("status", options.status);
   if (options?.limit) params.set("limit", String(options.limit));
   const query = params.toString() ? `?${params.toString()}` : "";
-  return useQuery(`/sweeps${query}`, mockSweepSessions, [options?.status, options?.limit]);
+  return useQuery(`/sweeps${query}`, mockSweepSessions, [
+    options?.status,
+    options?.limit,
+  ]);
 }
 
 /**
  * Hook to fetch a single sweep session.
  */
-export function useSweepSession(sessionId: string): UseQueryResult<SweepSession | null> {
+export function useSweepSession(
+  sessionId: string,
+): UseQueryResult<SweepSession | null> {
   const session = mockSweepSessions.find((s) => s.id === sessionId) ?? null;
   return useQuery(`/sweeps/${sessionId}`, session, [sessionId]);
 }
@@ -486,14 +526,21 @@ export function useSweepSession(sessionId: string): UseQueryResult<SweepSession 
 /**
  * Hook to fetch sweep plans.
  */
-export function useSweepPlans(sessionId: string, options?: {
-  approvalStatus?: PlanApprovalStatus;
-}): UseQueryResult<SweepPlan[]> {
+export function useSweepPlans(
+  sessionId: string,
+  options?: {
+    approvalStatus?: PlanApprovalStatus;
+  },
+): UseQueryResult<SweepPlan[]> {
   const params = new URLSearchParams();
-  if (options?.approvalStatus) params.set("approvalStatus", options.approvalStatus);
+  if (options?.approvalStatus)
+    params.set("approvalStatus", options.approvalStatus);
   const query = params.toString() ? `?${params.toString()}` : "";
   const plans = mockSweepPlans.filter((p) => p.sessionId === sessionId);
-  return useQuery(`/sweeps/${sessionId}/plans${query}`, plans, [sessionId, options?.approvalStatus]);
+  return useQuery(`/sweeps/${sessionId}/plans${query}`, plans, [
+    sessionId,
+    options?.approvalStatus,
+  ]);
 }
 
 // ============================================================================
@@ -682,7 +729,11 @@ export function useRejectPlan() {
   const mockMode = useUiStore((state) => state.mockMode);
 
   const reject = useCallback(
-    async (planId: string, rejectedBy: string, reason: string): Promise<void> => {
+    async (
+      planId: string,
+      rejectedBy: string,
+      reason: string,
+    ): Promise<void> => {
       setIsLoading(true);
       setError(null);
 

@@ -4,13 +4,13 @@
  * Provides responsive breakpoint detection for React components.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BREAKPOINTS,
+  type Breakpoint,
   getCurrentBreakpoint,
   mediaQueries,
-  type Breakpoint,
-} from '../styles/breakpoints';
+} from "../styles/breakpoints";
 
 interface MediaQueryState {
   /** Current breakpoint name */
@@ -41,7 +41,7 @@ interface MediaQueryState {
  * Default server-side rendering values
  */
 const SSR_DEFAULTS: MediaQueryState = {
-  breakpoint: 'lg',
+  breakpoint: "lg",
   width: 1024,
   height: 768,
   isMobile: false,
@@ -60,14 +60,14 @@ const SSR_DEFAULTS: MediaQueryState = {
 export function useMediaQuery(): MediaQueryState {
   const [state, setState] = useState<MediaQueryState>(() => {
     // SSR-safe initialization
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       return SSR_DEFAULTS;
     }
     return getMediaQueryState();
   });
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
 
     // Update state immediately on mount
     setState(getMediaQueryState());
@@ -88,18 +88,18 @@ export function useMediaQuery(): MediaQueryState {
     };
 
     // Add listeners
-    window.addEventListener('resize', handleResize);
-    touchQuery.addEventListener('change', handleMediaChange);
-    motionQuery.addEventListener('change', handleMediaChange);
-    darkQuery.addEventListener('change', handleMediaChange);
-    portraitQuery.addEventListener('change', handleMediaChange);
+    window.addEventListener("resize", handleResize);
+    touchQuery.addEventListener("change", handleMediaChange);
+    motionQuery.addEventListener("change", handleMediaChange);
+    darkQuery.addEventListener("change", handleMediaChange);
+    portraitQuery.addEventListener("change", handleMediaChange);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
-      touchQuery.removeEventListener('change', handleMediaChange);
-      motionQuery.removeEventListener('change', handleMediaChange);
-      darkQuery.removeEventListener('change', handleMediaChange);
-      portraitQuery.removeEventListener('change', handleMediaChange);
+      window.removeEventListener("resize", handleResize);
+      touchQuery.removeEventListener("change", handleMediaChange);
+      motionQuery.removeEventListener("change", handleMediaChange);
+      darkQuery.removeEventListener("change", handleMediaChange);
+      portraitQuery.removeEventListener("change", handleMediaChange);
     };
   }, []);
 
@@ -134,12 +134,12 @@ function getMediaQueryState(): MediaQueryState {
  */
 export function useMatchMedia(query: string): boolean {
   const [matches, setMatches] = useState(() => {
-    if (typeof window === 'undefined') return false;
+    if (typeof window === "undefined") return false;
     return window.matchMedia(query).matches;
   });
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
 
     const mediaQuery = window.matchMedia(query);
     setMatches(mediaQuery.matches);
@@ -148,8 +148,8 @@ export function useMatchMedia(query: string): boolean {
       setMatches(event.matches);
     };
 
-    mediaQuery.addEventListener('change', handler);
-    return () => mediaQuery.removeEventListener('change', handler);
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
   }, [query]);
 
   return matches;
@@ -174,7 +174,10 @@ export function useBreakpointDown(breakpoint: Breakpoint): boolean {
 /**
  * Hook for checking if between two breakpoints
  */
-export function useBreakpointBetween(lower: Breakpoint, upper: Breakpoint): boolean {
+export function useBreakpointBetween(
+  lower: Breakpoint,
+  upper: Breakpoint,
+): boolean {
   const { width } = useMediaQuery();
   return width >= BREAKPOINTS[lower] && width < BREAKPOINTS[upper];
 }
@@ -182,12 +185,15 @@ export function useBreakpointBetween(lower: Breakpoint, upper: Breakpoint): bool
 /**
  * Hook for responsive value selection
  */
-export function useResponsiveValue<T>(values: Partial<Record<Breakpoint, T>>, defaultValue: T): T {
+export function useResponsiveValue<T>(
+  values: Partial<Record<Breakpoint, T>>,
+  defaultValue: T,
+): T {
   const { breakpoint } = useMediaQuery();
 
   return useMemo(() => {
     // Check from current breakpoint down to find a value
-    const breakpoints: Breakpoint[] = ['xxl', 'xl', 'lg', 'md', 'sm', 'xs'];
+    const breakpoints: Breakpoint[] = ["xxl", "xl", "lg", "md", "sm", "xs"];
     const currentIndex = breakpoints.indexOf(breakpoint);
 
     for (let i = currentIndex; i < breakpoints.length; i++) {
@@ -204,12 +210,12 @@ export function useResponsiveValue<T>(values: Partial<Record<Breakpoint, T>>, de
 /**
  * Hook for device-specific rendering
  */
-export function useDeviceType(): 'mobile' | 'tablet' | 'desktop' {
+export function useDeviceType(): "mobile" | "tablet" | "desktop" {
   const { isMobile, isTablet } = useMediaQuery();
 
-  if (isMobile) return 'mobile';
-  if (isTablet) return 'tablet';
-  return 'desktop';
+  if (isMobile) return "mobile";
+  if (isTablet) return "tablet";
+  return "desktop";
 }
 
 export default useMediaQuery;

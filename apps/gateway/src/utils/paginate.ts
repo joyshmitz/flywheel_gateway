@@ -5,8 +5,6 @@
  * Supports both forward and backward pagination with proper cursor handling.
  */
 
-import { and, asc, desc, gt, lt, type SQL } from "drizzle-orm";
-import type { SQLiteColumn, SQLiteTableWithColumns } from "drizzle-orm/sqlite-core";
 import {
   buildPaginationMeta,
   createCursor,
@@ -14,6 +12,11 @@ import {
   type NormalizedPaginationParams,
   type PaginationMeta,
 } from "@flywheel/shared/api/pagination";
+import { and, asc, desc, gt, lt, type SQL } from "drizzle-orm";
+import type {
+  SQLiteColumn,
+  SQLiteTableWithColumns,
+} from "drizzle-orm/sqlite-core";
 
 // ============================================================================
 // Types
@@ -279,15 +282,9 @@ export async function paginateTable<
 >(
   db: {
     select: () => {
-      from: (
-        table: TTable,
-      ) => {
-        where: (
-          condition: SQL | undefined,
-        ) => {
-          orderBy: (
-            orderBy: ReturnType<typeof asc | typeof desc>,
-          ) => {
+      from: (table: TTable) => {
+        where: (condition: SQL | undefined) => {
+          orderBy: (orderBy: ReturnType<typeof asc | typeof desc>) => {
             limit: (limit: number) => Promise<TTable["$inferSelect"][]>;
           };
         };
@@ -298,20 +295,17 @@ export async function paginateTable<
   options: PaginateOptions<TTable["$inferSelect"]>,
   additionalConditions: (SQL | undefined)[] = [],
 ): Promise<PaginatedResult<TTable["$inferSelect"]>> {
-  return paginate(
-    async (cursorCondition, limit, orderBy) => {
-      const conditions = [...additionalConditions, cursorCondition].filter(
-        (c): c is SQL => c !== undefined,
-      );
-      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  return paginate(async (cursorCondition, limit, orderBy) => {
+    const conditions = [...additionalConditions, cursorCondition].filter(
+      (c): c is SQL => c !== undefined,
+    );
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-      return db
-        .select()
-        .from(table)
-        .where(whereClause)
-        .orderBy(orderBy)
-        .limit(limit);
-    },
-    options,
-  );
+    return db
+      .select()
+      .from(table)
+      .where(whereClause)
+      .orderBy(orderBy)
+      .limit(limit);
+  }, options);
 }

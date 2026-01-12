@@ -195,8 +195,22 @@ describe("Agent Analytics Service", () => {
       await createTestAgent("agent-1");
       await createTestHistoryEntry("agent-1", "success", 1000);
       await createTestHistoryEntry("agent-1", "success", 1000);
-      await createTestHistoryEntry("agent-1", "failure", 1000, 100, 200, "Test error");
-      await createTestHistoryEntry("agent-1", "timeout", 1000, 100, 200, "timeout occurred");
+      await createTestHistoryEntry(
+        "agent-1",
+        "failure",
+        1000,
+        100,
+        200,
+        "Test error",
+      );
+      await createTestHistoryEntry(
+        "agent-1",
+        "timeout",
+        1000,
+        100,
+        200,
+        "timeout occurred",
+      );
 
       const metrics = await getQualityMetrics("agent-1", "24h");
 
@@ -206,9 +220,30 @@ describe("Agent Analytics Service", () => {
 
     it("should categorize errors by type", async () => {
       await createTestAgent("agent-1");
-      await createTestHistoryEntry("agent-1", "failure", 1000, 100, 200, "timeout error");
-      await createTestHistoryEntry("agent-1", "failure", 1000, 100, 200, "tool execution failed");
-      await createTestHistoryEntry("agent-1", "failure", 1000, 100, 200, "API model error");
+      await createTestHistoryEntry(
+        "agent-1",
+        "failure",
+        1000,
+        100,
+        200,
+        "timeout error",
+      );
+      await createTestHistoryEntry(
+        "agent-1",
+        "failure",
+        1000,
+        100,
+        200,
+        "tool execution failed",
+      );
+      await createTestHistoryEntry(
+        "agent-1",
+        "failure",
+        1000,
+        100,
+        200,
+        "API model error",
+      );
 
       const metrics = await getQualityMetrics("agent-1", "24h");
 
@@ -271,14 +306,21 @@ describe("Agent Analytics Service", () => {
         await createTestHistoryEntry("agent-1", "success", 1000);
       }
       for (let i = 0; i < 7; i++) {
-        await createTestHistoryEntry("agent-1", "failure", 1000, 100, 200, "error");
+        await createTestHistoryEntry(
+          "agent-1",
+          "failure",
+          1000,
+          100,
+          200,
+          "error",
+        );
       }
 
       const summary = await getAgentPerformanceSummary("agent-1", "24h");
 
       // Should have recommendation for low success rate
-      const hasLowSuccessRec = summary.recommendations.some(
-        (r) => r.title.toLowerCase().includes("success rate"),
+      const hasLowSuccessRec = summary.recommendations.some((r) =>
+        r.title.toLowerCase().includes("success rate"),
       );
       expect(hasLowSuccessRec).toBe(true);
     });

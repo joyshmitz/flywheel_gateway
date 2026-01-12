@@ -4,7 +4,7 @@
  * Provides safe area inset detection for notch and home indicator handling.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 export interface SafeAreaInsets {
   top: number;
@@ -27,12 +27,15 @@ export function useSafeArea(): SafeAreaInsets {
   const [insets, setInsets] = useState<SafeAreaInsets>(DEFAULT_INSETS);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !CSS.supports('padding', 'env(safe-area-inset-top)')) {
+    if (
+      typeof window === "undefined" ||
+      !CSS.supports("padding", "env(safe-area-inset-top)")
+    ) {
       return;
     }
 
     // Create a hidden element to measure safe area insets
-    const measureElement = document.createElement('div');
+    const measureElement = document.createElement("div");
     measureElement.style.cssText = `
       position: fixed;
       top: 0;
@@ -61,13 +64,13 @@ export function useSafeArea(): SafeAreaInsets {
     updateInsets();
 
     // Update on orientation change
-    window.addEventListener('orientationchange', updateInsets);
-    window.addEventListener('resize', updateInsets);
+    window.addEventListener("orientationchange", updateInsets);
+    window.addEventListener("resize", updateInsets);
 
     return () => {
       document.body.removeChild(measureElement);
-      window.removeEventListener('orientationchange', updateInsets);
-      window.removeEventListener('resize', updateInsets);
+      window.removeEventListener("orientationchange", updateInsets);
+      window.removeEventListener("resize", updateInsets);
     };
   }, []);
 
@@ -98,32 +101,32 @@ export const safeAreaStyles = {
    * Padding that respects safe areas on all sides
    */
   all: {
-    paddingTop: 'env(safe-area-inset-top)',
-    paddingRight: 'env(safe-area-inset-right)',
-    paddingBottom: 'env(safe-area-inset-bottom)',
-    paddingLeft: 'env(safe-area-inset-left)',
+    paddingTop: "env(safe-area-inset-top)",
+    paddingRight: "env(safe-area-inset-right)",
+    paddingBottom: "env(safe-area-inset-bottom)",
+    paddingLeft: "env(safe-area-inset-left)",
   } as const,
 
   /**
    * Padding for top safe area only (notch)
    */
   top: {
-    paddingTop: 'env(safe-area-inset-top)',
+    paddingTop: "env(safe-area-inset-top)",
   } as const,
 
   /**
    * Padding for bottom safe area only (home indicator)
    */
   bottom: {
-    paddingBottom: 'env(safe-area-inset-bottom)',
+    paddingBottom: "env(safe-area-inset-bottom)",
   } as const,
 
   /**
    * Padding for horizontal safe areas (landscape notch)
    */
   horizontal: {
-    paddingRight: 'env(safe-area-inset-right)',
-    paddingLeft: 'env(safe-area-inset-left)',
+    paddingRight: "env(safe-area-inset-right)",
+    paddingLeft: "env(safe-area-inset-left)",
   } as const,
 };
 
@@ -133,13 +136,13 @@ export const safeAreaStyles = {
  */
 export const safeAreaClasses = {
   /** Apply safe area to all sides */
-  all: 'safe-area-all',
+  all: "safe-area-all",
   /** Apply safe area to top only */
-  top: 'safe-area-top',
+  top: "safe-area-top",
   /** Apply safe area to bottom only */
-  bottom: 'safe-area-bottom',
+  bottom: "safe-area-bottom",
   /** Apply safe area to horizontal sides */
-  horizontal: 'safe-area-horizontal',
+  horizontal: "safe-area-horizontal",
 } as const;
 
 /**

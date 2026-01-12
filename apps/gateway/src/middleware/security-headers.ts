@@ -237,7 +237,9 @@ export function securityHeaders(
   const mergedConfig = {
     ...defaultConfig,
     ...config,
-    csp: config.csp ? { ...defaultConfig.csp, ...config.csp } : defaultConfig.csp,
+    csp: config.csp
+      ? { ...defaultConfig.csp, ...config.csp }
+      : defaultConfig.csp,
     permissionsPolicy: config.permissionsPolicy
       ? { ...defaultConfig.permissionsPolicy, ...config.permissionsPolicy }
       : defaultConfig.permissionsPolicy,

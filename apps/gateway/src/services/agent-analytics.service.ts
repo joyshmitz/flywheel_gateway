@@ -265,7 +265,11 @@ export async function getSuccessRateMetrics(
     const output = row.output as Record<string, unknown> | null;
     const outcome = output?.["outcome"] as string | undefined;
     if (outcome === "success") prevSuccessful++;
-    if (outcome === "success" || outcome === "failure" || outcome === "timeout") {
+    if (
+      outcome === "success" ||
+      outcome === "failure" ||
+      outcome === "timeout"
+    ) {
       prevTotal++;
     }
   }
@@ -335,9 +339,7 @@ export async function getTaskDurationMetrics(
   const avgByComplexity: Record<string, number> = {};
   for (const [complexity, values] of Object.entries(byComplexity)) {
     avgByComplexity[complexity] =
-      values.length > 0
-        ? values.reduce((a, b) => a + b, 0) / values.length
-        : 0;
+      values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
   }
 
   return {
@@ -384,7 +386,11 @@ export async function getQualityMetrics(
     const outcome = output?.["outcome"] as string | undefined;
     const error = output?.["error"] as string | undefined;
 
-    if (outcome === "success" || outcome === "failure" || outcome === "timeout") {
+    if (
+      outcome === "success" ||
+      outcome === "failure" ||
+      outcome === "timeout"
+    ) {
       totalTasks++;
     }
 
@@ -397,7 +403,8 @@ export async function getQualityMetrics(
       if (error) {
         if (error.includes("timeout")) category = "timeout";
         else if (error.includes("tool")) category = "tool_failure";
-        else if (error.includes("model") || error.includes("API")) category = "model_error";
+        else if (error.includes("model") || error.includes("API"))
+          category = "model_error";
         else if (error.includes("cancel")) category = "user_cancel";
         else category = "other";
       }
@@ -473,7 +480,8 @@ export async function getTokenEfficiencyMetrics(
   }
 
   const avgPromptTokens = taskCount > 0 ? totalPromptTokens / taskCount : 0;
-  const avgCompletionTokens = taskCount > 0 ? totalCompletionTokens / taskCount : 0;
+  const avgCompletionTokens =
+    taskCount > 0 ? totalCompletionTokens / taskCount : 0;
   const avgTokensPerTask = avgPromptTokens + avgCompletionTokens;
 
   // Calculate efficiency score (0-100 based on tokens per successful task)
@@ -706,7 +714,11 @@ function generateRecommendations(
       description: `Success rate of ${successRate.successRate.toFixed(1)}% is below the 80% target.`,
       expectedImprovement: "15-25% improvement in success rate",
       evidence: [
-        { metric: "success_rate", value: successRate.successRate, threshold: 80 },
+        {
+          metric: "success_rate",
+          value: successRate.successRate,
+          threshold: 80,
+        },
       ],
       actions: [
         "Review task instructions for clarity",
@@ -862,8 +874,7 @@ export async function getFleetAnalytics(
   return {
     totalAgents: agents.length,
     activeAgents: activeCount,
-    avgSuccessRate:
-      activeCount > 0 ? totalSuccessRate / activeCount : 0,
+    avgSuccessRate: activeCount > 0 ? totalSuccessRate / activeCount : 0,
     totalTasksCompleted: totalTasks,
     topPerformers,
     needsAttention: needsAttention.slice(0, 5),

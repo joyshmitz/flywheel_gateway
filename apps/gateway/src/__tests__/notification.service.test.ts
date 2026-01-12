@@ -6,6 +6,13 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import type {
+  CreateNotificationRequest,
+  Notification,
+  NotificationCategory,
+  NotificationChannel,
+  NotificationPriority,
+} from "../models/notification";
 import {
   clearNotifications,
   clearPreferences,
@@ -18,13 +25,6 @@ import {
   sendTestNotification,
   updatePreferences,
 } from "../services/notification.service";
-import type {
-  CreateNotificationRequest,
-  Notification,
-  NotificationCategory,
-  NotificationChannel,
-  NotificationPriority,
-} from "../models/notification";
 
 // ============================================================================
 // Test Setup
@@ -364,11 +364,20 @@ describe("Notification Filtering", () => {
     });
 
     expect(result.notifications).toHaveLength(2);
-    expect(result.notifications.every((n) => ["agents", "costs"].includes(n.category))).toBe(true);
+    expect(
+      result.notifications.every((n) =>
+        ["agents", "costs"].includes(n.category),
+      ),
+    ).toBe(true);
   });
 
   test("filters by priority", async () => {
-    const priorities: NotificationPriority[] = ["low", "normal", "high", "urgent"];
+    const priorities: NotificationPriority[] = [
+      "low",
+      "normal",
+      "high",
+      "urgent",
+    ];
     for (const priority of priorities) {
       await createNotification({
         type: "test",
@@ -387,7 +396,11 @@ describe("Notification Filtering", () => {
     });
 
     expect(result.notifications).toHaveLength(2);
-    expect(result.notifications.every((n) => ["high", "urgent"].includes(n.priority))).toBe(true);
+    expect(
+      result.notifications.every((n) =>
+        ["high", "urgent"].includes(n.priority),
+      ),
+    ).toBe(true);
   });
 
   test("filters by status", async () => {
@@ -650,7 +663,12 @@ describe("Unread Count", () => {
       recipientId: "user_001",
       source: { type: "system" },
       actions: [
-        { id: "approve", label: "Approve", style: "primary", action: "approve" },
+        {
+          id: "approve",
+          label: "Approve",
+          style: "primary",
+          action: "approve",
+        },
       ],
     });
 
@@ -691,8 +709,14 @@ describe("Notification Preferences", () => {
     updatePreferences("user_001", {
       channelConfig: {
         email: { address: "test@example.com" },
-        slack: { webhookUrl: "https://hooks.slack.com/...", channel: "#alerts" },
-        webhook: { url: "https://api.example.com/webhook", secret: "secret123" },
+        slack: {
+          webhookUrl: "https://hooks.slack.com/...",
+          channel: "#alerts",
+        },
+        webhook: {
+          url: "https://api.example.com/webhook",
+          secret: "secret123",
+        },
       },
     });
 

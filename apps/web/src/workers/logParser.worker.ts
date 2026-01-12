@@ -9,7 +9,7 @@ export interface RawLogLine {
   id: string;
   content: string;
   timestamp: number;
-  type: 'stdout' | 'stderr' | 'system' | 'tool' | 'thinking';
+  type: "stdout" | "stderr" | "system" | "tool" | "thinking";
   metadata?: Record<string, unknown>;
 }
 
@@ -42,16 +42,22 @@ export interface SegmentStyle {
   strikethrough?: boolean;
 }
 
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal' | 'unknown';
+export type LogLevel =
+  | "debug"
+  | "info"
+  | "warn"
+  | "error"
+  | "fatal"
+  | "unknown";
 
 export type WorkerMessage =
-  | { type: 'parse'; logs: RawLogLine[] }
-  | { type: 'search'; query: string; logs: ParsedLogLine[] }
-  | { type: 'filter'; filter: LogFilter; logs: ParsedLogLine[] };
+  | { type: "parse"; logs: RawLogLine[] }
+  | { type: "search"; query: string; logs: ParsedLogLine[] }
+  | { type: "filter"; filter: LogFilter; logs: ParsedLogLine[] };
 
 export interface LogFilter {
   levels?: LogLevel[];
-  types?: RawLogLine['type'][];
+  types?: RawLogLine["type"][];
   search?: string;
   startTime?: number;
   endTime?: number;
@@ -61,10 +67,11 @@ export interface LogFilter {
 const ANSI_REGEX = /\x1b\[([0-9;]*)m/g;
 
 // URL regex
-const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`\[\]]+/g;
+const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/g;
 
 // File path regex (Unix and Windows)
-const FILE_PATH_REGEX = /(?:\/[\w.-]+)+(?::\d+)?|[A-Z]:\\(?:[\w.-]+\\)*[\w.-]+/g;
+const FILE_PATH_REGEX =
+  /(?:\/[\w.-]+)+(?::\d+)?|[A-Z]:\\(?:[\w.-]+\\)*[\w.-]+/g;
 
 // Stack trace patterns
 const STACK_TRACE_PATTERNS = [
@@ -77,42 +84,42 @@ const STACK_TRACE_PATTERNS = [
 
 // Log level patterns
 const LOG_LEVEL_PATTERNS: [RegExp, LogLevel][] = [
-  [/\b(fatal|critical|panic)\b/i, 'fatal'],
-  [/\b(error|err|exception|fail)\b/i, 'error'],
-  [/\b(warn|warning)\b/i, 'warn'],
-  [/\b(info|information)\b/i, 'info'],
-  [/\b(debug|trace|verbose)\b/i, 'debug'],
+  [/\b(fatal|critical|panic)\b/i, "fatal"],
+  [/\b(error|err|exception|fail)\b/i, "error"],
+  [/\b(warn|warning)\b/i, "warn"],
+  [/\b(info|information)\b/i, "info"],
+  [/\b(debug|trace|verbose)\b/i, "debug"],
 ];
 
 // ANSI color code to CSS color mapping
 const ANSI_COLORS: Record<number, string> = {
-  30: '#000000', // Black
-  31: '#ef4444', // Red
-  32: '#22c55e', // Green
-  33: '#eab308', // Yellow
-  34: '#3b82f6', // Blue
-  35: '#a855f7', // Magenta
-  36: '#06b6d4', // Cyan
-  37: '#f3f4f6', // White
-  90: '#6b7280', // Bright black (gray)
-  91: '#fca5a5', // Bright red
-  92: '#86efac', // Bright green
-  93: '#fde047', // Bright yellow
-  94: '#93c5fd', // Bright blue
-  95: '#d8b4fe', // Bright magenta
-  96: '#67e8f9', // Bright cyan
-  97: '#ffffff', // Bright white
+  30: "#000000", // Black
+  31: "#ef4444", // Red
+  32: "#22c55e", // Green
+  33: "#eab308", // Yellow
+  34: "#3b82f6", // Blue
+  35: "#a855f7", // Magenta
+  36: "#06b6d4", // Cyan
+  37: "#f3f4f6", // White
+  90: "#6b7280", // Bright black (gray)
+  91: "#fca5a5", // Bright red
+  92: "#86efac", // Bright green
+  93: "#fde047", // Bright yellow
+  94: "#93c5fd", // Bright blue
+  95: "#d8b4fe", // Bright magenta
+  96: "#67e8f9", // Bright cyan
+  97: "#ffffff", // Bright white
 };
 
 const ANSI_BG_COLORS: Record<number, string> = {
-  40: '#000000',
-  41: '#ef4444',
-  42: '#22c55e',
-  43: '#eab308',
-  44: '#3b82f6',
-  45: '#a855f7',
-  46: '#06b6d4',
-  47: '#f3f4f6',
+  40: "#000000",
+  41: "#ef4444",
+  42: "#22c55e",
+  43: "#eab308",
+  44: "#3b82f6",
+  45: "#a855f7",
+  46: "#06b6d4",
+  47: "#f3f4f6",
 };
 
 /**
@@ -133,7 +140,7 @@ function parseAnsiCodes(text: string): ParsedSegment[] {
     }
 
     // Parse escape code
-    const codes = match[1].split(';').map(Number);
+    const codes = match[1].split(";").map(Number);
     for (const code of codes) {
       if (code === 0) {
         currentStyle = {}; // Reset
@@ -172,7 +179,7 @@ function parseAnsiCodes(text: string): ParsedSegment[] {
  * Strip ANSI codes and return plain text
  */
 function stripAnsi(text: string): string {
-  return text.replace(ANSI_REGEX, '');
+  return text.replace(ANSI_REGEX, "");
 }
 
 /**
@@ -185,7 +192,7 @@ function detectLogLevel(content: string): LogLevel {
       return level;
     }
   }
-  return 'unknown';
+  return "unknown";
 }
 
 /**
@@ -247,7 +254,10 @@ function filterLogs(filter: LogFilter, logs: ParsedLogLine[]): ParsedLogLine[] {
     if (filter.types && !filter.types.includes(log.type)) {
       return false;
     }
-    if (filter.search && !log.searchableText.includes(filter.search.toLowerCase())) {
+    if (
+      filter.search &&
+      !log.searchableText.includes(filter.search.toLowerCase())
+    ) {
       return false;
     }
     if (filter.startTime && log.timestamp < filter.startTime) {
@@ -265,26 +275,23 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
   const { type } = event.data;
 
   switch (type) {
-    case 'parse': {
+    case "parse": {
       const { logs } = event.data;
       const parsed = logs.map(parseLogLine);
-      self.postMessage({ type: 'parsed', logs: parsed });
+      self.postMessage({ type: "parsed", logs: parsed });
       break;
     }
-    case 'search': {
+    case "search": {
       const { query, logs } = event.data;
       const results = searchLogs(query, logs);
-      self.postMessage({ type: 'searchResults', results });
+      self.postMessage({ type: "searchResults", results });
       break;
     }
-    case 'filter': {
+    case "filter": {
       const { filter, logs } = event.data;
       const filtered = filterLogs(filter, logs);
-      self.postMessage({ type: 'filterResults', filtered });
+      self.postMessage({ type: "filterResults", filtered });
       break;
     }
   }
 };
-
-// Export for type checking
-export {};

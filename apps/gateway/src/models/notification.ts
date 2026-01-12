@@ -206,7 +206,9 @@ export interface PreferencesUpdateRequest {
   enabled?: boolean;
   defaultChannels?: NotificationChannel[];
   quietHours?: Partial<QuietHours>;
-  categories?: Partial<Record<NotificationCategory, Partial<CategoryPreference>>>;
+  categories?: Partial<
+    Record<NotificationCategory, Partial<CategoryPreference>>
+  >;
   digest?: Partial<DigestConfig>;
   channelConfig?: NotificationPreferences["channelConfig"];
 }
@@ -224,15 +226,30 @@ export const PRIORITY_ORDER: Record<NotificationPriority, number> = {
 /**
  * Default preferences for new users.
  */
-export const DEFAULT_PREFERENCES: Omit<NotificationPreferences, "userId" | "updatedAt"> = {
+export const DEFAULT_PREFERENCES: Omit<
+  NotificationPreferences,
+  "userId" | "updatedAt"
+> = {
   enabled: true,
   defaultChannels: ["in_app"],
   categories: {
     agents: { enabled: true, channels: ["in_app"], minPriority: "normal" },
-    coordination: { enabled: true, channels: ["in_app"], minPriority: "normal" },
+    coordination: {
+      enabled: true,
+      channels: ["in_app"],
+      minPriority: "normal",
+    },
     tasks: { enabled: true, channels: ["in_app"], minPriority: "low" },
-    costs: { enabled: true, channels: ["in_app", "email"], minPriority: "high" },
-    security: { enabled: true, channels: ["in_app", "email"], minPriority: "low" },
+    costs: {
+      enabled: true,
+      channels: ["in_app", "email"],
+      minPriority: "high",
+    },
+    security: {
+      enabled: true,
+      channels: ["in_app", "email"],
+      minPriority: "low",
+    },
     system: { enabled: true, channels: ["in_app"], minPriority: "high" },
   },
 };

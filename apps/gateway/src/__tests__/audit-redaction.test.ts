@@ -5,9 +5,9 @@
 import { describe, expect, test } from "bun:test";
 import {
   AuditRedactionService,
-  redactSensitiveData,
   containsSensitiveData,
   DEFAULT_REDACTION_CONFIG,
+  redactSensitiveData,
 } from "../services/audit-redaction.service";
 
 describe("AuditRedactionService", () => {
@@ -143,7 +143,9 @@ describe("AuditRedactionService", () => {
 
   describe("token masking", () => {
     test("masks authorization header with Bearer token", () => {
-      const data = { authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" };
+      const data = {
+        authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+      };
       const result = service.redact(data);
       expect(result.authorization).toBe("Bearer [REDACTED]");
     });
@@ -193,7 +195,8 @@ describe("AuditRedactionService", () => {
 
   describe("pattern redaction in strings", () => {
     test("redacts Bearer tokens in strings", () => {
-      const data = "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0=";
+      const data =
+        "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0=";
       const result = service.redact(data);
       expect(result).toContain("[REDACTED]");
       expect(result).not.toContain("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9");
@@ -281,10 +284,7 @@ describe("AuditRedactionService", () => {
     });
 
     test("processes arrays of objects", () => {
-      const data = [
-        { password: "secret1" },
-        { password: "secret2" },
-      ];
+      const data = [{ password: "secret1" }, { password: "secret2" }];
       const result = service.redact(data);
       expect(result[0].password).toBe("[REMOVED]");
       expect(result[1].password).toBe("[REMOVED]");

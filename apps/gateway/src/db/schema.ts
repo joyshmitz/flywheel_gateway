@@ -758,7 +758,9 @@ export const branchAssignments = sqliteTable(
     // Timing
     assignedAt: integer("assigned_at", { mode: "timestamp" }).notNull(),
     expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
-    lastActivityAt: integer("last_activity_at", { mode: "timestamp" }).notNull(),
+    lastActivityAt: integer("last_activity_at", {
+      mode: "timestamp",
+    }).notNull(),
 
     // Metadata
     taskId: text("task_id"),
@@ -1319,7 +1321,10 @@ export const pipelineApprovals = sqliteTable(
     index("pipeline_approvals_run_idx").on(table.runId),
     index("pipeline_approvals_status_idx").on(table.status),
     index("pipeline_approvals_timeout_idx").on(table.timeoutAt),
-    uniqueIndex("pipeline_approvals_run_step_idx").on(table.runId, table.stepId),
+    uniqueIndex("pipeline_approvals_run_step_idx").on(
+      table.runId,
+      table.stepId,
+    ),
   ],
 );
 
@@ -1364,5 +1369,349 @@ export const pipelineSchedules = sqliteTable(
     index("pipeline_schedules_pipeline_idx").on(table.pipelineId),
     index("pipeline_schedules_enabled_idx").on(table.enabled),
     index("pipeline_schedules_next_run_idx").on(table.nextRunAt),
+  ],
+);
+
+// ============================================================================
+// Cost Analytics Tables
+// ============================================================================
+
+/**
+ * Cost records - Individual cost events from API usage.
+ *
+ * Tracks:
+ * - Token usage with prompt/completion/cached breakdown
+ * - Cost calculation in millicents for precision
+ * - Attribution to agent, project, organization
+ * - Task type and complexity for analysis
+ */
+export const costRecords = sqliteTable(
+  "cost_records",
+  {
+    id: text("id").primaryKey(),
+    timestamp: integer("timestamp", { mode: "timestamp" }).notNull(),
+
+    // Attribution dimensions
+    organizationId: text("organization_id"),
+    projectId: text("project_id"),
+    agentId: text("agent_id").references(() => agents.id),
+    taskId: text("task_id"),
+    sessionId: text("session_id"),
+
+    // Model info
+    model: text("model").notNull(),
+    provider: text("provider").notNull(), // 'anthropic' | 'openai' | 'google' | 'local'
+
+    // Token breakdown
+    promptTokens: integer("prompt_tokens").notNull(),
+    completionTokens: integer("completion_tokens").notNull(),
+    cachedTokens: integer("cached_tokens").notNull().default(0),
+
+    // Cost calculation (in millicents for precision)
+    promptCostUnits: integer("prompt_cost_units").notNull(),
+    completionCostUnits: integer("completion_cost_units").notNull(),
+    cachedCostUnits: integer("cached_cost_units").notNull().default(0),
+    totalCostUnits: integer("total_cost_units").notNull(),
+
+    // Context
+    taskType: text("task_type"),
+    complexityTier: text("complexity_tier"), // 'simple' | 'moderate' | 'complex'
+    success: integer("success", { mode: "boolean" }).notNull(),
+
+    // Request metadata
+    requestDurationMs: integer("request_duration_ms"),
+    correlationId: text("correlation_id"),
+  },
+  (table) => [
+    index("cost_records_timestamp_idx").on(table.timestamp),
+    index("cost_records_organization_idx").on(table.organizationId),
+    index("cost_records_project_idx").on(table.projectId),
+    index("cost_records_agent_idx").on(table.agentId),
+    index("cost_records_model_idx").on(table.model),
+    index("cost_records_provider_idx").on(table.provider),
+    index("cost_records_correlation_idx").on(table.correlationId),
+    index("cost_records_org_timestamp_idx").on(
+      table.organizationId,
+      table.timestamp,
+    ),
+  ],
+);
+
+/**
+ * Cost aggregates - Pre-computed rollups by time period.
+ *
+ * Supports:
+ * - Per-minute for real-time dashboards
+ * - Hourly for trend analysis
+ * - Daily for reporting
+ * - Monthly for billing
+ */
+export const costAggregates = sqliteTable(
+  "cost_aggregates",
+  {
+    id: text("id").primaryKey(),
+
+    // Period definition
+    period: text("period").notNull(), // 'minute' | 'hour' | 'day' | 'week' | 'month'
+    periodStart: integer("period_start", { mode: "timestamp" }).notNull(),
+    periodEnd: integer("period_end", { mode: "timestamp" }).notNull(),
+
+    // Scope (null = global)
+    organizationId: text("organization_id"),
+    projectId: text("project_id"),
+    agentId: text("agent_id"),
+
+    // Totals
+    totalCostUnits: integer("total_cost_units").notNull(),
+    totalTokens: integer("total_tokens").notNull(),
+    promptTokens: integer("prompt_tokens").notNull(),
+    completionTokens: integer("completion_tokens").notNull(),
+    cachedTokens: integer("cached_tokens").notNull().default(0),
+
+    // Request stats
+    requestCount: integer("request_count").notNull(),
+    successCount: integer("success_count").notNull(),
+    failureCount: integer("failure_count").notNull(),
+
+    // Breakdowns (JSON blobs)
+    byModel: blob("by_model", { mode: "json" }),
+    byProvider: blob("by_provider", { mode: "json" }),
+
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [
+    index("cost_aggregates_period_idx").on(table.period),
+    index("cost_aggregates_period_start_idx").on(table.periodStart),
+    index("cost_aggregates_organization_idx").on(table.organizationId),
+    index("cost_aggregates_project_idx").on(table.projectId),
+    index("cost_aggregates_agent_idx").on(table.agentId),
+    uniqueIndex("cost_aggregates_unique_idx").on(
+      table.period,
+      table.periodStart,
+      table.organizationId,
+      table.projectId,
+      table.agentId,
+    ),
+  ],
+);
+
+/**
+ * Budgets - Cost budget configurations.
+ */
+export const budgets = sqliteTable(
+  "budgets",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+
+    // Scope
+    organizationId: text("organization_id"),
+    projectId: text("project_id"),
+
+    // Budget config
+    period: text("period").notNull(), // 'daily' | 'weekly' | 'monthly' | 'yearly'
+    amountUnits: integer("amount_units").notNull(), // In millicents
+    alertThresholds: text("alert_thresholds").notNull(), // JSON array [50, 75, 90, 100]
+    actionOnExceed: text("action_on_exceed").notNull().default("alert"), // 'alert' | 'throttle' | 'block'
+    rollover: integer("rollover", { mode: "boolean" }).notNull().default(false),
+
+    // Dates
+    effectiveDate: integer("effective_date", { mode: "timestamp" }).notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp" }),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [
+    index("budgets_organization_idx").on(table.organizationId),
+    index("budgets_project_idx").on(table.projectId),
+    index("budgets_enabled_idx").on(table.enabled),
+    index("budgets_effective_date_idx").on(table.effectiveDate),
+  ],
+);
+
+/**
+ * Budget alerts - History of budget threshold alerts.
+ */
+export const budgetAlerts = sqliteTable(
+  "budget_alerts",
+  {
+    id: text("id").primaryKey(),
+
+    // Budget reference
+    budgetId: text("budget_id")
+      .notNull()
+      .references(() => budgets.id, { onDelete: "cascade" }),
+
+    // Alert info
+    threshold: integer("threshold").notNull(), // The threshold that was crossed (e.g., 75)
+    usedPercent: real("used_percent").notNull(),
+    usedUnits: integer("used_units").notNull(),
+    budgetUnits: integer("budget_units").notNull(),
+
+    // Period info
+    periodStart: integer("period_start", { mode: "timestamp" }).notNull(),
+    periodEnd: integer("period_end", { mode: "timestamp" }).notNull(),
+
+    // Status
+    acknowledged: integer("acknowledged", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    acknowledgedBy: text("acknowledged_by"),
+    acknowledgedAt: integer("acknowledged_at", { mode: "timestamp" }),
+
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [
+    index("budget_alerts_budget_idx").on(table.budgetId),
+    index("budget_alerts_threshold_idx").on(table.threshold),
+    index("budget_alerts_created_at_idx").on(table.createdAt),
+  ],
+);
+
+/**
+ * Cost forecasts - Stored forecast predictions.
+ */
+export const costForecasts = sqliteTable(
+  "cost_forecasts",
+  {
+    id: text("id").primaryKey(),
+
+    // Scope
+    organizationId: text("organization_id"),
+    projectId: text("project_id"),
+
+    // Forecast config
+    forecastDate: integer("forecast_date", { mode: "timestamp" }).notNull(),
+    horizonDays: integer("horizon_days").notNull(),
+    methodology: text("methodology").notNull(), // 'linear' | 'arima' | 'prophet' | 'exponential' | 'ensemble'
+
+    // Forecast data (JSON blob - array of DailyForecast)
+    dailyForecasts: blob("daily_forecasts", { mode: "json" }).notNull(),
+
+    // Summary
+    totalForecastUnits: integer("total_forecast_units").notNull(),
+    confidenceLower: integer("confidence_lower").notNull(),
+    confidenceUpper: integer("confidence_upper").notNull(),
+
+    // Accuracy metrics
+    mape: real("mape"), // Mean Absolute Percentage Error
+    rmse: real("rmse"), // Root Mean Square Error
+
+    // Historical basis
+    historicalDaysUsed: integer("historical_days_used").notNull(),
+    seasonalityDetected: integer("seasonality_detected", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    trendDirection: text("trend_direction"), // 'up' | 'down' | 'stable'
+    trendStrength: real("trend_strength"),
+
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [
+    index("cost_forecasts_organization_idx").on(table.organizationId),
+    index("cost_forecasts_project_idx").on(table.projectId),
+    index("cost_forecasts_forecast_date_idx").on(table.forecastDate),
+    index("cost_forecasts_created_at_idx").on(table.createdAt),
+  ],
+);
+
+/**
+ * Optimization recommendations - AI-generated cost optimization suggestions.
+ */
+export const optimizationRecommendations = sqliteTable(
+  "optimization_recommendations",
+  {
+    id: text("id").primaryKey(),
+
+    // Category
+    category: text("category").notNull(), // 'model_optimization' | 'caching' | 'batching' | etc.
+    title: text("title").notNull(),
+    description: text("description").notNull(),
+
+    // Savings estimation (in millicents)
+    currentCostUnits: integer("current_cost_units").notNull(),
+    optimizedCostUnits: integer("optimized_cost_units").notNull(),
+    estimatedSavingsUnits: integer("estimated_savings_units").notNull(),
+    savingsPercent: real("savings_percent").notNull(),
+    confidence: real("confidence").notNull(), // 0-1
+
+    // Implementation
+    implementation: text("implementation").notNull(),
+    risk: text("risk").notNull(), // 'low' | 'medium' | 'high'
+    effortHours: integer("effort_hours"),
+    prerequisites: text("prerequisites"), // JSON array
+
+    // Scope
+    organizationId: text("organization_id"),
+    projectId: text("project_id"),
+    affectedAgents: text("affected_agents"), // JSON array
+    affectedModels: text("affected_models"), // JSON array
+
+    // Status
+    status: text("status").notNull().default("pending"), // 'pending' | 'in_progress' | 'implemented' | 'rejected' | 'failed'
+    implementedAt: integer("implemented_at", { mode: "timestamp" }),
+    implementedBy: text("implemented_by"),
+    rejectedReason: text("rejected_reason"),
+
+    // Validation
+    actualSavingsUnits: integer("actual_savings_units"),
+    validatedAt: integer("validated_at", { mode: "timestamp" }),
+
+    // Metadata
+    priority: integer("priority").notNull().default(3), // 1-5
+    expiresAt: integer("expires_at", { mode: "timestamp" }),
+
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [
+    index("optimization_recommendations_category_idx").on(table.category),
+    index("optimization_recommendations_status_idx").on(table.status),
+    index("optimization_recommendations_organization_idx").on(
+      table.organizationId,
+    ),
+    index("optimization_recommendations_project_idx").on(table.projectId),
+    index("optimization_recommendations_priority_idx").on(table.priority),
+    index("optimization_recommendations_created_at_idx").on(table.createdAt),
+  ],
+);
+
+/**
+ * Model rate cards - Cost rates for different models.
+ */
+export const modelRateCards = sqliteTable(
+  "model_rate_cards",
+  {
+    id: text("id").primaryKey(),
+
+    // Model identification
+    model: text("model").notNull(),
+    provider: text("provider").notNull(), // 'anthropic' | 'openai' | 'google' | 'local'
+
+    // Rates (in millicents per 1k tokens)
+    promptCostPer1kTokens: integer("prompt_cost_per_1k_tokens").notNull(),
+    completionCostPer1kTokens: integer(
+      "completion_cost_per_1k_tokens",
+    ).notNull(),
+    cachedPromptCostPer1kTokens: integer("cached_prompt_cost_per_1k_tokens"),
+
+    // Validity period
+    effectiveDate: integer("effective_date", { mode: "timestamp" }).notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp" }),
+
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [
+    index("model_rate_cards_model_idx").on(table.model),
+    index("model_rate_cards_provider_idx").on(table.provider),
+    index("model_rate_cards_effective_date_idx").on(table.effectiveDate),
+    uniqueIndex("model_rate_cards_model_effective_idx").on(
+      table.model,
+      table.provider,
+      table.effectiveDate,
+    ),
   ],
 );

@@ -673,7 +673,10 @@ export async function predictConflicts(
       a.status === "active",
   );
 
-  if (assignmentA?.metadata.reservedPatterns && assignmentB?.metadata.reservedPatterns) {
+  if (
+    assignmentA?.metadata.reservedPatterns &&
+    assignmentB?.metadata.reservedPatterns
+  ) {
     // Simple overlap check - in production would use glob matching
     const patternsA = new Set(assignmentA.metadata.reservedPatterns);
     const patternsB = new Set(assignmentB.metadata.reservedPatterns);

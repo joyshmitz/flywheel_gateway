@@ -345,7 +345,11 @@ async function transitionPhase(
     // Remove from indices to prevent memory leak
     removeFromIndex(sourceAgentIndex, record.request.sourceAgentId, handoffId);
     if (record.request.targetAgentId) {
-      removeFromIndex(targetAgentIndex, record.request.targetAgentId, handoffId);
+      removeFromIndex(
+        targetAgentIndex,
+        record.request.targetAgentId,
+        handoffId,
+      );
     }
     if (record.acknowledgment?.receivingAgentId) {
       removeFromIndex(

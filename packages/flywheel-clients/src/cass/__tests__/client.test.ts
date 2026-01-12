@@ -2,10 +2,10 @@
  * CASS Client Unit Tests
  */
 
-import { describe, expect, test, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 import {
-  type CassCommandRunner,
   CassClientError,
+  type CassCommandRunner,
   createCassClient,
 } from "../index";
 

@@ -5,13 +5,13 @@
  * Supports manual and automatic checkpointing with delta-based storage.
  */
 
-import { type Context, Hono } from "hono";
-import { z } from "zod";
 import {
   createCursor,
-  decodeCursor,
   DEFAULT_PAGINATION,
+  decodeCursor,
 } from "@flywheel/shared/api/pagination";
+import { type Context, Hono } from "hono";
+import { z } from "zod";
 import { getLogger } from "../middleware/correlation";
 import {
   CheckpointError,
@@ -213,7 +213,9 @@ checkpoints.get("/:sessionId/checkpoints", async (c) => {
     const startingAfter = c.req.query("starting_after");
     const endingBefore = c.req.query("ending_before");
 
-    const parsedLimit = limitParam ? parseInt(limitParam, 10) : DEFAULT_PAGINATION.limit;
+    const parsedLimit = limitParam
+      ? parseInt(limitParam, 10)
+      : DEFAULT_PAGINATION.limit;
     const limit = Number.isNaN(parsedLimit)
       ? DEFAULT_PAGINATION.limit
       : Math.min(Math.max(1, parsedLimit), DEFAULT_PAGINATION.maxLimit);
@@ -225,7 +227,9 @@ checkpoints.get("/:sessionId/checkpoints", async (c) => {
     if (startingAfter) {
       const cursor = decodeCursor(startingAfter);
       if (cursor) {
-        const cursorIndex = allCheckpoints.findIndex((chk) => chk.id === cursor.id);
+        const cursorIndex = allCheckpoints.findIndex(
+          (chk) => chk.id === cursor.id,
+        );
         if (cursorIndex !== -1) {
           startIndex = cursorIndex + 1;
         }
@@ -233,7 +237,9 @@ checkpoints.get("/:sessionId/checkpoints", async (c) => {
     } else if (endingBefore) {
       const cursor = decodeCursor(endingBefore);
       if (cursor) {
-        const cursorIndex = allCheckpoints.findIndex((chk) => chk.id === cursor.id);
+        const cursorIndex = allCheckpoints.findIndex(
+          (chk) => chk.id === cursor.id,
+        );
         if (cursorIndex !== -1) {
           startIndex = Math.max(0, cursorIndex - limit);
         }
@@ -325,8 +331,7 @@ checkpoints.get("/:sessionId/checkpoints/:checkpointId", async (c) => {
         typeof checkpoint.toolState === "object" &&
         Object.keys(checkpoint.toolState).length > 0,
       hasContextPack:
-        checkpoint.contextPack !== undefined &&
-        checkpoint.contextPack !== null,
+        checkpoint.contextPack !== undefined && checkpoint.contextPack !== null,
       verification: {
         valid: verification.valid,
         errors: verification.errors,

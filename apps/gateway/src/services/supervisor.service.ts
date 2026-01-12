@@ -8,7 +8,7 @@
  * - WebSocket events for status changes
  */
 
-import { type Subprocess } from "bun";
+import type { Subprocess } from "bun";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
 import type { Channel } from "../ws/channels";
 import { getHub } from "../ws/hub";
@@ -20,7 +20,12 @@ import { logger } from "./logger";
 
 export type RestartPolicy = "always" | "on-failure" | "never";
 
-export type DaemonStatus = "starting" | "running" | "stopping" | "stopped" | "failed";
+export type DaemonStatus =
+  | "starting"
+  | "running"
+  | "stopping"
+  | "stopped"
+  | "failed";
 
 export interface DaemonSpec {
   name: string;
@@ -53,7 +58,12 @@ export interface DaemonLogEntry {
 }
 
 export interface SupervisorEvent {
-  type: "daemon.started" | "daemon.stopped" | "daemon.failed" | "daemon.health_changed" | "daemon.restarting";
+  type:
+    | "daemon.started"
+    | "daemon.stopped"
+    | "daemon.failed"
+    | "daemon.health_changed"
+    | "daemon.restarting";
   data: {
     name: string;
     status: DaemonStatus;
@@ -105,7 +115,10 @@ export class SupervisorService {
   private processes = new Map<string, Subprocess>();
   private specs = new Map<string, DaemonSpec>();
   private logs = new Map<string, DaemonLogEntry[]>();
-  private healthCheckIntervals = new Map<string, ReturnType<typeof setInterval>>();
+  private healthCheckIntervals = new Map<
+    string,
+    ReturnType<typeof setInterval>
+  >();
   private startingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
   private started = false;
 
@@ -130,13 +143,19 @@ export class SupervisorService {
     const correlationId = getCorrelationId();
     const log = getLogger();
 
-    log.info({ correlationId, daemonCount: this.specs.size }, "Starting all daemons");
+    log.info(
+      { correlationId, daemonCount: this.specs.size },
+      "Starting all daemons",
+    );
 
     for (const spec of this.specs.values()) {
       try {
         await this.startDaemon(spec.name);
       } catch (error) {
-        log.error({ correlationId, daemon: spec.name, error }, "Failed to start daemon");
+        log.error(
+          { correlationId, daemon: spec.name, error },
+          "Failed to start daemon",
+        );
       }
     }
 
@@ -156,7 +175,10 @@ export class SupervisorService {
       try {
         await this.stopDaemon(name);
       } catch (error) {
-        log.error({ correlationId, daemon: name, error }, "Failed to stop daemon");
+        log.error(
+          { correlationId, daemon: name, error },
+          "Failed to stop daemon",
+        );
       }
     }
 
@@ -177,12 +199,19 @@ export class SupervisorService {
 
     // Check if already running
     const existingState = this.daemons.get(name);
-    if (existingState && (existingState.status === "running" || existingState.status === "starting")) {
+    if (
+      existingState &&
+      (existingState.status === "running" ||
+        existingState.status === "starting")
+    ) {
       log.warn({ correlationId, daemon: name }, "Daemon already running");
       return existingState;
     }
 
-    log.info({ correlationId, daemon: name, command: spec.command }, "Starting daemon");
+    log.info(
+      { correlationId, daemon: name, command: spec.command },
+      "Starting daemon",
+    );
 
     // Initialize state
     const state: DaemonState = {
@@ -229,11 +258,15 @@ export class SupervisorService {
         this.startingTimeouts.set(name, timeout);
       }
 
-      log.info({ correlationId, daemon: name, pid: proc.pid }, "Daemon process started");
+      log.info(
+        { correlationId, daemon: name, pid: proc.pid },
+        "Daemon process started",
+      );
       return state;
     } catch (error) {
       state.status = "failed";
-      state.lastError = error instanceof Error ? error.message : "Unknown error";
+      state.lastError =
+        error instanceof Error ? error.message : "Unknown error";
       this.emitEvent("daemon.failed", state);
       throw error;
     }
@@ -257,7 +290,10 @@ export class SupervisorService {
       return state ?? { name, status: "stopped", restartCount: 0 };
     }
 
-    log.info({ correlationId, daemon: name, pid: state.pid }, "Stopping daemon");
+    log.info(
+      { correlationId, daemon: name, pid: state.pid },
+      "Stopping daemon",
+    );
 
     // Stop health checks
     this.stopHealthCheck(name);
@@ -324,7 +360,9 @@ export class SupervisorService {
       if (state) {
         // Calculate uptime
         if (state.status === "running" && state.startedAt) {
-          state.uptime = Math.floor((Date.now() - state.startedAt.getTime()) / 1000);
+          state.uptime = Math.floor(
+            (Date.now() - state.startedAt.getTime()) / 1000,
+          );
         }
         result.push({ ...state });
       } else {
@@ -352,7 +390,9 @@ export class SupervisorService {
     const state = this.daemons.get(name);
     if (state) {
       if (state.status === "running" && state.startedAt) {
-        state.uptime = Math.floor((Date.now() - state.startedAt.getTime()) / 1000);
+        state.uptime = Math.floor(
+          (Date.now() - state.startedAt.getTime()) / 1000,
+        );
       }
       return { ...state };
     }
@@ -446,14 +486,20 @@ export class SupervisorService {
         try {
           await this.startDaemon(name);
         } catch (error) {
-          log.error({ correlationId, daemon: name, error }, "Failed to restart daemon");
+          log.error(
+            { correlationId, daemon: name, error },
+            "Failed to restart daemon",
+          );
         }
       }, spec.restartDelayMs);
     } else if (shouldRestart) {
       state.status = "failed";
       state.lastError = `Max restarts (${spec.maxRestarts}) exceeded`;
 
-      log.error({ correlationId, daemon: name, restartCount: state.restartCount }, "Daemon max restarts exceeded");
+      log.error(
+        { correlationId, daemon: name, restartCount: state.restartCount },
+        "Daemon max restarts exceeded",
+      );
       this.emitEvent("daemon.failed", state);
     } else {
       state.status = "stopped";
@@ -501,9 +547,12 @@ export class SupervisorService {
     if (!spec || !state || !spec.healthEndpoint || !spec.port) return;
 
     try {
-      const res = await fetch(`http://localhost:${spec.port}${spec.healthEndpoint}`, {
-        signal: AbortSignal.timeout(3000),
-      });
+      const res = await fetch(
+        `http://localhost:${spec.port}${spec.healthEndpoint}`,
+        {
+          signal: AbortSignal.timeout(3000),
+        },
+      );
 
       state.lastHealthCheck = new Date();
 
@@ -514,12 +563,18 @@ export class SupervisorService {
         }
       } else if (state.status === "running") {
         // Health check failed while running
-        logger.warn({ daemon: name, status: res.status }, "Daemon health check failed");
+        logger.warn(
+          { daemon: name, status: res.status },
+          "Daemon health check failed",
+        );
       }
     } catch {
       // Health check failed - daemon may still be starting
       if (state.status === "running") {
-        logger.warn({ daemon: name }, "Daemon health check failed (connection error)");
+        logger.warn(
+          { daemon: name },
+          "Daemon health check failed (connection error)",
+        );
       }
     }
   }
@@ -577,7 +632,11 @@ export class SupervisorService {
     }
   }
 
-  private addLog(logs: DaemonLogEntry[], level: "stdout" | "stderr", message: string): void {
+  private addLog(
+    logs: DaemonLogEntry[],
+    level: "stdout" | "stderr",
+    message: string,
+  ): void {
     logs.push({
       timestamp: new Date(),
       level,
@@ -593,7 +652,10 @@ export class SupervisorService {
   private redactSecrets(message: string): string {
     // Redact common secret patterns
     return message
-      .replace(/(?:api[_-]?key|token|password|secret|auth)[=:]\s*["']?[^\s"']+["']?/gi, "[REDACTED]")
+      .replace(
+        /(?:api[_-]?key|token|password|secret|auth)[=:]\s*["']?[^\s"']+["']?/gi,
+        "[REDACTED]",
+      )
       .replace(/sk-[a-zA-Z0-9]{20,}/g, "sk-[REDACTED]")
       .replace(/Bearer\s+[a-zA-Z0-9._-]+/gi, "Bearer [REDACTED]");
   }
@@ -614,7 +676,9 @@ export class SupervisorService {
     // Publish to WebSocket
     try {
       const channel: Channel = { type: "system:supervisor" };
-      getHub().publish(channel, type, event.data, { correlationId: getCorrelationId() });
+      getHub().publish(channel, type, event.data, {
+        correlationId: getCorrelationId(),
+      });
     } catch {
       // Hub may not be initialized yet
     }

@@ -10,7 +10,9 @@ test.describe("Agents Page", () => {
   });
 
   test("should display agents header with count", async ({ page }) => {
-    await expect(page.locator("h3").filter({ hasText: "Agents" })).toBeVisible();
+    await expect(
+      page.locator("h3").filter({ hasText: "Agents" }),
+    ).toBeVisible();
 
     // Should show total count in status pill
     const pill = page.locator(".card__header .pill");
@@ -30,7 +32,9 @@ test.describe("Agents Page", () => {
   });
 
   test("should display agent rows", async ({ page }) => {
-    const rows = page.locator(".table__row").filter({ hasNot: page.locator(".table__row--header") });
+    const rows = page
+      .locator(".table__row")
+      .filter({ hasNot: page.locator(".table__row--header") });
 
     // Should have at least one agent row
     await expect(rows.first()).toBeVisible();
@@ -51,7 +55,9 @@ test.describe("Agents Page", () => {
   });
 
   test("should display agent names", async ({ page }) => {
-    const rows = page.locator(".table__row").filter({ hasNot: page.locator(".table__row--header") });
+    const rows = page
+      .locator(".table__row")
+      .filter({ hasNot: page.locator(".table__row--header") });
 
     // First column should be non-empty (name)
     const firstRow = rows.first();
@@ -66,7 +72,9 @@ test.describe("Agents Page - Responsiveness", () => {
     await page.goto("/agents");
 
     await expect(page.locator(".table")).toBeVisible();
-    await expect(page.locator("h3").filter({ hasText: "Agents" })).toBeVisible();
+    await expect(
+      page.locator("h3").filter({ hasText: "Agents" }),
+    ).toBeVisible();
   });
 
   test("should display correctly on mobile viewport", async ({ page }) => {

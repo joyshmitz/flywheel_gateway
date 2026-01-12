@@ -4,7 +4,15 @@
  * Tests for daemon management, restart policies, and status tracking.
  */
 
-import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  mock,
+  spyOn,
+  test,
+} from "bun:test";
 import {
   _clearSupervisor,
   DaemonNotFoundError,
@@ -122,7 +130,9 @@ describe("SupervisorService", () => {
     });
 
     test("throws DaemonNotFoundError for unknown daemon", () => {
-      expect(() => service.getDaemonStatus("unknown")).toThrow(DaemonNotFoundError);
+      expect(() => service.getDaemonStatus("unknown")).toThrow(
+        DaemonNotFoundError,
+      );
     });
   });
 
@@ -141,7 +151,9 @@ describe("SupervisorService", () => {
     });
 
     test("throws DaemonNotFoundError for unknown daemon", async () => {
-      await expect(service.startDaemon("unknown")).rejects.toThrow(DaemonNotFoundError);
+      await expect(service.startDaemon("unknown")).rejects.toThrow(
+        DaemonNotFoundError,
+      );
     });
 
     test("returns existing state if daemon already running", async () => {
@@ -172,7 +184,9 @@ describe("SupervisorService", () => {
     });
 
     test("throws DaemonNotFoundError for unknown daemon", async () => {
-      await expect(service.stopDaemon("unknown")).rejects.toThrow(DaemonNotFoundError);
+      await expect(service.stopDaemon("unknown")).rejects.toThrow(
+        DaemonNotFoundError,
+      );
     });
   });
 
@@ -189,7 +203,9 @@ describe("SupervisorService", () => {
     });
 
     test("throws DaemonNotFoundError for unknown daemon", async () => {
-      await expect(service.restartDaemon("unknown")).rejects.toThrow(DaemonNotFoundError);
+      await expect(service.restartDaemon("unknown")).rejects.toThrow(
+        DaemonNotFoundError,
+      );
     });
   });
 

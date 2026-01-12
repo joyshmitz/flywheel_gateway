@@ -131,7 +131,10 @@ export async function getCassStatus(): Promise<CassServiceStatus> {
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
-    log.warn({ correlationId, error: errorMessage }, "CASS health check failed");
+    log.warn(
+      { correlationId, error: errorMessage },
+      "CASS health check failed",
+    );
     return {
       available: false,
       healthy: false,

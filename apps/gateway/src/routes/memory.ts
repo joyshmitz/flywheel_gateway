@@ -32,8 +32,8 @@ import {
 } from "../services/cm.service";
 import {
   sendError,
-  sendResource,
   sendList,
+  sendResource,
   sendValidationError,
 } from "../utils/response";
 import { transformZodError } from "../utils/validation";
@@ -249,12 +249,14 @@ memory.post("/context", async (c) => {
 
     // Build context options, only including defined values
     const contextOptions: Parameters<typeof getTaskContext>[1] = {};
-    if (options.workspace !== undefined) contextOptions.workspace = options.workspace;
+    if (options.workspace !== undefined)
+      contextOptions.workspace = options.workspace;
     if (options.top !== undefined) contextOptions.top = options.top;
     if (options.history !== undefined) contextOptions.history = options.history;
     if (options.days !== undefined) contextOptions.days = options.days;
     if (options.session !== undefined) contextOptions.session = options.session;
-    if (options.logContext !== undefined) contextOptions.logContext = options.logContext;
+    if (options.logContext !== undefined)
+      contextOptions.logContext = options.logContext;
 
     const result = await getTaskContext(task, contextOptions);
 
@@ -356,7 +358,8 @@ memory.get("/rules", async (c) => {
 
     // Build list options, only including defined values
     const listOptions: Parameters<typeof listPlaybookRules>[0] = {};
-    if (parsed.data.category !== undefined) listOptions.category = parsed.data.category;
+    if (parsed.data.category !== undefined)
+      listOptions.category = parsed.data.category;
     if (parsed.data.scope !== undefined) listOptions.scope = parsed.data.scope;
     if (parsed.data.state !== undefined) listOptions.state = parsed.data.state;
     if (parsed.data.kind !== undefined) listOptions.kind = parsed.data.kind;
@@ -364,20 +367,23 @@ memory.get("/rules", async (c) => {
 
     const result = await listPlaybookRules(listOptions);
 
-    return sendList(c, result.bullets.map((b) => ({
-      id: b.id,
-      text: b.text,
-      category: b.category,
-      scope: b.scope,
-      state: b.state,
-      kind: b.kind,
-      confidence: b.confidence,
-      sourceCount: b.sourceCount,
-      lastApplied: b.lastApplied,
-      helpfulCount: b.helpfulCount,
-      harmfulCount: b.harmfulCount,
-      score: b.score,
-    })));
+    return sendList(
+      c,
+      result.bullets.map((b) => ({
+        id: b.id,
+        text: b.text,
+        category: b.category,
+        scope: b.scope,
+        state: b.state,
+        kind: b.kind,
+        confidence: b.confidence,
+        sourceCount: b.sourceCount,
+        lastApplied: b.lastApplied,
+        helpfulCount: b.helpfulCount,
+        harmfulCount: b.harmfulCount,
+        score: b.score,
+      })),
+    );
   } catch (error) {
     return handleError(error, c);
   }

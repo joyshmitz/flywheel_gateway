@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 import {
   apiSecurityHeaders,
-  securityHeaders,
   type SecurityHeadersConfig,
+  securityHeaders,
 } from "../middleware/security-headers";
 
 /**
@@ -156,7 +156,11 @@ describe("Security Headers Middleware", () => {
     });
 
     test("HSTS includes preload when configured", async () => {
-      const app = createApp({ hsts: true, hstsMaxAge: 86400, hstsPreload: true });
+      const app = createApp({
+        hsts: true,
+        hstsMaxAge: 86400,
+        hstsPreload: true,
+      });
       const res = await app.request("/test");
 
       const hsts = res.headers.get("Strict-Transport-Security");

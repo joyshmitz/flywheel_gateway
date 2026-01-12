@@ -34,11 +34,13 @@ mock.module("../db", () => ({
   db: realDb,
   sqlite: realSqlite,
 }));
+
 import { Hono } from "hono";
 import { sqlite } from "../db/connection";
 import { dcg } from "../routes/dcg";
 import {
   approvePendingException,
+  cleanupExpiredExceptions,
   createPendingException,
   denyPendingException,
   getPendingException,
@@ -47,7 +49,6 @@ import {
   PendingExceptionExpiredError,
   PendingExceptionNotFoundError,
   validateExceptionForExecution,
-  cleanupExpiredExceptions,
 } from "../services/dcg-pending.service";
 
 // Use direct sqlite to clear table (avoids mock interference from other tests)
@@ -81,11 +82,21 @@ beforeAll(() => {
       expires_at INTEGER NOT NULL
     )
   `);
-  sqlite.exec(`CREATE UNIQUE INDEX IF NOT EXISTS dcg_pending_short_code_idx ON dcg_pending_exceptions(short_code)`);
-  sqlite.exec(`CREATE INDEX IF NOT EXISTS dcg_pending_status_idx ON dcg_pending_exceptions(status)`);
-  sqlite.exec(`CREATE INDEX IF NOT EXISTS dcg_pending_agent_idx ON dcg_pending_exceptions(agent_id)`);
-  sqlite.exec(`CREATE INDEX IF NOT EXISTS dcg_pending_expires_idx ON dcg_pending_exceptions(expires_at)`);
-  sqlite.exec(`CREATE INDEX IF NOT EXISTS dcg_pending_command_hash_idx ON dcg_pending_exceptions(command_hash)`);
+  sqlite.exec(
+    `CREATE UNIQUE INDEX IF NOT EXISTS dcg_pending_short_code_idx ON dcg_pending_exceptions(short_code)`,
+  );
+  sqlite.exec(
+    `CREATE INDEX IF NOT EXISTS dcg_pending_status_idx ON dcg_pending_exceptions(status)`,
+  );
+  sqlite.exec(
+    `CREATE INDEX IF NOT EXISTS dcg_pending_agent_idx ON dcg_pending_exceptions(agent_id)`,
+  );
+  sqlite.exec(
+    `CREATE INDEX IF NOT EXISTS dcg_pending_expires_idx ON dcg_pending_exceptions(expires_at)`,
+  );
+  sqlite.exec(
+    `CREATE INDEX IF NOT EXISTS dcg_pending_command_hash_idx ON dcg_pending_exceptions(command_hash)`,
+  );
 });
 
 // ============================================================================
@@ -128,7 +139,9 @@ describe("DCG Pending Exceptions Service", () => {
       const actualExpiry = exception.expiresAt;
 
       // Allow 2 second tolerance
-      expect(Math.abs(actualExpiry.getTime() - expectedExpiry.getTime())).toBeLessThan(2000);
+      expect(
+        Math.abs(actualExpiry.getTime() - expectedExpiry.getTime()),
+      ).toBeLessThan(2000);
     });
 
     test("includes agent and block event references", async () => {
@@ -200,10 +213,18 @@ describe("DCG Pending Exceptions Service", () => {
       await approvePendingException(exc.shortCode, "tester");
 
       const pendingResult = await listPendingExceptions({ status: "pending" });
-      const approvedResult = await listPendingExceptions({ status: "approved" });
+      const approvedResult = await listPendingExceptions({
+        status: "approved",
+      });
 
-      expect(pendingResult.exceptions.every((e) => e.status === "pending")).toBe(true);
-      expect(approvedResult.exceptions.some((e) => e.id === exc.id && e.status === "approved")).toBe(true);
+      expect(
+        pendingResult.exceptions.every((e) => e.status === "pending"),
+      ).toBe(true);
+      expect(
+        approvedResult.exceptions.some(
+          (e) => e.id === exc.id && e.status === "approved",
+        ),
+      ).toBe(true);
     });
 
     test("filters by agentId", async () => {
@@ -225,7 +246,9 @@ describe("DCG Pending Exceptions Service", () => {
       });
 
       const result = await listPendingExceptions({ agentId: "agent-1" });
-      expect(result.exceptions.every((e) => e.agentId === "agent-1")).toBe(true);
+      expect(result.exceptions.every((e) => e.agentId === "agent-1")).toBe(
+        true,
+      );
     });
   });
 
@@ -239,7 +262,10 @@ describe("DCG Pending Exceptions Service", () => {
         severity: "low",
       });
 
-      const approved = await approvePendingException(exc.shortCode, "test-user");
+      const approved = await approvePendingException(
+        exc.shortCode,
+        "test-user",
+      );
 
       expect(approved.status).toBe("approved");
       expect(approved.approvedBy).toBe("test-user");
@@ -297,7 +323,11 @@ describe("DCG Pending Exceptions Service", () => {
         severity: "low",
       });
 
-      const denied = await denyPendingException(exc.shortCode, "test-user", "Too risky");
+      const denied = await denyPendingException(
+        exc.shortCode,
+        "test-user",
+        "Too risky",
+      );
 
       expect(denied.status).toBe("denied");
       expect(denied.deniedBy).toBe("test-user");
@@ -425,7 +455,9 @@ describe("DCG Pending Exceptions Routes", () => {
       expect(res.status).toBe(200);
 
       const body = await res.json();
-      expect(body.data.every((e: { status: string }) => e.status === "approved")).toBe(true);
+      expect(
+        body.data.every((e: { status: string }) => e.status === "approved"),
+      ).toBe(true);
     });
   });
 

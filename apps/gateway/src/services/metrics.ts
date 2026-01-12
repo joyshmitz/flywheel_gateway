@@ -25,7 +25,12 @@ interface MetricStore {
   gauges: Map<string, number>;
   histograms: Map<
     string,
-    { buckets: number[]; boundaries: readonly number[]; sum: number; count: number }
+    {
+      buckets: number[];
+      boundaries: readonly number[];
+      sum: number;
+      count: number;
+    }
   >;
 }
 

@@ -12,12 +12,8 @@
 
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import type { ServerWebSocket } from "bun";
-import {
-  type ConnectionData,
-  setHub,
-  WebSocketHub,
-} from "../hub";
 import type { Channel } from "../channels";
+import { type ConnectionData, setHub, WebSocketHub } from "../hub";
 import type { ServerMessage } from "../messages";
 
 // Helper to create mock WebSocket
@@ -63,10 +59,15 @@ describe("WebSocket Ack Mode", () => {
       const { ws, sent } = createMockWS("conn-1");
       hub.addConnection(ws, ws.data.auth);
 
-      const channel: Channel = { type: "workspace:conflicts", workspaceId: "workspace-1" };
+      const channel: Channel = {
+        type: "workspace:conflicts",
+        workspaceId: "workspace-1",
+      };
       hub.subscribe("conn-1", channel);
 
-      const message = hub.publish(channel, "conflict.detected", { fileId: "file-1" });
+      const message = hub.publish(channel, "conflict.detected", {
+        fileId: "file-1",
+      });
 
       // Should have sent one message
       expect(sent.length).toBe(1);
@@ -84,7 +85,10 @@ describe("WebSocket Ack Mode", () => {
       const { ws, sent } = createMockWS("conn-2");
       hub.addConnection(ws, ws.data.auth);
 
-      const channel: Channel = { type: "workspace:reservations", workspaceId: "workspace-1" };
+      const channel: Channel = {
+        type: "workspace:reservations",
+        workspaceId: "workspace-1",
+      };
       hub.subscribe("conn-2", channel);
 
       hub.publish(channel, "reservation.acquired", { path: "/src/file.ts" });
@@ -129,11 +133,18 @@ describe("WebSocket Ack Mode", () => {
       const { ws } = createMockWS("conn-5");
       hub.addConnection(ws, ws.data.auth);
 
-      const channel: Channel = { type: "workspace:conflicts", workspaceId: "workspace-1" };
+      const channel: Channel = {
+        type: "workspace:conflicts",
+        workspaceId: "workspace-1",
+      };
       hub.subscribe("conn-5", channel);
 
-      const msg1 = hub.publish(channel, "conflict.detected", { fileId: "file-1" });
-      const msg2 = hub.publish(channel, "conflict.resolved", { fileId: "file-1" });
+      const msg1 = hub.publish(channel, "conflict.detected", {
+        fileId: "file-1",
+      });
+      const msg2 = hub.publish(channel, "conflict.resolved", {
+        fileId: "file-1",
+      });
 
       // Both should be pending
       expect(hub.getPendingAcks("conn-5").length).toBe(2);
@@ -162,10 +173,15 @@ describe("WebSocket Ack Mode", () => {
       const { ws } = createMockWS("conn-7");
       hub.addConnection(ws, ws.data.auth);
 
-      const channel: Channel = { type: "workspace:conflicts", workspaceId: "workspace-1" };
+      const channel: Channel = {
+        type: "workspace:conflicts",
+        workspaceId: "workspace-1",
+      };
       hub.subscribe("conn-7", channel);
 
-      const msg = hub.publish(channel, "conflict.detected", { fileId: "file-1" });
+      const msg = hub.publish(channel, "conflict.detected", {
+        fileId: "file-1",
+      });
 
       const result = hub.handleAck("conn-7", [msg.id, "unknown-1"]);
       expect(result.acknowledged).toEqual([msg.id]);
@@ -184,7 +200,10 @@ describe("WebSocket Ack Mode", () => {
       const { ws, sent } = createMockWS("conn-8");
       hub.addConnection(ws, ws.data.auth);
 
-      const channel: Channel = { type: "workspace:conflicts", workspaceId: "workspace-1" };
+      const channel: Channel = {
+        type: "workspace:conflicts",
+        workspaceId: "workspace-1",
+      };
       hub.subscribe("conn-8", channel);
 
       hub.publish(channel, "conflict.detected", { fileId: "file-1" });
@@ -211,7 +230,10 @@ describe("WebSocket Ack Mode", () => {
       const { ws } = createMockWS("conn-9");
       hub.addConnection(ws, ws.data.auth);
 
-      const channel: Channel = { type: "workspace:conflicts", workspaceId: "workspace-1" };
+      const channel: Channel = {
+        type: "workspace:conflicts",
+        workspaceId: "workspace-1",
+      };
       hub.subscribe("conn-9", channel);
 
       hub.publish(channel, "conflict.detected", { fileId: "file-1" });
@@ -238,11 +260,16 @@ describe("WebSocket Ack Mode", () => {
       const { ws, sent } = createMockWS("conn-10");
       hub.addConnection(ws, ws.data.auth);
 
-      const channel: Channel = { type: "workspace:conflicts", workspaceId: "workspace-1" };
+      const channel: Channel = {
+        type: "workspace:conflicts",
+        workspaceId: "workspace-1",
+      };
       hub.subscribe("conn-10", channel);
 
       // Publish message that requires ack
-      const msg = hub.publish(channel, "conflict.detected", { fileId: "file-1" });
+      const msg = hub.publish(channel, "conflict.detected", {
+        fileId: "file-1",
+      });
 
       // Clear sent to simulate reconnection
       sent.length = 0;
@@ -260,7 +287,10 @@ describe("WebSocket Ack Mode", () => {
       const { ws, sent } = createMockWS("conn-11");
       hub.addConnection(ws, ws.data.auth);
 
-      const channel: Channel = { type: "workspace:conflicts", workspaceId: "workspace-1" };
+      const channel: Channel = {
+        type: "workspace:conflicts",
+        workspaceId: "workspace-1",
+      };
       const channelStr = "workspace:conflicts:workspace-1";
 
       // First, publish a message without the connection subscribed
@@ -288,7 +318,10 @@ describe("WebSocket Ack Mode", () => {
       const { ws } = createMockWS("conn-12");
       hub.addConnection(ws, ws.data.auth);
 
-      const channel: Channel = { type: "workspace:conflicts", workspaceId: "workspace-1" };
+      const channel: Channel = {
+        type: "workspace:conflicts",
+        workspaceId: "workspace-1",
+      };
       hub.subscribe("conn-12", channel);
 
       // Initially no pending acks

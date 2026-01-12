@@ -114,7 +114,10 @@ function safeJsonParse<T>(json: string, fallback: T): T {
   try {
     return JSON.parse(json) as T;
   } catch {
-    logger.warn({ json: json.slice(0, 100) }, "Failed to parse JSON, using fallback");
+    logger.warn(
+      { json: json.slice(0, 100) },
+      "Failed to parse JSON, using fallback",
+    );
     return fallback;
   }
 }
@@ -124,7 +127,10 @@ function safeJsonParse<T>(json: string, fallback: T): T {
  */
 function rowToConfig(row: typeof dcgConfig.$inferSelect): DCGConfigData {
   const result: DCGConfigData = {
-    enabledPacks: safeJsonParse<string[]>(row.enabledPacks, DEFAULT_ENABLED_PACKS),
+    enabledPacks: safeJsonParse<string[]>(
+      row.enabledPacks,
+      DEFAULT_ENABLED_PACKS,
+    ),
     disabledPacks: safeJsonParse<string[]>(row.disabledPacks, []),
     criticalMode: row.criticalMode as SeverityMode,
     highMode: row.highMode as SeverityMode,
@@ -147,7 +153,10 @@ function rowToHistoryEntry(
   try {
     configSnapshot = JSON.parse(row.configSnapshot) as DCGConfigData;
   } catch {
-    logger.warn({ historyId: row.id }, "Corrupt config snapshot in history, skipping entry");
+    logger.warn(
+      { historyId: row.id },
+      "Corrupt config snapshot in history, skipping entry",
+    );
     return null;
   }
 
@@ -160,10 +169,15 @@ function rowToHistoryEntry(
 
   if (row.previousSnapshot) {
     try {
-      entry.previousSnapshot = JSON.parse(row.previousSnapshot) as DCGConfigData;
+      entry.previousSnapshot = JSON.parse(
+        row.previousSnapshot,
+      ) as DCGConfigData;
     } catch {
       // Previous snapshot is optional, just skip it if corrupt
-      logger.debug({ historyId: row.id }, "Corrupt previous snapshot in history, skipping");
+      logger.debug(
+        { historyId: row.id },
+        "Corrupt previous snapshot in history, skipping",
+      );
     }
   }
   if (row.changedBy) entry.changedBy = row.changedBy;
@@ -430,7 +444,9 @@ export async function getConfigHistory(options?: {
     .limit(limit);
 
   // Filter out corrupt entries (null) from the result
-  return rows.map(rowToHistoryEntry).filter((entry): entry is ConfigHistoryEntry => entry !== null);
+  return rows
+    .map(rowToHistoryEntry)
+    .filter((entry): entry is ConfigHistoryEntry => entry !== null);
 }
 
 /**

@@ -95,10 +95,7 @@ export function getLinkContext(c: Context): LinkGeneratorContext {
  * // }
  * ```
  */
-export const agentLinks: LinkGenerator<{ agentId: string }> = (
-  agent,
-  ctx,
-) => ({
+export const agentLinks: LinkGenerator<{ agentId: string }> = (agent, ctx) => ({
   self: `${ctx.baseUrl}/agents/${agent.agentId}`,
   output: `${ctx.baseUrl}/agents/${agent.agentId}/output`,
   status: `${ctx.baseUrl}/agents/${agent.agentId}/status`,

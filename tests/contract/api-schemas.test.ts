@@ -5,14 +5,16 @@
  * ensuring backwards compatibility and API contract adherence.
  */
 
-import { describe, expect, test, beforeAll } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
 import { z } from "zod";
 
 // Schema definitions for API responses
 const AgentSchema = z.object({
   id: z.string(),
   name: z.string().optional(),
-  status: z.enum(["idle", "ready", "executing", "paused", "failed", "terminated"]).optional(),
+  status: z
+    .enum(["idle", "ready", "executing", "paused", "failed", "terminated"])
+    .optional(),
   model: z.string().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
@@ -26,14 +28,18 @@ const AgentListResponseSchema = z.union([
   }),
 ]);
 
-const HealthResponseSchema = z.object({
-  status: z.enum(["healthy", "degraded", "unhealthy"]).optional(),
-  uptime: z.number().optional(),
-  timestamp: z.string().optional(),
-  version: z.string().optional(),
-}).or(z.object({
-  ok: z.boolean(),
-}));
+const HealthResponseSchema = z
+  .object({
+    status: z.enum(["healthy", "degraded", "unhealthy"]).optional(),
+    uptime: z.number().optional(),
+    timestamp: z.string().optional(),
+    version: z.string().optional(),
+  })
+  .or(
+    z.object({
+      ok: z.boolean(),
+    }),
+  );
 
 const ErrorResponseSchema = z.object({
   error: z.object({
@@ -45,12 +51,14 @@ const ErrorResponseSchema = z.object({
 
 const PaginatedResponseSchema = z.object({
   data: z.array(z.any()),
-  pagination: z.object({
-    page: z.number().optional(),
-    limit: z.number().optional(),
-    total: z.number().optional(),
-    hasMore: z.boolean().optional(),
-  }).optional(),
+  pagination: z
+    .object({
+      page: z.number().optional(),
+      limit: z.number().optional(),
+      total: z.number().optional(),
+      hasMore: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 const SessionSchema = z.object({
@@ -60,12 +68,14 @@ const SessionSchema = z.object({
   createdAt: z.string().optional(),
 });
 
-const MetricsResponseSchema = z.object({
-  agents: z.any().optional(),
-  sessions: z.any().optional(),
-  websocket: z.any().optional(),
-  system: z.any().optional(),
-}).or(z.any()); // Allow any shape for metrics
+const MetricsResponseSchema = z
+  .object({
+    agents: z.any().optional(),
+    sessions: z.any().optional(),
+    websocket: z.any().optional(),
+    system: z.any().optional(),
+  })
+  .or(z.any()); // Allow any shape for metrics
 
 // Test configuration
 const BASE_URL = process.env.API_URL || "http://localhost:3000";
@@ -188,7 +198,7 @@ describe("API Contract Tests", () => {
       // Should have events array or be array
       expect(
         Array.isArray(body) ||
-        (typeof body === "object" && body.events !== undefined)
+          (typeof body === "object" && body.events !== undefined),
       ).toBe(true);
     });
   });

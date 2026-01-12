@@ -23,6 +23,7 @@ import {
   getTaskDurationMetrics,
   getTokenEfficiencyMetrics,
 } from "../services/agent-analytics.service";
+import { getLinkContext } from "../utils/links";
 import {
   sendError,
   sendInternalError,
@@ -32,7 +33,6 @@ import {
   sendValidationError,
 } from "../utils/response";
 import { transformZodError } from "../utils/validation";
-import { getLinkContext } from "../utils/links";
 
 const analytics = new Hono();
 

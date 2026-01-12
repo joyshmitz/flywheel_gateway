@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import {
+  type BackpressureConfig,
   BackpressureManager,
   createBackpressureManager,
-  type BackpressureConfig,
-} from '../BackpressureManager';
+} from "../BackpressureManager";
 
-describe('BackpressureManager', () => {
+describe("BackpressureManager", () => {
   let manager: BackpressureManager<string>;
 
   beforeEach(() => {
@@ -22,16 +22,16 @@ describe('BackpressureManager', () => {
     manager.dispose();
   });
 
-  describe('enqueue', () => {
-    it('should add messages to the queue', () => {
-      manager.enqueue('message1');
-      manager.enqueue('message2');
+  describe("enqueue", () => {
+    it("should add messages to the queue", () => {
+      manager.enqueue("message1");
+      manager.enqueue("message2");
 
       const state = manager.getState();
       expect(state.queueLength).toBe(2);
     });
 
-    it('should trigger pause when highWaterMark is reached', () => {
+    it("should trigger pause when highWaterMark is reached", () => {
       const onPause = mock(() => {});
       manager.setPauseHandlers(onPause, () => {});
 
@@ -44,7 +44,7 @@ describe('BackpressureManager', () => {
       expect(manager.getState().isPaused).toBe(true);
     });
 
-    it('should drop oldest messages when maxQueueSize is exceeded', () => {
+    it("should drop oldest messages when maxQueueSize is exceeded", () => {
       // Fill queue to max
       for (let i = 0; i < 25; i++) {
         manager.enqueue(`message${i}`);
@@ -57,17 +57,17 @@ describe('BackpressureManager', () => {
     });
   });
 
-  describe('enqueueAll', () => {
-    it('should add multiple messages at once', () => {
-      const messages = ['msg1', 'msg2', 'msg3'];
+  describe("enqueueAll", () => {
+    it("should add multiple messages at once", () => {
+      const messages = ["msg1", "msg2", "msg3"];
       manager.enqueueAll(messages);
 
       expect(manager.getState().queueLength).toBe(3);
     });
   });
 
-  describe('processing', () => {
-    it('should process messages in batches when started', async () => {
+  describe("processing", () => {
+    it("should process messages in batches when started", async () => {
       const processed: string[][] = [];
       manager.setMessageHandler((msgs) => processed.push(msgs));
 
@@ -88,7 +88,7 @@ describe('BackpressureManager', () => {
       manager.stop();
     });
 
-    it('should resume when queue drops below lowWaterMark', async () => {
+    it("should resume when queue drops below lowWaterMark", async () => {
       const onResume = mock(() => {});
       manager.setPauseHandlers(() => {}, onResume);
 
@@ -113,19 +113,19 @@ describe('BackpressureManager', () => {
     });
   });
 
-  describe('flush', () => {
-    it('should return all messages and clear queue', () => {
-      manager.enqueue('msg1');
-      manager.enqueue('msg2');
-      manager.enqueue('msg3');
+  describe("flush", () => {
+    it("should return all messages and clear queue", () => {
+      manager.enqueue("msg1");
+      manager.enqueue("msg2");
+      manager.enqueue("msg3");
 
       const flushed = manager.flush();
 
-      expect(flushed).toEqual(['msg1', 'msg2', 'msg3']);
+      expect(flushed).toEqual(["msg1", "msg2", "msg3"]);
       expect(manager.getState().queueLength).toBe(0);
     });
 
-    it('should resume if was paused', () => {
+    it("should resume if was paused", () => {
       const onResume = mock(() => {});
       manager.setPauseHandlers(() => {}, onResume);
 
@@ -143,10 +143,10 @@ describe('BackpressureManager', () => {
     });
   });
 
-  describe('clear', () => {
-    it('should clear queue and increment dropped count', () => {
-      manager.enqueue('msg1');
-      manager.enqueue('msg2');
+  describe("clear", () => {
+    it("should clear queue and increment dropped count", () => {
+      manager.enqueue("msg1");
+      manager.enqueue("msg2");
 
       manager.clear();
 
@@ -156,9 +156,9 @@ describe('BackpressureManager', () => {
     });
   });
 
-  describe('getState', () => {
-    it('should return current state', () => {
-      manager.enqueue('msg1');
+  describe("getState", () => {
+    it("should return current state", () => {
+      manager.enqueue("msg1");
 
       const state = manager.getState();
 
@@ -171,9 +171,9 @@ describe('BackpressureManager', () => {
     });
   });
 
-  describe('resetStats', () => {
-    it('should reset dropped and processed counts', () => {
-      manager.enqueue('msg1');
+  describe("resetStats", () => {
+    it("should reset dropped and processed counts", () => {
+      manager.enqueue("msg1");
       manager.clear();
 
       manager.resetStats();
@@ -184,8 +184,8 @@ describe('BackpressureManager', () => {
     });
   });
 
-  describe('updateConfig', () => {
-    it('should update configuration at runtime', () => {
+  describe("updateConfig", () => {
+    it("should update configuration at runtime", () => {
       manager.updateConfig({ highWaterMark: 100 });
 
       // Fill to original high water mark (10)
@@ -198,19 +198,19 @@ describe('BackpressureManager', () => {
     });
   });
 
-  describe('setStateChangeHandler', () => {
-    it('should call handler on state changes', () => {
+  describe("setStateChangeHandler", () => {
+    it("should call handler on state changes", () => {
       const handler = mock(() => {});
       manager.setStateChangeHandler(handler);
 
-      manager.enqueue('msg1');
+      manager.enqueue("msg1");
 
       expect(handler).toHaveBeenCalled();
     });
   });
 
-  describe('createBackpressureManager', () => {
-    it('should create a new manager with config', () => {
+  describe("createBackpressureManager", () => {
+    it("should create a new manager with config", () => {
       const mgr = createBackpressureManager<number>({ highWaterMark: 50 });
       expect(mgr).toBeInstanceOf(BackpressureManager);
       mgr.dispose();

@@ -7,11 +7,11 @@ import {
   type ApiErrorResponse,
   type ApiListResponse,
   type ApiResponse,
-  ObjectTypes,
   isApiErrorResponse,
   isApiListResponse,
   isApiResponse,
   isSuccessResponse,
+  ObjectTypes,
 } from "../envelope";
 
 describe("ObjectTypes", () => {

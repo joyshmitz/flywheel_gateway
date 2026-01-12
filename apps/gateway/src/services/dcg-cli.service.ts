@@ -102,7 +102,9 @@ export class DCGCommandError extends Error {
   public stderr: string;
 
   constructor(command: string, exitCode: number, stderr: string) {
-    super(`DCG command '${command}' failed with exit code ${exitCode}: ${stderr}`);
+    super(
+      `DCG command '${command}' failed with exit code ${exitCode}: ${stderr}`,
+    );
     this.name = "DCGCommandError";
     this.exitCode = exitCode;
     this.stderr = stderr;
@@ -144,7 +146,10 @@ function parseJSONOutput<T>(output: string, fallback: T): T {
   try {
     return JSON.parse(output) as T;
   } catch {
-    logger.warn({ output: output.slice(0, 200) }, "Failed to parse DCG JSON output");
+    logger.warn(
+      { output: output.slice(0, 200) },
+      "Failed to parse DCG JSON output",
+    );
     return fallback;
   }
 }
@@ -156,12 +161,17 @@ function parseJSONOutput<T>(output: string, fallback: T): T {
 /**
  * Explain a command - what it does and why it might be blocked.
  */
-export async function explainCommand(command: string): Promise<DCGExplainResult> {
+export async function explainCommand(
+  command: string,
+): Promise<DCGExplainResult> {
   const correlationId = getCorrelationId();
   const log = getLogger();
   const startTime = Date.now();
 
-  log.info({ correlationId, command: command.substring(0, 50) }, "Explaining command with DCG");
+  log.info(
+    { correlationId, command: command.substring(0, 50) },
+    "Explaining command with DCG",
+  );
 
   try {
     const proc = Bun.spawn(["dcg", "explain", "--json", command], {
@@ -221,7 +231,10 @@ export async function testCommand(command: string): Promise<DCGTestResult> {
   const log = getLogger();
   const startTime = Date.now();
 
-  log.debug({ correlationId, command: command.substring(0, 50) }, "Testing command with DCG");
+  log.debug(
+    { correlationId, command: command.substring(0, 50) },
+    "Testing command with DCG",
+  );
 
   try {
     const proc = Bun.spawn(["dcg", "test", "--json", command], {
@@ -311,7 +324,10 @@ export async function scanFile(filePath: string): Promise<DCGScanResult> {
       throw error;
     }
     // DCG not available - return empty result
-    log.warn({ correlationId, error, filePath }, "DCG scan failed, returning empty result");
+    log.warn(
+      { correlationId, error, filePath },
+      "DCG scan failed, returning empty result",
+    );
     return {
       file: filePath,
       lineCount: 0,
@@ -398,7 +414,10 @@ export async function listPacks(): Promise<DCGPackInfo[]> {
       throw error;
     }
     // DCG not available - return empty list
-    log.warn({ correlationId, error }, "DCG list-packs failed, returning empty list");
+    log.warn(
+      { correlationId, error },
+      "DCG list-packs failed, returning empty list",
+    );
     return [];
   }
 }
@@ -446,7 +465,10 @@ export async function getPackInfo(packId: string): Promise<DCGPackInfo> {
 
     return pack;
   } catch (error) {
-    if (error instanceof DCGPackNotFoundError || error instanceof DCGCommandError) {
+    if (
+      error instanceof DCGPackNotFoundError ||
+      error instanceof DCGCommandError
+    ) {
       throw error;
     }
     // DCG not available
@@ -508,7 +530,10 @@ export async function preValidateCommand(
   const correlationId = getCorrelationId();
   const log = getLogger();
 
-  log.debug({ correlationId, agentId, command: command.substring(0, 50) }, "Pre-validating command");
+  log.debug(
+    { correlationId, agentId, command: command.substring(0, 50) },
+    "Pre-validating command",
+  );
 
   const testResult = await testCommand(command);
 
@@ -554,7 +579,8 @@ export async function validateAgentScript(
 
   const scanResult = await scanContent(scriptContent, scriptName);
 
-  const safe = scanResult.summary.critical === 0 && scanResult.summary.high === 0;
+  const safe =
+    scanResult.summary.critical === 0 && scanResult.summary.high === 0;
 
   if (!safe) {
     log.warn(
@@ -563,7 +589,9 @@ export async function validateAgentScript(
         agentId,
         scriptName,
         summary: scanResult.summary,
-        criticalFindings: scanResult.findings.filter((f) => f.severity === "critical"),
+        criticalFindings: scanResult.findings.filter(
+          (f) => f.severity === "critical",
+        ),
       },
       "Agent script contains dangerous commands",
     );

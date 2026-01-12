@@ -7,9 +7,9 @@ import {
   globToRegex,
   isReDoSPattern,
   matchPattern,
-  validateRule,
   type SafetyOperation,
   type SafetyRule,
+  validateRule,
 } from "../services/safety-rules.engine";
 
 describe("Safety Rules Engine", () => {
@@ -404,9 +404,7 @@ describe("Safety Rules Engine", () => {
         action: "deny",
         severity: "high",
         message: "Test message",
-        conditions: [
-          { field: "path", patternType: "glob", pattern: "*.ts" },
-        ],
+        conditions: [{ field: "path", patternType: "glob", pattern: "*.ts" }],
       };
 
       const errors = validateRule(rule);
@@ -467,9 +465,7 @@ describe("Safety Rules Engine", () => {
         action: "deny",
         severity: "high",
         message: "Test message",
-        conditions: [
-          { field: "path", patternType: "regex", pattern: "(a+)+" },
-        ],
+        conditions: [{ field: "path", patternType: "regex", pattern: "(a+)+" }],
       };
 
       const errors = validateRule(rule);

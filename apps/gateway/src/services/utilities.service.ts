@@ -241,7 +241,8 @@ async function checkUtility(
     installed,
     lastCheckedAt: now,
   };
-  if (installedVersion !== undefined) status.installedVersion = installedVersion;
+  if (installedVersion !== undefined)
+    status.installedVersion = installedVersion;
 
   statusCache.set(utility.name, { status, checkedAt: now });
 
@@ -288,8 +289,10 @@ export async function getUtilityStatus(
     installCommand: checked.installCommand,
     description: checked.description,
   };
-  if (checked.installedVersion !== undefined) status.version = checked.installedVersion;
-  if (checked.lastCheckedAt) status.lastCheckedAt = checked.lastCheckedAt.toISOString();
+  if (checked.installedVersion !== undefined)
+    status.version = checked.installedVersion;
+  if (checked.lastCheckedAt)
+    status.lastCheckedAt = checked.lastCheckedAt.toISOString();
 
   return status;
 }
@@ -443,12 +446,15 @@ export async function runGiil(request: GiilRequest): Promise<GiilResponse> {
       const jsonResponse: GiilResponse = { success: true };
       if (parsed.path) jsonResponse.path = parsed.path;
       if (typeof parsed.width === "number") jsonResponse.width = parsed.width;
-      if (typeof parsed.height === "number") jsonResponse.height = parsed.height;
-      if (parsed.captureMethod) jsonResponse.captureMethod = parsed.captureMethod;
+      if (typeof parsed.height === "number")
+        jsonResponse.height = parsed.height;
+      if (parsed.captureMethod)
+        jsonResponse.captureMethod = parsed.captureMethod;
       return jsonResponse;
     } catch {
       const fallbackResponse: GiilResponse = { success: true };
-      if (validation.resolvedPath) fallbackResponse.path = validation.resolvedPath;
+      if (validation.resolvedPath)
+        fallbackResponse.path = validation.resolvedPath;
       return fallbackResponse;
     }
   }

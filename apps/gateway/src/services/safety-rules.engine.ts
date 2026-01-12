@@ -123,7 +123,7 @@ export interface SafetyEvaluationResult {
  * Supports *, **, and ? wildcards.
  */
 function globToRegex(pattern: string): RegExp {
-  let regex = pattern
+  const regex = pattern
     .replace(/[.+^${}()|[\]\\]/g, "\\$&") // Escape special chars
     .replace(/\*\*/g, "\0DOUBLESTAR\0") // Preserve **
     .replace(/\*/g, "[^/]*") // * matches anything except /
@@ -164,7 +164,10 @@ export function matchPattern(
       try {
         // Check for ReDoS patterns (simple heuristic)
         if (isReDoSPattern(pattern)) {
-          logger.warn({ pattern }, "Potentially dangerous regex pattern rejected");
+          logger.warn(
+            { pattern },
+            "Potentially dangerous regex pattern rejected",
+          );
           return false;
         }
         const regex = new RegExp(pattern);
@@ -250,9 +253,13 @@ export function evaluateRule(
   // Evaluate conditions
   let matched: boolean;
   if (rule.conditionLogic === "and") {
-    matched = rule.conditions.every((cond) => evaluateCondition(cond, operation));
+    matched = rule.conditions.every((cond) =>
+      evaluateCondition(cond, operation),
+    );
   } else {
-    matched = rule.conditions.some((cond) => evaluateCondition(cond, operation));
+    matched = rule.conditions.some((cond) =>
+      evaluateCondition(cond, operation),
+    );
   }
 
   return {
@@ -393,7 +400,11 @@ export function getDefaultRules(): SafetyRule[] {
       description: "Prevent direct writes to node_modules",
       category: "filesystem",
       conditions: [
-        { field: "operation", patternType: "regex", pattern: "^(write|delete)$" },
+        {
+          field: "operation",
+          patternType: "regex",
+          pattern: "^(write|delete)$",
+        },
         { field: "path", patternType: "glob", pattern: "**/node_modules/**" },
       ],
       conditionLogic: "and",
@@ -450,7 +461,8 @@ export function getDefaultRules(): SafetyRule[] {
       conditionLogic: "and",
       action: "approve",
       severity: "high",
-      message: "Hard reset can lose uncommitted changes. This requires approval.",
+      message:
+        "Hard reset can lose uncommitted changes. This requires approval.",
       enabled: true,
       alternatives: ["git stash", "git reset --soft"],
     },
@@ -459,7 +471,9 @@ export function getDefaultRules(): SafetyRule[] {
       name: "Block git clean -f",
       description: "Prevent cleaning untracked files",
       category: "git",
-      conditions: [{ field: "command", patternType: "glob", pattern: "clean*-f*" }],
+      conditions: [
+        { field: "command", patternType: "glob", pattern: "clean*-f*" },
+      ],
       conditionLogic: "and",
       action: "approve",
       severity: "medium",
@@ -484,7 +498,8 @@ export function getDefaultRules(): SafetyRule[] {
       conditionLogic: "and",
       action: "deny",
       severity: "critical",
-      message: "Piping curl output to shell is blocked. Download and inspect first.",
+      message:
+        "Piping curl output to shell is blocked. Download and inspect first.",
       enabled: true,
     },
     {
@@ -530,7 +545,8 @@ export function getDefaultRules(): SafetyRule[] {
         {
           field: "url",
           patternType: "regex",
-          pattern: "^https?://(10\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|192\\.168\\.)",
+          pattern:
+            "^https?://(10\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|192\\.168\\.)",
         },
       ],
       conditionLogic: "and",
@@ -637,7 +653,10 @@ export function validateRule(rule: Partial<SafetyRule>): RuleValidationError[] {
   }
 
   if (!rule.conditions || rule.conditions.length === 0) {
-    errors.push({ field: "conditions", message: "At least one condition is required" });
+    errors.push({
+      field: "conditions",
+      message: "At least one condition is required",
+    });
   } else {
     for (let i = 0; i < rule.conditions.length; i++) {
       const cond = rule.conditions[i];

@@ -7,8 +7,8 @@
 
 import {
   createCursor,
-  decodeCursor,
   DEFAULT_PAGINATION,
+  decodeCursor,
 } from "@flywheel/shared/api/pagination";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
 import {
@@ -22,8 +22,8 @@ import {
   type NotificationListResponse,
   type NotificationPreferences,
   type NotificationPriority,
-  type PreferencesUpdateRequest,
   PRIORITY_ORDER,
+  type PreferencesUpdateRequest,
 } from "../models/notification";
 import { logger } from "./logger";
 
@@ -214,7 +214,11 @@ async function sendWebhookNotification(
 
   // TODO: Send to webhook with HMAC signature
   log.info(
-    { notificationId: notification.id, url: webhookUrl, title: notification.title },
+    {
+      notificationId: notification.id,
+      url: webhookUrl,
+      title: notification.title,
+    },
     "[NOTIFY] Webhook channel: would POST to webhook",
   );
   return true;
@@ -229,7 +233,8 @@ async function deliverToChannels(
   prefs: NotificationPreferences,
 ): Promise<void> {
   const log = getLogger();
-  const channelStatus: Record<NotificationChannel, "sent" | "failed"> = {} as Record<NotificationChannel, "sent" | "failed">;
+  const channelStatus: Record<NotificationChannel, "sent" | "failed"> =
+    {} as Record<NotificationChannel, "sent" | "failed">;
 
   for (const channel of channels) {
     try {
@@ -262,7 +267,10 @@ async function deliverToChannels(
   }
 
   // Update notification with channel status
-  notification.channelStatus = channelStatus as Record<NotificationChannel, "pending" | "sent" | "delivered" | "read" | "actioned" | "failed">;
+  notification.channelStatus = channelStatus as Record<
+    NotificationChannel,
+    "pending" | "sent" | "delivered" | "read" | "actioned" | "failed"
+  >;
   notification.sentAt = new Date();
 
   // Update overall status
@@ -488,10 +496,7 @@ export function markAsRead(
     notification.readAt = new Date();
 
     const log = getLogger();
-    log.debug(
-      { notificationId, recipientId },
-      "[NOTIFY] Marked as read",
-    );
+    log.debug({ notificationId, recipientId }, "[NOTIFY] Marked as read");
   }
 
   return notification;
@@ -516,10 +521,7 @@ export function markAllAsRead(recipientId: string): number {
   }
 
   const log = getLogger();
-  log.info(
-    { recipientId, count },
-    "[NOTIFY] Marked all as read",
-  );
+  log.info({ recipientId, count }, "[NOTIFY] Marked all as read");
 
   return count;
 }
@@ -598,7 +600,9 @@ export function updatePreferences(
     };
   }
   if (update.categories) {
-    for (const [category, categoryUpdate] of Object.entries(update.categories)) {
+    for (const [category, categoryUpdate] of Object.entries(
+      update.categories,
+    )) {
       const cat = category as NotificationCategory;
       if (prefs.categories[cat] && categoryUpdate) {
         prefs.categories[cat] = {
@@ -627,10 +631,7 @@ export function updatePreferences(
   prefs.updatedAt = new Date();
 
   const log = getLogger();
-  log.info(
-    { userId, update },
-    "[NOTIFY] Preferences updated",
-  );
+  log.info({ userId, update }, "[NOTIFY] Preferences updated");
 
   return prefs;
 }

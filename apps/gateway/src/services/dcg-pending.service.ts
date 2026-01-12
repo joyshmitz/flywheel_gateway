@@ -5,13 +5,13 @@
  * without permanently allowlisting dangerous patterns.
  */
 
-import { createHash } from "crypto";
-import { and, desc, eq, gt, lt } from "drizzle-orm";
 import {
   createCursor,
-  decodeCursor,
   DEFAULT_PAGINATION,
+  decodeCursor,
 } from "@flywheel/shared/api/pagination";
+import { createHash } from "crypto";
+import { and, desc, eq, gt, lt } from "drizzle-orm";
 import { db } from "../db";
 import { dcgPendingExceptions } from "../db/schema";
 import { getCorrelationId } from "../middleware/correlation";
@@ -135,7 +135,9 @@ function redactSensitive(command: string): string {
 /**
  * Convert database row to PendingException interface.
  */
-function rowToException(row: typeof dcgPendingExceptions.$inferSelect): PendingException {
+function rowToException(
+  row: typeof dcgPendingExceptions.$inferSelect,
+): PendingException {
   const exception: PendingException = {
     id: row.id,
     shortCode: row.shortCode,
@@ -158,7 +160,8 @@ function rowToException(row: typeof dcgPendingExceptions.$inferSelect): PendingE
   if (row.deniedAt) exception.deniedAt = row.deniedAt;
   if (row.denyReason) exception.denyReason = row.denyReason;
   if (row.executedAt) exception.executedAt = row.executedAt;
-  if (row.executionResult) exception.executionResult = row.executionResult as "success" | "failed";
+  if (row.executionResult)
+    exception.executionResult = row.executionResult as "success" | "failed";
 
   return exception;
 }
@@ -199,7 +202,8 @@ export async function createPendingException(
   };
 
   if (params.agentId !== undefined) values.agentId = params.agentId;
-  if (params.blockEventId !== undefined) values.blockEventId = params.blockEventId;
+  if (params.blockEventId !== undefined)
+    values.blockEventId = params.blockEventId;
 
   await db.insert(dcgPendingExceptions).values(values);
 
@@ -308,7 +312,9 @@ export async function listPendingExceptions(
         .where(eq(dcgPendingExceptions.id, decoded.id))
         .get();
       if (cursorRow) {
-        conditions.push(lt(dcgPendingExceptions.createdAt, cursorRow.createdAt));
+        conditions.push(
+          lt(dcgPendingExceptions.createdAt, cursorRow.createdAt),
+        );
       }
     }
   } else if (params.endingBefore) {
@@ -320,7 +326,9 @@ export async function listPendingExceptions(
         .where(eq(dcgPendingExceptions.id, decoded.id))
         .get();
       if (cursorRow) {
-        conditions.push(gt(dcgPendingExceptions.createdAt, cursorRow.createdAt));
+        conditions.push(
+          gt(dcgPendingExceptions.createdAt, cursorRow.createdAt),
+        );
       }
     }
   }

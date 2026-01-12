@@ -2,7 +2,7 @@
  * Tests for audit routes.
  */
 
-import { describe, expect, test, mock, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { Hono } from "hono";
 import audit from "../routes/audit";
 
@@ -22,9 +22,15 @@ mock.module("../utils/response", () => ({
   sendError: (c: any, status: number, code: string, message: string) =>
     c.json({ error: { code, message } }, status),
   sendInternalError: (c: any) =>
-    c.json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } }, 500),
+    c.json(
+      { error: { code: "INTERNAL_ERROR", message: "Internal server error" } },
+      500,
+    ),
   sendNotFound: (c: any, type: string, id: string) =>
-    c.json({ error: { code: "NOT_FOUND", message: `${type} not found: ${id}` } }, 404),
+    c.json(
+      { error: { code: "NOT_FOUND", message: `${type} not found: ${id}` } },
+      404,
+    ),
   sendResource: (c: any, data: any) => c.json(data),
   sendValidationError: (c: any, errors: any) =>
     c.json({ error: { code: "VALIDATION_ERROR", details: errors } }, 400),
@@ -33,7 +39,10 @@ mock.module("../utils/response", () => ({
 // Mock the utils/validation module
 mock.module("../utils/validation", () => ({
   transformZodError: (error: any) =>
-    error.errors?.map((e: any) => ({ path: e.path.join("."), message: e.message })) ?? [],
+    error.errors?.map((e: any) => ({
+      path: e.path.join("."),
+      message: e.message,
+    })) ?? [],
 }));
 
 // Mock the database
@@ -79,7 +88,8 @@ mock.module("../db", () => ({
               };
               return orderByChain;
             },
-            groupBy: () => Promise.resolve([{ action: "agent.spawn", count: 5 }]),
+            groupBy: () =>
+              Promise.resolve([{ action: "agent.spawn", count: 5 }]),
             limit: (n: number) => Promise.resolve(mockEvents.slice(0, n)),
           }),
           orderBy: () => ({
@@ -103,7 +113,8 @@ mock.module("drizzle-orm", () => ({
   lte: (col: unknown, val: unknown) => ({ col, val }),
   like: (col: unknown, val: unknown) => ({ col, val }),
   inArray: (col: unknown, vals: unknown) => ({ col, vals }),
-  sql: (strings: TemplateStringsArray, ...values: unknown[]) => strings.join(""),
+  sql: (strings: TemplateStringsArray, ...values: unknown[]) =>
+    strings.join(""),
   count: () => "count",
 }));
 

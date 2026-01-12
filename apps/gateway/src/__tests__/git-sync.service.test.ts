@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
+  _clearAllSyncData,
   cancelSyncOperation,
   completeSyncOperation,
   failSyncOperation,
@@ -10,7 +11,6 @@ import {
   getRunningOperations,
   getSyncStats,
   queueSyncOperation,
-  _clearAllSyncData,
 } from "../services/git-sync.service";
 
 describe("Git Sync Operations Service", () => {
@@ -322,7 +322,9 @@ describe("Git Sync Operations Service", () => {
       await completeSyncOperation(op1.id, { success: true });
       await completeSyncOperation(op2.id, { success: true });
 
-      const history = await getOperationHistory("repo-1", { agentId: "agent-1" });
+      const history = await getOperationHistory("repo-1", {
+        agentId: "agent-1",
+      });
 
       expect(history.length).toBe(1);
       expect(history[0]?.request.agentId).toBe("agent-1");
@@ -346,7 +348,9 @@ describe("Git Sync Operations Service", () => {
       await completeSyncOperation(op1.id, { success: true });
       await completeSyncOperation(op2.id, { success: true });
 
-      const history = await getOperationHistory("repo-1", { operation: "push" });
+      const history = await getOperationHistory("repo-1", {
+        operation: "push",
+      });
 
       expect(history.length).toBe(1);
       expect(history[0]?.request.operation).toBe("push");

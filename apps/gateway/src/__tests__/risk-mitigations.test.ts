@@ -108,8 +108,7 @@ describe("Risk 2: Account Quota Exhaustion Mitigation", () => {
 
       for (const pattern of rateLimitPatterns) {
         const isRateLimit =
-          pattern.status === 429 ||
-          pattern.error?.type === "rate_limit_error";
+          pattern.status === 429 || pattern.error?.type === "rate_limit_error";
         expect(isRateLimit).toBe(true);
       }
     });
@@ -174,7 +173,7 @@ describe("Risk 2: Account Quota Exhaustion Mitigation", () => {
       ];
 
       const available = profiles.filter(
-        (p) => !p.cooldownUntil || p.cooldownUntil <= new Date()
+        (p) => !p.cooldownUntil || p.cooldownUntil <= new Date(),
       );
 
       expect(available.length).toBe(0);
@@ -190,7 +189,10 @@ describe("Risk 2: Account Quota Exhaustion Mitigation", () => {
 describe("Risk 3: File Conflicts Mitigation", () => {
   describe("Reservation system", () => {
     test("exclusive reservation blocks second agent", () => {
-      const reservations = new Map<string, { agentId: string; exclusive: boolean }>();
+      const reservations = new Map<
+        string,
+        { agentId: string; exclusive: boolean }
+      >();
 
       // First agent reserves
       reservations.set("src/index.ts", {
@@ -206,7 +208,11 @@ describe("Risk 3: File Conflicts Mitigation", () => {
     });
 
     test("non-exclusive reservations allow multiple agents", () => {
-      const reservations: Array<{ path: string; agentId: string; exclusive: boolean }> = [];
+      const reservations: Array<{
+        path: string;
+        agentId: string;
+        exclusive: boolean;
+      }> = [];
 
       // First agent reserves non-exclusively
       reservations.push({
@@ -217,7 +223,7 @@ describe("Risk 3: File Conflicts Mitigation", () => {
 
       // Second agent can also reserve non-exclusively
       const hasExclusive = reservations.some(
-        (r) => r.path === "src/index.ts" && r.exclusive
+        (r) => r.path === "src/index.ts" && r.exclusive,
       );
       const canReserve = !hasExclusive;
 
@@ -409,7 +415,7 @@ describe("Risk 6: Checkpoint Storage Explosion Mitigation", () => {
       ];
 
       const retentionCutoff = new Date(
-        now - retentionDays * 24 * 60 * 60 * 1000
+        now - retentionDays * 24 * 60 * 60 * 1000,
       );
       const toDelete = checkpoints.filter((c) => c.createdAt < retentionCutoff);
 
@@ -519,7 +525,7 @@ describe("Risk 8: Daemon Failure Mitigation", () => {
       const threshold = 3;
 
       const recentCrashes = crashHistory.filter(
-        (c) => Date.now() - c.timestamp < windowMs
+        (c) => Date.now() - c.timestamp < windowMs,
       );
 
       const shouldAlert = recentCrashes.length >= threshold;
@@ -672,11 +678,19 @@ describe("Risk Mitigation Coverage", () => {
       { id: 9, name: "Data Loss", mitigation: "WAL + Git backup" },
       { id: 10, name: "Security Breach", mitigation: "DCG + encryption" },
       { id: 11, name: "Coordination Visibility", mitigation: "Collab graph" },
-      { id: 12, name: "Performance Degradation", mitigation: "Metrics + alerts" },
+      {
+        id: 12,
+        name: "Performance Degradation",
+        mitigation: "Metrics + alerts",
+      },
       { id: 13, name: "Provider Outage", mitigation: "Multi-provider" },
       { id: 14, name: "Cost Overruns", mitigation: "Cost analytics" },
       { id: 15, name: "Notification Fatigue", mitigation: "Alert grouping" },
-      { id: 16, name: "Performance Blind Spots", mitigation: "Analytics dashboard" },
+      {
+        id: 16,
+        name: "Performance Blind Spots",
+        mitigation: "Analytics dashboard",
+      },
     ];
 
     expect(risks.length).toBe(16);
@@ -688,13 +702,41 @@ describe("Risk Mitigation Coverage", () => {
 
   test("high-impact risks have runbook references", () => {
     const highImpactRisks = [
-      { name: "Agent Runaway", impact: "high", runbook: "runbooks/agent-runaway.md" },
-      { name: "Account Quota Exhaustion", impact: "high", runbook: "runbooks/quota-exhaustion.md" },
-      { name: "Daemon Failure", impact: "high", runbook: "runbooks/daemon-recovery.md" },
-      { name: "Data Loss", impact: "critical", runbook: "runbooks/data-recovery.md" },
-      { name: "Security Breach", impact: "critical", runbook: "runbooks/security-incident.md" },
-      { name: "Provider Outage", impact: "high", runbook: "runbooks/provider-failover.md" },
-      { name: "Cost Overruns", impact: "high", runbook: "runbooks/cost-controls.md" },
+      {
+        name: "Agent Runaway",
+        impact: "high",
+        runbook: "runbooks/agent-runaway.md",
+      },
+      {
+        name: "Account Quota Exhaustion",
+        impact: "high",
+        runbook: "runbooks/quota-exhaustion.md",
+      },
+      {
+        name: "Daemon Failure",
+        impact: "high",
+        runbook: "runbooks/daemon-recovery.md",
+      },
+      {
+        name: "Data Loss",
+        impact: "critical",
+        runbook: "runbooks/data-recovery.md",
+      },
+      {
+        name: "Security Breach",
+        impact: "critical",
+        runbook: "runbooks/security-incident.md",
+      },
+      {
+        name: "Provider Outage",
+        impact: "high",
+        runbook: "runbooks/provider-failover.md",
+      },
+      {
+        name: "Cost Overruns",
+        impact: "high",
+        runbook: "runbooks/cost-controls.md",
+      },
     ];
 
     for (const risk of highImpactRisks) {

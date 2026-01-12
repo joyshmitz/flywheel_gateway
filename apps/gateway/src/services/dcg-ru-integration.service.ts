@@ -15,13 +15,17 @@ import { db } from "../db";
 import { agentSweepPlans } from "../db/schema";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
 import {
+  type DCGSeverity,
+  getBlockEvents,
+  ingestBlockEvent,
+} from "./dcg.service";
+import {
   createPendingException,
   type DCGPendingSeverity,
   listPendingExceptions,
   markExceptionExecuted,
   validateExceptionForExecution,
 } from "./dcg-pending.service";
-import { getBlockEvents, ingestBlockEvent, type DCGSeverity } from "./dcg.service";
 import { logger } from "./logger";
 import {
   getSweepPlan,
@@ -321,7 +325,8 @@ export async function validateSweepPlan(
 
   // Update plan with validation results
   // Logic: blocked commands = invalid, only warnings = warning, neither = valid
-  const validationResult = blockedCommands > 0 ? "invalid" : warnings > 0 ? "warning" : "valid";
+  const validationResult =
+    blockedCommands > 0 ? "invalid" : warnings > 0 ? "warning" : "valid";
 
   await db
     .update(agentSweepPlans)
@@ -426,7 +431,10 @@ export async function createExceptionsForPlan(
   try {
     findings = JSON.parse(plan.validationErrors) as DCGFinding[];
   } catch {
-    log.warn({ correlationId, planId }, "Invalid validation errors JSON, skipping exception creation");
+    log.warn(
+      { correlationId, planId },
+      "Invalid validation errors JSON, skipping exception creation",
+    );
     return [];
   }
   const exceptionCodes: string[] = [];

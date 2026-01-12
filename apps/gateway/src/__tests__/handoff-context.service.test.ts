@@ -59,11 +59,13 @@ describe("Handoff Context Service", () => {
             alternatives: ["JavaScript"],
           },
         ],
-        todoItems: [
-          { task: "Write tests", priority: 1, status: "pending" },
-        ],
+        todoItems: [{ task: "Write tests", priority: 1, status: "pending" }],
         hypotheses: [
-          { hypothesis: "Will work", confidence: 0.9, evidence: ["Tests pass"] },
+          {
+            hypothesis: "Will work",
+            confidence: 0.9,
+            evidence: ["Tests pass"],
+          },
         ],
         keyPoints: ["Key point 1"],
         userRequirements: ["Requirement 1"],
@@ -109,9 +111,13 @@ describe("Handoff Context Service", () => {
 
       expect(context.environmentSnapshot.envVars.NODE_ENV).toBe("development");
       expect(context.environmentSnapshot.envVars.API_KEY).toBe("[REDACTED]");
-      expect(context.environmentSnapshot.envVars.DATABASE_PASSWORD).toBe("[REDACTED]");
+      expect(context.environmentSnapshot.envVars.DATABASE_PASSWORD).toBe(
+        "[REDACTED]",
+      );
       expect(context.environmentSnapshot.envVars.AUTH_TOKEN).toBe("[REDACTED]");
-      expect(context.environmentSnapshot.envVars.NORMAL_VAR).toBe("normal-value");
+      expect(context.environmentSnapshot.envVars.NORMAL_VAR).toBe(
+        "normal-value",
+      );
     });
 
     test("should trim decisions list if too many", () => {
@@ -137,9 +143,16 @@ describe("Handoff Context Service", () => {
         taskDescription: "Test task",
         conversationHistory: [
           { role: "user", content: "Please implement feature X" },
-          { role: "assistant", content: "I will implement feature X with the following approach..." },
+          {
+            role: "assistant",
+            content:
+              "I will implement feature X with the following approach...",
+          },
           { role: "user", content: "Make sure to add tests" },
-          { role: "assistant", content: "I have added comprehensive tests for the feature" },
+          {
+            role: "assistant",
+            content: "I have added comprehensive tests for the feature",
+          },
         ],
       });
 
@@ -340,9 +353,9 @@ index 111222..333444 100644
 
       const changes = extractUncommittedChanges(gitStatus);
       expect(changes.length).toBe(3);
-      expect(changes.some(c => c.path === "src/index.ts")).toBe(true);
-      expect(changes.some(c => c.path === "src/new-file.ts")).toBe(true);
-      expect(changes.some(c => c.path === "src/added.ts")).toBe(true);
+      expect(changes.some((c) => c.path === "src/index.ts")).toBe(true);
+      expect(changes.some((c) => c.path === "src/new-file.ts")).toBe(true);
+      expect(changes.some((c) => c.path === "src/added.ts")).toBe(true);
     });
 
     test("should mark new files correctly", () => {

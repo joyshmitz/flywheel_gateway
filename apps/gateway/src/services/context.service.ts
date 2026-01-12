@@ -29,16 +29,16 @@ import {
 } from "../types/context.types";
 import { getBvTriage } from "./bv.service";
 import {
+  type CassSearchHit,
+  isCassAvailable,
+  searchWithTokenBudget,
+} from "./cass.service";
+import {
   allocateBudget,
   createStrategy,
   getModelLimit,
   getTotalAllocated,
 } from "./context-budget.service";
-import {
-  isCassAvailable,
-  searchWithTokenBudget,
-  type CassSearchHit,
-} from "./cass.service";
 import { countTokens, truncateToTokens } from "./tokenizer.service";
 
 // ============================================================================
@@ -257,7 +257,10 @@ async function buildSearchSection(
   const cassAvailable = await isCassAvailable();
   if (!cassAvailable) {
     section.metadata.searchTimeMs = Math.round(performance.now() - startTime);
-    log.debug({ query, tokenBudget }, "CASS unavailable, returning empty search section");
+    log.debug(
+      { query, tokenBudget },
+      "CASS unavailable, returning empty search section",
+    );
     return section;
   }
 

@@ -152,7 +152,7 @@ function publishSyncEvent(
  * Calculate retry delay with exponential backoff.
  */
 function calculateRetryDelay(attempt: number): number {
-  const delay = BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+  const delay = BASE_RETRY_DELAY_MS * 2 ** (attempt - 1);
   // Add jitter (0-25%)
   const jitter = delay * 0.25 * Math.random();
   return Math.min(delay + jitter, 30000); // Cap at 30s
@@ -177,7 +177,10 @@ function isRetryableError(error: SyncError): boolean {
  */
 function parseGitError(errorOutput: string): SyncError {
   // Check for common patterns
-  if (errorOutput.includes("Connection refused") || errorOutput.includes("Could not resolve")) {
+  if (
+    errorOutput.includes("Connection refused") ||
+    errorOutput.includes("Could not resolve")
+  ) {
     return {
       code: "NETWORK_ERROR",
       message: "Unable to connect to remote repository",
@@ -185,7 +188,10 @@ function parseGitError(errorOutput: string): SyncError {
     };
   }
 
-  if (errorOutput.includes("CONFLICT") || errorOutput.includes("Automatic merge failed")) {
+  if (
+    errorOutput.includes("CONFLICT") ||
+    errorOutput.includes("Automatic merge failed")
+  ) {
     return {
       code: "MERGE_CONFLICT",
       message: "Merge conflicts detected",
@@ -193,7 +199,10 @@ function parseGitError(errorOutput: string): SyncError {
     };
   }
 
-  if (errorOutput.includes("rejected") && errorOutput.includes("non-fast-forward")) {
+  if (
+    errorOutput.includes("rejected") &&
+    errorOutput.includes("non-fast-forward")
+  ) {
     return {
       code: "NON_FAST_FORWARD",
       message: "Push rejected: remote has changes not in local branch",
@@ -201,7 +210,10 @@ function parseGitError(errorOutput: string): SyncError {
     };
   }
 
-  if (errorOutput.includes("Permission denied") || errorOutput.includes("Authentication failed")) {
+  if (
+    errorOutput.includes("Permission denied") ||
+    errorOutput.includes("Authentication failed")
+  ) {
     return {
       code: "AUTH_ERROR",
       message: "Authentication failed",
@@ -378,7 +390,9 @@ export async function completeSyncOperation(
   }
   operationHistory.set(operation.request.repositoryId, history);
 
-  const duration = operation.completedAt.getTime() - (operation.startedAt?.getTime() ?? operation.queuedAt.getTime());
+  const duration =
+    operation.completedAt.getTime() -
+    (operation.startedAt?.getTime() ?? operation.queuedAt.getTime());
 
   log.info(
     {
@@ -433,7 +447,8 @@ export async function failSyncOperation(
   });
 
   // Check if we should retry
-  const canRetry = isRetryableError(error) && operation.attempt < operation.maxRetries;
+  const canRetry =
+    isRetryableError(error) && operation.attempt < operation.maxRetries;
 
   if (canRetry) {
     const delay = calculateRetryDelay(operation.attempt);
@@ -550,7 +565,11 @@ export async function cancelSyncOperation(
   // Verify ownership
   if (operation.request.agentId !== agentId) {
     logger.warn(
-      { operationId, requestingAgent: agentId, ownerAgent: operation.request.agentId },
+      {
+        operationId,
+        requestingAgent: agentId,
+        ownerAgent: operation.request.agentId,
+      },
       "Unauthorized cancel attempt",
     );
     return false;
@@ -654,7 +673,9 @@ export async function getOperationHistory(
   }
 
   if (options?.operation) {
-    history = history.filter((op) => op.request.operation === options.operation);
+    history = history.filter(
+      (op) => op.request.operation === options.operation,
+    );
   }
 
   if (options?.status) {
@@ -676,7 +697,9 @@ export async function getQueueStats(
 
   const queuedCount = queue.filter((op) => op.status === "queued").length;
   const runningCount = queue.filter((op) => op.status === "running").length;
-  const completedCount = history.filter((op) => op.status === "completed").length;
+  const completedCount = history.filter(
+    (op) => op.status === "completed",
+  ).length;
   const failedCount = history.filter((op) => op.status === "failed").length;
 
   // Calculate average times

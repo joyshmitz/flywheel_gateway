@@ -5,8 +5,8 @@
  * Or with environment: k6 run -e TARGET_URL=http://localhost:3000 tests/load/api.k6.js
  */
 
-import http from "k6/http";
 import { check, group, sleep } from "k6";
+import http from "k6/http";
 import { Rate, Trend } from "k6/metrics";
 
 // Custom metrics
@@ -73,7 +73,7 @@ export const options = {
 const BASE_URL = __ENV.TARGET_URL || "http://localhost:3000";
 
 export default function () {
-  group("Health Check", function () {
+  group("Health Check", () => {
     const start = Date.now();
     const res = http.get(`${BASE_URL}/health`);
     healthLatency.add(Date.now() - start);
@@ -88,7 +88,7 @@ export default function () {
     }
   });
 
-  group("Agents API", function () {
+  group("Agents API", () => {
     // List agents
     const start = Date.now();
     const listRes = http.get(`${BASE_URL}/api/agents`);
@@ -111,7 +111,7 @@ export default function () {
     }
   });
 
-  group("Sessions API", function () {
+  group("Sessions API", () => {
     const start = Date.now();
     const res = http.get(`${BASE_URL}/api/sessions`);
     sessionsLatency.add(Date.now() - start);
@@ -125,7 +125,7 @@ export default function () {
     }
   });
 
-  group("Metrics API", function () {
+  group("Metrics API", () => {
     const res = http.get(`${BASE_URL}/api/metrics`);
 
     check(res, {

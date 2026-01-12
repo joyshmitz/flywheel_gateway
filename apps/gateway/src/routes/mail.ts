@@ -24,21 +24,21 @@ import {
   createAgentMailServiceFromEnv,
 } from "../services/agentmail";
 import {
-  type ReservationConflictEngine,
   createReservationConflictEngine,
+  type ReservationConflictEngine,
 } from "../services/reservation-conflicts";
+import { getLinkContext, messageLinks } from "../utils/links";
 import {
-  sendResource,
+  sendConflict,
+  sendCreated,
+  sendError,
+  sendInternalError,
   sendList,
   sendNotFound,
-  sendError,
+  sendResource,
   sendValidationError,
-  sendInternalError,
-  sendCreated,
-  sendConflict,
 } from "../utils/response";
 import { transformZodError } from "../utils/validation";
-import { getLinkContext, messageLinks } from "../utils/links";
 
 // ============================================================================
 // Validation Schemas
@@ -195,7 +195,12 @@ function createMailRoutes(
 
       const result = await service.client.registerAgent(validated);
 
-      return sendCreated(c, "agent", result, `/mail/agents/${result["agentId"] || "unknown"}`);
+      return sendCreated(
+        c,
+        "agent",
+        result,
+        `/mail/agents/${result["agentId"] || "unknown"}`,
+      );
     } catch (error) {
       return handleError(error, c);
     }
@@ -355,7 +360,8 @@ function createMailRoutes(
                 existingReservation: {
                   id: conflict.existingReservation.id,
                   requesterId: conflict.existingReservation.requesterId,
-                  expiresAt: conflict.existingReservation.expiresAt.toISOString(),
+                  expiresAt:
+                    conflict.existingReservation.expiresAt.toISOString(),
                 },
                 resolutions: conflict.resolutions,
               })),
@@ -463,7 +469,10 @@ function createMailRoutes(
         );
       }
 
-      const patterns = patternsParam.split(",").map((p) => p.trim()).filter((p) => p);
+      const patterns = patternsParam
+        .split(",")
+        .map((p) => p.trim())
+        .filter((p) => p);
       const exclusive = exclusiveParam !== "false";
 
       const engine = c.get("conflictEngine");

@@ -10,12 +10,12 @@
  * - WebSocket event publishing
  */
 
-import { desc, eq } from "drizzle-orm";
 import {
   createCursor,
-  decodeCursor,
   DEFAULT_PAGINATION,
+  decodeCursor,
 } from "@flywheel/shared/api/pagination";
+import { desc, eq } from "drizzle-orm";
 import { db } from "../db";
 import { dcgAllowlist, dcgBlocks } from "../db/schema";
 import { getCorrelationId } from "../middleware/correlation";
@@ -358,7 +358,12 @@ export async function markFalsePositive(
     if (dbUpdated && !cachedEvent) {
       const row = result[0]!;
       const channel: Channel = { type: "system:dcg" };
-      getHub().publish(channel, "dcg.false_positive", { eventId, markedBy }, {});
+      getHub().publish(
+        channel,
+        "dcg.false_positive",
+        { eventId, markedBy },
+        {},
+      );
       return {
         id: row.id,
         timestamp: row.createdAt,
@@ -375,7 +380,10 @@ export async function markFalsePositive(
     }
   } catch (error) {
     // Database error (table might not exist in tests) - fall through to cache check
-    logger.debug({ error, eventId }, "Database update failed for false positive");
+    logger.debug(
+      { error, eventId },
+      "Database update failed for false positive",
+    );
   }
 
   // If not found in DB and not in cache, return null
@@ -435,11 +443,15 @@ export async function updateConfig(
       changeType: "bulk_update",
     };
     if (updates.enabledPacks) persistParams.enabledPacks = updates.enabledPacks;
-    if (updates.disabledPacks) persistParams.disabledPacks = updates.disabledPacks;
+    if (updates.disabledPacks)
+      persistParams.disabledPacks = updates.disabledPacks;
 
     await dcgConfigService.updateConfig(persistParams);
   } catch (error) {
-    log.debug({ error }, "Failed to persist config update (DB may not be available)");
+    log.debug(
+      { error },
+      "Failed to persist config update (DB may not be available)",
+    );
   }
 
   log.info(
@@ -488,7 +500,10 @@ export async function enablePack(packName: string): Promise<boolean> {
   try {
     await dcgConfigService.enablePack(packName);
   } catch (error) {
-    logger.debug({ error, pack: packName }, "Failed to persist pack enable (DB may not be available)");
+    logger.debug(
+      { error, pack: packName },
+      "Failed to persist pack enable (DB may not be available)",
+    );
   }
 
   logger.info({ pack: packName }, "DCG pack enabled");
@@ -519,7 +534,10 @@ export async function disablePack(packName: string): Promise<boolean> {
   try {
     await dcgConfigService.disablePack(packName);
   } catch (error) {
-    logger.debug({ error, pack: packName }, "Failed to persist pack disable (DB may not be available)");
+    logger.debug(
+      { error, pack: packName },
+      "Failed to persist pack disable (DB may not be available)",
+    );
   }
 
   logger.info({ pack: packName }, "DCG pack disabled");
@@ -614,11 +632,11 @@ import * as dcgStatsService from "./dcg-stats.service";
 
 // Re-export full stats types
 export type {
+  DCGFullStats,
   DCGOverviewStats,
-  DCGTrendStats,
   DCGPatternStats,
   DCGTimeSeriesPoint,
-  DCGFullStats,
+  DCGTrendStats,
 } from "./dcg-stats.service";
 
 /**

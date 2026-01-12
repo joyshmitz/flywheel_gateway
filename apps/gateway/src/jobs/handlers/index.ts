@@ -4,8 +4,8 @@
  * Exports all job handlers and provides registration utility.
  */
 
-import type { JobHandler, JobType } from "../../types/job.types";
 import type { JobService } from "../../services/job.service";
+import type { JobHandler, JobType } from "../../types/job.types";
 import { CodebaseScanHandler } from "./codebase-scan.handler";
 import { ContextBuildHandler } from "./context-build.handler";
 

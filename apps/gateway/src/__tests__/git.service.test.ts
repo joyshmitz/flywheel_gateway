@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
+  _clearAllGitData,
   assignBranch,
+  type BranchAssignment,
   coordinateSync,
   getAssignment,
   getBranchAssignments,
@@ -13,8 +15,6 @@ import {
   releaseBranch,
   renewAssignment,
   updateAssignmentStatus,
-  _clearAllGitData,
-  type BranchAssignment,
 } from "../services/git.service";
 
 describe("Git Coordination Service", () => {

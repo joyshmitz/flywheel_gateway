@@ -193,7 +193,11 @@ export interface JobContext<TInput = unknown> {
   throwIfCancelled(): void;
 
   // Logging
-  log(level: JobLogLevel, message: string, data?: Record<string, unknown>): void;
+  log(
+    level: JobLogLevel,
+    message: string,
+    data?: Record<string, unknown>,
+  ): void;
 }
 
 export interface JobHandler<TInput = unknown, TOutput = unknown> {

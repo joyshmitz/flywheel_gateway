@@ -5,9 +5,9 @@
  * in-memory data. Includes time-based filtering, trends, and comprehensive metrics.
  */
 
-import { count, sql, and, gte, lt, eq } from "drizzle-orm";
+import { and, count, eq, gte, lt, sql } from "drizzle-orm";
 import { db } from "../db";
-import { dcgBlocks, dcgAllowlist, dcgPendingExceptions } from "../db/schema";
+import { dcgAllowlist, dcgBlocks, dcgPendingExceptions } from "../db/schema";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
 
 // ============================================================================
@@ -112,7 +112,9 @@ export async function getOverviewStats(): Promise<DCGOverviewStats> {
       pendingResult,
     ] = await Promise.all([
       // Total blocks
-      db.select({ count: count() }).from(dcgBlocks),
+      db
+        .select({ count: count() })
+        .from(dcgBlocks),
       // Blocks in last 24h
       db
         .select({ count: count() })
@@ -134,7 +136,9 @@ export async function getOverviewStats(): Promise<DCGOverviewStats> {
         .from(dcgBlocks)
         .where(eq(dcgBlocks.falsePositive, true)),
       // Allowlist size
-      db.select({ count: count() }).from(dcgAllowlist),
+      db
+        .select({ count: count() })
+        .from(dcgAllowlist),
       // Pending exceptions
       db
         .select({ count: count() })
@@ -157,7 +161,10 @@ export async function getOverviewStats(): Promise<DCGOverviewStats> {
     };
   } catch (error) {
     log.warn(
-      { correlationId, error: error instanceof Error ? error.message : String(error) },
+      {
+        correlationId,
+        error: error instanceof Error ? error.message : String(error),
+      },
       "Failed to get DCG overview stats from database, returning zeros",
     );
     return {
@@ -207,7 +214,12 @@ export async function getTrendStats(): Promise<DCGTrendStats> {
       db
         .select({ count: count() })
         .from(dcgBlocks)
-        .where(and(gte(dcgBlocks.createdAt, time48hAgo), lt(dcgBlocks.createdAt, time24hAgo))),
+        .where(
+          and(
+            gte(dcgBlocks.createdAt, time48hAgo),
+            lt(dcgBlocks.createdAt, time24hAgo),
+          ),
+        ),
       // Current 7d
       db
         .select({ count: count() })
@@ -217,7 +229,12 @@ export async function getTrendStats(): Promise<DCGTrendStats> {
       db
         .select({ count: count() })
         .from(dcgBlocks)
-        .where(and(gte(dcgBlocks.createdAt, time14dAgo), lt(dcgBlocks.createdAt, time7dAgo))),
+        .where(
+          and(
+            gte(dcgBlocks.createdAt, time14dAgo),
+            lt(dcgBlocks.createdAt, time7dAgo),
+          ),
+        ),
       // Current 30d
       db
         .select({ count: count() })
@@ -227,7 +244,12 @@ export async function getTrendStats(): Promise<DCGTrendStats> {
       db
         .select({ count: count() })
         .from(dcgBlocks)
-        .where(and(gte(dcgBlocks.createdAt, time60dAgo), lt(dcgBlocks.createdAt, time30dAgo))),
+        .where(
+          and(
+            gte(dcgBlocks.createdAt, time60dAgo),
+            lt(dcgBlocks.createdAt, time30dAgo),
+          ),
+        ),
     ]);
 
     const current24h = current24hResult[0]?.count ?? 0;
@@ -265,7 +287,10 @@ export async function getTrendStats(): Promise<DCGTrendStats> {
     };
   } catch (error) {
     log.warn(
-      { correlationId, error: error instanceof Error ? error.message : String(error) },
+      {
+        correlationId,
+        error: error instanceof Error ? error.message : String(error),
+      },
       "Failed to get DCG trend stats from database",
     );
     return {
@@ -322,7 +347,10 @@ export async function getPatternStats(limit = 10): Promise<DCGPatternStats> {
     };
   } catch (error) {
     log.warn(
-      { correlationId, error: error instanceof Error ? error.message : String(error) },
+      {
+        correlationId,
+        error: error instanceof Error ? error.message : String(error),
+      },
       "Failed to get DCG pattern stats from database",
     );
     return {
@@ -349,12 +377,16 @@ export async function getTimeSeriesStats(): Promise<{
     // Note: Drizzle stores timestamps in seconds (not ms) for SQLite
     const dailyCountsResult = await db
       .select({
-        date: sql<string>`strftime('%Y-%m-%d', datetime(${dcgBlocks.createdAt}, 'unixepoch'))`.as("date"),
+        date: sql<string>`strftime('%Y-%m-%d', datetime(${dcgBlocks.createdAt}, 'unixepoch'))`.as(
+          "date",
+        ),
         count: count(),
       })
       .from(dcgBlocks)
       .where(gte(dcgBlocks.createdAt, time30dAgo))
-      .groupBy(sql`strftime('%Y-%m-%d', datetime(${dcgBlocks.createdAt}, 'unixepoch'))`)
+      .groupBy(
+        sql`strftime('%Y-%m-%d', datetime(${dcgBlocks.createdAt}, 'unixepoch'))`,
+      )
       .orderBy(sql`date ASC`);
 
     // Create a map of date -> count
@@ -382,7 +414,10 @@ export async function getTimeSeriesStats(): Promise<{
     return { last7Days, last30Days };
   } catch (error) {
     log.warn(
-      { correlationId, error: error instanceof Error ? error.message : String(error) },
+      {
+        correlationId,
+        error: error instanceof Error ? error.message : String(error),
+      },
       "Failed to get DCG time series stats from database",
     );
     return { last7Days: [], last30Days: [] };

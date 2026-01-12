@@ -77,7 +77,11 @@ export function handleWSMessage(
 
     if (!clientMsg) {
       logger.warn({ connectionId, text }, "Invalid WebSocket message format");
-      ws.send(serializeServerMessage(createWSError("INVALID_FORMAT", "Invalid message format")));
+      ws.send(
+        serializeServerMessage(
+          createWSError("INVALID_FORMAT", "Invalid message format"),
+        ),
+      );
       return;
     }
 
@@ -88,7 +92,11 @@ export function handleWSMessage(
         if (!channel) {
           ws.send(
             serializeServerMessage(
-              createWSError("INVALID_CHANNEL", "Invalid channel format", channelStr),
+              createWSError(
+                "INVALID_CHANNEL",
+                "Invalid channel format",
+                channelStr,
+              ),
             ),
           );
           break;
@@ -99,7 +107,11 @@ export function handleWSMessage(
         if (!authResult.allowed) {
           ws.send(
             serializeServerMessage(
-              createWSError("WS_SUBSCRIPTION_DENIED", `Subscription denied: ${authResult.reason}`, channelStr),
+              createWSError(
+                "WS_SUBSCRIPTION_DENIED",
+                `Subscription denied: ${authResult.reason}`,
+                channelStr,
+              ),
             ),
           );
           break;
@@ -137,7 +149,11 @@ export function handleWSMessage(
         if (!channel) {
           ws.send(
             serializeServerMessage(
-              createWSError("INVALID_CHANNEL", "Invalid channel format", channelStr),
+              createWSError(
+                "INVALID_CHANNEL",
+                "Invalid channel format",
+                channelStr,
+              ),
             ),
           );
           break;
@@ -182,7 +198,11 @@ export function handleWSMessage(
         if (!channel) {
           ws.send(
             serializeServerMessage(
-              createWSError("INVALID_CHANNEL", "Invalid channel format", channelStr),
+              createWSError(
+                "INVALID_CHANNEL",
+                "Invalid channel format",
+                channelStr,
+              ),
             ),
           );
           break;
@@ -193,7 +213,11 @@ export function handleWSMessage(
         if (!authResult.allowed) {
           ws.send(
             serializeServerMessage(
-              createWSError("WS_SUBSCRIPTION_DENIED", `Backfill denied: ${authResult.reason}`, channelStr),
+              createWSError(
+                "WS_SUBSCRIPTION_DENIED",
+                `Backfill denied: ${authResult.reason}`,
+                channelStr,
+              ),
             ),
           );
           break;

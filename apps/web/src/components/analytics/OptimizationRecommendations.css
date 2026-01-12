@@ -1,0 +1,333 @@
+/* OptimizationRecommendations Styles */
+
+.optimization-recs {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.optimization-recs__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.optimization-recs__header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.optimization-recs__summary {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--ink-muted);
+}
+
+.optimization-recs__summary strong {
+  color: var(--positive);
+}
+
+.optimization-recs__count {
+  font-size: 0.75rem;
+  color: var(--accent);
+  background: rgba(44, 111, 109, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+}
+
+.optimization-recs__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Individual Recommendation Card */
+.optimization-rec {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.optimization-rec:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.optimization-rec--expanded {
+  box-shadow: var(--shadow-sm);
+}
+
+.optimization-rec__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.875rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.optimization-rec__icon {
+  font-size: 1.25rem;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-muted);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.optimization-rec__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.optimization-rec__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.optimization-rec__title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.optimization-rec__status {
+  font-size: 0.625rem;
+  font-weight: 500;
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--radius-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.optimization-rec__status--pending {
+  color: var(--warning);
+  background: rgba(193, 136, 45, 0.1);
+}
+
+.optimization-rec__status--in_progress {
+  color: var(--accent);
+  background: rgba(44, 111, 109, 0.1);
+}
+
+.optimization-rec__status--implemented {
+  color: var(--positive);
+  background: rgba(42, 127, 98, 0.1);
+}
+
+.optimization-rec__status--rejected,
+.optimization-rec__status--failed {
+  color: var(--danger);
+  background: rgba(196, 77, 65, 0.1);
+}
+
+.optimization-rec__meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.optimization-rec__category {
+  color: var(--ink-muted);
+}
+
+.optimization-rec__risk {
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--radius-xs);
+}
+
+.optimization-rec__risk--low {
+  color: var(--positive);
+  background: rgba(42, 127, 98, 0.1);
+}
+
+.optimization-rec__risk--medium {
+  color: var(--warning);
+  background: rgba(193, 136, 45, 0.1);
+}
+
+.optimization-rec__risk--high {
+  color: var(--danger);
+  background: rgba(196, 77, 65, 0.1);
+}
+
+.optimization-rec__confidence {
+  color: var(--ink-muted);
+}
+
+.optimization-rec__savings {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.optimization-rec__savings-amount {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--positive);
+}
+
+.optimization-rec__savings-percent {
+  font-size: 0.75rem;
+  color: var(--positive);
+}
+
+.optimization-rec__expand-icon {
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  margin-left: 0.5rem;
+}
+
+/* Expanded details */
+.optimization-rec__details {
+  padding: 0 0.875rem 0.875rem 3.25rem;
+  animation: slideDown var(--duration-normal) var(--ease-out);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.optimization-rec__description {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+.optimization-rec__implementation {
+  background: var(--surface-muted);
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.75rem;
+}
+
+.optimization-rec__implementation strong {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  margin-bottom: 0.375rem;
+}
+
+.optimization-rec__implementation p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--ink);
+}
+
+.optimization-rec__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.optimization-rec__action {
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.optimization-rec__action--primary {
+  color: white;
+  background: var(--accent);
+  border: none;
+}
+
+.optimization-rec__action--primary:hover {
+  background: var(--accent-strong);
+}
+
+.optimization-rec__action--secondary {
+  color: var(--ink-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+.optimization-rec__action--secondary:hover {
+  background: var(--surface-muted);
+}
+
+/* Show more button */
+.optimization-recs__show-more {
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--accent);
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.optimization-recs__show-more:hover {
+  background: var(--surface-muted);
+  border-style: solid;
+}
+
+/* Loading skeleton */
+.optimization-recs--loading .optimization-recs__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.optimization-recs__skeleton-card {
+  height: 80px;
+  background: linear-gradient(
+    90deg,
+    var(--surface-muted) 25%,
+    var(--bg) 50%,
+    var(--surface-muted) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: var(--radius-md);
+}
+
+/* Empty state */
+.optimization-recs__empty-message {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.optimization-recs__empty-message p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--ink);
+}
+
+.optimization-recs__empty-message p.muted {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}

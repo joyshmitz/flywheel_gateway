@@ -27,23 +27,23 @@ import {
   resolveConflict,
 } from "../services/reservation.service";
 import {
-  sendResource,
-  sendCreated,
-  sendList,
-  sendNotFound,
-  sendNoContent,
-  sendError,
-  sendValidationError,
-  sendInternalError,
-  sendConflict,
-  sendForbidden,
-} from "../utils/response";
-import { transformZodError } from "../utils/validation";
-import {
+  conflictLinks,
   getLinkContext,
   reservationLinks,
-  conflictLinks,
 } from "../utils/links";
+import {
+  sendConflict,
+  sendCreated,
+  sendError,
+  sendForbidden,
+  sendInternalError,
+  sendList,
+  sendNoContent,
+  sendNotFound,
+  sendResource,
+  sendValidationError,
+} from "../utils/response";
+import { transformZodError } from "../utils/validation";
 
 const reservations = new Hono();
 
@@ -292,7 +292,8 @@ reservations.get("/conflicts", async (c) => {
           id: conflict.conflict.existingReservation.id,
           requesterId: conflict.conflict.existingReservation.requesterId,
           patterns: conflict.conflict.existingReservation.patterns,
-          expiresAt: conflict.conflict.existingReservation.expiresAt.toISOString(),
+          expiresAt:
+            conflict.conflict.existingReservation.expiresAt.toISOString(),
         },
         requestedPatterns: conflict.conflict.requestedPatterns,
         resolutions: conflict.conflict.resolutions,
@@ -302,7 +303,11 @@ reservations.get("/conflicts", async (c) => {
     }));
 
     // Build pagination meta conditionally (for exactOptionalPropertyTypes)
-    const conflictsMeta: { hasMore: boolean; nextCursor?: string; prevCursor?: string } = {
+    const conflictsMeta: {
+      hasMore: boolean;
+      nextCursor?: string;
+      prevCursor?: string;
+    } = {
       hasMore: result.hasMore,
     };
     if (result.nextCursor) conflictsMeta.nextCursor = result.nextCursor;
@@ -409,7 +414,11 @@ reservations.get("/", async (c) => {
     }));
 
     // Build pagination meta conditionally (for exactOptionalPropertyTypes)
-    const listMeta: { hasMore: boolean; nextCursor?: string; prevCursor?: string } = {
+    const listMeta: {
+      hasMore: boolean;
+      nextCursor?: string;
+      prevCursor?: string;
+    } = {
       hasMore: result.hasMore,
     };
     if (result.nextCursor) listMeta.nextCursor = result.nextCursor;
@@ -563,12 +572,7 @@ reservations.post("/:id/renew", async (c) => {
         return sendNotFound(c, "reservation", id);
       }
       if (result.error?.includes("Maximum renewals")) {
-        return sendError(
-          c,
-          "RENEWAL_LIMIT_EXCEEDED",
-          result.error,
-          400,
-        );
+        return sendError(c, "RENEWAL_LIMIT_EXCEEDED", result.error, 400);
       }
       return sendForbidden(c, result.error);
     }

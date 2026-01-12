@@ -239,7 +239,9 @@ describe("mail routes - conflict engine integration", () => {
     const data = await res2.json();
     expect(data.error.code).toBe("RESERVATION_CONFLICT");
     expect(data.error.details.conflicts).toHaveLength(1);
-    expect(data.error.details.conflicts[0].existingReservation.requesterId).toBe("agent-1");
+    expect(
+      data.error.details.conflicts[0].existingReservation.requesterId,
+    ).toBe("agent-1");
   });
 
   test("POST /mail/reservations allows non-overlapping patterns", async () => {

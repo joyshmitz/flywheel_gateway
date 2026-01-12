@@ -7,13 +7,13 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { Hono } from "hono";
 import { memory } from "../routes/memory";
-import {
-  type CMContextResult,
-  type CMDoctorResult,
-  type CMOutcomeResult,
-  type CMPlaybookListResult,
-  type CMQuickstartResult,
-  type CMStatsResult,
+import type {
+  CMContextResult,
+  CMDoctorResult,
+  CMOutcomeResult,
+  CMPlaybookListResult,
+  CMQuickstartResult,
+  CMStatsResult,
 } from "../services/cm.service";
 
 // ============================================================================
@@ -27,136 +27,142 @@ const mockGetCMStatus = mock(() =>
     healthy: true,
     version: "0.2.0",
     overallStatus: "healthy" as const,
-  })
+  }),
 );
 
 const mockIsCMAvailable = mock(() => Promise.resolve(true));
 
-const mockGetTaskContext = mock((): Promise<CMContextResult> =>
-  Promise.resolve({
-    success: true,
-    task: "test task",
-    relevantBullets: [
-      {
-        id: "bullet_123",
-        text: "Always use descriptive variable names",
-        category: "code-style",
-        scope: "global",
-        state: "active",
-        kind: "rule",
-        confidence: 0.95,
-        helpfulCount: 10,
-        harmfulCount: 0,
-      },
-    ],
-    antiPatterns: [],
-    historySnippets: [
-      {
-        source_path: "/sessions/test.jsonl",
-        line_number: 42,
-        agent: "claude_code",
-        workspace: "/data/projects/test",
-        title: "Similar task example",
-        snippet: "Here is how we solved this before...",
-        score: 85.5,
-        created_at: Date.now(),
-        origin: { kind: "local" },
-      },
-    ],
-    deprecatedWarnings: [],
-    suggestedCassQueries: ["cass search \"test\" --days 30"],
-  })
+const mockGetTaskContext = mock(
+  (): Promise<CMContextResult> =>
+    Promise.resolve({
+      success: true,
+      task: "test task",
+      relevantBullets: [
+        {
+          id: "bullet_123",
+          text: "Always use descriptive variable names",
+          category: "code-style",
+          scope: "global",
+          state: "active",
+          kind: "rule",
+          confidence: 0.95,
+          helpfulCount: 10,
+          harmfulCount: 0,
+        },
+      ],
+      antiPatterns: [],
+      historySnippets: [
+        {
+          source_path: "/sessions/test.jsonl",
+          line_number: 42,
+          agent: "claude_code",
+          workspace: "/data/projects/test",
+          title: "Similar task example",
+          snippet: "Here is how we solved this before...",
+          score: 85.5,
+          created_at: Date.now(),
+          origin: { kind: "local" },
+        },
+      ],
+      deprecatedWarnings: [],
+      suggestedCassQueries: ['cass search "test" --days 30'],
+    }),
 );
 
-const mockGetQuickstart = mock((): Promise<CMQuickstartResult> =>
-  Promise.resolve({
-    success: true,
-    summary: "Procedural memory system for AI coding agents",
-    oneCommand: "cm context \"<task>\" --json",
-    expectations: {
-      degradedMode: "If cass is missing, historySnippets may be empty",
-    },
-    whatItReturns: ["relevantBullets", "antiPatterns", "historySnippets"],
-    doNotDo: ["Run cm reflect manually"],
-    protocol: { start: "cm context", work: "Reference rule IDs" },
-    examples: ["cm context \"implement auth\" --json"],
-  })
+const mockGetQuickstart = mock(
+  (): Promise<CMQuickstartResult> =>
+    Promise.resolve({
+      success: true,
+      summary: "Procedural memory system for AI coding agents",
+      oneCommand: 'cm context "<task>" --json',
+      expectations: {
+        degradedMode: "If cass is missing, historySnippets may be empty",
+      },
+      whatItReturns: ["relevantBullets", "antiPatterns", "historySnippets"],
+      doNotDo: ["Run cm reflect manually"],
+      protocol: { start: "cm context", work: "Reference rule IDs" },
+      examples: ['cm context "implement auth" --json'],
+    }),
 );
 
-const mockGetPlaybookStats = mock((): Promise<CMStatsResult> =>
-  Promise.resolve({
-    success: true,
-    total: 50,
-    byScope: { global: 30, project: 20 },
-    byState: { active: 45, deprecated: 5 },
-    byKind: { rule: 35, "anti-pattern": 10, procedure: 5 },
-    scoreDistribution: { excellent: 10, good: 20, neutral: 15, atRisk: 5 },
-    topPerformers: [],
-    mostHelpful: [],
-    atRiskCount: 5,
-    staleCount: 3,
-  })
+const mockGetPlaybookStats = mock(
+  (): Promise<CMStatsResult> =>
+    Promise.resolve({
+      success: true,
+      total: 50,
+      byScope: { global: 30, project: 20 },
+      byState: { active: 45, deprecated: 5 },
+      byKind: { rule: 35, "anti-pattern": 10, procedure: 5 },
+      scoreDistribution: { excellent: 10, good: 20, neutral: 15, atRisk: 5 },
+      topPerformers: [],
+      mostHelpful: [],
+      atRiskCount: 5,
+      staleCount: 3,
+    }),
 );
 
-const mockListPlaybookRules = mock((): Promise<CMPlaybookListResult> =>
-  Promise.resolve({
-    success: true,
-    bullets: [
-      {
-        id: "bullet_123",
-        text: "Always use descriptive variable names",
-        category: "code-style",
-        scope: "global",
-        state: "active",
-        kind: "rule",
-        confidence: 0.95,
-        helpfulCount: 10,
-        harmfulCount: 0,
-      },
-      {
-        id: "bullet_456",
-        text: "Avoid using any type in TypeScript",
-        category: "typescript",
-        scope: "global",
-        state: "active",
-        kind: "anti-pattern",
-        confidence: 0.88,
-        helpfulCount: 8,
-        harmfulCount: 1,
-      },
-    ],
-  })
+const mockListPlaybookRules = mock(
+  (): Promise<CMPlaybookListResult> =>
+    Promise.resolve({
+      success: true,
+      bullets: [
+        {
+          id: "bullet_123",
+          text: "Always use descriptive variable names",
+          category: "code-style",
+          scope: "global",
+          state: "active",
+          kind: "rule",
+          confidence: 0.95,
+          helpfulCount: 10,
+          harmfulCount: 0,
+        },
+        {
+          id: "bullet_456",
+          text: "Avoid using any type in TypeScript",
+          category: "typescript",
+          scope: "global",
+          state: "active",
+          kind: "anti-pattern",
+          confidence: 0.88,
+          helpfulCount: 8,
+          harmfulCount: 1,
+        },
+      ],
+    }),
 );
 
-const mockRunDiagnostics = mock((): Promise<CMDoctorResult> =>
-  Promise.resolve({
-    success: true,
-    version: "0.2.0",
-    generatedAt: new Date().toISOString(),
-    overallStatus: "healthy",
-    checks: [
-      {
-        category: "Cass Integration",
-        item: "cass",
-        status: "pass",
-        message: "cass CLI found",
-      },
-      {
-        category: "Playbook",
-        item: "rules",
-        status: "pass",
-        message: "50 rules loaded",
-      },
-    ],
-  })
+const mockRunDiagnostics = mock(
+  (): Promise<CMDoctorResult> =>
+    Promise.resolve({
+      success: true,
+      version: "0.2.0",
+      generatedAt: new Date().toISOString(),
+      overallStatus: "healthy",
+      checks: [
+        {
+          category: "Cass Integration",
+          item: "cass",
+          status: "pass",
+          message: "cass CLI found",
+        },
+        {
+          category: "Playbook",
+          item: "rules",
+          status: "pass",
+          message: "50 rules loaded",
+        },
+      ],
+    }),
 );
 
-const mockRecordOutcome = mock((): Promise<CMOutcomeResult> =>
-  Promise.resolve({
-    success: true,
-    message: "Outcome recorded",
-    recorded: 2,
-  })
+const mockRecordOutcome = mock(
+  (): Promise<CMOutcomeResult> =>
+    Promise.resolve({
+      success: true,
+      message: "Outcome recorded",
+      recorded: 2,
+    }),
 );
 
 // Mock the service module
@@ -172,7 +178,11 @@ mock.module("../services/cm.service", () => ({
   CMClientError: class CMClientError extends Error {
     kind: string;
     details?: Record<string, unknown>;
-    constructor(kind: string, message: string, details?: Record<string, unknown>) {
+    constructor(
+      kind: string,
+      message: string,
+      details?: Record<string, unknown>,
+    ) {
       super(message);
       this.name = "CMClientError";
       this.kind = kind;
@@ -228,7 +238,7 @@ describe("Memory Routes", () => {
           healthy: false,
           overallStatus: "degraded" as const,
           error: "Some checks failed",
-        })
+        }),
       );
 
       const res = await app.request("/memory/health");
@@ -274,7 +284,10 @@ describe("Memory Routes", () => {
       expect(body.data.task).toBe("test task");
       expect(body.data.relevantBullets).toBeInstanceOf(Array);
       expect(body.data.historySnippets).toBeInstanceOf(Array);
-      expect(mockGetTaskContext).toHaveBeenCalledWith("implement authentication", {});
+      expect(mockGetTaskContext).toHaveBeenCalledWith(
+        "implement authentication",
+        {},
+      );
     });
 
     test("passes options to service", async () => {
@@ -355,7 +368,7 @@ describe("Memory Routes", () => {
 
     test("passes filter options", async () => {
       const res = await app.request(
-        "/memory/rules?category=code-style&state=active&limit=10"
+        "/memory/rules?category=code-style&state=active&limit=10",
       );
 
       expect(res.status).toBe(200);
@@ -406,7 +419,7 @@ describe("Memory Routes", () => {
       expect(mockRecordOutcome).toHaveBeenCalledWith(
         "success",
         ["bullet_123", "bullet_456"],
-        {}
+        {},
       );
     });
 
@@ -425,7 +438,7 @@ describe("Memory Routes", () => {
       expect(mockRecordOutcome).toHaveBeenCalledWith(
         "failure",
         ["bullet_789"],
-        { session: "session_abc" }
+        { session: "session_abc" },
       );
     });
 

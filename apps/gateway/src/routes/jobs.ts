@@ -16,7 +16,8 @@ import {
   JobNotFoundError,
   JobValidationError,
 } from "../services/job.service";
-import type { JobType, JobPriority, JobStatus } from "../types/job.types";
+import type { JobPriority, JobStatus, JobType } from "../types/job.types";
+import { getLinkContext, jobLinks, jobListLinks } from "../utils/links";
 import {
   sendCreated,
   sendError,
@@ -27,7 +28,6 @@ import {
   sendValidationError,
 } from "../utils/response";
 import { transformZodError } from "../utils/validation";
-import { getLinkContext, jobLinks, jobListLinks } from "../utils/links";
 
 const jobs = new Hono();
 
@@ -80,7 +80,15 @@ const ListJobsQuerySchema = z.object({
     ])
     .optional(),
   status: z
-    .enum(["pending", "running", "paused", "completed", "failed", "cancelled", "timeout"])
+    .enum([
+      "pending",
+      "running",
+      "paused",
+      "completed",
+      "failed",
+      "cancelled",
+      "timeout",
+    ])
     .optional(),
   sessionId: z.string().optional(),
   agentId: z.string().optional(),
@@ -92,7 +100,13 @@ const ListJobsQuerySchema = z.object({
 // Helper Functions
 // ============================================================================
 
-function jobToResponse(job: ReturnType<typeof getJobService>["createJob"] extends (input: unknown) => Promise<infer R> ? R : never) {
+function jobToResponse(
+  job: ReturnType<typeof getJobService>["createJob"] extends (
+    input: unknown,
+  ) => Promise<infer R>
+    ? R
+    : never,
+) {
   return {
     id: job.id,
     type: job.type,
@@ -178,9 +192,9 @@ jobs.get("/", async (c) => {
   const log = getLogger();
 
   try {
-    const query = ListJobsQuerySchema.safeParse(Object.fromEntries(
-      new URL(c.req.url).searchParams,
-    ));
+    const query = ListJobsQuerySchema.safeParse(
+      Object.fromEntries(new URL(c.req.url).searchParams),
+    );
 
     if (!query.success) {
       return sendValidationError(c, transformZodError(query.error));

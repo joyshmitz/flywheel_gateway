@@ -3,12 +3,12 @@
  */
 
 export {
-  PerformanceMonitor,
   getPerformanceMonitor,
+  type LongTaskEntry,
   mark,
   measure,
-  timeExecution,
   type PerformanceMetrics,
+  PerformanceMonitor,
   type PerformanceReport,
-  type LongTaskEntry,
-} from './monitor';
+  timeExecution,
+} from "./monitor";

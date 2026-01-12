@@ -4,9 +4,9 @@
  * Provides pull-to-refresh functionality for mobile lists.
  */
 
-import { memo, useCallback, type ReactNode } from 'react';
-import { RefreshCw } from 'lucide-react';
-import { useMobileGestures } from '../../hooks/useMobileGestures';
+import { RefreshCw } from "lucide-react";
+import { memo, type ReactNode, useCallback } from "react";
+import { useMobileGestures } from "../../hooks/useMobileGestures";
 
 export interface PullToRefreshProps {
   /** Children to render inside the pull-to-refresh container */
@@ -32,7 +32,7 @@ export const PullToRefresh = memo(function PullToRefresh({
   enabled = true,
   threshold = 80,
   indicator,
-  className = '',
+  className = "",
 }: PullToRefreshProps) {
   const { handlers, state } = useMobileGestures({
     onPullToRefresh: onRefresh,
@@ -44,14 +44,19 @@ export const PullToRefresh = memo(function PullToRefresh({
 
   // Calculate indicator position and rotation
   const indicatorTranslateY = isPulling ? pullProgress * threshold : 0;
-  const indicatorRotation = isPulling ? pullProgress * 180 : isRefreshing ? 360 : 0;
-  const indicatorOpacity = isPulling ? Math.min(1, pullProgress * 1.5) : isRefreshing ? 1 : 0;
+  const indicatorRotation = isPulling
+    ? pullProgress * 180
+    : isRefreshing
+      ? 360
+      : 0;
+  const indicatorOpacity = isPulling
+    ? Math.min(1, pullProgress * 1.5)
+    : isRefreshing
+      ? 1
+      : 0;
 
   return (
-    <div
-      className={`relative overflow-hidden ${className}`}
-      {...handlers}
-    >
+    <div className={`relative overflow-hidden ${className}`} {...handlers}>
       {/* Pull indicator */}
       <div
         className="absolute left-1/2 -translate-x-1/2 z-10 transition-opacity duration-200"
@@ -65,7 +70,7 @@ export const PullToRefresh = memo(function PullToRefresh({
           <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center shadow-lg">
             <RefreshCw
               className={`w-5 h-5 text-blue-400 transition-transform duration-200 ${
-                isRefreshing ? 'animate-spin' : ''
+                isRefreshing ? "animate-spin" : ""
               }`}
               style={{
                 transform: `rotate(${indicatorRotation}deg)`,
@@ -79,7 +84,9 @@ export const PullToRefresh = memo(function PullToRefresh({
       <div
         className="transition-transform duration-200"
         style={{
-          transform: isPulling ? `translateY(${pullProgress * 50}px)` : 'translateY(0)',
+          transform: isPulling
+            ? `translateY(${pullProgress * 50}px)`
+            : "translateY(0)",
         }}
       >
         {children}
@@ -94,10 +101,10 @@ export const PullToRefresh = memo(function PullToRefresh({
           }}
         >
           {isRefreshing
-            ? 'Refreshing...'
+            ? "Refreshing..."
             : pullProgress >= 1
-            ? 'Release to refresh'
-            : 'Pull to refresh'}
+              ? "Release to refresh"
+              : "Pull to refresh"}
         </div>
       )}
     </div>
@@ -118,7 +125,7 @@ export function PullIndicator({
     <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center shadow-lg">
       <RefreshCw
         className={`w-5 h-5 text-blue-400 transition-transform ${
-          isRefreshing ? 'animate-spin' : ''
+          isRefreshing ? "animate-spin" : ""
         }`}
         style={{
           transform: `rotate(${progress * 180}deg)`,
@@ -131,7 +138,10 @@ export function PullIndicator({
 /**
  * Hook for using pull-to-refresh in custom layouts
  */
-export function usePullToRefresh(onRefresh: () => Promise<void>, enabled = true) {
+export function usePullToRefresh(
+  onRefresh: () => Promise<void>,
+  enabled = true,
+) {
   const { handlers, state } = useMobileGestures({
     onPullToRefresh: onRefresh,
     enabled,

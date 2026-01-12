@@ -323,14 +323,20 @@ export async function analyzeRepositoryConflicts(
   // Generate recommendations
   const recommendations: string[] = [];
   if (conflicts.length === 0) {
-    recommendations.push("No conflicts detected. Branches can be merged safely.");
+    recommendations.push(
+      "No conflicts detected. Branches can be merged safely.",
+    );
   } else {
     if (overallSeverity === "critical") {
       recommendations.push(
         "Critical conflicts detected. Immediate coordination required.",
       );
     }
-    if (conflicts.some((c) => c.changeTypeA === "deleted" || c.changeTypeB === "deleted")) {
+    if (
+      conflicts.some(
+        (c) => c.changeTypeA === "deleted" || c.changeTypeB === "deleted",
+      )
+    ) {
       recommendations.push(
         "Some files are deleted in one branch but modified in another. Coordinate with the other agent.",
       );
@@ -542,14 +548,38 @@ export function isConflictProneFile(filePath: string): {
   reason?: string;
 } {
   const pronePatterns = [
-    { pattern: /package-lock\.json$/, reason: "Lock file - auto-generated, often conflicts" },
-    { pattern: /yarn\.lock$/, reason: "Lock file - auto-generated, often conflicts" },
-    { pattern: /bun\.lockb$/, reason: "Lock file - binary, requires regeneration" },
-    { pattern: /\.min\.(js|css)$/, reason: "Minified file - regenerate from source" },
-    { pattern: /\.bundle\.(js|css)$/, reason: "Bundle file - regenerate from source" },
-    { pattern: /schema\.ts$/, reason: "Schema file - coordinate changes carefully" },
-    { pattern: /index\.ts$/, reason: "Barrel file - often edited by multiple features" },
-    { pattern: /route[rs]?\.(ts|tsx)$/, reason: "Route file - often edited by multiple features" },
+    {
+      pattern: /package-lock\.json$/,
+      reason: "Lock file - auto-generated, often conflicts",
+    },
+    {
+      pattern: /yarn\.lock$/,
+      reason: "Lock file - auto-generated, often conflicts",
+    },
+    {
+      pattern: /bun\.lockb$/,
+      reason: "Lock file - binary, requires regeneration",
+    },
+    {
+      pattern: /\.min\.(js|css)$/,
+      reason: "Minified file - regenerate from source",
+    },
+    {
+      pattern: /\.bundle\.(js|css)$/,
+      reason: "Bundle file - regenerate from source",
+    },
+    {
+      pattern: /schema\.ts$/,
+      reason: "Schema file - coordinate changes carefully",
+    },
+    {
+      pattern: /index\.ts$/,
+      reason: "Barrel file - often edited by multiple features",
+    },
+    {
+      pattern: /route[rs]?\.(ts|tsx)$/,
+      reason: "Route file - often edited by multiple features",
+    },
   ];
 
   for (const { pattern, reason } of pronePatterns) {

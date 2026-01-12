@@ -36,7 +36,7 @@ import {
   type WaitConfig,
   type WebhookConfig,
 } from "../models/pipeline";
-import { spawnAgent, sendMessage, terminateAgent } from "./agent";
+import { sendMessage, spawnAgent, terminateAgent } from "./agent";
 
 // ============================================================================
 // In-Memory Storage
@@ -141,7 +141,10 @@ function evaluateCondition(
         if (v === "null") return null;
         if (/^-?\d+(\.\d+)?$/.test(v)) return parseFloat(v);
         // Remove quotes for strings
-        if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+        if (
+          (v.startsWith('"') && v.endsWith('"')) ||
+          (v.startsWith("'") && v.endsWith("'"))
+        ) {
           return v.slice(1, -1);
         }
         return v;
@@ -195,7 +198,7 @@ function calculateRetryDelay(
   policy: RetryPolicy,
 ): number {
   const multiplier = policy.multiplier ?? 2;
-  const delay = policy.initialDelay * Math.pow(multiplier, attemptNumber);
+  const delay = policy.initialDelay * multiplier ** attemptNumber;
   // Add jitter (10% random variation)
   const jitter = delay * 0.1 * Math.random();
   return Math.min(delay + jitter, policy.maxDelay);
@@ -269,7 +272,9 @@ async function executeAgentTask(
   const log = getLogger();
   const prompt = substituteVariables(config.prompt, context);
   const workingDirectory =
-    config.workingDirectory ?? (context["workingDirectory"] as string) ?? "/tmp";
+    config.workingDirectory ??
+    (context["workingDirectory"] as string) ??
+    "/tmp";
 
   log.info(
     { workingDirectory, promptLength: prompt.length },
@@ -594,7 +599,10 @@ async function executeLoop(
   const getIterator = (): IterableIterator<unknown> | undefined => {
     switch (config.mode) {
       case "for_each": {
-        const collectionPath = substituteVariables(config.collection ?? "", context);
+        const collectionPath = substituteVariables(
+          config.collection ?? "",
+          context,
+        );
         const collection = getValueByPath(context, collectionPath);
         if (Array.isArray(collection)) {
           return collection[Symbol.iterator]();
@@ -634,10 +642,18 @@ async function executeLoop(
 
   // For parallel execution, we need to isolate loop variables per iteration
   // to avoid race conditions where parallel iterations overwrite each other's variables
-  const executeIteration = async (item: unknown, index: number, isolated = false): Promise<unknown> => {
+  const executeIteration = async (
+    item: unknown,
+    index: number,
+    isolated = false,
+  ): Promise<unknown> => {
     // Set loop variables - for parallel execution, use unique keys per iteration
-    const itemKey = isolated ? `${config.itemVariable}_${index}` : config.itemVariable;
-    const indexKey = isolated ? `${config.indexVariable}_${index}` : config.indexVariable;
+    const itemKey = isolated
+      ? `${config.itemVariable}_${index}`
+      : config.itemVariable;
+    const indexKey = isolated
+      ? `${config.indexVariable}_${index}`
+      : config.indexVariable;
 
     context[itemKey] = item;
     context[indexKey] = index;
@@ -695,15 +711,17 @@ async function executeLoop(
           const batchStartIteration = iteration;
           const batchPromises = batch.map((item, batchIndex) => {
             const index = batchStartIteration + batchIndex;
-            if (index >= config.maxIterations) return Promise.resolve(undefined);
+            if (index >= config.maxIterations)
+              return Promise.resolve(undefined);
             return executeIteration(item, index, true); // true = isolated mode for parallel
           });
 
           const batchResults = await Promise.all(batchPromises);
 
           // Count how many actually executed (not skipped due to maxIterations)
-          const executedCount = batch.filter((_, batchIndex) =>
-            batchStartIteration + batchIndex < config.maxIterations
+          const executedCount = batch.filter(
+            (_, batchIndex) =>
+              batchStartIteration + batchIndex < config.maxIterations,
           ).length;
           iteration += executedCount;
 
@@ -777,7 +795,11 @@ async function executeWait(
       await Promise.race([
         sleep(actualWait),
         new Promise<never>((_, reject) => {
-          signal?.addEventListener("abort", () => reject(new Error("Cancelled")), { once: true });
+          signal?.addEventListener(
+            "abort",
+            () => reject(new Error("Cancelled")),
+            { once: true },
+          );
         }),
       ]).catch((err) => {
         if (err.message !== "Cancelled") throw err;
@@ -795,24 +817,37 @@ async function executeWait(
       await Promise.race([
         sleep(waitTime),
         new Promise<never>((_, reject) => {
-          signal?.addEventListener("abort", () => reject(new Error("Cancelled")), { once: true });
+          signal?.addEventListener(
+            "abort",
+            () => reject(new Error("Cancelled")),
+            { once: true },
+          );
         }),
       ]).catch((err) => {
         if (err.message !== "Cancelled") throw err;
       });
 
-      return { waitedMs: Date.now() - startTime, reason: "target_time_reached" };
+      return {
+        waitedMs: Date.now() - startTime,
+        reason: "target_time_reached",
+      };
     }
 
     case "webhook": {
       // For webhook mode, we'd normally wait for an external callback
       // This is a placeholder - in production, you'd register a callback handler
-      log.warn("[PIPELINE] Webhook wait mode not fully implemented - timing out");
+      log.warn(
+        "[PIPELINE] Webhook wait mode not fully implemented - timing out",
+      );
 
       await Promise.race([
         sleep(config.timeout),
         new Promise<never>((_, reject) => {
-          signal?.addEventListener("abort", () => reject(new Error("Cancelled")), { once: true });
+          signal?.addEventListener(
+            "abort",
+            () => reject(new Error("Cancelled")),
+            { once: true },
+          );
         }),
       ]).catch((err) => {
         if (err.message !== "Cancelled") throw err;
@@ -858,10 +893,13 @@ async function executeTransform(
       case "merge": {
         const sourceValue = getValueByPath(context, operation.source);
         const targetValue = getValueByPath(context, operation.target);
-        if (typeof sourceValue === "object" && typeof targetValue === "object") {
+        if (
+          typeof sourceValue === "object" &&
+          typeof targetValue === "object"
+        ) {
           setValueByPath(context, operation.target, {
-            ...targetValue as object,
-            ...sourceValue as object,
+            ...(targetValue as object),
+            ...(sourceValue as object),
           });
           transformedCount++;
         }
@@ -951,10 +989,7 @@ async function executeTransform(
     setValueByPath(context, config.outputVariable, { ...context });
   }
 
-  log.info(
-    { transformedCount },
-    "[PIPELINE] Transform step completed",
-  );
+  log.info({ transformedCount }, "[PIPELINE] Transform step completed");
 
   return { transformedValues: transformedCount };
 }
@@ -971,10 +1006,7 @@ async function executeWebhook(
   const url = substituteVariables(config.url, context);
   const timeout = config.timeout ?? 30000;
 
-  log.info(
-    { method: config.method, url },
-    "[PIPELINE] Starting webhook step",
-  );
+  log.info({ method: config.method, url }, "[PIPELINE] Starting webhook step");
 
   // Build headers
   const headers: Record<string, string> = {};
@@ -988,8 +1020,14 @@ async function executeWebhook(
   if (config.auth) {
     switch (config.auth.type) {
       case "basic": {
-        const username = substituteVariables(config.auth.username ?? "", context);
-        const password = substituteVariables(config.auth.password ?? "", context);
+        const username = substituteVariables(
+          config.auth.username ?? "",
+          context,
+        );
+        const password = substituteVariables(
+          config.auth.password ?? "",
+          context,
+        );
         headers["Authorization"] = `Basic ${btoa(`${username}:${password}`)}`;
         break;
       }
@@ -1065,7 +1103,9 @@ async function executeWebhook(
     };
 
     if (config.extractFields) {
-      for (const [targetKey, jsonPath] of Object.entries(config.extractFields)) {
+      for (const [targetKey, jsonPath] of Object.entries(
+        config.extractFields,
+      )) {
         result[targetKey] = getValueByPath(
           { data: responseData } as Record<string, unknown>,
           jsonPath.replace(/^\$\.?data\.?/, "data."),
@@ -1076,10 +1116,7 @@ async function executeWebhook(
     // Store in output variable
     context[config.outputVariable] = result;
 
-    log.info(
-      { status: response.status },
-      "[PIPELINE] Webhook step completed",
-    );
+    log.info({ status: response.status }, "[PIPELINE] Webhook step completed");
 
     return result;
   } finally {
@@ -1211,7 +1248,11 @@ function getValueByPath(obj: Record<string, unknown>, path: string): unknown {
 /**
  * Set a value in context by dot-notation path.
  */
-function setValueByPath(obj: Record<string, unknown>, path: string, value: unknown): void {
+function setValueByPath(
+  obj: Record<string, unknown>,
+  path: string,
+  value: unknown,
+): void {
   const parts = path.split(".");
   let current: Record<string, unknown> = obj;
 
@@ -1270,7 +1311,12 @@ async function executeStep(
   const startTime = Date.now();
 
   log.info(
-    { pipelineId: pipeline.id, runId: run.id, stepId: step.id, stepName: step.name },
+    {
+      pipelineId: pipeline.id,
+      runId: run.id,
+      stepId: step.id,
+      stepName: step.name,
+    },
     "[PIPELINE] Starting step execution",
   );
 
@@ -1292,13 +1338,16 @@ async function executeStep(
   }
 
   // Get retry policy
-  const retryPolicy = step.retryPolicy ?? pipeline.retryPolicy ?? DEFAULT_RETRY_POLICY;
+  const retryPolicy =
+    step.retryPolicy ?? pipeline.retryPolicy ?? DEFAULT_RETRY_POLICY;
 
   // Determine if error is retryable
   const isRetryable = (error: unknown): boolean => {
     if (retryPolicy.retryableErrors?.length) {
       const errorCode =
-        error instanceof Error ? (error as Error & { code?: string }).code : undefined;
+        error instanceof Error
+          ? (error as Error & { code?: string }).code
+          : undefined;
       return retryPolicy.retryableErrors.includes(errorCode ?? "UNKNOWN");
     }
     // Default: retry on transient errors
@@ -1310,47 +1359,86 @@ async function executeStep(
       async () => {
         switch (step.type) {
           case "agent_task": {
-            const config = step.config as { type: "agent_task"; config: AgentTaskConfig };
+            const config = step.config as {
+              type: "agent_task";
+              config: AgentTaskConfig;
+            };
             return executeAgentTask(config.config, run.context, signal);
           }
           case "conditional": {
-            const config = step.config as { type: "conditional"; config: ConditionalConfig };
-            return executeConditional(config.config, run.context, executeStepsById);
+            const config = step.config as {
+              type: "conditional";
+              config: ConditionalConfig;
+            };
+            return executeConditional(
+              config.config,
+              run.context,
+              executeStepsById,
+            );
           }
           case "parallel": {
-            const config = step.config as { type: "parallel"; config: ParallelConfig };
+            const config = step.config as {
+              type: "parallel";
+              config: ParallelConfig;
+            };
             return executeParallel(config.config, executeStepsById, signal);
           }
           case "approval": {
-            const config = step.config as { type: "approval"; config: ApprovalConfig };
+            const config = step.config as {
+              type: "approval";
+              config: ApprovalConfig;
+            };
             return executeApproval(step.id, run.id, config.config, signal);
           }
           case "script": {
-            const config = step.config as { type: "script"; config: ScriptConfig };
-            const result = await executeScript(config.config, run.context, signal);
+            const config = step.config as {
+              type: "script";
+              config: ScriptConfig;
+            };
+            const result = await executeScript(
+              config.config,
+              run.context,
+              signal,
+            );
             if (result.exitCode !== 0) {
-              throw new Error(`Script failed with exit code ${result.exitCode}: ${result.stderr}`);
+              throw new Error(
+                `Script failed with exit code ${result.exitCode}: ${result.stderr}`,
+              );
             }
             return result;
           }
           case "loop": {
             const config = step.config as { type: "loop"; config: LoopConfig };
-            return executeLoop(config.config, run.context, executeStepsById, signal);
+            return executeLoop(
+              config.config,
+              run.context,
+              executeStepsById,
+              signal,
+            );
           }
           case "wait": {
             const config = step.config as { type: "wait"; config: WaitConfig };
             return executeWait(config.config, run.context, signal);
           }
           case "transform": {
-            const config = step.config as { type: "transform"; config: TransformConfig };
+            const config = step.config as {
+              type: "transform";
+              config: TransformConfig;
+            };
             return executeTransform(config.config, run.context);
           }
           case "webhook": {
-            const config = step.config as { type: "webhook"; config: WebhookConfig };
+            const config = step.config as {
+              type: "webhook";
+              config: WebhookConfig;
+            };
             return executeWebhook(config.config, run.context, signal);
           }
           case "sub_pipeline": {
-            const config = step.config as { type: "sub_pipeline"; config: SubPipelineConfig };
+            const config = step.config as {
+              type: "sub_pipeline";
+              config: SubPipelineConfig;
+            };
             return executeSubPipeline(config.config, run.context, signal);
           }
           default:
@@ -1363,7 +1451,13 @@ async function executeStep(
     );
 
     log.info(
-      { pipelineId: pipeline.id, runId: run.id, stepId: step.id, status: "completed", retryCount },
+      {
+        pipelineId: pipeline.id,
+        runId: run.id,
+        stepId: step.id,
+        status: "completed",
+        retryCount,
+      },
       "[PIPELINE] Step completed successfully",
     );
 
@@ -1381,13 +1475,21 @@ async function executeStep(
 
     // Extract retry count and original error from RetryError
     const actualRetryCount = error instanceof RetryError ? error.retryCount : 0;
-    const originalError = error instanceof RetryError ? error.originalCause : error;
+    const originalError =
+      error instanceof RetryError ? error.originalCause : error;
 
     return {
       success: false,
       error: {
-        code: originalError instanceof Error ? (originalError as Error & { code?: string }).code ?? "STEP_FAILED" : "STEP_FAILED",
-        message: originalError instanceof Error ? originalError.message : String(originalError),
+        code:
+          originalError instanceof Error
+            ? ((originalError as Error & { code?: string }).code ??
+              "STEP_FAILED")
+            : "STEP_FAILED",
+        message:
+          originalError instanceof Error
+            ? originalError.message
+            : String(originalError),
       },
       durationMs: Date.now() - startTime,
       retryCount: actualRetryCount,
@@ -1449,7 +1551,13 @@ async function executePipeline(
       step.startedAt = new Date();
 
       // Execute the step
-      const result = await executeStep(step, run, pipeline, executeStepsById, signal);
+      const result = await executeStep(
+        step,
+        run,
+        pipeline,
+        executeStepsById,
+        signal,
+      );
 
       // Update step with result
       step.status = result.success ? "completed" : "failed";
@@ -1715,7 +1823,9 @@ export function listPipelines(filter: PipelineFilter = {}): {
   const limit = filter.limit ?? 50;
   const paginatedResult = result.slice(startIndex, startIndex + limit);
   const hasMore = startIndex + limit < total;
-  const nextCursor = hasMore ? paginatedResult[paginatedResult.length - 1]?.id : undefined;
+  const nextCursor = hasMore
+    ? paginatedResult[paginatedResult.length - 1]?.id
+    : undefined;
 
   return {
     pipelines: paginatedResult,
@@ -1735,7 +1845,10 @@ export function listPipelines(filter: PipelineFilter = {}): {
 export async function runPipeline(
   id: string,
   options: {
-    triggeredBy?: { type: "user" | "schedule" | "webhook" | "bead_event" | "api"; id?: string };
+    triggeredBy?: {
+      type: "user" | "schedule" | "webhook" | "bead_event" | "api";
+      id?: string;
+    };
     params?: Record<string, unknown>;
   } = {},
 ): Promise<PipelineRun> {
@@ -1824,7 +1937,9 @@ export function pauseRun(runId: string): PipelineRun | undefined {
 /**
  * Resume a paused pipeline run.
  */
-export async function resumeRun(runId: string): Promise<PipelineRun | undefined> {
+export async function resumeRun(
+  runId: string,
+): Promise<PipelineRun | undefined> {
   const log = getLogger();
   const run = runs.get(runId);
 
@@ -1930,7 +2045,9 @@ export function listRuns(
   const limit = filter.limit ?? 50;
   const paginatedResult = result.slice(startIndex, startIndex + limit);
   const hasMore = startIndex + limit < total;
-  const nextCursor = hasMore ? paginatedResult[paginatedResult.length - 1]?.id : undefined;
+  const nextCursor = hasMore
+    ? paginatedResult[paginatedResult.length - 1]?.id
+    : undefined;
 
   return {
     runs: paginatedResult,

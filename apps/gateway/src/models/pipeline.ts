@@ -195,7 +195,13 @@ export type TransformOperation =
   | { op: "merge"; source: string; target: string }
   | { op: "map"; source: string; expression: string; target: string }
   | { op: "filter"; source: string; condition: string; target: string }
-  | { op: "reduce"; source: string; expression: string; initial: unknown; target: string }
+  | {
+      op: "reduce";
+      source: string;
+      expression: string;
+      initial: unknown;
+      target: string;
+    }
   | { op: "extract"; source: string; query: string; target: string };
 
 /**
@@ -505,11 +511,13 @@ export interface PipelineRun {
   /** When the run completed */
   completedAt?: Date | undefined;
   /** Error if the run failed */
-  error?: {
-    code: string;
-    message: string;
-    stepId?: string | undefined;
-  } | undefined;
+  error?:
+    | {
+        code: string;
+        message: string;
+        stepId?: string | undefined;
+      }
+    | undefined;
   /** Duration in milliseconds */
   durationMs?: number | undefined;
 }
@@ -599,23 +607,27 @@ export interface UpdatePipelineInput {
   name?: string | undefined;
   description?: string | undefined;
   enabled?: boolean | undefined;
-  trigger?: {
-    type?: TriggerType | undefined;
-    config?: TriggerConfig | undefined;
-    enabled?: boolean | undefined;
-  } | undefined;
-  steps?: Array<{
-    id: string;
-    name: string;
-    description?: string | undefined;
-    type: StepType;
-    config: StepConfig;
-    dependsOn?: string[] | undefined;
-    retryPolicy?: RetryPolicy | undefined;
-    condition?: string | undefined;
-    continueOnFailure?: boolean | undefined;
-    timeout?: number | undefined;
-  }> | undefined;
+  trigger?:
+    | {
+        type?: TriggerType | undefined;
+        config?: TriggerConfig | undefined;
+        enabled?: boolean | undefined;
+      }
+    | undefined;
+  steps?:
+    | Array<{
+        id: string;
+        name: string;
+        description?: string | undefined;
+        type: StepType;
+        config: StepConfig;
+        dependsOn?: string[] | undefined;
+        retryPolicy?: RetryPolicy | undefined;
+        condition?: string | undefined;
+        continueOnFailure?: boolean | undefined;
+        timeout?: number | undefined;
+      }>
+    | undefined;
   contextDefaults?: Record<string, unknown> | undefined;
   retryPolicy?: RetryPolicy | undefined;
   tags?: string[] | undefined;
@@ -679,9 +691,7 @@ export function serializeStep(step: PipelineStep): Record<string, unknown> {
 /**
  * Serialize dates in a pipeline for API responses.
  */
-export function serializePipeline(
-  pipeline: Pipeline,
-): Record<string, unknown> {
+export function serializePipeline(pipeline: Pipeline): Record<string, unknown> {
   return {
     ...pipeline,
     createdAt: pipeline.createdAt.toISOString(),

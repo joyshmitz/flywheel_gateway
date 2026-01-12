@@ -124,7 +124,8 @@ export class MessageQueue<T> {
    */
   peekLast(): T | undefined {
     if (this.count === 0) return undefined;
-    const lastIndex = (this.head - 1 + this.config.capacity) % this.config.capacity;
+    const lastIndex =
+      (this.head - 1 + this.config.capacity) % this.config.capacity;
     return this.buffer[lastIndex];
   }
 
@@ -262,7 +263,7 @@ export class MessageQueue<T> {
  */
 export function createMessageQueue<T>(
   capacity = 10000,
-  overwriteOnFull = true
+  overwriteOnFull = true,
 ): MessageQueue<T> {
   return new MessageQueue<T>({ capacity, overwriteOnFull });
 }

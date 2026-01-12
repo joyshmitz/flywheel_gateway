@@ -86,7 +86,7 @@ export const DEFAULT_REDACTION_CONFIG: RedactionConfig = {
 
   redactPatterns: [
     // JWT tokens
-    /Bearer\s+[A-Za-z0-9\-._~+\/]+=*/g,
+    /Bearer\s+[A-Za-z0-9\-._~+/]+=*/g,
     // API keys (sk_live_, sk_test_, etc.)
     /sk_[a-zA-Z0-9_]{20,}/g,
     // Generic API key patterns
@@ -172,9 +172,7 @@ export class AuditRedactionService {
   /**
    * Redact sensitive fields from an object.
    */
-  private redactObject(
-    obj: Record<string, unknown>,
-  ): Record<string, unknown> {
+  private redactObject(obj: Record<string, unknown>): Record<string, unknown> {
     const result: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(obj)) {
@@ -189,7 +187,11 @@ export class AuditRedactionService {
       // Check if field should be masked
       const maskConfig = this.getMaskConfig(lowerKey);
       if (maskConfig && typeof value === "string") {
-        result[key] = this.applyMask(value, maskConfig.pattern, maskConfig.customMask);
+        result[key] = this.applyMask(
+          value,
+          maskConfig.pattern,
+          maskConfig.customMask,
+        );
         continue;
       }
 
@@ -200,7 +202,11 @@ export class AuditRedactionService {
       }
 
       // Recursively process nested objects/arrays
-      if (this.config.recursive && value !== null && typeof value === "object") {
+      if (
+        this.config.recursive &&
+        value !== null &&
+        typeof value === "object"
+      ) {
         result[key] = this.redact(value);
         continue;
       }
@@ -221,9 +227,7 @@ export class AuditRedactionService {
    * Check if a field should be removed entirely.
    */
   private shouldRemoveField(fieldName: string): boolean {
-    return this.config.removeFields.some(
-      (f) => f.toLowerCase() === fieldName,
-    );
+    return this.config.removeFields.some((f) => f.toLowerCase() === fieldName);
   }
 
   /**
@@ -239,9 +243,7 @@ export class AuditRedactionService {
    * Check if a field should be hashed.
    */
   private shouldHashField(fieldName: string): boolean {
-    return this.config.hashFields.some(
-      (f) => f.toLowerCase() === fieldName,
-    );
+    return this.config.hashFields.some((f) => f.toLowerCase() === fieldName);
   }
 
   /**
@@ -309,10 +311,7 @@ export class AuditRedactionService {
    * Hash a value for later comparison without exposing the original.
    */
   private hashValue(value: string): string {
-    const hash = createHash("sha256")
-      .update(value)
-      .digest("hex")
-      .slice(0, 16);
+    const hash = createHash("sha256").update(value).digest("hex").slice(0, 16);
     return `[HASHED:${hash}]`;
   }
 
@@ -335,7 +334,9 @@ export class AuditRedactionService {
     }
 
     if (value !== null && typeof value === "object") {
-      for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+      for (const [key, val] of Object.entries(
+        value as Record<string, unknown>,
+      )) {
         const lowerKey = key.toLowerCase();
         if (
           this.shouldRemoveField(lowerKey) ||

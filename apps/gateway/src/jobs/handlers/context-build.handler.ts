@@ -7,7 +7,11 @@
 
 import { readFile } from "node:fs/promises";
 import { basename, extname } from "node:path";
-import type { JobHandler, JobContext, ValidationResult } from "../../types/job.types";
+import type {
+  JobContext,
+  JobHandler,
+  ValidationResult,
+} from "../../types/job.types";
 
 export interface ContextBuildInput {
   files: string[];
@@ -33,7 +37,9 @@ interface FileContent {
   tokens: number;
 }
 
-export class ContextBuildHandler implements JobHandler<ContextBuildInput, ContextBuildOutput> {
+export class ContextBuildHandler
+  implements JobHandler<ContextBuildInput, ContextBuildOutput>
+{
   // Simple token estimation (4 chars per token on average)
   private readonly CHARS_PER_TOKEN = 4;
 
@@ -58,7 +64,9 @@ export class ContextBuildHandler implements JobHandler<ContextBuildInput, Contex
     };
   }
 
-  async execute(context: JobContext<ContextBuildInput>): Promise<ContextBuildOutput> {
+  async execute(
+    context: JobContext<ContextBuildInput>,
+  ): Promise<ContextBuildOutput> {
     const { input } = context;
     const maxTokens = input.maxTokens ?? 100000;
     const format = input.format ?? "markdown";
@@ -126,7 +134,11 @@ export class ContextBuildHandler implements JobHandler<ContextBuildInput, Contex
     );
 
     // Build context in requested format
-    const contextStr = this.buildContext(fileContents, format, input.includeMetadata ?? false);
+    const contextStr = this.buildContext(
+      fileContents,
+      format,
+      input.includeMetadata ?? false,
+    );
 
     await context.updateProgress(
       input.files.length + 1,
@@ -171,14 +183,19 @@ export class ContextBuildHandler implements JobHandler<ContextBuildInput, Contex
     }
   }
 
-  private buildMarkdownContext(files: FileContent[], includeMetadata: boolean): string {
+  private buildMarkdownContext(
+    files: FileContent[],
+    includeMetadata: boolean,
+  ): string {
     const parts: string[] = [];
 
     if (includeMetadata) {
       parts.push("# Context Pack\n");
       parts.push(`Generated: ${new Date().toISOString()}\n`);
       parts.push(`Files: ${files.length}\n`);
-      parts.push(`Total tokens: ${files.reduce((sum, f) => sum + f.tokens, 0)}\n\n`);
+      parts.push(
+        `Total tokens: ${files.reduce((sum, f) => sum + f.tokens, 0)}\n\n`,
+      );
       parts.push("---\n\n");
     }
 
@@ -195,7 +212,10 @@ export class ContextBuildHandler implements JobHandler<ContextBuildInput, Contex
     return parts.join("");
   }
 
-  private buildXmlContext(files: FileContent[], includeMetadata: boolean): string {
+  private buildXmlContext(
+    files: FileContent[],
+    includeMetadata: boolean,
+  ): string {
     const parts: string[] = [];
 
     parts.push('<?xml version="1.0" encoding="UTF-8"?>\n');
@@ -205,13 +225,17 @@ export class ContextBuildHandler implements JobHandler<ContextBuildInput, Contex
       parts.push("  <metadata>\n");
       parts.push(`    <generated>${new Date().toISOString()}</generated>\n`);
       parts.push(`    <file_count>${files.length}</file_count>\n`);
-      parts.push(`    <total_tokens>${files.reduce((sum, f) => sum + f.tokens, 0)}</total_tokens>\n`);
+      parts.push(
+        `    <total_tokens>${files.reduce((sum, f) => sum + f.tokens, 0)}</total_tokens>\n`,
+      );
       parts.push("  </metadata>\n");
     }
 
     parts.push("  <files>\n");
     for (const file of files) {
-      parts.push(`    <file path="${this.escapeXml(file.path)}" language="${file.extension}">\n`);
+      parts.push(
+        `    <file path="${this.escapeXml(file.path)}" language="${file.extension}">\n`,
+      );
       parts.push(`      <![CDATA[${file.content}]]>\n`);
       parts.push("    </file>\n");
     }
@@ -221,7 +245,10 @@ export class ContextBuildHandler implements JobHandler<ContextBuildInput, Contex
     return parts.join("");
   }
 
-  private buildJsonContext(files: FileContent[], includeMetadata: boolean): string {
+  private buildJsonContext(
+    files: FileContent[],
+    includeMetadata: boolean,
+  ): string {
     const result: Record<string, unknown> = {};
 
     if (includeMetadata) {

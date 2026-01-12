@@ -9,10 +9,6 @@
  */
 
 import { getCorrelationId, getLogger } from "../middleware/correlation";
-import type { Channel } from "../ws/channels";
-import { getHub } from "../ws/hub";
-import { logger as baseLogger, createChildLogger } from "./logger";
-import { countTokens, truncateToTokens } from "./tokenizer.service";
 import {
   type ContextHealth,
   type ContextHealthConfig,
@@ -28,6 +24,10 @@ import {
   type TokenHistoryEntry,
   type TransferredMessage,
 } from "../types/context-health.types";
+import type { Channel } from "../ws/channels";
+import { getHub } from "../ws/hub";
+import { logger as baseLogger, createChildLogger } from "./logger";
+import { countTokens, truncateToTokens } from "./tokenizer.service";
 
 // ============================================================================
 // Error Classes
@@ -77,7 +77,10 @@ export class ContextHealthService {
   private healthCache = new Map<string, ContextHealth>();
   private tokenHistory = new Map<string, TokenHistoryEntry[]>();
   private sessionStates = new Map<string, SessionState>();
-  private monitoringIntervals = new Map<string, ReturnType<typeof setInterval>>();
+  private monitoringIntervals = new Map<
+    string,
+    ReturnType<typeof setInterval>
+  >();
   private started = false;
 
   constructor(
@@ -156,7 +159,10 @@ export class ContextHealthService {
       this.monitoringIntervals.set(sessionId, interval);
     }
 
-    baseLogger.info({ sessionId, maxTokens }, "Session registered for health monitoring");
+    baseLogger.info(
+      { sessionId, maxTokens },
+      "Session registered for health monitoring",
+    );
   }
 
   /**
@@ -173,13 +179,20 @@ export class ContextHealthService {
     this.tokenHistory.delete(sessionId);
     this.sessionStates.delete(sessionId);
 
-    baseLogger.info({ sessionId }, "Session unregistered from health monitoring");
+    baseLogger.info(
+      { sessionId },
+      "Session unregistered from health monitoring",
+    );
   }
 
   /**
    * Update session token count (call after each message).
    */
-  updateTokens(sessionId: string, tokens: number, event: string = "message"): void {
+  updateTokens(
+    sessionId: string,
+    tokens: number,
+    event: string = "message",
+  ): void {
     const state = this.sessionStates.get(sessionId);
     if (!state) return;
 
@@ -197,7 +210,10 @@ export class ContextHealthService {
 
     // Trim history if too long
     if (history.length > this.config.monitoring.historyMaxEntries) {
-      history.splice(0, history.length - this.config.monitoring.historyMaxEntries);
+      history.splice(
+        0,
+        history.length - this.config.monitoring.historyMaxEntries,
+      );
     }
 
     this.tokenHistory.set(sessionId, history);
@@ -206,10 +222,7 @@ export class ContextHealthService {
   /**
    * Add a message to a session.
    */
-  addMessage(
-    sessionId: string,
-    message: TransferredMessage,
-  ): void {
+  addMessage(sessionId: string, message: TransferredMessage): void {
     const state = this.sessionStates.get(sessionId);
     if (!state) return;
 
@@ -217,7 +230,11 @@ export class ContextHealthService {
 
     // Estimate new token count
     const messageTokens = countTokens(message.content);
-    this.updateTokens(sessionId, state.currentTokens + messageTokens, "message");
+    this.updateTokens(
+      sessionId,
+      state.currentTokens + messageTokens,
+      "message",
+    );
   }
 
   // ==========================================================================
@@ -245,7 +262,10 @@ export class ContextHealthService {
       currentTokens: state.currentTokens,
       maxTokens: state.maxTokens,
       percentUsed,
-      projectedOverflowInMessages: this.projectOverflow(history, state.maxTokens),
+      projectedOverflowInMessages: this.projectOverflow(
+        history,
+        state.maxTokens,
+      ),
       estimatedTimeToWarning: this.estimateTimeToThreshold(
         history,
         this.config.thresholds.warning.percentage,
@@ -254,7 +274,11 @@ export class ContextHealthService {
       tokenHistory: history.slice(-20), // Return last 20 entries
       lastCompaction: state.lastCompaction,
       lastRotation: state.lastRotation,
-      recommendations: this.generateRecommendations(status, percentUsed, history),
+      recommendations: this.generateRecommendations(
+        status,
+        percentUsed,
+        history,
+      ),
       checkedAt: new Date(),
     };
 
@@ -355,7 +379,10 @@ export class ContextHealthService {
     try {
       const result = await this.compact(health.sessionId);
       log.info(
-        { reduction: result.reduction, reductionPercent: result.reductionPercent },
+        {
+          reduction: result.reduction,
+          reductionPercent: result.reductionPercent,
+        },
         "Context compacted",
       );
     } catch (error) {
@@ -386,8 +413,13 @@ export class ContextHealthService {
     if (state.lastRotation) {
       const timeSinceRotation = Date.now() - state.lastRotation.getTime();
       if (timeSinceRotation < this.config.rotation.cooldownMs) {
-        log.warn({ cooldownRemainingMs: this.config.rotation.cooldownMs - timeSinceRotation },
-          "Rotation cooldown active, cannot rotate yet");
+        log.warn(
+          {
+            cooldownRemainingMs:
+              this.config.rotation.cooldownMs - timeSinceRotation,
+          },
+          "Rotation cooldown active, cannot rotate yet",
+        );
         return;
       }
     }
@@ -395,7 +427,10 @@ export class ContextHealthService {
     try {
       const result = await this.rotate(health.sessionId);
       log.info(
-        { newSessionId: result.newSessionId, compressionRatio: result.transfer.compressionRatio },
+        {
+          newSessionId: result.newSessionId,
+          compressionRatio: result.transfer.compressionRatio,
+        },
         "Session rotated",
       );
     } catch (error) {
@@ -437,7 +472,9 @@ export class ContextHealthService {
 
     // Determine what to preserve
     const preserveConfig = this.config.summarization.preserve;
-    const recentCutoff = new Date(Date.now() - preserveConfig.recentMinutes * 60 * 1000);
+    const recentCutoff = new Date(
+      Date.now() - preserveConfig.recentMinutes * 60 * 1000,
+    );
 
     // Split messages into preservable and summarizable
     const messagesToPreserve: TransferredMessage[] = [];
@@ -448,7 +485,8 @@ export class ContextHealthService {
 
     for (let i = 0; i < messages.length; i++) {
       const msg = messages[i];
-      const isRecent = i >= messages.length - preserveCount || msg.timestamp >= recentCutoff;
+      const isRecent =
+        i >= messages.length - preserveCount || msg.timestamp >= recentCutoff;
 
       if (isRecent) {
         messagesToPreserve.push(msg);
@@ -458,7 +496,10 @@ export class ContextHealthService {
     }
 
     // Summarize older messages
-    if (messagesToSummarize.length > 0 && (strategy === "summarize" || strategy === "both")) {
+    if (
+      messagesToSummarize.length > 0 &&
+      (strategy === "summarize" || strategy === "both")
+    ) {
       const summaryContent = await this.summarizeMessages(messagesToSummarize);
       summaries.push(summaryContent);
       summarizedSections.push("conversation_history");
@@ -701,7 +742,9 @@ export class ContextHealthService {
     }
 
     // Get recent messages
-    const recentMessages = state.messages.slice(-transferConfig.includeRecentMessages);
+    const recentMessages = state.messages.slice(
+      -transferConfig.includeRecentMessages,
+    );
 
     // Get active beads (placeholder)
     const activeBeads: string[] = transferConfig.includeActiveBeads ? [] : [];
@@ -799,7 +842,8 @@ export class ContextHealthService {
 
     if (messageDeltas.length === 0) return null;
 
-    const avgDelta = messageDeltas.reduce((a, b) => a + b, 0) / messageDeltas.length;
+    const avgDelta =
+      messageDeltas.reduce((a, b) => a + b, 0) / messageDeltas.length;
     const currentTokens = history[history.length - 1].tokens;
     const remaining = maxTokens - currentTokens;
 
@@ -905,10 +949,7 @@ export class ContextHealthService {
   /**
    * Emit a health event via WebSocket.
    */
-  private emitHealthEvent(
-    type: string,
-    data: Record<string, unknown>,
-  ): void {
+  private emitHealthEvent(type: string, data: Record<string, unknown>): void {
     try {
       const channel: Channel = { type: "system:context" };
       getHub().publish(channel, type, {
@@ -919,7 +960,10 @@ export class ContextHealthService {
       // Also publish to session-specific channel
       const sessionId = data.sessionId ?? data.sourceSessionId;
       if (sessionId) {
-        const sessionChannel: Channel = { type: "session:health", id: sessionId as string };
+        const sessionChannel: Channel = {
+          type: "session:health",
+          id: sessionId as string,
+        };
         getHub().publish(sessionChannel, type, {
           timestamp: new Date().toISOString(),
           ...data,

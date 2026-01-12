@@ -135,7 +135,6 @@ function generateId(prefix: string, length = 12): string {
   return `${prefix}${result}`;
 }
 
-
 // ============================================================================
 // Fleet Repository CRUD
 // ============================================================================
@@ -383,7 +382,8 @@ export async function updateFleetRepo(
   };
 
   // Map params to schema fields (using bracket notation for index signature access)
-  if (updates.localPath !== undefined) updateData["localPath"] = updates.localPath;
+  if (updates.localPath !== undefined)
+    updateData["localPath"] = updates.localPath;
   if (updates.isCloned !== undefined) updateData["isCloned"] = updates.isCloned;
   if (updates.currentBranch !== undefined)
     updateData["currentBranch"] = updates.currentBranch;
@@ -406,7 +406,8 @@ export async function updateFleetRepo(
     updateData["description"] = updates.description;
   if (updates.language !== undefined) updateData["language"] = updates.language;
   if (updates.stars !== undefined) updateData["stars"] = updates.stars;
-  if (updates.isPrivate !== undefined) updateData["isPrivate"] = updates.isPrivate;
+  if (updates.isPrivate !== undefined)
+    updateData["isPrivate"] = updates.isPrivate;
   if (updates.isArchived !== undefined)
     updateData["isArchived"] = updates.isArchived;
   if (updates.ruGroup !== undefined) updateData["ruGroup"] = updates.ruGroup;

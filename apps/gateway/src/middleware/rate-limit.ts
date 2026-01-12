@@ -8,8 +8,8 @@
  * - 429 responses with Retry-After header
  */
 
-import type { Context, Next } from "hono";
 import { wrapError } from "@flywheel/shared";
+import type { Context, Next } from "hono";
 import { getCorrelationId } from "./correlation";
 
 // ============================================================================
@@ -78,7 +78,10 @@ export class InMemoryRateLimiter {
    */
   startCleanup(): void {
     if (this.cleanupTimer) return;
-    this.cleanupTimer = setInterval(() => this.cleanup(), this.cleanupIntervalMs);
+    this.cleanupTimer = setInterval(
+      () => this.cleanup(),
+      this.cleanupIntervalMs,
+    );
   }
 
   /**
@@ -268,7 +271,9 @@ export function compositeKey(
  * Create a key generator that includes the request path.
  * Useful for per-endpoint rate limiting.
  */
-export function withPath(baseGenerator: (c: Context) => string): (c: Context) => string {
+export function withPath(
+  baseGenerator: (c: Context) => string,
+): (c: Context) => string {
   return (c: Context) => `${baseGenerator(c)}:${c.req.path}`;
 }
 

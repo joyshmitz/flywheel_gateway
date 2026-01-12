@@ -12,13 +12,13 @@ import {
   compositeKey,
   globalRateLimiter,
   InMemoryRateLimiter,
-  rateLimitMiddleware,
+  type RateLimitConfig,
   RELAXED_RATE_LIMIT,
+  rateLimitMiddleware,
   STANDARD_RATE_LIMIT,
   STRICT_RATE_LIMIT,
   strictRateLimitMiddleware,
   withPath,
-  type RateLimitConfig,
 } from "../middleware/rate-limit";
 
 describe("Rate Limit Middleware", () => {
@@ -246,10 +246,13 @@ describe("Rate Limit Middleware", () => {
   describe("rateLimitMiddleware", () => {
     test("adds rate limit headers to response", async () => {
       const app = new Hono();
-      app.use("*", rateLimitMiddleware({
-        limit: 100,
-        windowMs: 60_000,
-      }));
+      app.use(
+        "*",
+        rateLimitMiddleware({
+          limit: 100,
+          windowMs: 60_000,
+        }),
+      );
       app.get("/test", (c) => c.json({ ok: true }));
 
       const res = await app.request("/test", {
@@ -264,10 +267,13 @@ describe("Rate Limit Middleware", () => {
 
     test("decrements remaining with each request", async () => {
       const app = new Hono();
-      app.use("*", rateLimitMiddleware({
-        limit: 10,
-        windowMs: 60_000,
-      }));
+      app.use(
+        "*",
+        rateLimitMiddleware({
+          limit: 10,
+          windowMs: 60_000,
+        }),
+      );
       app.get("/test", (c) => c.json({ ok: true }));
 
       const headers = { "X-Real-IP": "test-client" };
@@ -283,10 +289,13 @@ describe("Rate Limit Middleware", () => {
 
     test("returns 429 when limit exceeded", async () => {
       const app = new Hono();
-      app.use("*", rateLimitMiddleware({
-        limit: 3,
-        windowMs: 60_000,
-      }));
+      app.use(
+        "*",
+        rateLimitMiddleware({
+          limit: 3,
+          windowMs: 60_000,
+        }),
+      );
       app.get("/test", (c) => c.json({ ok: true }));
 
       const headers = { "X-Real-IP": "rate-limited-client" };
@@ -309,10 +318,13 @@ describe("Rate Limit Middleware", () => {
 
     test("429 response includes helpful hints", async () => {
       const app = new Hono();
-      app.use("*", rateLimitMiddleware({
-        limit: 1,
-        windowMs: 60_000,
-      }));
+      app.use(
+        "*",
+        rateLimitMiddleware({
+          limit: 1,
+          windowMs: 60_000,
+        }),
+      );
       app.get("/test", (c) => c.json({ ok: true }));
 
       const headers = { "X-Real-IP": "hint-test" };
@@ -327,11 +339,14 @@ describe("Rate Limit Middleware", () => {
 
     test("skip function bypasses rate limiting", async () => {
       const app = new Hono();
-      app.use("*", rateLimitMiddleware({
-        limit: 1,
-        windowMs: 60_000,
-        skip: (c) => c.req.path === "/health",
-      }));
+      app.use(
+        "*",
+        rateLimitMiddleware({
+          limit: 1,
+          windowMs: 60_000,
+          skip: (c) => c.req.path === "/health",
+        }),
+      );
       app.get("/health", (c) => c.json({ ok: true }));
       app.get("/other", (c) => c.json({ ok: true }));
 
@@ -353,11 +368,14 @@ describe("Rate Limit Middleware", () => {
 
     test("custom message in 429 response", async () => {
       const app = new Hono();
-      app.use("*", rateLimitMiddleware({
-        limit: 1,
-        windowMs: 60_000,
-        message: "Custom rate limit message",
-      }));
+      app.use(
+        "*",
+        rateLimitMiddleware({
+          limit: 1,
+          windowMs: 60_000,
+          message: "Custom rate limit message",
+        }),
+      );
       app.get("/test", (c) => c.json({ ok: true }));
 
       const headers = { "X-Real-IP": "custom-msg-test" };
@@ -371,19 +389,26 @@ describe("Rate Limit Middleware", () => {
 
     test("different IPs have separate limits", async () => {
       const app = new Hono();
-      app.use("*", rateLimitMiddleware({
-        limit: 2,
-        windowMs: 60_000,
-      }));
+      app.use(
+        "*",
+        rateLimitMiddleware({
+          limit: 2,
+          windowMs: 60_000,
+        }),
+      );
       app.get("/test", (c) => c.json({ ok: true }));
 
       // Client A uses their limit
       await app.request("/test", { headers: { "X-Real-IP": "client-a" } });
       await app.request("/test", { headers: { "X-Real-IP": "client-a" } });
-      const resA = await app.request("/test", { headers: { "X-Real-IP": "client-a" } });
+      const resA = await app.request("/test", {
+        headers: { "X-Real-IP": "client-a" },
+      });
 
       // Client B should still have their limit
-      const resB = await app.request("/test", { headers: { "X-Real-IP": "client-b" } });
+      const resB = await app.request("/test", {
+        headers: { "X-Real-IP": "client-b" },
+      });
 
       expect(resA.status).toBe(429);
       expect(resB.status).toBe(200);
@@ -394,10 +419,13 @@ describe("Rate Limit Middleware", () => {
     test("rejects immediately when limit reached", async () => {
       let handlerCalled = 0;
       const app = new Hono();
-      app.use("*", strictRateLimitMiddleware({
-        limit: 2,
-        windowMs: 60_000,
-      }));
+      app.use(
+        "*",
+        strictRateLimitMiddleware({
+          limit: 2,
+          windowMs: 60_000,
+        }),
+      );
       app.get("/test", (c) => {
         handlerCalled++;
         return c.json({ ok: true });
@@ -438,20 +466,31 @@ describe("Rate Limit Middleware", () => {
         c.set("userId", c.req.header("X-User-Id") ?? "anon");
         return next();
       });
-      app.use("/api/*", rateLimitMiddleware({
-        limit: 2,
-        windowMs: 60_000,
-        keyGenerator: compositeKey(byUser, withPath(byIP)),
-      }));
+      app.use(
+        "/api/*",
+        rateLimitMiddleware({
+          limit: 2,
+          windowMs: 60_000,
+          keyGenerator: compositeKey(byUser, withPath(byIP)),
+        }),
+      );
       app.get("/api/resource", (c) => c.json({ ok: true }));
 
       // User A hits their limit on /api/resource
-      await app.request("/api/resource", { headers: { "X-User-Id": "user-a" } });
-      await app.request("/api/resource", { headers: { "X-User-Id": "user-a" } });
-      const resA = await app.request("/api/resource", { headers: { "X-User-Id": "user-a" } });
+      await app.request("/api/resource", {
+        headers: { "X-User-Id": "user-a" },
+      });
+      await app.request("/api/resource", {
+        headers: { "X-User-Id": "user-a" },
+      });
+      const resA = await app.request("/api/resource", {
+        headers: { "X-User-Id": "user-a" },
+      });
 
       // User B should still have their limit
-      const resB = await app.request("/api/resource", { headers: { "X-User-Id": "user-b" } });
+      const resB = await app.request("/api/resource", {
+        headers: { "X-User-Id": "user-b" },
+      });
 
       expect(resA.status).toBe(429);
       expect(resB.status).toBe(200);
@@ -461,18 +500,24 @@ describe("Rate Limit Middleware", () => {
       const app = new Hono();
 
       // Global loose limit
-      app.use("*", rateLimitMiddleware({
-        limit: 100,
-        windowMs: 60_000,
-        keyGenerator: (c) => `global:${byIP(c)}`,
-      }));
+      app.use(
+        "*",
+        rateLimitMiddleware({
+          limit: 100,
+          windowMs: 60_000,
+          keyGenerator: (c) => `global:${byIP(c)}`,
+        }),
+      );
 
       // Tighter limit on specific endpoint
-      app.use("/expensive", strictRateLimitMiddleware({
-        limit: 2,
-        windowMs: 60_000,
-        keyGenerator: (c) => `expensive:${byIP(c)}`,
-      }));
+      app.use(
+        "/expensive",
+        strictRateLimitMiddleware({
+          limit: 2,
+          windowMs: 60_000,
+          keyGenerator: (c) => `expensive:${byIP(c)}`,
+        }),
+      );
 
       app.get("/cheap", (c) => c.json({ type: "cheap" }));
       app.get("/expensive", (c) => c.json({ type: "expensive" }));

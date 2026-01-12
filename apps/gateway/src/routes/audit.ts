@@ -4,19 +4,19 @@
  * REST API endpoints for audit log search, export, and retention policy management.
  */
 
+import { and, count, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { db } from "../db";
 import { auditLogs } from "../db/schema";
-import { and, desc, eq, gte, lte, inArray, count } from "drizzle-orm";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
-import {
-  type AuditSearchResult,
-  type AuditExportResult,
-  type RetentionPolicy,
-  DEFAULT_RETENTION_POLICIES,
-} from "../types/audit.types";
 import { redactSensitiveData } from "../services/audit-redaction.service";
+import {
+  type AuditExportResult,
+  type AuditSearchResult,
+  DEFAULT_RETENTION_POLICIES,
+  type RetentionPolicy,
+} from "../types/audit.types";
 import {
   sendError,
   sendInternalError,
@@ -188,7 +188,10 @@ app.post("/retention-policies", async (c) => {
     };
 
     retentionPolicies.set(id, policy);
-    log.info({ policyId: id, name: validBody.name }, "Retention policy created");
+    log.info(
+      { policyId: id, name: validBody.name },
+      "Retention policy created",
+    );
 
     return c.json(policy, 201);
   } catch (error) {
@@ -223,9 +226,13 @@ app.put("/retention-policies/:id", async (c) => {
     const updatedPolicy: RetentionPolicy = {
       ...policy,
       ...(validBody.name !== undefined && { name: validBody.name }),
-      ...(validBody.description !== undefined && { description: validBody.description }),
+      ...(validBody.description !== undefined && {
+        description: validBody.description,
+      }),
       ...(validBody.filter !== undefined && { filter: validBody.filter }),
-      ...(validBody.retention !== undefined && { retention: validBody.retention }),
+      ...(validBody.retention !== undefined && {
+        retention: validBody.retention,
+      }),
       ...(validBody.enabled !== undefined && { enabled: validBody.enabled }),
       id,
       createdAt: policy.createdAt,
@@ -257,7 +264,12 @@ app.delete("/retention-policies/:id", async (c) => {
   }
 
   if (policy.name === "Default Policy") {
-    return sendError(c, 400, "CANNOT_DELETE_DEFAULT", "Cannot delete the default retention policy");
+    return sendError(
+      c,
+      400,
+      "CANNOT_DELETE_DEFAULT",
+      "Cannot delete the default retention policy",
+    );
   }
 
   retentionPolicies.delete(id);
@@ -331,7 +343,10 @@ app.post("/export", async (c) => {
           exportJobs.set(jobId, job);
         }
 
-        log.info({ jobId, recordCount: redactedEvents.length }, "Audit export completed");
+        log.info(
+          { jobId, recordCount: redactedEvents.length },
+          "Audit export completed",
+        );
       } catch (error) {
         log.error({ error, jobId }, "Audit export failed");
         const job = exportJobs.get(jobId);
@@ -343,7 +358,11 @@ app.post("/export", async (c) => {
       }
     })();
 
-    return c.json({ jobId, status: "processing", message: "Export job created successfully" });
+    return c.json({
+      jobId,
+      status: "processing",
+      message: "Export job created successfully",
+    });
   } catch (error) {
     log.error({ error }, "Failed to create export job");
     return sendInternalError(c);
@@ -379,7 +398,12 @@ app.get("/export/:jobId/download", async (c) => {
   }
 
   if (job.status !== "completed") {
-    return sendError(c, 400, "EXPORT_NOT_READY", `Export job status: ${job.status}`);
+    return sendError(
+      c,
+      400,
+      "EXPORT_NOT_READY",
+      `Export job status: ${job.status}`,
+    );
   }
 
   try {
@@ -435,18 +459,37 @@ app.get("/analytics/summary", async (c) => {
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [totalResult, byActionResult, byOutcomeResult, byResourceTypeResult] = await Promise.all([
-      db.select({ count: count() }).from(auditLogs).where(whereClause),
-      db.select({ action: auditLogs.action, count: count() }).from(auditLogs).where(whereClause).groupBy(auditLogs.action),
-      db.select({ outcome: auditLogs.outcome, count: count() }).from(auditLogs).where(whereClause).groupBy(auditLogs.outcome),
-      db.select({ resourceType: auditLogs.resourceType, count: count() }).from(auditLogs).where(whereClause).groupBy(auditLogs.resourceType),
-    ]);
+    const [totalResult, byActionResult, byOutcomeResult, byResourceTypeResult] =
+      await Promise.all([
+        db.select({ count: count() }).from(auditLogs).where(whereClause),
+        db
+          .select({ action: auditLogs.action, count: count() })
+          .from(auditLogs)
+          .where(whereClause)
+          .groupBy(auditLogs.action),
+        db
+          .select({ outcome: auditLogs.outcome, count: count() })
+          .from(auditLogs)
+          .where(whereClause)
+          .groupBy(auditLogs.outcome),
+        db
+          .select({ resourceType: auditLogs.resourceType, count: count() })
+          .from(auditLogs)
+          .where(whereClause)
+          .groupBy(auditLogs.resourceType),
+      ]);
 
     return c.json({
       total: totalResult[0]?.count ?? 0,
-      byAction: Object.fromEntries(byActionResult.map((r) => [r.action, r.count])),
-      byOutcome: Object.fromEntries(byOutcomeResult.map((r) => [r.outcome, r.count])),
-      byResourceType: Object.fromEntries(byResourceTypeResult.map((r) => [r.resourceType, r.count])),
+      byAction: Object.fromEntries(
+        byActionResult.map((r) => [r.action, r.count]),
+      ),
+      byOutcome: Object.fromEntries(
+        byOutcomeResult.map((r) => [r.outcome, r.count]),
+      ),
+      byResourceType: Object.fromEntries(
+        byResourceTypeResult.map((r) => [r.resourceType, r.count]),
+      ),
       timeRange: { start: query.startDate, end: query.endDate },
     });
   } catch (error) {
@@ -486,13 +529,18 @@ app.get("/", async (c) => {
     const query = parseResult.data;
     const conditions: ReturnType<typeof eq>[] = [];
 
-    if (query.startDate) conditions.push(gte(auditLogs.createdAt, new Date(query.startDate)));
-    if (query.endDate) conditions.push(lte(auditLogs.createdAt, new Date(query.endDate)));
-    if (query.correlationId) conditions.push(eq(auditLogs.correlationId, query.correlationId));
+    if (query.startDate)
+      conditions.push(gte(auditLogs.createdAt, new Date(query.startDate)));
+    if (query.endDate)
+      conditions.push(lte(auditLogs.createdAt, new Date(query.endDate)));
+    if (query.correlationId)
+      conditions.push(eq(auditLogs.correlationId, query.correlationId));
     if (query.actorId) conditions.push(eq(auditLogs.accountId, query.actorId));
     if (query.action) conditions.push(eq(auditLogs.action, query.action));
-    if (query.resourceType) conditions.push(eq(auditLogs.resourceType, query.resourceType));
-    if (query.resourceId) conditions.push(eq(auditLogs.resource, query.resourceId));
+    if (query.resourceType)
+      conditions.push(eq(auditLogs.resourceType, query.resourceType));
+    if (query.resourceId)
+      conditions.push(eq(auditLogs.resource, query.resourceId));
     if (query.status) conditions.push(eq(auditLogs.outcome, query.status));
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -502,7 +550,11 @@ app.get("/", async (c) => {
         .select()
         .from(auditLogs)
         .where(whereClause)
-        .orderBy(query.sort === "desc" ? desc(auditLogs.createdAt) : auditLogs.createdAt)
+        .orderBy(
+          query.sort === "desc"
+            ? desc(auditLogs.createdAt)
+            : auditLogs.createdAt,
+        )
         .limit(query.limit)
         .offset(query.offset),
       db.select({ count: count() }).from(auditLogs).where(whereClause),
@@ -519,7 +571,10 @@ app.get("/", async (c) => {
       events: redactedEvents as unknown as AuditSearchResult["events"],
       total,
       hasMore: query.offset + events.length < total,
-      nextCursor: query.offset + events.length < total ? String(query.offset + query.limit) : undefined,
+      nextCursor:
+        query.offset + events.length < total
+          ? String(query.offset + query.limit)
+          : undefined,
     };
 
     return c.json(result);
@@ -538,7 +593,11 @@ app.get("/:id", async (c) => {
   const id = c.req.param("id");
 
   try {
-    const [event] = await db.select().from(auditLogs).where(eq(auditLogs.id, id)).limit(1);
+    const [event] = await db
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.id, id))
+      .limit(1);
 
     if (!event) {
       return sendNotFound(c, "audit_event", id);

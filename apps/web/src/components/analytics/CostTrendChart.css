@@ -1,0 +1,160 @@
+/* CostTrendChart Styles */
+
+.cost-trend-chart {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.cost-trend-chart__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.cost-trend-chart__header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.cost-trend-chart__periods {
+  display: flex;
+  gap: 0.25rem;
+  background: var(--surface-muted);
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+}
+
+.cost-trend-chart__period-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ink-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.cost-trend-chart__period-btn:hover {
+  color: var(--ink);
+}
+
+.cost-trend-chart__period-btn--active {
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.cost-trend-chart__chart {
+  position: relative;
+  height: 150px;
+  width: 100%;
+}
+
+.cost-trend-chart__chart svg {
+  width: 100%;
+  height: 100%;
+}
+
+.cost-trend-chart__point {
+  cursor: pointer;
+  transition: r var(--duration-fast) var(--ease-out);
+}
+
+.cost-trend-chart__tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--bg);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  z-index: var(--z-dropdown);
+  box-shadow: var(--shadow-md);
+}
+
+.cost-trend-chart__tooltip::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid var(--ink);
+}
+
+.cost-trend-chart__tooltip-date {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.cost-trend-chart__tooltip-cost {
+  font-weight: 600;
+}
+
+.cost-trend-chart__tooltip-requests {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.cost-trend-chart__x-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+/* Loading state */
+.cost-trend-chart--loading .cost-trend-chart__skeleton {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  height: 150px;
+  padding: 1rem 0;
+}
+
+.skeleton-bar {
+  flex: 1;
+  background: linear-gradient(
+    90deg,
+    var(--surface-muted) 25%,
+    var(--bg) 50%,
+    var(--surface-muted) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: var(--radius-xs);
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Error state */
+.cost-trend-chart__error-message,
+.cost-trend-chart__empty-message {
+  color: var(--ink-muted);
+  text-align: center;
+  padding: 2rem;
+  font-size: 0.875rem;
+}
+
+.cost-trend-chart__error-message {
+  color: var(--danger);
+}

@@ -158,7 +158,11 @@ function mapSeverity(severity: string): FindingSeverity {
 
 function mapType(category: string): FindingType {
   const lower = category.toLowerCase();
-  if (lower.includes("security") || lower.includes("xss") || lower.includes("injection")) {
+  if (
+    lower.includes("security") ||
+    lower.includes("xss") ||
+    lower.includes("injection")
+  ) {
     return "security";
   }
   if (lower.includes("performance") || lower.includes("memory")) {
@@ -174,7 +178,7 @@ function generateId(prefix: string): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
   const randomPart = Array.from(
     { length: 12 },
-    () => chars[Math.floor(Math.random() * chars.length)]
+    () => chars[Math.floor(Math.random() * chars.length)],
   ).join("");
   return `${prefix}_${randomPart}`;
 }
@@ -211,7 +215,11 @@ export interface UBSService {
   };
 
   /** Check if UBS is available */
-  checkHealth(): Promise<{ available: boolean; version?: string; error?: string }>;
+  checkHealth(): Promise<{
+    available: boolean;
+    version?: string;
+    error?: string;
+  }>;
 }
 
 export function createUBSService(projectRoot?: string): UBSService {
@@ -301,7 +309,14 @@ export function createUBSService(projectRoot?: string): UBSService {
             durationMs,
             filesScanned: 0,
             findings: [],
-            summary: { total: 0, critical: 0, high: 0, medium: 0, low: 0, byCategory: {} },
+            summary: {
+              total: 0,
+              critical: 0,
+              high: 0,
+              medium: 0,
+              low: 0,
+              byCategory: {},
+            },
             paths: scanPaths,
             error: stderr || "Failed to parse UBS output",
           };
@@ -327,7 +342,9 @@ export function createUBSService(projectRoot?: string): UBSService {
           if (f.rule_id) finding.ruleId = f.rule_id;
 
           // Check if previously dismissed
-          const dismissal = store.dismissals.get(`${f.file}:${f.line}:${f.message}`);
+          const dismissal = store.dismissals.get(
+            `${f.file}:${f.line}:${f.message}`,
+          );
           if (dismissal) {
             finding.status = "dismissed";
             finding.dismissedBy = dismissal.by;
@@ -342,7 +359,8 @@ export function createUBSService(projectRoot?: string): UBSService {
 
         const result: ScanResult = {
           scanId,
-          status: exitCode === 0 ? "success" : exitCode === 2 ? "error" : "failed",
+          status:
+            exitCode === 0 ? "success" : exitCode === 2 ? "error" : "failed",
           exitCode,
           startedAt,
           completedAt,
@@ -371,7 +389,7 @@ export function createUBSService(projectRoot?: string): UBSService {
             critical: result.summary.critical,
             high: result.summary.high,
           },
-          "UBS scan completed"
+          "UBS scan completed",
         );
 
         return result;
@@ -386,7 +404,14 @@ export function createUBSService(projectRoot?: string): UBSService {
           durationMs: completedAt.getTime() - startedAt.getTime(),
           filesScanned: 0,
           findings: [],
-          summary: { total: 0, critical: 0, high: 0, medium: 0, low: 0, byCategory: {} },
+          summary: {
+            total: 0,
+            critical: 0,
+            high: 0,
+            medium: 0,
+            low: 0,
+            byCategory: {},
+          },
           paths: scanPaths,
           error: error instanceof Error ? error.message : String(error),
         };
@@ -489,11 +514,16 @@ export function createUBSService(projectRoot?: string): UBSService {
         totalScans: store.scans.size,
         totalFindings: findings.length,
         openFindings: findings.filter((f) => f.status === "open").length,
-        dismissedFindings: findings.filter((f) => f.status === "dismissed").length,
+        dismissedFindings: findings.filter((f) => f.status === "dismissed")
+          .length,
       };
     },
 
-    async checkHealth(): Promise<{ available: boolean; version?: string; error?: string }> {
+    async checkHealth(): Promise<{
+      available: boolean;
+      version?: string;
+      error?: string;
+    }> {
       try {
         const proc = Bun.spawn(["ubs", "--version"], {
           stdout: "pipe",
@@ -507,7 +537,10 @@ export function createUBSService(projectRoot?: string): UBSService {
         if (proc.exitCode === 0) {
           return { available: true, version: stdout.trim() };
         }
-        return { available: false, error: "UBS command returned non-zero exit code" };
+        return {
+          available: false,
+          error: "UBS command returned non-zero exit code",
+        };
       } catch (error) {
         return {
           available: false,

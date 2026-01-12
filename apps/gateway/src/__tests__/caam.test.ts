@@ -34,6 +34,10 @@ mock.module("../db", () => ({
   sqlite: realSqlite,
 }));
 
+import {
+  createMockCaamExecutor,
+  type MockCaamExecutor,
+} from "@flywheel/test-utils";
 import { eq } from "drizzle-orm";
 import {
   activateProfile,
@@ -48,13 +52,13 @@ import {
   setCooldown,
   updateProfile,
 } from "../caam/account.service";
-import { CaamRunner } from "../caam/runner";
 import {
   handleRateLimit,
   isRateLimitError,
   peekNextProfile,
   rotate,
 } from "../caam/rotation";
+import { CaamRunner } from "../caam/runner";
 import type { ProviderId } from "../caam/types";
 import { db } from "../db";
 import {
@@ -62,7 +66,6 @@ import {
   accountPools,
   accountProfiles,
 } from "../db/schema";
-import { createMockCaamExecutor, type MockCaamExecutor } from "@flywheel/test-utils";
 
 describe("CAAM Account Service", () => {
   // Clean up test data after each test

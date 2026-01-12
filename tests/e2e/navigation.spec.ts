@@ -17,7 +17,9 @@ test.describe("Navigation", () => {
     await expect(page.locator(".sidebar")).toBeVisible();
 
     // Dashboard content should be visible
-    await expect(page.locator("h3").filter({ hasText: "Live agents" })).toBeVisible();
+    await expect(
+      page.locator("h3").filter({ hasText: "Live agents" }),
+    ).toBeVisible();
   });
 
   test("should navigate to Agents page", async ({ page }) => {
@@ -25,7 +27,9 @@ test.describe("Navigation", () => {
     await page.click('a[href="/agents"]');
 
     await expect(page).toHaveURL("/agents");
-    await expect(page.locator("h3").filter({ hasText: "Agents" })).toBeVisible();
+    await expect(
+      page.locator("h3").filter({ hasText: "Agents" }),
+    ).toBeVisible();
   });
 
   test("should navigate to Beads page", async ({ page }) => {
@@ -77,8 +81,12 @@ test.describe("Navigation", () => {
 
     // Navigate to agents
     await page.click('a[href="/agents"]');
-    await expect(page.locator('a[href="/agents"].nav-link--active')).toBeVisible();
-    await expect(page.locator('a[href="/"].nav-link--active')).not.toBeVisible();
+    await expect(
+      page.locator('a[href="/agents"].nav-link--active'),
+    ).toBeVisible();
+    await expect(
+      page.locator('a[href="/"].nav-link--active'),
+    ).not.toBeVisible();
   });
 
   test("should show 404 page for invalid routes", async ({ page }) => {
@@ -125,7 +133,9 @@ test.describe("Sidebar", () => {
   });
 
   test("should show command palette hint", async ({ page }) => {
-    await expect(page.locator(".sidebar__hint")).toContainText("Command palette");
+    await expect(page.locator(".sidebar__hint")).toContainText(
+      "Command palette",
+    );
     await expect(page.locator(".sidebar__hint kbd")).toHaveText("⌘K");
   });
 });

@@ -5,7 +5,7 @@
  * Connects to control_plane's SSE stream and republishes events.
  */
 
-import { getGraphEventsService, type GraphEventsService } from "./graph-events";
+import { type GraphEventsService, getGraphEventsService } from "./graph-events";
 import { logger } from "./logger";
 
 /**
@@ -378,10 +378,7 @@ export class GraphBridgeService {
         break;
 
       default:
-        logger.warn(
-          { type: event.type },
-          "[GRAPH-BRIDGE] Unknown event type",
-        );
+        logger.warn({ type: event.type }, "[GRAPH-BRIDGE] Unknown event type");
     }
   }
 }

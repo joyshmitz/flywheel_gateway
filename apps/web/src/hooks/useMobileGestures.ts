@@ -4,7 +4,7 @@
  * Provides touch gesture detection for mobile interactions.
  */
 
-import { useCallback, useRef, useState, type TouchEvent } from 'react';
+import { type TouchEvent, useCallback, useRef, useState } from "react";
 
 export interface GestureConfig {
   /** Callback when swiped left */
@@ -44,7 +44,7 @@ export interface GestureState {
   swipeOffset: { x: number; y: number };
 }
 
-export type SwipeDirection = 'left' | 'right' | 'up' | 'down';
+export type SwipeDirection = "left" | "right" | "up" | "down";
 
 interface TouchPoint {
   x: number;
@@ -100,7 +100,7 @@ export function useMobileGestures(config: GestureConfig = {}) {
         swipeOffset: { x: 0, y: 0 },
       }));
     },
-    [mergedConfig.enabled]
+    [mergedConfig.enabled],
   );
 
   const handleTouchMove = useCallback(
@@ -129,14 +129,14 @@ export function useMobileGestures(config: GestureConfig = {}) {
       // Determine swipe direction
       let direction: SwipeDirection | null = null;
       if (absDeltaX > absDeltaY) {
-        direction = deltaX > 0 ? 'right' : 'left';
+        direction = deltaX > 0 ? "right" : "left";
       } else {
-        direction = deltaY > 0 ? 'down' : 'up';
+        direction = deltaY > 0 ? "down" : "up";
       }
 
       // Handle pull-to-refresh
       const isPulling =
-        direction === 'down' &&
+        direction === "down" &&
         deltaY > 0 &&
         window.scrollY === 0 &&
         mergedConfig.onPullToRefresh !== DEFAULT_CONFIG.onPullToRefresh;
@@ -149,7 +149,7 @@ export function useMobileGestures(config: GestureConfig = {}) {
       if (
         mergedConfig.preventDefaultOnHorizontal &&
         !isScrollingRef.current &&
-        (direction === 'left' || direction === 'right')
+        (direction === "left" || direction === "right")
       ) {
         e.preventDefault();
       }
@@ -167,12 +167,16 @@ export function useMobileGestures(config: GestureConfig = {}) {
       mergedConfig.pullThreshold,
       mergedConfig.preventDefaultOnHorizontal,
       mergedConfig.onPullToRefresh,
-    ]
+    ],
   );
 
   const handleTouchEnd = useCallback(
     async (e: TouchEvent) => {
-      if (!mergedConfig.enabled || !touchStartRef.current || !touchCurrentRef.current) {
+      if (
+        !mergedConfig.enabled ||
+        !touchStartRef.current ||
+        !touchCurrentRef.current
+      ) {
         return;
       }
 
@@ -188,7 +192,8 @@ export function useMobileGestures(config: GestureConfig = {}) {
       // Check if swipe was fast enough and far enough
       const isValidSwipe =
         velocity >= mergedConfig.velocityThreshold &&
-        (absDeltaX >= mergedConfig.swipeThreshold || absDeltaY >= mergedConfig.swipeThreshold);
+        (absDeltaX >= mergedConfig.swipeThreshold ||
+          absDeltaY >= mergedConfig.swipeThreshold);
 
       if (isValidSwipe && !isScrollingRef.current) {
         // Determine primary direction
@@ -255,7 +260,7 @@ export function useMobileGestures(config: GestureConfig = {}) {
       mergedConfig.onPullToRefresh,
       state.isPulling,
       state.pullProgress,
-    ]
+    ],
   );
 
   const handleTouchCancel = useCallback(() => {
@@ -289,18 +294,18 @@ export function useMobileGestures(config: GestureConfig = {}) {
  */
 export function useSwipeToDismiss(
   onDismiss: () => void,
-  options: { direction?: 'left' | 'right' | 'both'; threshold?: number } = {}
+  options: { direction?: "left" | "right" | "both"; threshold?: number } = {},
 ) {
-  const { direction = 'right', threshold = 100 } = options;
+  const { direction = "right", threshold = 100 } = options;
 
   const [offset, setOffset] = useState(0);
   const [isDismissing, setIsDismissing] = useState(false);
 
   const { handlers, state } = useMobileGestures({
     onSwipeLeft:
-      direction === 'left' || direction === 'both' ? onDismiss : undefined,
+      direction === "left" || direction === "both" ? onDismiss : undefined,
     onSwipeRight:
-      direction === 'right' || direction === 'both' ? onDismiss : undefined,
+      direction === "right" || direction === "both" ? onDismiss : undefined,
     swipeThreshold: threshold,
     preventDefaultOnHorizontal: true,
   });
@@ -313,9 +318,9 @@ export function useSwipeToDismiss(
       if (state.isSwiping) {
         const relevantOffset = state.swipeOffset.x;
         if (
-          (direction === 'right' && relevantOffset > 0) ||
-          (direction === 'left' && relevantOffset < 0) ||
-          direction === 'both'
+          (direction === "right" && relevantOffset > 0) ||
+          (direction === "left" && relevantOffset < 0) ||
+          direction === "both"
         ) {
           setOffset(relevantOffset);
         }

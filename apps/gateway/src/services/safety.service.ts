@@ -11,13 +11,13 @@ import {
   evaluateRules,
   getDefaultRules,
   getRuleStats,
-  validateRule,
   type SafetyAction,
   type SafetyCategory,
   type SafetyEvaluationResult,
   type SafetyOperation,
   type SafetyRule,
   type SafetySeverity,
+  validateRule,
 } from "./safety-rules.engine";
 
 // ============================================================================
@@ -390,10 +390,7 @@ export async function toggleRule(
       config.updatedAt = new Date();
       configs.set(workspaceId, config);
 
-      logger.info(
-        { workspaceId, ruleId, enabled },
-        "Safety rule toggled",
-      );
+      logger.info({ workspaceId, ruleId, enabled }, "Safety rule toggled");
       return rule;
     }
   }
@@ -481,7 +478,9 @@ export async function preFlightCheck(
       result.requiresApproval = true;
       result.reason = "Budget threshold reached, approval required to continue";
     } else {
-      result.warnings.push(`Budget at ${budgetResult.info?.percentage.toFixed(0)}%`);
+      result.warnings.push(
+        `Budget at ${budgetResult.info?.percentage.toFixed(0)}%`,
+      );
     }
   }
 
@@ -589,7 +588,10 @@ function checkRateLimits(
   const windowMs = 60000; // 1 minute window
 
   // Map operation types to limit types
-  const limitMap: Record<SafetyCategory, keyof SafetyRateLimitConfig["limits"]> = {
+  const limitMap: Record<
+    SafetyCategory,
+    keyof SafetyRateLimitConfig["limits"]
+  > = {
     filesystem: "fileWritesPerMinute",
     git: "commandsPerMinute",
     network: "networkRequestsPerMinute",
@@ -600,7 +602,9 @@ function checkRateLimits(
 
   const limitType = limitMap[request.operation.type] ?? "requestsPerMinute";
   const limit = config.rateLimits.limits[limitType];
-  const effectiveLimit = Math.floor(limit * (1 + config.rateLimits.burstAllowance));
+  const effectiveLimit = Math.floor(
+    limit * (1 + config.rateLimits.burstAllowance),
+  );
 
   const key = getRateLimitKey(request, config.rateLimits, limitType);
   let entry = rateLimitCounters.get(key);
@@ -695,7 +699,12 @@ export async function recordUsage(
 ): Promise<void> {
   const config = await getConfig(workspaceId);
   const key = getBudgetKey(
-    { workspaceId, agentId, sessionId, operation: { type: "resources", fields: {} } },
+    {
+      workspaceId,
+      agentId,
+      sessionId,
+      operation: { type: "resources", fields: {} },
+    },
     config.budget,
   );
 
@@ -894,9 +903,7 @@ export async function emergencyStop(
     name: "Emergency Stop",
     description: `Emergency stop initiated by ${initiatedBy}: ${reason}`,
     category: "execution",
-    conditions: [
-      { field: "command", patternType: "glob", pattern: "*" },
-    ],
+    conditions: [{ field: "command", patternType: "glob", pattern: "*" }],
     conditionLogic: "and",
     action: "deny",
     severity: "critical",
@@ -945,9 +952,7 @@ export async function clearEmergencyStop(
 
   // Remove emergency stop rules
   for (const category of Object.values(config.categories)) {
-    category.rules = category.rules.filter(
-      (r) => r.name !== "Emergency Stop",
-    );
+    category.rules = category.rules.filter((r) => r.name !== "Emergency Stop");
   }
 
   config.updatedAt = new Date();

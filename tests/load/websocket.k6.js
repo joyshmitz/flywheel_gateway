@@ -5,9 +5,9 @@
  * Or with environment: k6 run -e TARGET_HOST=localhost:3000 tests/load/websocket.k6.js
  */
 
-import ws from "k6/ws";
 import { check, sleep } from "k6";
-import { Rate, Trend, Counter } from "k6/metrics";
+import { Counter, Rate, Trend } from "k6/metrics";
+import ws from "k6/ws";
 
 // Custom metrics
 const wsErrors = new Rate("ws_errors");
@@ -51,7 +51,7 @@ export default function () {
 
   const connectStart = Date.now();
 
-  const res = ws.connect(url, {}, function (socket) {
+  const res = ws.connect(url, {}, (socket) => {
     connectionTime.add(Date.now() - connectStart);
 
     socket.on("open", () => {
@@ -96,14 +96,14 @@ export default function () {
     });
 
     // Keep connection alive for a period
-    socket.setTimeout(function () {
+    socket.setTimeout(() => {
       // Send periodic heartbeat
       socket.send(JSON.stringify({ type: "ping" }));
       messagesSent.add(1);
     }, 5000);
 
     // Hold connection for test duration
-    socket.setTimeout(function () {
+    socket.setTimeout(() => {
       socket.close();
     }, 30000);
   });
@@ -121,7 +121,9 @@ export default function () {
 }
 
 export function setup() {
-  console.log(`Starting WebSocket load test against ${WS_PROTOCOL}://${TARGET_HOST}`);
+  console.log(
+    `Starting WebSocket load test against ${WS_PROTOCOL}://${TARGET_HOST}`,
+  );
   return { startTime: Date.now() };
 }
 

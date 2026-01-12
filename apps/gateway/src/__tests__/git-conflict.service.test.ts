@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
+  _clearAllConflictData,
   analyzeRepositoryConflicts,
+  type BranchChanges,
   clearBranchChanges,
+  type FileChange,
   getAnalysisHistory,
   getBranchChanges,
   getConflictPatterns,
@@ -9,9 +12,6 @@ import {
   isConflictProneFile,
   registerBranchChanges,
   wouldFilesConflict,
-  _clearAllConflictData,
-  type BranchChanges,
-  type FileChange,
 } from "../services/git-conflict.service";
 
 describe("Git Conflict Prediction Service", () => {

@@ -554,7 +554,8 @@ export async function exportHistory(options: ExportOptions): Promise<string> {
   // Build query options conditionally (for exactOptionalPropertyTypes)
   const queryOptions: HistoryQueryOptions = { limit: 10000 }; // Max export size
   if (options.agentId !== undefined) queryOptions.agentId = options.agentId;
-  if (options.startDate !== undefined) queryOptions.startDate = options.startDate;
+  if (options.startDate !== undefined)
+    queryOptions.startDate = options.startDate;
   if (options.endDate !== undefined) queryOptions.endDate = options.endDate;
 
   const { entries } = await queryHistory(queryOptions);
@@ -810,7 +811,9 @@ function rowToEntry(row: {
   const errorValue = outputData["error"] as string | undefined;
   if (errorValue !== undefined) entry.error = errorValue;
 
-  const metadataValue = inputData["metadata"] as Record<string, unknown> | undefined;
+  const metadataValue = inputData["metadata"] as
+    | Record<string, unknown>
+    | undefined;
   if (metadataValue !== undefined) entry.metadata = metadataValue;
 
   return entry;

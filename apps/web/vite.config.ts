@@ -1,6 +1,6 @@
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
 import { resolve } from "path";
+import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react()],
@@ -48,7 +48,11 @@ export default defineConfig({
         // Consistent chunk naming for caching
         chunkFileNames: (chunkInfo) => {
           const facadeModuleId = chunkInfo.facadeModuleId
-            ? chunkInfo.facadeModuleId.split("/").pop()?.replace(".tsx", "").replace(".ts", "")
+            ? chunkInfo.facadeModuleId
+                .split("/")
+                .pop()
+                ?.replace(".tsx", "")
+                .replace(".ts", "")
             : "chunk";
           return `assets/${facadeModuleId}-[hash].js`;
         },

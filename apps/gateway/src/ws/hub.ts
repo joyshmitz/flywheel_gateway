@@ -342,10 +342,7 @@ export class WebSocketHub {
    * @param messageIds - IDs of messages being acknowledged
    * @returns Acknowledgment result
    */
-  handleAck(
-    connectionId: string,
-    messageIds: string[],
-  ): AckResponseMessage {
+  handleAck(connectionId: string, messageIds: string[]): AckResponseMessage {
     const ws = this.connections.get(connectionId);
     if (!ws) {
       return {

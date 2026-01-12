@@ -228,7 +228,7 @@ export class MockCaamExecutor {
       success: true,
       tool: provider ?? "unknown",
       profile: hasAuto
-        ? this.config.profiles?.[0]?.name ?? "default"
+        ? (this.config.profiles?.[0]?.name ?? "default")
         : (profile ?? "default"),
       source: hasAuto ? "smart rotation" : "manual",
     };
@@ -273,7 +273,11 @@ export class MockCaamExecutor {
   } {
     const hasJson = args.includes("--json");
     if (hasJson) {
-      return { stdout: JSON.stringify({ success: true }), stderr: "", exitCode: 0 };
+      return {
+        stdout: JSON.stringify({ success: true }),
+        stderr: "",
+        exitCode: 0,
+      };
     }
     return { stdout: "Backup created", stderr: "", exitCode: 0 };
   }
@@ -326,8 +330,7 @@ export class MockCaamExecutor {
    * Inject a failure scenario.
    */
   injectFailure(pattern: string, error: string, exitCode = 1): void {
-    this.config.failureScenarios =
-      this.config.failureScenarios ?? new Map();
+    this.config.failureScenarios = this.config.failureScenarios ?? new Map();
     this.config.failureScenarios.set(pattern, { error, exitCode });
   }
 

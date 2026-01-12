@@ -1,19 +1,19 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
+  _clearAllSafetyData,
   addRule,
+  clearEmergencyStop,
   createDefaultConfig,
   emergencyStop,
-  clearEmergencyStop,
   getConfig,
   getSafetyStats,
-  getViolations,
   getViolationStats,
+  getViolations,
   preFlightCheck,
   recordUsage,
   removeRule,
   toggleRule,
   updateConfig,
-  _clearAllSafetyData,
 } from "../services/safety.service";
 import type { SafetyOperation } from "../services/safety-rules.engine";
 

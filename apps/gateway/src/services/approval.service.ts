@@ -405,7 +405,7 @@ export async function getQueueDepth(workspaceId?: string): Promise<number> {
 export async function getApprovalStats(
   workspaceId?: string,
 ): Promise<ApprovalStats> {
-  let filtered = workspaceId
+  const filtered = workspaceId
     ? approvals.filter((a) => a.workspaceId === workspaceId)
     : approvals;
 

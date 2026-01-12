@@ -3,24 +3,24 @@
  */
 
 export {
-  BackpressureManager,
-  createBackpressureManager,
-  type BackpressureConfig,
-  type BackpressureState,
   type BackpressureCallback,
-} from './BackpressureManager';
+  type BackpressureConfig,
+  BackpressureManager,
+  type BackpressureState,
+  createBackpressureManager,
+} from "./BackpressureManager";
 
 export {
-  FlowControl,
-  FlowControlSignal,
   createFlowControl,
-  type FlowControlMessage,
+  FlowControl,
   type FlowControlConfig,
-} from './FlowControl';
+  type FlowControlMessage,
+  FlowControlSignal,
+} from "./FlowControl";
 
 export {
-  MessageQueue,
   createMessageQueue,
+  MessageQueue,
   type QueueConfig,
   type QueueStats,
-} from './MessageQueue';
+} from "./MessageQueue";

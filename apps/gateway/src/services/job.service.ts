@@ -10,30 +10,30 @@
  * - Checkpointing for resume
  */
 
-import { eq, and, desc, lt, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import { db } from "../db/connection";
-import { jobs, jobLogs } from "../db/schema";
+import { jobLogs, jobs } from "../db/schema";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
-import type { Channel } from "../ws/channels";
-import { getHub } from "../ws/hub";
-import { logger as baseLogger, createChildLogger } from "./logger";
 import type {
+  CreateJobInput,
   Job,
-  JobType,
-  JobStatus,
-  JobPriority,
-  JobProgress,
+  JobContext,
   JobError,
   JobHandler,
-  JobContext,
-  JobLogLevel,
-  JobQueueConfig,
-  CreateJobInput,
-  ListJobsQuery,
   JobLogEntry,
+  JobLogLevel,
+  JobPriority,
+  JobProgress,
+  JobQueueConfig,
+  JobStatus,
+  JobType,
+  ListJobsQuery,
   ValidationResult,
 } from "../types/job.types";
 import { DEFAULT_JOB_QUEUE_CONFIG } from "../types/job.types";
+import type { Channel } from "../ws/channels";
+import { getHub } from "../ws/hub";
+import { logger as baseLogger, createChildLogger } from "./logger";
 
 // ============================================================================
 // Error Classes
@@ -188,7 +188,10 @@ class JobExecution {
 
     if (this.handler.onCancel) {
       this.handler.onCancel(this.context).catch((err) => {
-        baseLogger.error({ jobId: this.job.id, error: err }, "Job cancel handler error");
+        baseLogger.error(
+          { jobId: this.job.id, error: err },
+          "Job cancel handler error",
+        );
       });
     }
   }
@@ -213,7 +216,9 @@ export class JobService {
   private started = false;
   private pollInterval: ReturnType<typeof setInterval> | null = null;
 
-  constructor(private readonly config: JobQueueConfig = DEFAULT_JOB_QUEUE_CONFIG) {}
+  constructor(
+    private readonly config: JobQueueConfig = DEFAULT_JOB_QUEUE_CONFIG,
+  ) {}
 
   // ==========================================================================
   // Lifecycle Methods
@@ -383,7 +388,9 @@ export class JobService {
   /**
    * List jobs with optional filtering.
    */
-  async listJobs(query: ListJobsQuery): Promise<{ jobs: Job[]; total: number; hasMore: boolean }> {
+  async listJobs(
+    query: ListJobsQuery,
+  ): Promise<{ jobs: Job[]; total: number; hasMore: boolean }> {
     const conditions = [];
 
     if (query.type) {
@@ -410,10 +417,7 @@ export class JobService {
         .where(whereClause)
         .orderBy(desc(jobs.priority), desc(jobs.createdAt))
         .limit(limit + 1),
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(jobs)
-        .where(whereClause),
+      db.select({ count: sql<number>`count(*)` }).from(jobs).where(whereClause),
     ]);
 
     const hasMore = rows.length > limit;
@@ -438,8 +442,15 @@ export class JobService {
       throw new JobNotFoundError(jobId);
     }
 
-    if (job.status === "completed" || job.status === "cancelled" || job.status === "failed") {
-      log.warn({ jobId, status: job.status }, "Cannot cancel job in terminal state");
+    if (
+      job.status === "completed" ||
+      job.status === "cancelled" ||
+      job.status === "failed"
+    ) {
+      log.warn(
+        { jobId, status: job.status },
+        "Cannot cancel job in terminal state",
+      );
       return job;
     }
 
@@ -491,7 +502,11 @@ export class JobService {
       throw new JobNotFoundError(jobId);
     }
 
-    if (job.status !== "failed" && job.status !== "cancelled" && job.status !== "timeout") {
+    if (
+      job.status !== "failed" &&
+      job.status !== "cancelled" &&
+      job.status !== "timeout"
+    ) {
       throw new Error(`Cannot retry job in status: ${job.status}`);
     }
 
@@ -695,7 +710,8 @@ export class JobService {
     });
 
     // Also log to service logger
-    const logMethod = level === "error" ? "error" : level === "warn" ? "warn" : "info";
+    const logMethod =
+      level === "error" ? "error" : level === "warn" ? "warn" : "info";
     baseLogger[logMethod]({ jobId, ...data }, message);
   }
 
@@ -723,7 +739,10 @@ export class JobService {
 
       if (this.canRunJob(job)) {
         this.startJob(job).catch((err) => {
-          baseLogger.error({ jobId: job.id, error: err }, "Failed to start job");
+          baseLogger.error(
+            { jobId: job.id, error: err },
+            "Failed to start job",
+          );
         });
       }
     }
@@ -739,7 +758,9 @@ export class JobService {
     }
 
     // Check per-type limit
-    const typeLimit = this.config.concurrency.perType[job.type] ?? this.config.concurrency.global;
+    const typeLimit =
+      this.config.concurrency.perType[job.type] ??
+      this.config.concurrency.global;
     const typeCount = Array.from(this.running.values()).filter(
       (e) => e.job.type === job.type,
     ).length;
@@ -925,7 +946,8 @@ export class JobService {
     if (isRetryable) {
       // Schedule retry
       const backoffMs = Math.min(
-        job.retry.backoffMs * Math.pow(this.config.retry.backoffMultiplier, job.retry.attempts),
+        job.retry.backoffMs *
+          this.config.retry.backoffMultiplier ** job.retry.attempts,
         this.config.retry.maxBackoffMs,
       );
       const nextRetryAt = new Date(Date.now() + backoffMs);
@@ -1026,22 +1048,35 @@ export class JobService {
   ): void {
     try {
       const channel: Channel = { type: "system:jobs" };
-      getHub().publish(channel, type, {
-        jobId: job.id,
-        jobType: job.type,
-        timestamp: new Date().toISOString(),
-        ...data,
-      }, { correlationId: job.correlationId });
-
-      // Also publish to session-specific channel if applicable
-      if (job.sessionId) {
-        const sessionChannel: Channel = { type: "session:job", id: job.sessionId };
-        getHub().publish(sessionChannel, type, {
+      getHub().publish(
+        channel,
+        type,
+        {
           jobId: job.id,
           jobType: job.type,
           timestamp: new Date().toISOString(),
           ...data,
-        }, { correlationId: job.correlationId });
+        },
+        { correlationId: job.correlationId },
+      );
+
+      // Also publish to session-specific channel if applicable
+      if (job.sessionId) {
+        const sessionChannel: Channel = {
+          type: "session:job",
+          id: job.sessionId,
+        };
+        getHub().publish(
+          sessionChannel,
+          type,
+          {
+            jobId: job.id,
+            jobType: job.type,
+            timestamp: new Date().toISOString(),
+            ...data,
+          },
+          { correlationId: job.correlationId },
+        );
       }
     } catch {
       // Hub may not be initialized yet

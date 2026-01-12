@@ -9,31 +9,6 @@ import { type Context, Hono } from "hono";
 import { z } from "zod";
 import { getLogger } from "../middleware/correlation";
 import {
-  approvePendingException,
-  denyPendingException,
-  getPendingException,
-  listPendingExceptions,
-  PendingExceptionConflictError,
-  PendingExceptionExpiredError,
-  PendingExceptionNotFoundError,
-  type PendingExceptionStatus,
-  validateExceptionForExecution,
-} from "../services/dcg-pending.service";
-import {
-  DCGCommandError,
-  DCGNotAvailableError,
-  DCGPackNotFoundError,
-  explainCommand,
-  getPackInfo,
-  getPacksCached,
-  invalidatePacksCache,
-  preValidateCommand,
-  scanContent,
-  scanFile,
-  testCommand,
-  validateAgentScript,
-} from "../services/dcg-cli.service";
-import {
   addToAllowlist,
   type DCGConfig,
   type DCGSeverity,
@@ -54,6 +29,36 @@ import {
   updateConfig,
 } from "../services/dcg.service";
 import {
+  DCGCommandError,
+  DCGNotAvailableError,
+  DCGPackNotFoundError,
+  explainCommand,
+  getPackInfo,
+  getPacksCached,
+  invalidatePacksCache,
+  preValidateCommand,
+  scanContent,
+  scanFile,
+  testCommand,
+  validateAgentScript,
+} from "../services/dcg-cli.service";
+import {
+  approvePendingException,
+  denyPendingException,
+  getPendingException,
+  listPendingExceptions,
+  PendingExceptionConflictError,
+  PendingExceptionExpiredError,
+  PendingExceptionNotFoundError,
+  type PendingExceptionStatus,
+  validateExceptionForExecution,
+} from "../services/dcg-pending.service";
+import {
+  allowlistLinks,
+  getLinkContext,
+  pendingExceptionLinks,
+} from "../utils/links";
+import {
   sendCreated,
   sendEmptyList,
   sendError,
@@ -64,11 +69,6 @@ import {
   sendResource,
   sendValidationError,
 } from "../utils/response";
-import {
-  allowlistLinks,
-  getLinkContext,
-  pendingExceptionLinks,
-} from "../utils/links";
 import { transformZodError } from "../utils/validation";
 
 const dcg = new Hono();
@@ -99,7 +99,9 @@ const BlocksQuerySchema = z.object({
 });
 
 const PendingQuerySchema = z.object({
-  status: z.enum(["pending", "approved", "denied", "expired", "executed"]).optional(),
+  status: z
+    .enum(["pending", "approved", "denied", "expired", "executed"])
+    .optional(),
   agentId: z.string().optional(),
   limit: z.coerce.number().min(1).max(200).optional(),
   starting_after: z.string().optional(),
@@ -122,14 +124,15 @@ const TestRequestSchema = z.object({
   command: z.string().min(1).max(10000),
 });
 
-const ScanRequestSchema = z.object({
-  filePath: z.string().min(1).optional(),
-  content: z.string().max(1000000).optional(),
-  filename: z.string().max(256).optional(),
-}).refine(
-  (data) => data.filePath || data.content,
-  { message: "Either filePath or content must be provided" },
-);
+const ScanRequestSchema = z
+  .object({
+    filePath: z.string().min(1).optional(),
+    content: z.string().max(1000000).optional(),
+    filename: z.string().max(256).optional(),
+  })
+  .refine((data) => data.filePath || data.content, {
+    message: "Either filePath or content must be provided",
+  });
 
 const PreValidateRequestSchema = z.object({
   command: z.string().min(1).max(10000),
@@ -158,7 +161,12 @@ function handleError(error: unknown, c: Context) {
   }
 
   if (error instanceof DCGNotAvailableError) {
-    return sendError(c, "DCG_NOT_AVAILABLE", "DCG CLI is not installed or not accessible", 503);
+    return sendError(
+      c,
+      "DCG_NOT_AVAILABLE",
+      "DCG CLI is not installed or not accessible",
+      503,
+    );
   }
 
   if (error instanceof DCGCommandError) {
@@ -656,7 +664,9 @@ dcg.post("/pending/validate-hash", async (c) => {
     const body = await c.req.json();
     const validated = ValidateRequestSchema.parse(body);
 
-    const exception = await validateExceptionForExecution(validated.commandHash);
+    const exception = await validateExceptionForExecution(
+      validated.commandHash,
+    );
 
     if (!exception) {
       return sendResource(c, "validation_result", {
@@ -774,7 +784,12 @@ dcg.post("/scan", async (c) => {
     } else if (validated.content) {
       result = await scanContent(validated.content, validated.filename);
     } else {
-      return sendError(c, "INVALID_REQUEST", "Either filePath or content is required", 400);
+      return sendError(
+        c,
+        "INVALID_REQUEST",
+        "Either filePath or content is required",
+        400,
+      );
     }
 
     return sendResource(c, "scan_result", result);
@@ -869,7 +884,10 @@ dcg.post("/pre-validate", async (c) => {
     const body = await c.req.json();
     const validated = PreValidateRequestSchema.parse(body);
 
-    const result = await preValidateCommand(validated.agentId, validated.command);
+    const result = await preValidateCommand(
+      validated.agentId,
+      validated.command,
+    );
     return sendResource(c, "pre_validation_result", result);
   } catch (error) {
     return handleError(error, c);

@@ -5,12 +5,12 @@
  * Falls back to main thread processing if workers are unavailable.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   LogFilter,
   ParsedLogLine,
   RawLogLine,
-} from '../workers/logParser.worker';
+} from "../workers/logParser.worker";
 
 export type { LogFilter, ParsedLogLine, RawLogLine };
 
@@ -49,7 +49,7 @@ function parseLogsSync(logs: RawLogLine[]): ParsedLogLine[] {
     ...log,
     segments: [{ text: log.content, style: {} }],
     searchableText: log.content.toLowerCase(),
-    level: 'unknown' as const,
+    level: "unknown" as const,
     hasStackTrace: false,
     urls: [],
     filePaths: [],
@@ -61,11 +61,17 @@ function searchLogsSync(query: string, logs: ParsedLogLine[]): ParsedLogLine[] {
   return logs.filter((log) => log.searchableText.includes(lowerQuery));
 }
 
-function filterLogsSync(filter: LogFilter, logs: ParsedLogLine[]): ParsedLogLine[] {
+function filterLogsSync(
+  filter: LogFilter,
+  logs: ParsedLogLine[],
+): ParsedLogLine[] {
   return logs.filter((log) => {
     if (filter.levels && !filter.levels.includes(log.level)) return false;
     if (filter.types && !filter.types.includes(log.type)) return false;
-    if (filter.search && !log.searchableText.includes(filter.search.toLowerCase()))
+    if (
+      filter.search &&
+      !log.searchableText.includes(filter.search.toLowerCase())
+    )
       return false;
     if (filter.startTime && log.timestamp < filter.startTime) return false;
     if (filter.endTime && log.timestamp > filter.endTime) return false;
@@ -73,7 +79,9 @@ function filterLogsSync(filter: LogFilter, logs: ParsedLogLine[]): ParsedLogLine
   });
 }
 
-export function useLogParser(options: UseLogParserOptions = {}): UseLogParserResult {
+export function useLogParser(
+  options: UseLogParserOptions = {},
+): UseLogParserResult {
   const { maxLogs = DEFAULT_MAX_LOGS, autoParse = true } = options;
 
   const workerRef = useRef<Worker | null>(null);
@@ -89,8 +97,8 @@ export function useLogParser(options: UseLogParserOptions = {}): UseLogParserRes
   useEffect(() => {
     try {
       workerRef.current = new Worker(
-        new URL('../workers/logParser.worker.ts', import.meta.url),
-        { type: 'module' }
+        new URL("../workers/logParser.worker.ts", import.meta.url),
+        { type: "module" },
       );
 
       workerRef.current.onmessage = (event) => {
@@ -98,19 +106,19 @@ export function useLogParser(options: UseLogParserOptions = {}): UseLogParserRes
         const requestId = data.requestId;
 
         // Handle responses
-        if (type === 'parsed') {
+        if (type === "parsed") {
           const resolver = pendingRef.current.get(`parse-${requestId}`);
           if (resolver) {
             resolver(data.logs);
             pendingRef.current.delete(`parse-${requestId}`);
           }
-        } else if (type === 'searchResults') {
+        } else if (type === "searchResults") {
           const resolver = pendingRef.current.get(`search-${requestId}`);
           if (resolver) {
             resolver(data.results);
             pendingRef.current.delete(`search-${requestId}`);
           }
-        } else if (type === 'filterResults') {
+        } else if (type === "filterResults") {
           const resolver = pendingRef.current.get(`filter-${requestId}`);
           if (resolver) {
             resolver(data.filtered);
@@ -120,13 +128,16 @@ export function useLogParser(options: UseLogParserOptions = {}): UseLogParserRes
       };
 
       workerRef.current.onerror = (error) => {
-        console.error('[useLogParser] Worker error:', error);
+        console.error("[useLogParser] Worker error:", error);
         setWorkerAvailable(false);
       };
 
       setWorkerAvailable(true);
     } catch (error) {
-      console.warn('[useLogParser] Worker initialization failed, using fallback:', error);
+      console.warn(
+        "[useLogParser] Worker initialization failed, using fallback:",
+        error,
+      );
       setWorkerAvailable(false);
     }
 
@@ -150,9 +161,12 @@ export function useLogParser(options: UseLogParserOptions = {}): UseLogParserRes
           const requestId = ++requestIdRef.current;
 
           parsed = await new Promise<ParsedLogLine[]>((resolve) => {
-            pendingRef.current.set(`parse-${requestId}`, resolve as (v: unknown) => void);
+            pendingRef.current.set(
+              `parse-${requestId}`,
+              resolve as (v: unknown) => void,
+            );
             workerRef.current!.postMessage({
-              type: 'parse',
+              type: "parse",
               logs: rawLogs,
               requestId,
             });
@@ -178,7 +192,7 @@ export function useLogParser(options: UseLogParserOptions = {}): UseLogParserRes
         setParsing(false);
       }
     },
-    [workerAvailable, autoParse, maxLogs]
+    [workerAvailable, autoParse, maxLogs],
   );
 
   // Search logs
@@ -190,9 +204,12 @@ export function useLogParser(options: UseLogParserOptions = {}): UseLogParserRes
         const requestId = ++requestIdRef.current;
 
         return new Promise<ParsedLogLine[]>((resolve) => {
-          pendingRef.current.set(`search-${requestId}`, resolve as (v: unknown) => void);
+          pendingRef.current.set(
+            `search-${requestId}`,
+            resolve as (v: unknown) => void,
+          );
           workerRef.current!.postMessage({
-            type: 'search',
+            type: "search",
             query,
             logs,
             requestId,
@@ -203,7 +220,7 @@ export function useLogParser(options: UseLogParserOptions = {}): UseLogParserRes
       // Fallback
       return searchLogsSync(query, logs);
     },
-    [logs, workerAvailable]
+    [logs, workerAvailable],
   );
 
   // Filter logs
@@ -213,9 +230,12 @@ export function useLogParser(options: UseLogParserOptions = {}): UseLogParserRes
         const requestId = ++requestIdRef.current;
 
         return new Promise<ParsedLogLine[]>((resolve) => {
-          pendingRef.current.set(`filter-${requestId}`, resolve as (v: unknown) => void);
+          pendingRef.current.set(
+            `filter-${requestId}`,
+            resolve as (v: unknown) => void,
+          );
           workerRef.current!.postMessage({
-            type: 'filter',
+            type: "filter",
             filter: filterOptions,
             logs,
             requestId,
@@ -226,7 +246,7 @@ export function useLogParser(options: UseLogParserOptions = {}): UseLogParserRes
       // Fallback
       return filterLogsSync(filterOptions, logs);
     },
-    [logs, workerAvailable]
+    [logs, workerAvailable],
   );
 
   // Clear all logs

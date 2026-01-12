@@ -344,14 +344,17 @@ export class AgentStateMachine {
       state: this._state,
       stateEnteredAt: this._stateEnteredAt.toISOString(),
       history: this._history.map((t) => {
-        const entry: ReturnType<AgentStateMachine["toJSON"]>["history"][number] = {
+        const entry: ReturnType<
+          AgentStateMachine["toJSON"]
+        >["history"][number] = {
           from: t.from,
           to: t.to,
           timestamp: t.timestamp.toISOString(),
           reason: t.reason,
         };
         if (t.error !== undefined) entry.error = t.error;
-        if (t.correlationId !== undefined) entry.correlationId = t.correlationId;
+        if (t.correlationId !== undefined)
+          entry.correlationId = t.correlationId;
         return entry;
       }),
     };
@@ -381,7 +384,8 @@ export class AgentStateMachine {
         reason: t.reason,
       };
       if (t.error !== undefined) transition.error = t.error;
-      if (t.correlationId !== undefined) transition.correlationId = t.correlationId;
+      if (t.correlationId !== undefined)
+        transition.correlationId = t.correlationId;
       return transition;
     });
     return machine;

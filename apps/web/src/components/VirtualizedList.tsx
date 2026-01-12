@@ -12,7 +12,7 @@ import {
   useImperativeHandle,
   useRef,
   useState,
-} from 'react';
+} from "react";
 
 export interface VirtualizedListProps<T> {
   /** Array of items to display */
@@ -59,14 +59,14 @@ function VirtualizedListInner<T>(
     overscan = DEFAULT_OVERSCAN,
     renderItem,
     getItemKey,
-    className = '',
+    className = "",
     onScrollToBottom,
     scrollBottomThreshold = DEFAULT_SCROLL_THRESHOLD,
     emptyState,
     loading = false,
     loadingMore = false,
   }: VirtualizedListProps<T>,
-  ref: React.Ref<VirtualizedListHandle>
+  ref: React.Ref<VirtualizedListHandle>,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
@@ -80,7 +80,7 @@ function VirtualizedListInner<T>(
   const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
   const endIndex = Math.min(
     items.length - 1,
-    Math.ceil((scrollTop + height) / rowHeight) + overscan
+    Math.ceil((scrollTop + height) / rowHeight) + overscan,
   );
 
   // Handle scroll
@@ -100,19 +100,19 @@ function VirtualizedListInner<T>(
       }
       prevScrollTop.current = newScrollTop;
     },
-    [onScrollToBottom, scrollBottomThreshold]
+    [onScrollToBottom, scrollBottomThreshold],
   );
 
   // Imperative handle
   useImperativeHandle(ref, () => ({
-    scrollToIndex: (index: number, behavior: ScrollBehavior = 'smooth') => {
+    scrollToIndex: (index: number, behavior: ScrollBehavior = "smooth") => {
       const top = index * rowHeight;
       containerRef.current?.scrollTo({ top, behavior });
     },
-    scrollToTop: (behavior: ScrollBehavior = 'smooth') => {
+    scrollToTop: (behavior: ScrollBehavior = "smooth") => {
       containerRef.current?.scrollTo({ top: 0, behavior });
     },
-    scrollToBottom: (behavior: ScrollBehavior = 'smooth') => {
+    scrollToBottom: (behavior: ScrollBehavior = "smooth") => {
       containerRef.current?.scrollTo({ top: totalHeight, behavior });
     },
     getScrollTop: () => scrollTop,
@@ -150,7 +150,7 @@ function VirtualizedListInner<T>(
       <div
         key={key}
         style={{
-          position: 'absolute',
+          position: "absolute",
           top,
           left: 0,
           right: 0,
@@ -158,7 +158,7 @@ function VirtualizedListInner<T>(
         }}
       >
         {renderItem(item, i)}
-      </div>
+      </div>,
     );
   }
 
@@ -171,7 +171,7 @@ function VirtualizedListInner<T>(
     >
       <div
         style={{
-          position: 'relative',
+          position: "relative",
           height: totalHeight,
           minHeight: height,
         }}
@@ -191,7 +191,7 @@ function VirtualizedListInner<T>(
 
 // Typed forwardRef wrapper
 export const VirtualizedList = forwardRef(VirtualizedListInner) as <T>(
-  props: VirtualizedListProps<T> & { ref?: React.Ref<VirtualizedListHandle> }
+  props: VirtualizedListProps<T> & { ref?: React.Ref<VirtualizedListHandle> },
 ) => React.ReactElement;
 
 /**

@@ -43,7 +43,9 @@ describe("Health Routes", () => {
       const body = await res.json();
 
       expect(body.data.checks.database.status).toBeDefined();
-      expect(["pass", "fail", "warn"]).toContain(body.data.checks.database.status);
+      expect(["pass", "fail", "warn"]).toContain(
+        body.data.checks.database.status,
+      );
     });
 
     test("includes drivers check result", async () => {

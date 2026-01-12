@@ -327,10 +327,14 @@ describe("Conflict Service", () => {
       });
 
       expect(
-        reservationResult.conflicts.every((c) => c.type === "reservation_overlap"),
+        reservationResult.conflicts.every(
+          (c) => c.type === "reservation_overlap",
+        ),
       ).toBe(true);
       expect(
-        contentionResult.conflicts.every((c) => c.type === "resource_contention"),
+        contentionResult.conflicts.every(
+          (c) => c.type === "resource_contention",
+        ),
       ).toBe(true);
     });
 
@@ -351,9 +355,9 @@ describe("Conflict Service", () => {
         severity: ["warning"],
       });
 
-      expect(warningResult.conflicts.every((c) => c.severity === "warning")).toBe(
-        true,
-      );
+      expect(
+        warningResult.conflicts.every((c) => c.severity === "warning"),
+      ).toBe(true);
     });
 
     test("filters conflicts by project", () => {
@@ -383,12 +387,12 @@ describe("Conflict Service", () => {
       const project1Result = getActiveConflicts({ projectId: "project-1" });
       const project2Result = getActiveConflicts({ projectId: "project-2" });
 
-      expect(project1Result.conflicts.every((c) => c.projectId === "project-1")).toBe(
-        true,
-      );
-      expect(project2Result.conflicts.every((c) => c.projectId === "project-2")).toBe(
-        true,
-      );
+      expect(
+        project1Result.conflicts.every((c) => c.projectId === "project-1"),
+      ).toBe(true);
+      expect(
+        project2Result.conflicts.every((c) => c.projectId === "project-2"),
+      ).toBe(true);
     });
 
     test("gets conflict by ID", () => {
@@ -618,7 +622,10 @@ describe("Conflict Service", () => {
 
       // Use the nextCursor for page 2
       expect(page1.nextCursor).toBeDefined();
-      const page2 = getConflictHistory({ limit: 5, startingAfter: page1.nextCursor! });
+      const page2 = getConflictHistory({
+        limit: 5,
+        startingAfter: page1.nextCursor!,
+      });
       expect(page2.conflicts.length).toBe(5);
       expect(page2.hasMore).toBe(false);
     });

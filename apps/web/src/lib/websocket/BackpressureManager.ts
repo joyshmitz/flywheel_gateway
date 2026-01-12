@@ -108,7 +108,9 @@ export class BackpressureManager<T = unknown> {
       const dropCount = this.queue.length - this.config.lowWaterMark + 1;
       this.queue.splice(0, dropCount);
       this.droppedCount += dropCount;
-      console.warn(`[BackpressureManager] Queue overflow, dropped ${dropCount} old messages`);
+      console.warn(
+        `[BackpressureManager] Queue overflow, dropped ${dropCount} old messages`,
+      );
     }
 
     this.queue.push(message);
@@ -185,13 +187,17 @@ export class BackpressureManager<T = unknown> {
   private pause(): void {
     this.isPaused = true;
     this.onPause?.();
-    console.debug(`[BackpressureManager] Paused at queue length ${this.queue.length}`);
+    console.debug(
+      `[BackpressureManager] Paused at queue length ${this.queue.length}`,
+    );
   }
 
   private resume(): void {
     this.isPaused = false;
     this.onResume?.();
-    console.debug(`[BackpressureManager] Resumed at queue length ${this.queue.length}`);
+    console.debug(
+      `[BackpressureManager] Resumed at queue length ${this.queue.length}`,
+    );
   }
 
   private notifyStateChange(): void {
@@ -243,7 +249,7 @@ export class BackpressureManager<T = unknown> {
  * Hook for using BackpressureManager in React components
  */
 export function createBackpressureManager<T>(
-  config?: Partial<BackpressureConfig>
+  config?: Partial<BackpressureConfig>,
 ): BackpressureManager<T> {
   return new BackpressureManager<T>(config);
 }

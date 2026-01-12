@@ -76,10 +76,12 @@ const HistorySnippetSchema = z.object({
   created_at: z.number().optional(),
   sessionPath: z.string().optional(),
   timestamp: z.string().optional(),
-  origin: z.object({
-    kind: z.enum(["local", "remote"]),
-    host: z.string().optional(),
-  }).optional(),
+  origin: z
+    .object({
+      kind: z.enum(["local", "remote"]),
+      host: z.string().optional(),
+    })
+    .optional(),
 });
 
 // Playbook bullet/rule
@@ -119,19 +121,25 @@ const CMQuickstartResultSchema = z.object({
   doNotDo: z.array(z.string()),
   protocol: z.record(z.string(), z.string()),
   examples: z.array(z.string()),
-  operatorNote: z.object({
-    automation: z.string().optional(),
-    health: z.string().optional(),
-  }).optional(),
-  soloUser: z.object({
-    description: z.string().optional(),
-    manualReflection: z.array(z.string()).optional(),
-    onboarding: z.array(z.string()).optional(),
-  }).optional(),
-  inlineFeedbackFormat: z.object({
-    helpful: z.string().optional(),
-    harmful: z.string().optional(),
-  }).optional(),
+  operatorNote: z
+    .object({
+      automation: z.string().optional(),
+      health: z.string().optional(),
+    })
+    .optional(),
+  soloUser: z
+    .object({
+      description: z.string().optional(),
+      manualReflection: z.array(z.string()).optional(),
+      onboarding: z.array(z.string()).optional(),
+    })
+    .optional(),
+  inlineFeedbackFormat: z
+    .object({
+      helpful: z.string().optional(),
+      harmful: z.string().optional(),
+    })
+    .optional(),
 });
 
 // Stats response
@@ -249,7 +257,10 @@ export interface CMOutcomeOptions {
 
 export interface CMClient {
   /** Get context (rules and history) for a task */
-  context: (task: string, options?: CMContextOptions) => Promise<CMContextResult>;
+  context: (
+    task: string,
+    options?: CMContextOptions,
+  ) => Promise<CMContextResult>;
 
   /** Get quickstart/self-documentation */
   quickstart: () => Promise<CMQuickstartResult>;
@@ -258,7 +269,9 @@ export interface CMClient {
   stats: () => Promise<CMStatsResult>;
 
   /** List playbook bullets/rules */
-  listPlaybook: (options?: CMPlaybookListOptions) => Promise<CMPlaybookListResult>;
+  listPlaybook: (
+    options?: CMPlaybookListOptions,
+  ) => Promise<CMPlaybookListResult>;
 
   /** Run health diagnostics */
   doctor: (options?: CMDoctorOptions) => Promise<CMDoctorResult>;
@@ -327,7 +340,9 @@ export function createCMClient(options: CMClientOptions): CMClient {
   const baseCwd = options.cwd;
   const defaultTimeout = options.timeout ?? 30000;
 
-  const buildRunOptions = (timeout: number): { cwd?: string; timeout: number } => {
+  const buildRunOptions = (
+    timeout: number,
+  ): { cwd?: string; timeout: number } => {
     const opts: { cwd?: string; timeout: number } = { timeout };
     if (baseCwd !== undefined) opts.cwd = baseCwd;
     return opts;
@@ -479,7 +494,9 @@ export function createBunCMCommandRunner(): CMCommandRunner {
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => {
           proc.kill();
-          reject(new CMClientError("timeout", "Command timed out", { timeout }));
+          reject(
+            new CMClientError("timeout", "Command timed out", { timeout }),
+          );
         }, timeout);
       });
 

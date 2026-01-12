@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
+  _clearAllApprovalData,
+  _setApprovalExpiration,
   cancelApproval,
   checkEscalation,
   createApprovalRequest,
@@ -10,8 +12,6 @@ import {
   getQueueDepth,
   listApprovals,
   processExpiredApprovals,
-  _clearAllApprovalData,
-  _setApprovalExpiration,
 } from "../services/approval.service";
 import type { SafetyRule } from "../services/safety-rules.engine";
 
@@ -73,7 +73,8 @@ describe("Approval Service", () => {
         timeoutMinutes: 5,
       });
 
-      const expiresIn = approval.expiresAt.getTime() - approval.requestedAt.getTime();
+      const expiresIn =
+        approval.expiresAt.getTime() - approval.requestedAt.getTime();
       expect(expiresIn).toBe(5 * 60 * 1000);
     });
 
@@ -184,7 +185,11 @@ describe("Approval Service", () => {
         rule: mockRule,
       });
 
-      const result = await cancelApproval(approval.id, "agent-1", "No longer needed");
+      const result = await cancelApproval(
+        approval.id,
+        "agent-1",
+        "No longer needed",
+      );
 
       expect(result.success).toBe(true);
       expect(result.request?.status).toBe("cancelled");

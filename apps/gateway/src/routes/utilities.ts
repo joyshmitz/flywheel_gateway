@@ -127,7 +127,12 @@ utilities.post("/:name/install", async (c) => {
     const result = await installUtility(name);
 
     if (!result.success) {
-      return sendError(c, "INSTALL_FAILED", result.error ?? "Installation failed", 500);
+      return sendError(
+        c,
+        "INSTALL_FAILED",
+        result.error ?? "Installation failed",
+        500,
+      );
     }
 
     return sendResource(c, "installation_result", {
@@ -153,7 +158,12 @@ utilities.post("/:name/update", async (c) => {
     const result = await updateUtility(name);
 
     if (!result.success) {
-      return sendError(c, "UPDATE_FAILED", result.error ?? "Update failed", 500);
+      return sendError(
+        c,
+        "UPDATE_FAILED",
+        result.error ?? "Update failed",
+        500,
+      );
     }
 
     return sendResource(c, "update_result", {
@@ -192,7 +202,12 @@ utilities.post("/giil/run", async (c) => {
     const result = await runGiil(giilRequest);
 
     if (!result.success) {
-      return sendError(c, "GIIL_FAILED", result.error ?? "GIIL execution failed", 500);
+      return sendError(
+        c,
+        "GIIL_FAILED",
+        result.error ?? "GIIL execution failed",
+        500,
+      );
     }
 
     // Destructure to avoid duplicate 'success' property
@@ -227,7 +242,12 @@ utilities.post("/csctf/run", async (c) => {
     const result = await runCsctf(csctfRequest);
 
     if (!result.success) {
-      return sendError(c, "CSCTF_FAILED", result.error ?? "CSCTF execution failed", 500);
+      return sendError(
+        c,
+        "CSCTF_FAILED",
+        result.error ?? "CSCTF execution failed",
+        500,
+      );
     }
 
     // Destructure to avoid duplicate 'success' property

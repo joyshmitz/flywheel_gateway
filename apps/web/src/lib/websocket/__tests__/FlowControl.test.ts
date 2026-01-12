@@ -1,7 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
-import { FlowControl, FlowControlSignal, createFlowControl } from '../FlowControl';
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
+import {
+  createFlowControl,
+  FlowControl,
+  FlowControlSignal,
+} from "../FlowControl";
 
-describe('FlowControl', () => {
+describe("FlowControl", () => {
   let flowControl: FlowControl;
   let mockSocket: WebSocket;
   let sentMessages: string[];
@@ -22,8 +26,8 @@ describe('FlowControl', () => {
     flowControl.dispose();
   });
 
-  describe('pause', () => {
-    it('should send PAUSE signal', () => {
+  describe("pause", () => {
+    it("should send PAUSE signal", () => {
       flowControl.pause();
 
       expect(sentMessages.length).toBe(1);
@@ -31,14 +35,14 @@ describe('FlowControl', () => {
       expect(msg.type).toBe(FlowControlSignal.PAUSE);
     });
 
-    it('should include queueDepth in metadata if provided', () => {
+    it("should include queueDepth in metadata if provided", () => {
       flowControl.pause(500);
 
       const msg = JSON.parse(sentMessages[0]);
       expect(msg.metadata.queueDepth).toBe(500);
     });
 
-    it('should not send multiple pause signals', () => {
+    it("should not send multiple pause signals", () => {
       flowControl.pause();
       flowControl.pause();
 
@@ -46,8 +50,8 @@ describe('FlowControl', () => {
     });
   });
 
-  describe('resume', () => {
-    it('should send RESUME signal after pause', () => {
+  describe("resume", () => {
+    it("should send RESUME signal after pause", () => {
       flowControl.pause();
       flowControl.resume();
 
@@ -56,14 +60,14 @@ describe('FlowControl', () => {
       expect(msg.type).toBe(FlowControlSignal.RESUME);
     });
 
-    it('should not send resume if not paused', () => {
+    it("should not send resume if not paused", () => {
       flowControl.resume();
       expect(sentMessages.length).toBe(0);
     });
   });
 
-  describe('acknowledge', () => {
-    it('should send immediately when autoAck is false', () => {
+  describe("acknowledge", () => {
+    it("should send immediately when autoAck is false", () => {
       flowControl.acknowledge(5);
       flowControl.acknowledge(3);
 
@@ -80,8 +84,8 @@ describe('FlowControl', () => {
     });
   });
 
-  describe('slowDown', () => {
-    it('should send SLOW_DOWN signal with suggested rate', () => {
+  describe("slowDown", () => {
+    it("should send SLOW_DOWN signal with suggested rate", () => {
       flowControl.slowDown(100, 1000);
 
       expect(sentMessages.length).toBe(1);
@@ -92,8 +96,8 @@ describe('FlowControl', () => {
     });
   });
 
-  describe('setSocket', () => {
-    it('should update the socket', () => {
+  describe("setSocket", () => {
+    it("should update the socket", () => {
       const newSentMessages: string[] = [];
       const newSocket = {
         readyState: WebSocket.OPEN,
@@ -107,7 +111,7 @@ describe('FlowControl', () => {
       expect(sentMessages.length).toBe(0);
     });
 
-    it('should handle null socket gracefully', () => {
+    it("should handle null socket gracefully", () => {
       flowControl.setSocket(null);
       flowControl.pause();
 
@@ -116,8 +120,8 @@ describe('FlowControl', () => {
     });
   });
 
-  describe('getState', () => {
-    it('should return current state', () => {
+  describe("getState", () => {
+    it("should return current state", () => {
       flowControl.pause();
 
       const state = flowControl.getState();
@@ -128,8 +132,8 @@ describe('FlowControl', () => {
     });
   });
 
-  describe('auto ack', () => {
-    it('should send ACK signals periodically when enabled', async () => {
+  describe("auto ack", () => {
+    it("should send ACK signals periodically when enabled", async () => {
       const autoAckControl = new FlowControl({
         socket: mockSocket,
         autoAck: true,
@@ -150,8 +154,8 @@ describe('FlowControl', () => {
     });
   });
 
-  describe('dispose', () => {
-    it('should flush pending acks on dispose', () => {
+  describe("dispose", () => {
+    it("should flush pending acks on dispose", () => {
       flowControl.acknowledge(5);
       flowControl.dispose();
 
@@ -161,16 +165,16 @@ describe('FlowControl', () => {
     });
   });
 
-  describe('createFlowControl', () => {
-    it('should create a flow control instance', () => {
+  describe("createFlowControl", () => {
+    it("should create a flow control instance", () => {
       const fc = createFlowControl(mockSocket, { autoAck: false });
       expect(fc).toBeInstanceOf(FlowControl);
       fc.dispose();
     });
   });
 
-  describe('socket not ready', () => {
-    it('should not send when socket is not open', () => {
+  describe("socket not ready", () => {
+    it("should not send when socket is not open", () => {
       const closedSocket = {
         readyState: WebSocket.CLOSED,
         send: mock(() => {}),

@@ -72,7 +72,14 @@ const PreferencesUpdateSchema = z.object({
     .optional(),
   categories: z
     .record(
-      z.enum(["agents", "coordination", "tasks", "costs", "security", "system"]),
+      z.enum([
+        "agents",
+        "coordination",
+        "tasks",
+        "costs",
+        "security",
+        "system",
+      ]),
       z.object({
         enabled: z.boolean().optional(),
         channels: z
@@ -118,7 +125,14 @@ const TestNotificationSchema = z.object({
 
 const CreateNotificationSchema = z.object({
   type: z.string().min(1),
-  category: z.enum(["agents", "coordination", "tasks", "costs", "security", "system"]),
+  category: z.enum([
+    "agents",
+    "coordination",
+    "tasks",
+    "costs",
+    "security",
+    "system",
+  ]),
   priority: z.enum(["low", "normal", "high", "urgent"]),
   title: z.string().min(1).max(200),
   body: z.string().min(1).max(2000),
@@ -174,10 +188,7 @@ function parseDateQuery(value: string | undefined): Date | undefined {
   return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
-function safeParseInt(
-  value: string | undefined,
-  defaultValue: number,
-): number {
+function safeParseInt(value: string | undefined, defaultValue: number): number {
   if (!value) return defaultValue;
   const parsed = parseInt(value, 10);
   return Number.isNaN(parsed) ? defaultValue : parsed;
@@ -269,7 +280,9 @@ notifications.get("/", (c) => {
 
     const result = getNotifications(filter);
 
-    const serializedNotifications = result.notifications.map(serializeNotification);
+    const serializedNotifications = result.notifications.map(
+      serializeNotification,
+    );
 
     const listOptions: Parameters<typeof sendList>[2] = {
       hasMore: result.hasMore,

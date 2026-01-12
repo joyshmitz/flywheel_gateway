@@ -324,7 +324,7 @@ export function wrapValidationError(
   const firstError = errors[0];
   const message =
     errors.length === 1
-      ? firstError?.message ?? "Validation failed"
+      ? (firstError?.message ?? "Validation failed")
       : `Validation failed: ${errors.length} errors`;
 
   const errorOptions: WrapErrorOptions = {

@@ -56,7 +56,7 @@ class PerformanceMonitor {
   private callbacks: Set<MetricCallback> = new Set();
 
   constructor() {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     this.initObservers();
   }
 
@@ -90,16 +90,16 @@ class PerformanceMonitor {
     try {
       const observer = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
-          if (entry.name === 'first-contentful-paint') {
+          if (entry.name === "first-contentful-paint") {
             this.metrics.fcp = entry.startTime;
             this.notifyCallbacks();
           }
         }
       });
-      observer.observe({ type: 'paint', buffered: true });
+      observer.observe({ type: "paint", buffered: true });
       this.observers.push(observer);
     } catch (e) {
-      console.debug('[PerfMonitor] Paint observer not supported');
+      console.debug("[PerfMonitor] Paint observer not supported");
     }
   }
 
@@ -113,10 +113,10 @@ class PerformanceMonitor {
           this.notifyCallbacks();
         }
       });
-      observer.observe({ type: 'largest-contentful-paint', buffered: true });
+      observer.observe({ type: "largest-contentful-paint", buffered: true });
       this.observers.push(observer);
     } catch (e) {
-      console.debug('[PerfMonitor] LCP observer not supported');
+      console.debug("[PerfMonitor] LCP observer not supported");
     }
   }
 
@@ -126,15 +126,17 @@ class PerformanceMonitor {
         for (const entry of list.getEntries()) {
           // FID is the first interaction
           if (this.metrics.fid === null) {
-            this.metrics.fid = (entry as PerformanceEventTiming).processingStart - entry.startTime;
+            this.metrics.fid =
+              (entry as PerformanceEventTiming).processingStart -
+              entry.startTime;
             this.notifyCallbacks();
           }
         }
       });
-      observer.observe({ type: 'first-input', buffered: true });
+      observer.observe({ type: "first-input", buffered: true });
       this.observers.push(observer);
     } catch (e) {
-      console.debug('[PerfMonitor] FID observer not supported');
+      console.debug("[PerfMonitor] FID observer not supported");
     }
   }
 
@@ -154,10 +156,10 @@ class PerformanceMonitor {
           }
         }
       });
-      observer.observe({ type: 'layout-shift', buffered: true });
+      observer.observe({ type: "layout-shift", buffered: true });
       this.observers.push(observer);
     } catch (e) {
-      console.debug('[PerfMonitor] CLS observer not supported');
+      console.debug("[PerfMonitor] CLS observer not supported");
     }
   }
 
@@ -178,10 +180,10 @@ class PerformanceMonitor {
           }
         }
       });
-      observer.observe({ type: 'event', buffered: true });
+      observer.observe({ type: "event", buffered: true });
       this.observers.push(observer);
     } catch (e) {
-      console.debug('[PerfMonitor] INP observer not supported');
+      console.debug("[PerfMonitor] INP observer not supported");
     }
   }
 
@@ -202,10 +204,10 @@ class PerformanceMonitor {
           this.notifyCallbacks();
         }
       });
-      observer.observe({ type: 'longtask' });
+      observer.observe({ type: "longtask" });
       this.observers.push(observer);
     } catch (e) {
-      console.debug('[PerfMonitor] Long tasks observer not supported');
+      console.debug("[PerfMonitor] Long tasks observer not supported");
     }
   }
 
@@ -218,10 +220,10 @@ class PerformanceMonitor {
           this.notifyCallbacks();
         }
       });
-      observer.observe({ type: 'navigation', buffered: true });
+      observer.observe({ type: "navigation", buffered: true });
       this.observers.push(observer);
     } catch (e) {
-      console.debug('[PerfMonitor] Navigation observer not supported');
+      console.debug("[PerfMonitor] Navigation observer not supported");
     }
   }
 
@@ -264,19 +266,23 @@ class PerformanceMonitor {
    * Update memory and DOM metrics (call periodically)
    */
   updateRuntimeMetrics(): void {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
 
     // Memory usage (Chrome only)
-    const memory = (performance as Performance & { memory?: {
-      usedJSHeapSize: number;
-    } }).memory;
+    const memory = (
+      performance as Performance & {
+        memory?: {
+          usedJSHeapSize: number;
+        };
+      }
+    ).memory;
     if (memory) {
       this.metrics.jsHeapSize = memory.usedJSHeapSize;
     }
 
     // DOM node count
-    if (typeof document !== 'undefined') {
-      this.metrics.domNodes = document.querySelectorAll('*').length;
+    if (typeof document !== "undefined") {
+      this.metrics.domNodes = document.querySelectorAll("*").length;
     }
 
     this.notifyCallbacks();
@@ -311,14 +317,16 @@ class PerformanceMonitor {
       metrics: this.getMetrics(),
       longTasks: [...this.longTasks],
       timestamp: Date.now(),
-      url: typeof window !== 'undefined' ? window.location.href : '',
+      url: typeof window !== "undefined" ? window.location.href : "",
     };
   }
 
   /**
    * Check if metrics pass thresholds
    */
-  checkThresholds(thresholds: Partial<Record<keyof PerformanceMetrics, number>>): {
+  checkThresholds(
+    thresholds: Partial<Record<keyof PerformanceMetrics, number>>,
+  ): {
     passed: boolean;
     failures: string[];
   } {
@@ -326,7 +334,7 @@ class PerformanceMonitor {
 
     for (const [key, threshold] of Object.entries(thresholds)) {
       const value = this.metrics[key as keyof PerformanceMetrics];
-      if (value !== null && typeof value === 'number' && value > threshold) {
+      if (value !== null && typeof value === "number" && value > threshold) {
         failures.push(`${key}: ${value.toFixed(2)} > ${threshold}`);
       }
     }
@@ -340,52 +348,58 @@ class PerformanceMonitor {
   /**
    * Get Web Vitals rating (good/needs-improvement/poor)
    */
-  getWebVitalsRating(): Record<string, 'good' | 'needs-improvement' | 'poor' | 'unknown'> {
-    const ratings: Record<string, 'good' | 'needs-improvement' | 'poor' | 'unknown'> = {};
+  getWebVitalsRating(): Record<
+    string,
+    "good" | "needs-improvement" | "poor" | "unknown"
+  > {
+    const ratings: Record<
+      string,
+      "good" | "needs-improvement" | "poor" | "unknown"
+    > = {};
 
     // LCP thresholds: good < 2.5s, poor > 4s
     if (this.metrics.lcp !== null) {
-      if (this.metrics.lcp < 2500) ratings.lcp = 'good';
-      else if (this.metrics.lcp < 4000) ratings.lcp = 'needs-improvement';
-      else ratings.lcp = 'poor';
+      if (this.metrics.lcp < 2500) ratings.lcp = "good";
+      else if (this.metrics.lcp < 4000) ratings.lcp = "needs-improvement";
+      else ratings.lcp = "poor";
     } else {
-      ratings.lcp = 'unknown';
+      ratings.lcp = "unknown";
     }
 
     // FID thresholds: good < 100ms, poor > 300ms
     if (this.metrics.fid !== null) {
-      if (this.metrics.fid < 100) ratings.fid = 'good';
-      else if (this.metrics.fid < 300) ratings.fid = 'needs-improvement';
-      else ratings.fid = 'poor';
+      if (this.metrics.fid < 100) ratings.fid = "good";
+      else if (this.metrics.fid < 300) ratings.fid = "needs-improvement";
+      else ratings.fid = "poor";
     } else {
-      ratings.fid = 'unknown';
+      ratings.fid = "unknown";
     }
 
     // CLS thresholds: good < 0.1, poor > 0.25
     if (this.metrics.cls !== null) {
-      if (this.metrics.cls < 0.1) ratings.cls = 'good';
-      else if (this.metrics.cls < 0.25) ratings.cls = 'needs-improvement';
-      else ratings.cls = 'poor';
+      if (this.metrics.cls < 0.1) ratings.cls = "good";
+      else if (this.metrics.cls < 0.25) ratings.cls = "needs-improvement";
+      else ratings.cls = "poor";
     } else {
-      ratings.cls = 'unknown';
+      ratings.cls = "unknown";
     }
 
     // INP thresholds: good < 200ms, poor > 500ms
     if (this.metrics.inp !== null) {
-      if (this.metrics.inp < 200) ratings.inp = 'good';
-      else if (this.metrics.inp < 500) ratings.inp = 'needs-improvement';
-      else ratings.inp = 'poor';
+      if (this.metrics.inp < 200) ratings.inp = "good";
+      else if (this.metrics.inp < 500) ratings.inp = "needs-improvement";
+      else ratings.inp = "poor";
     } else {
-      ratings.inp = 'unknown';
+      ratings.inp = "unknown";
     }
 
     // TTFB thresholds: good < 800ms, poor > 1800ms
     if (this.metrics.ttfb !== null) {
-      if (this.metrics.ttfb < 800) ratings.ttfb = 'good';
-      else if (this.metrics.ttfb < 1800) ratings.ttfb = 'needs-improvement';
-      else ratings.ttfb = 'poor';
+      if (this.metrics.ttfb < 800) ratings.ttfb = "good";
+      else if (this.metrics.ttfb < 1800) ratings.ttfb = "needs-improvement";
+      else ratings.ttfb = "poor";
     } else {
-      ratings.ttfb = 'unknown';
+      ratings.ttfb = "unknown";
     }
 
     return ratings;
@@ -426,10 +440,14 @@ export function mark(name: string): void {
 /**
  * Measure between two marks
  */
-export function measure(name: string, startMark: string, endMark?: string): number {
+export function measure(
+  name: string,
+  startMark: string,
+  endMark?: string,
+): number {
   const end = endMark || name;
   performance.measure(name, startMark, end);
-  const entries = performance.getEntriesByName(name, 'measure');
+  const entries = performance.getEntriesByName(name, "measure");
   return entries[entries.length - 1]?.duration ?? 0;
 }
 
@@ -438,7 +456,7 @@ export function measure(name: string, startMark: string, endMark?: string): numb
  */
 export async function timeExecution<T>(
   name: string,
-  fn: () => T | Promise<T>
+  fn: () => T | Promise<T>,
 ): Promise<{ result: T; duration: number }> {
   const startMark = `${name}-start`;
   const endMark = `${name}-end`;

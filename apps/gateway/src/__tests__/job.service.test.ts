@@ -6,7 +6,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { db, sqlite } from "../db/connection";
-import { jobs, jobLogs } from "../db/schema";
+import { jobLogs, jobs } from "../db/schema";
 import {
   _clearJobService,
   getJobService,
@@ -14,7 +14,11 @@ import {
   JobNotFoundError,
   type JobService,
 } from "../services/job.service";
-import type { JobContext, JobHandler, ValidationResult } from "../types/job.types";
+import type {
+  JobContext,
+  JobHandler,
+  ValidationResult,
+} from "../types/job.types";
 
 // ============================================================================
 // Test Fixtures
@@ -28,7 +32,9 @@ class TestHandler implements JobHandler<{ value: number }, { result: number }> {
     return { valid: true, errors: [] };
   }
 
-  async execute(context: JobContext<{ value: number }>): Promise<{ result: number }> {
+  async execute(
+    context: JobContext<{ value: number }>,
+  ): Promise<{ result: number }> {
     await context.setStage("processing");
     await context.updateProgress(50, 100, "Processing");
 
@@ -39,12 +45,16 @@ class TestHandler implements JobHandler<{ value: number }, { result: number }> {
   }
 }
 
-class SlowHandler implements JobHandler<{ delayMs: number }, { completed: boolean }> {
+class SlowHandler
+  implements JobHandler<{ delayMs: number }, { completed: boolean }>
+{
   async validate(): Promise<ValidationResult> {
     return { valid: true, errors: [] };
   }
 
-  async execute(context: JobContext<{ delayMs: number }>): Promise<{ completed: boolean }> {
+  async execute(
+    context: JobContext<{ delayMs: number }>,
+  ): Promise<{ completed: boolean }> {
     const delayMs = context.input.delayMs;
 
     for (let i = 0; i < 10; i++) {
@@ -91,7 +101,9 @@ async function waitForJobStatus(
     }
     await Bun.sleep(50);
   }
-  throw new Error(`Job ${jobId} did not reach status ${expectedStatus} within ${timeoutMs}ms`);
+  throw new Error(
+    `Job ${jobId} did not reach status ${expectedStatus} within ${timeoutMs}ms`,
+  );
 }
 
 // ============================================================================
@@ -110,7 +122,12 @@ describe("JobService", () => {
     service = initializeJobService({
       concurrency: { global: 3, perType: {}, perSession: 2 },
       timeouts: { default: 5000, perType: {} },
-      retry: { maxAttempts: 2, backoffMultiplier: 2, initialBackoffMs: 100, maxBackoffMs: 1000 },
+      retry: {
+        maxAttempts: 2,
+        backoffMultiplier: 2,
+        initialBackoffMs: 100,
+        maxBackoffMs: 1000,
+      },
       cleanup: { completedRetentionHours: 1, failedRetentionHours: 2 },
       worker: { pollIntervalMs: 100, shutdownTimeoutMs: 1000 },
     });
@@ -222,7 +239,10 @@ describe("JobService", () => {
 
     test("filters by type", async () => {
       await service.createJob({ type: "codebase_scan", input: { value: 1 } });
-      await service.createJob({ type: "context_build", input: { delayMs: 100 } });
+      await service.createJob({
+        type: "context_build",
+        input: { delayMs: 100 },
+      });
 
       const result = await service.listJobs({ type: "codebase_scan" });
       expect(result.jobs).toHaveLength(1);
@@ -230,13 +250,19 @@ describe("JobService", () => {
     });
 
     test("filters by status", async () => {
-      const job1 = await service.createJob({ type: "codebase_scan", input: { value: 1 } });
+      const job1 = await service.createJob({
+        type: "codebase_scan",
+        input: { value: 1 },
+      });
 
       // Start service to run jobs
       service.start();
       await waitForJobStatus(service, job1.id, "completed");
 
-      const job2 = await service.createJob({ type: "codebase_scan", input: { value: 2 } });
+      const job2 = await service.createJob({
+        type: "codebase_scan",
+        input: { value: 2 },
+      });
 
       const pendingResult = await service.listJobs({ status: "pending" });
       expect(pendingResult.jobs.length).toBeGreaterThanOrEqual(0);
@@ -325,7 +351,9 @@ describe("JobService", () => {
     });
 
     test("throws for non-existent job", async () => {
-      await expect(service.cancelJob("non-existent")).rejects.toThrow(JobNotFoundError);
+      await expect(service.cancelJob("non-existent")).rejects.toThrow(
+        JobNotFoundError,
+      );
     });
 
     test("returns job unchanged for already cancelled job", async () => {
@@ -362,7 +390,9 @@ describe("JobService", () => {
     });
 
     test("throws for non-existent job", async () => {
-      await expect(service.retryJob("non-existent")).rejects.toThrow(JobNotFoundError);
+      await expect(service.retryJob("non-existent")).rejects.toThrow(
+        JobNotFoundError,
+      );
     });
 
     test("throws for job in non-terminal state", async () => {
@@ -404,7 +434,9 @@ describe("JobService", () => {
     });
 
     test("throws for non-existent job", async () => {
-      await expect(service.getJobOutput("non-existent")).rejects.toThrow(JobNotFoundError);
+      await expect(service.getJobOutput("non-existent")).rejects.toThrow(
+        JobNotFoundError,
+      );
     });
   });
 

@@ -34,19 +34,19 @@ export const mediaQueries = {
   /** Small phones only (< 480px) */
   smallPhone: `(max-width: ${BREAKPOINTS.sm - 1}px)`,
   /** Touch devices */
-  touch: '(hover: none) and (pointer: coarse)',
+  touch: "(hover: none) and (pointer: coarse)",
   /** Precise pointer devices (mouse) */
-  mouse: '(hover: hover) and (pointer: fine)',
+  mouse: "(hover: hover) and (pointer: fine)",
   /** Reduced motion preference */
-  reducedMotion: '(prefers-reduced-motion: reduce)',
+  reducedMotion: "(prefers-reduced-motion: reduce)",
   /** Dark mode preference */
-  darkMode: '(prefers-color-scheme: dark)',
+  darkMode: "(prefers-color-scheme: dark)",
   /** Light mode preference */
-  lightMode: '(prefers-color-scheme: light)',
+  lightMode: "(prefers-color-scheme: light)",
   /** Portrait orientation */
-  portrait: '(orientation: portrait)',
+  portrait: "(orientation: portrait)",
   /** Landscape orientation */
-  landscape: '(orientation: landscape)',
+  landscape: "(orientation: landscape)",
 } as const;
 
 /**
@@ -83,7 +83,14 @@ export const breakpointQueries = {
  * Tailwind-style responsive prefixes
  * Use these with CSS classes: `sm:hidden md:block`
  */
-export const responsivePrefixes = ['xs', 'sm', 'md', 'lg', 'xl', 'xxl'] as const;
+export const responsivePrefixes = [
+  "xs",
+  "sm",
+  "md",
+  "lg",
+  "xl",
+  "xxl",
+] as const;
 
 /**
  * Check if a breakpoint value is considered mobile
@@ -111,12 +118,12 @@ export function isDesktopBreakpoint(breakpoint: Breakpoint): boolean {
  * Get the current breakpoint based on window width
  */
 export function getCurrentBreakpoint(width: number): Breakpoint {
-  if (width < BREAKPOINTS.sm) return 'xs';
-  if (width < BREAKPOINTS.md) return 'sm';
-  if (width < BREAKPOINTS.lg) return 'md';
-  if (width < BREAKPOINTS.xl) return 'lg';
-  if (width < BREAKPOINTS.xxl) return 'xl';
-  return 'xxl';
+  if (width < BREAKPOINTS.sm) return "xs";
+  if (width < BREAKPOINTS.md) return "sm";
+  if (width < BREAKPOINTS.lg) return "md";
+  if (width < BREAKPOINTS.xl) return "lg";
+  if (width < BREAKPOINTS.xxl) return "xl";
+  return "xxl";
 }
 
 /**
@@ -135,8 +142,8 @@ export const TOUCH_TARGETS = {
  * Safe area CSS variables
  */
 export const SAFE_AREA_VARS = {
-  top: 'env(safe-area-inset-top)',
-  right: 'env(safe-area-inset-right)',
-  bottom: 'env(safe-area-inset-bottom)',
-  left: 'env(safe-area-inset-left)',
+  top: "env(safe-area-inset-top)",
+  right: "env(safe-area-inset-right)",
+  bottom: "env(safe-area-inset-bottom)",
+  left: "env(safe-area-inset-left)",
 } as const;

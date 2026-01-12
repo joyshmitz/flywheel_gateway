@@ -32,7 +32,9 @@ test.describe("Dashboard", () => {
   });
 
   test("should display WebSocket latency metric", async ({ page }) => {
-    const card = page.locator(".card--compact").filter({ hasText: "WebSocket" });
+    const card = page
+      .locator(".card--compact")
+      .filter({ hasText: "WebSocket" });
     await expect(card).toBeVisible();
 
     // Should show latency in ms

@@ -14,17 +14,17 @@ import { z } from "zod";
 import { getLogger } from "../middleware/correlation";
 import {
   type FindingFilter,
-  type ScanOptions,
   getUBSService,
+  type ScanOptions,
 } from "../services/ubs.service";
 import {
-  sendResource,
   sendCreated,
+  sendError,
+  sendInternalError,
   sendList,
   sendNotFound,
-  sendError,
+  sendResource,
   sendValidationError,
-  sendInternalError,
 } from "../utils/response";
 import { transformZodError } from "../utils/validation";
 
@@ -107,42 +107,53 @@ scanner.post("/run", async (c) => {
     if (validated.paths !== undefined) options.paths = validated.paths;
     if (validated.staged !== undefined) options.staged = validated.staged;
     if (validated.diff !== undefined) options.diff = validated.diff;
-    if (validated.languages !== undefined) options.languages = validated.languages;
-    if (validated.categories !== undefined) options.categories = validated.categories;
-    if (validated.skipCategories !== undefined) options.skipCategories = validated.skipCategories;
+    if (validated.languages !== undefined)
+      options.languages = validated.languages;
+    if (validated.categories !== undefined)
+      options.categories = validated.categories;
+    if (validated.skipCategories !== undefined)
+      options.skipCategories = validated.skipCategories;
     if (validated.profile !== undefined) options.profile = validated.profile;
-    if (validated.failOnWarning !== undefined) options.failOnWarning = validated.failOnWarning;
+    if (validated.failOnWarning !== undefined)
+      options.failOnWarning = validated.failOnWarning;
     if (validated.exclude !== undefined) options.exclude = validated.exclude;
     if (validated.rulesDir !== undefined) options.rulesDir = validated.rulesDir;
 
-    const result = await service.runScan(Object.keys(options).length > 0 ? options : undefined);
+    const result = await service.runScan(
+      Object.keys(options).length > 0 ? options : undefined,
+    );
 
-    return sendCreated(c, "scan", {
-      scanId: result.scanId,
-      status: result.status,
-      exitCode: result.exitCode,
-      startedAt: result.startedAt.toISOString(),
-      completedAt: result.completedAt.toISOString(),
-      durationMs: result.durationMs,
-      filesScanned: result.filesScanned,
-      findingsCount: result.findings.length,
-      summary: result.summary,
-      findings: result.findings.map((f) => ({
-        id: f.id,
-        type: f.type,
-        severity: f.severity,
-        file: f.file,
-        line: f.line,
-        column: f.column,
-        message: f.message,
-        suggestion: f.suggestion,
-        category: f.category,
-        confidence: f.confidence,
-        status: f.status,
-        ruleId: f.ruleId,
-      })),
-      error: result.error,
-    }, `/scanner/scans/${result.scanId}`);
+    return sendCreated(
+      c,
+      "scan",
+      {
+        scanId: result.scanId,
+        status: result.status,
+        exitCode: result.exitCode,
+        startedAt: result.startedAt.toISOString(),
+        completedAt: result.completedAt.toISOString(),
+        durationMs: result.durationMs,
+        filesScanned: result.filesScanned,
+        findingsCount: result.findings.length,
+        summary: result.summary,
+        findings: result.findings.map((f) => ({
+          id: f.id,
+          type: f.type,
+          severity: f.severity,
+          file: f.file,
+          line: f.line,
+          column: f.column,
+          message: f.message,
+          suggestion: f.suggestion,
+          category: f.category,
+          confidence: f.confidence,
+          status: f.status,
+          ruleId: f.ruleId,
+        })),
+        error: result.error,
+      },
+      `/scanner/scans/${result.scanId}`,
+    );
   } catch (error) {
     return handleError(error, c);
   }
@@ -182,11 +193,17 @@ scanner.get("/findings", async (c) => {
       limit: requestedLimit + 1,
     };
 
-    const findings = service.getFindings(Object.keys(filter).length > 0 ? filterWithExtra : { limit: requestedLimit + 1 });
+    const findings = service.getFindings(
+      Object.keys(filter).length > 0
+        ? filterWithExtra
+        : { limit: requestedLimit + 1 },
+    );
 
     // Check if we got more than requested (indicates more results exist)
     const hasMore = findings.length > requestedLimit;
-    const resultFindings = hasMore ? findings.slice(0, requestedLimit) : findings;
+    const resultFindings = hasMore
+      ? findings.slice(0, requestedLimit)
+      : findings;
 
     return sendList(
       c,
@@ -209,7 +226,7 @@ scanner.get("/findings", async (c) => {
       })),
       {
         hasMore,
-      }
+      },
     );
   } catch (error) {
     return handleError(error, c);
@@ -261,7 +278,11 @@ scanner.post("/findings/:id/dismiss", async (c) => {
     const validated = DismissFindingSchema.parse(body);
 
     const service = getUBSService();
-    const success = service.dismissFinding(id, validated.dismissedBy, validated.reason);
+    const success = service.dismissFinding(
+      id,
+      validated.dismissedBy,
+      validated.reason,
+    );
 
     if (!success) {
       return sendNotFound(c, "finding", id);
@@ -308,7 +329,12 @@ scanner.post("/findings/:id/create-bead", async (c) => {
     const priority = validated.priority ?? priorityMap[finding.severity];
 
     // Create bead using bd CLI
-    const typeMap = { bug: "bug", security: "bug", performance: "task", style: "task" };
+    const typeMap = {
+      bug: "bug",
+      security: "bug",
+      performance: "task",
+      style: "task",
+    };
     const beadType = typeMap[finding.type];
 
     const title = `[UBS] ${finding.category}: ${finding.message.slice(0, 80)}`;
@@ -350,8 +376,16 @@ scanner.post("/findings/:id/create-bead", async (c) => {
 
     if (proc.exitCode !== 0) {
       const log = getLogger();
-      log.error({ stderr, exitCode: proc.exitCode }, "Failed to create bead from finding");
-      return sendError(c, "BEAD_CREATION_FAILED", stderr || "Failed to create bead", 500);
+      log.error(
+        { stderr, exitCode: proc.exitCode },
+        "Failed to create bead from finding",
+      );
+      return sendError(
+        c,
+        "BEAD_CREATION_FAILED",
+        stderr || "Failed to create bead",
+        500,
+      );
     }
 
     // Parse bead ID from output
@@ -365,13 +399,18 @@ scanner.post("/findings/:id/create-bead", async (c) => {
       beadId = match?.[1];
     }
 
-    return sendCreated(c, "bead", {
-      beadId,
-      findingId: finding.id,
-      title,
-      type: beadType,
-      priority,
-    }, beadId ? `/beads/${beadId}` : "/beads");
+    return sendCreated(
+      c,
+      "bead",
+      {
+        beadId,
+        findingId: finding.id,
+        title,
+        type: beadType,
+        priority,
+      },
+      beadId ? `/beads/${beadId}` : "/beads",
+    );
   } catch (error) {
     return handleError(error, c);
   }
@@ -400,7 +439,7 @@ scanner.get("/history", async (c) => {
         filesScanned: entry.filesScanned,
         totalFindings: entry.totalFindings,
         criticalFindings: entry.criticalFindings,
-      }))
+      })),
     );
   } catch (error) {
     return handleError(error, c);

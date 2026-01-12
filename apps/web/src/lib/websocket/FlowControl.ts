@@ -7,13 +7,13 @@
 
 export enum FlowControlSignal {
   /** Request server to pause sending */
-  PAUSE = 'flow:pause',
+  PAUSE = "flow:pause",
   /** Request server to resume sending */
-  RESUME = 'flow:resume',
+  RESUME = "flow:resume",
   /** Acknowledge messages received */
-  ACK = 'flow:ack',
+  ACK = "flow:ack",
   /** Request server to slow down */
-  SLOW_DOWN = 'flow:slow_down',
+  SLOW_DOWN = "flow:slow_down",
 }
 
 export interface FlowControlMessage {
@@ -126,14 +126,17 @@ export class FlowControl {
   }
 
   private send(message: FlowControlMessage): void {
-    if (!this.config.socket || this.config.socket.readyState !== WebSocket.OPEN) {
+    if (
+      !this.config.socket ||
+      this.config.socket.readyState !== WebSocket.OPEN
+    ) {
       return;
     }
 
     try {
       this.config.socket.send(JSON.stringify(message));
     } catch (error) {
-      console.error('[FlowControl] Failed to send signal:', error);
+      console.error("[FlowControl] Failed to send signal:", error);
     }
   }
 
@@ -191,7 +194,7 @@ export class FlowControl {
  */
 export function createFlowControl(
   socket: WebSocket | null,
-  config?: Partial<Omit<FlowControlConfig, 'socket'>>
+  config?: Partial<Omit<FlowControlConfig, "socket">>,
 ): FlowControl {
   return new FlowControl({ ...config, socket });
 }

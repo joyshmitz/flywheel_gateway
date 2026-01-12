@@ -278,7 +278,10 @@ const mockDCGAllowlist: DCGAllowlistEntry[] = [
 
 const API_BASE = "/api/dcg";
 
-async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
+async function fetchAPI<T>(
+  endpoint: string,
+  options?: RequestInit,
+): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     headers: {
       "Content-Type": "application/json",
@@ -288,7 +291,9 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: "Request failed" }));
+    const error = await response
+      .json()
+      .catch(() => ({ message: "Request failed" }));
     throw new Error(error.message || `HTTP ${response.status}`);
   }
 
@@ -375,7 +380,11 @@ export function useDCGBlocks(options?: {
   if (options?.severity) params.set("severity", options.severity);
   if (options?.pack) params.set("pack", options.pack);
   const query = params.toString() ? `?${params.toString()}` : "";
-  return useQuery(`/blocks${query}`, mockDCGBlocks, [options?.limit, options?.severity, options?.pack]);
+  return useQuery(`/blocks${query}`, mockDCGBlocks, [
+    options?.limit,
+    options?.severity,
+    options?.pack,
+  ]);
 }
 
 /**
@@ -460,7 +469,10 @@ export function useDenyPending() {
   const mockMode = useUiStore((state) => state.mockMode);
 
   const deny = useCallback(
-    async (shortCode: string, reason?: string): Promise<DCGPendingException> => {
+    async (
+      shortCode: string,
+      reason?: string,
+    ): Promise<DCGPendingException> => {
       setIsLoading(true);
       setError(null);
 
@@ -469,7 +481,12 @@ export function useDenyPending() {
         setIsLoading(false);
         const mock = mockDCGPending.find((p) => p.shortCode === shortCode);
         if (mock) {
-          return { ...mock, status: "denied", deniedBy: "api-user", denyReason: reason };
+          return {
+            ...mock,
+            status: "denied",
+            deniedBy: "api-user",
+            denyReason: reason,
+          };
         }
         throw new Error("Not found");
       }
@@ -619,7 +636,10 @@ export function useTogglePack() {
   const mockMode = useUiStore((state) => state.mockMode);
 
   const toggle = useCallback(
-    async (packId: string, enable: boolean): Promise<{ packId: string; enabled: boolean }> => {
+    async (
+      packId: string,
+      enable: boolean,
+    ): Promise<{ packId: string; enabled: boolean }> => {
       setIsLoading(true);
       setError(null);
 
@@ -633,9 +653,12 @@ export function useTogglePack() {
         const endpoint = enable
           ? `/cli/packs/${packId}/enable`
           : `/cli/packs/${packId}/disable`;
-        const result = await fetchAPI<{ packId: string; enabled: boolean }>(endpoint, {
-          method: "POST",
-        });
+        const result = await fetchAPI<{ packId: string; enabled: boolean }>(
+          endpoint,
+          {
+            method: "POST",
+          },
+        );
         return result;
       } catch (e) {
         const err = e instanceof Error ? e : new Error("Unknown error");
@@ -675,9 +698,12 @@ export function useMarkFalsePositive() {
       }
 
       try {
-        const result = await fetchAPI<DCGBlock>(`/blocks/${blockId}/false-positive`, {
-          method: "POST",
-        });
+        const result = await fetchAPI<DCGBlock>(
+          `/blocks/${blockId}/false-positive`,
+          {
+            method: "POST",
+          },
+        );
         return result;
       } catch (e) {
         const err = e instanceof Error ? e : new Error("Unknown error");

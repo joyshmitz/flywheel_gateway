@@ -13,13 +13,13 @@ import {
   useImperativeHandle,
   useRef,
   useState,
-} from 'react';
+} from "react";
 
 export interface OutputLine {
   id: string;
   content: string;
   timestamp: number;
-  type: 'stdout' | 'stderr' | 'system' | 'tool' | 'thinking';
+  type: "stdout" | "stderr" | "system" | "tool" | "thinking";
   metadata?: {
     toolName?: string;
     agentId?: string;
@@ -89,12 +89,12 @@ const OutputRow = memo(function OutputRow({
     }
   }, [onHeightChange]);
 
-  const typeStyles: Record<OutputLine['type'], string> = {
-    stdout: 'text-gray-200',
-    stderr: 'text-red-400',
-    system: 'text-blue-400 italic',
-    tool: 'text-green-400',
-    thinking: 'text-yellow-400 opacity-70',
+  const typeStyles: Record<OutputLine["type"], string> = {
+    stdout: "text-gray-200",
+    stderr: "text-red-400",
+    system: "text-blue-400 italic",
+    tool: "text-green-400",
+    thinking: "text-yellow-400 opacity-70",
   };
 
   return (
@@ -106,7 +106,7 @@ const OutputRow = memo(function OutputRow({
       role="row"
       tabIndex={0}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if (e.key === "Enter" || e.key === " ") {
           onClick?.();
         }
       }}
@@ -117,18 +117,20 @@ const OutputRow = memo(function OutputRow({
       {line.metadata?.toolName && (
         <span className="text-purple-400 mr-2">[{line.metadata.toolName}]</span>
       )}
-      <span className="whitespace-pre-wrap break-all flex-1">{line.content}</span>
+      <span className="whitespace-pre-wrap break-all flex-1">
+        {line.content}
+      </span>
     </div>
   );
 });
 
 function formatTimestamp(ts: number): string {
   const date = new Date(ts);
-  return date.toLocaleTimeString('en-US', {
+  return date.toLocaleTimeString("en-US", {
     hour12: false,
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
   });
 }
 
@@ -147,9 +149,9 @@ export const VirtualizedOutput = forwardRef<
     autoScroll = true,
     onScrollAwayFromBottom,
     onLineClick,
-    className = '',
+    className = "",
   },
-  ref
+  ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
@@ -166,20 +168,17 @@ export const VirtualizedOutput = forwardRef<
       }
       return top;
     },
-    [rowHeights, estimatedRowHeight]
+    [rowHeights, estimatedRowHeight],
   );
 
   const getItemHeight = useCallback(
     (index: number): number => {
       return rowHeights[index] || estimatedRowHeight;
     },
-    [rowHeights, estimatedRowHeight]
+    [rowHeights, estimatedRowHeight],
   );
 
-  const totalHeight = lines.reduce(
-    (sum, _, i) => sum + getItemHeight(i),
-    0
-  );
+  const totalHeight = lines.reduce((sum, _, i) => sum + getItemHeight(i), 0);
 
   // Find visible range
   const getVisibleRange = useCallback(() => {
@@ -215,19 +214,22 @@ export const VirtualizedOutput = forwardRef<
   const { startIndex, endIndex } = getVisibleRange();
 
   // Handle scroll
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const target = e.currentTarget;
-    setScrollTop(target.scrollTop);
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const target = e.currentTarget;
+      setScrollTop(target.scrollTop);
 
-    const isNowAtBottom =
-      target.scrollHeight - target.scrollTop - target.clientHeight <
-      SCROLL_BOTTOM_THRESHOLD;
+      const isNowAtBottom =
+        target.scrollHeight - target.scrollTop - target.clientHeight <
+        SCROLL_BOTTOM_THRESHOLD;
 
-    if (!isNowAtBottom && isAtBottom) {
-      onScrollAwayFromBottom?.();
-    }
-    setIsAtBottom(isNowAtBottom);
-  }, [isAtBottom, onScrollAwayFromBottom]);
+      if (!isNowAtBottom && isAtBottom) {
+        onScrollAwayFromBottom?.();
+      }
+      setIsAtBottom(isNowAtBottom);
+    },
+    [isAtBottom, onScrollAwayFromBottom],
+  );
 
   // Handle row height changes
   const handleRowHeightChange = useCallback((index: number, height: number) => {
@@ -242,7 +244,7 @@ export const VirtualizedOutput = forwardRef<
     if (autoScroll && isAtBottom && lines.length > prevLinesLengthRef.current) {
       containerRef.current?.scrollTo({
         top: totalHeight,
-        behavior: 'smooth',
+        behavior: "smooth",
       });
     }
     prevLinesLengthRef.current = lines.length;
@@ -253,21 +255,21 @@ export const VirtualizedOutput = forwardRef<
     scrollToBottom: () => {
       containerRef.current?.scrollTo({
         top: totalHeight,
-        behavior: 'smooth',
+        behavior: "smooth",
       });
       setIsAtBottom(true);
     },
     scrollToTop: () => {
       containerRef.current?.scrollTo({
         top: 0,
-        behavior: 'smooth',
+        behavior: "smooth",
       });
     },
     scrollToLine: (index: number) => {
       const top = getItemTop(index);
       containerRef.current?.scrollTo({
         top,
-        behavior: 'smooth',
+        behavior: "smooth",
       });
     },
   }));
@@ -283,7 +285,7 @@ export const VirtualizedOutput = forwardRef<
         key={line.id}
         line={line}
         style={{
-          position: 'absolute',
+          position: "absolute",
           top,
           left: 0,
           right: 0,
@@ -291,7 +293,7 @@ export const VirtualizedOutput = forwardRef<
         }}
         onHeightChange={(h) => handleRowHeightChange(i, h)}
         onClick={() => onLineClick?.(line)}
-      />
+      />,
     );
   }
 
@@ -307,7 +309,7 @@ export const VirtualizedOutput = forwardRef<
     >
       <div
         style={{
-          position: 'relative',
+          position: "relative",
           height: totalHeight,
           minHeight: height,
         }}
@@ -322,7 +324,7 @@ export const VirtualizedOutput = forwardRef<
           onClick={() => {
             containerRef.current?.scrollTo({
               top: totalHeight,
-              behavior: 'smooth',
+              behavior: "smooth",
             });
             setIsAtBottom(true);
           }}
@@ -339,7 +341,7 @@ export const VirtualizedOutput = forwardRef<
  * Empty state component for when there are no lines
  */
 export function VirtualizedOutputEmpty({
-  message = 'No output yet',
+  message = "No output yet",
 }: {
   message?: string;
 }) {

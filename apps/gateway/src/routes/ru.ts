@@ -11,12 +11,15 @@ import { type Context, Hono } from "hono";
 import { z } from "zod";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
 import {
+  createExceptionsForPlan,
+  getSweepDCGSummary,
+  validateSweepPlan,
+  validateSweepSession,
+} from "../services/dcg-ru-integration.service";
+import {
   type AddRepoParams,
-  type FleetRepo,
-  type ListReposOptions,
-  type RepoStatus,
-  type UpdateRepoParams,
   addRepoToFleet,
+  type FleetRepo,
   getFleetGroups,
   getFleetRepo,
   getFleetRepoByFullName,
@@ -26,20 +29,13 @@ import {
   getReposNeedingSync,
   getReposWithUncommittedChanges,
   getReposWithUnpushedCommits,
+  type ListReposOptions,
+  type RepoStatus,
   removeRepoFromFleet,
+  type UpdateRepoParams,
   updateFleetRepo,
 } from "../services/ru-fleet.service";
 import {
-  createExceptionsForPlan,
-  getSweepDCGSummary,
-  validateSweepPlan,
-  validateSweepSession,
-} from "../services/dcg-ru-integration.service";
-import {
-  type PlanApprovalStatus,
-  type PlanExecutionStatus,
-  type SweepConfig,
-  type SweepStatus,
   approveSweepPlan,
   approveSweepSession,
   cancelSweepSession,
@@ -48,7 +44,11 @@ import {
   getSweepPlans,
   getSweepSession,
   listSweepSessions,
+  type PlanApprovalStatus,
+  type PlanExecutionStatus,
   rejectSweepPlan,
+  type SweepConfig,
+  type SweepStatus,
   startAgentSweep,
 } from "../services/ru-sweep.service";
 import {
@@ -420,7 +420,8 @@ ru.patch("/fleet/:id", async (c) => {
     const validated = UpdateRepoSchema.parse(body);
 
     const params: UpdateRepoParams = {};
-    if (validated.localPath !== undefined) params.localPath = validated.localPath;
+    if (validated.localPath !== undefined)
+      params.localPath = validated.localPath;
     if (validated.isCloned !== undefined) params.isCloned = validated.isCloned;
     if (validated.currentBranch !== undefined)
       params.currentBranch = validated.currentBranch;
@@ -505,27 +506,31 @@ ru.get("/sweeps", async (c) => {
 
     const { sessions, total } = await listSweepSessions(params);
 
-    return sendList(c, sessions.map((s) => ({
-      id: s.id,
-      repoCount: s.repoCount,
-      parallelism: s.parallelism,
-      currentPhase: s.currentPhase,
-      status: s.status,
-      reposAnalyzed: s.reposAnalyzed,
-      reposPlanned: s.reposPlanned,
-      reposExecuted: s.reposExecuted,
-      reposFailed: s.reposFailed,
-      reposSkipped: s.reposSkipped,
-      startedAt: s.startedAt?.toISOString?.() ?? s.startedAt,
-      completedAt: s.completedAt?.toISOString?.() ?? s.completedAt,
-      totalDurationMs: s.totalDurationMs,
-      slbApprovalRequired: s.slbApprovalRequired,
-      slbApprovedBy: s.slbApprovedBy,
-      slbApprovedAt: s.slbApprovedAt?.toISOString?.() ?? s.slbApprovedAt,
-      triggeredBy: s.triggeredBy,
-      createdAt: s.createdAt?.toISOString?.() ?? s.createdAt,
-      updatedAt: s.updatedAt?.toISOString?.() ?? s.updatedAt,
-    })), { total });
+    return sendList(
+      c,
+      sessions.map((s) => ({
+        id: s.id,
+        repoCount: s.repoCount,
+        parallelism: s.parallelism,
+        currentPhase: s.currentPhase,
+        status: s.status,
+        reposAnalyzed: s.reposAnalyzed,
+        reposPlanned: s.reposPlanned,
+        reposExecuted: s.reposExecuted,
+        reposFailed: s.reposFailed,
+        reposSkipped: s.reposSkipped,
+        startedAt: s.startedAt?.toISOString?.() ?? s.startedAt,
+        completedAt: s.completedAt?.toISOString?.() ?? s.completedAt,
+        totalDurationMs: s.totalDurationMs,
+        slbApprovalRequired: s.slbApprovalRequired,
+        slbApprovedBy: s.slbApprovedBy,
+        slbApprovedAt: s.slbApprovedAt?.toISOString?.() ?? s.slbApprovedAt,
+        triggeredBy: s.triggeredBy,
+        createdAt: s.createdAt?.toISOString?.() ?? s.createdAt,
+        updatedAt: s.updatedAt?.toISOString?.() ?? s.updatedAt,
+      })),
+      { total },
+    );
   } catch (error) {
     return handleError(error, c);
   }
@@ -560,14 +565,19 @@ ru.post("/sweeps", async (c) => {
 
     const session = await startAgentSweep(triggeredBy, config);
 
-    return sendCreated(c, "sweep_session", {
-      id: session.id,
-      repoCount: session.repoCount,
-      status: session.status,
-      slbApprovalRequired: session.slbApprovalRequired,
-      triggeredBy: session.triggeredBy,
-      createdAt: session.createdAt?.toISOString?.() ?? session.createdAt,
-    }, `/ru/sweeps/${session.id}`);
+    return sendCreated(
+      c,
+      "sweep_session",
+      {
+        id: session.id,
+        repoCount: session.repoCount,
+        status: session.status,
+        slbApprovalRequired: session.slbApprovalRequired,
+        triggeredBy: session.triggeredBy,
+        createdAt: session.createdAt?.toISOString?.() ?? session.createdAt,
+      },
+      `/ru/sweeps/${session.id}`,
+    );
   } catch (error) {
     return handleError(error, c);
   }
@@ -681,29 +691,32 @@ ru.get("/sweeps/:id/plans", async (c) => {
 
     const plans = await getSweepPlans(id, params);
 
-    return sendList(c, plans.map((p) => ({
-      id: p.id,
-      sessionId: p.sessionId,
-      repoId: p.repoId,
-      repoFullName: p.repoFullName,
-      planVersion: p.planVersion,
-      actionCount: p.actionCount,
-      estimatedDurationMs: p.estimatedDurationMs,
-      riskLevel: p.riskLevel,
-      commitActions: p.commitActions,
-      releaseActions: p.releaseActions,
-      branchActions: p.branchActions,
-      prActions: p.prActions,
-      otherActions: p.otherActions,
-      approvalStatus: p.approvalStatus,
-      approvedBy: p.approvedBy,
-      approvedAt: p.approvedAt?.toISOString?.() ?? p.approvedAt,
-      rejectedReason: p.rejectedReason,
-      executionStatus: p.executionStatus,
-      executedAt: p.executedAt?.toISOString?.() ?? p.executedAt,
-      createdAt: p.createdAt?.toISOString?.() ?? p.createdAt,
-      updatedAt: p.updatedAt?.toISOString?.() ?? p.updatedAt,
-    })));
+    return sendList(
+      c,
+      plans.map((p) => ({
+        id: p.id,
+        sessionId: p.sessionId,
+        repoId: p.repoId,
+        repoFullName: p.repoFullName,
+        planVersion: p.planVersion,
+        actionCount: p.actionCount,
+        estimatedDurationMs: p.estimatedDurationMs,
+        riskLevel: p.riskLevel,
+        commitActions: p.commitActions,
+        releaseActions: p.releaseActions,
+        branchActions: p.branchActions,
+        prActions: p.prActions,
+        otherActions: p.otherActions,
+        approvalStatus: p.approvalStatus,
+        approvedBy: p.approvedBy,
+        approvedAt: p.approvedAt?.toISOString?.() ?? p.approvedAt,
+        rejectedReason: p.rejectedReason,
+        executionStatus: p.executionStatus,
+        executedAt: p.executedAt?.toISOString?.() ?? p.executedAt,
+        createdAt: p.createdAt?.toISOString?.() ?? p.createdAt,
+        updatedAt: p.updatedAt?.toISOString?.() ?? p.updatedAt,
+      })),
+    );
   } catch (error) {
     return handleError(error, c);
   }
@@ -735,20 +748,24 @@ ru.get("/sweeps/:id/logs", async (c) => {
 
     const { logs, total } = await getSweepLogs(id, params);
 
-    return sendList(c, logs.map((l) => ({
-      id: l.id,
-      sessionId: l.sessionId,
-      planId: l.planId,
-      repoId: l.repoId,
-      phase: l.phase,
-      level: l.level,
-      message: l.message,
-      data: l.data,
-      timestamp: l.timestamp?.toISOString?.() ?? l.timestamp,
-      durationMs: l.durationMs,
-      actionType: l.actionType,
-      actionIndex: l.actionIndex,
-    })), { total });
+    return sendList(
+      c,
+      logs.map((l) => ({
+        id: l.id,
+        sessionId: l.sessionId,
+        planId: l.planId,
+        repoId: l.repoId,
+        phase: l.phase,
+        level: l.level,
+        message: l.message,
+        data: l.data,
+        timestamp: l.timestamp?.toISOString?.() ?? l.timestamp,
+        durationMs: l.durationMs,
+        actionType: l.actionType,
+        actionIndex: l.actionIndex,
+      })),
+      { total },
+    );
   } catch (error) {
     return handleError(error, c);
   }

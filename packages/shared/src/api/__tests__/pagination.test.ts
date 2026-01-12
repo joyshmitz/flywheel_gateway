@@ -2,18 +2,18 @@
  * Unit tests for pagination utilities.
  */
 
-import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildPaginationMeta,
-  createCursor,
   CURSOR_EXPIRATION_MS,
-  decodeCursor,
+  type CursorPayload,
+  createCursor,
   DEFAULT_PAGINATION,
+  decodeCursor,
   encodeCursor,
   normalizePaginationParams,
-  parsePaginationQuery,
-  type CursorPayload,
   type PaginationParams,
+  parsePaginationQuery,
 } from "../pagination";
 
 describe("pagination", () => {
@@ -104,9 +104,9 @@ describe("pagination", () => {
 
     it("should return undefined for cursor without required fields", () => {
       // Missing id
-      const noId = Buffer.from(JSON.stringify({ createdAt: Date.now() })).toString(
-        "base64url",
-      );
+      const noId = Buffer.from(
+        JSON.stringify({ createdAt: Date.now() }),
+      ).toString("base64url");
       expect(decodeCursor(noId)).toBeUndefined();
 
       // Missing createdAt
@@ -123,9 +123,9 @@ describe("pagination", () => {
     });
 
     it("should return undefined for non-object payload", () => {
-      const stringPayload = Buffer.from(JSON.stringify("just a string")).toString(
-        "base64url",
-      );
+      const stringPayload = Buffer.from(
+        JSON.stringify("just a string"),
+      ).toString("base64url");
       expect(decodeCursor(stringPayload)).toBeUndefined();
 
       const arrayPayload = Buffer.from(JSON.stringify([1, 2, 3])).toString(
@@ -133,7 +133,9 @@ describe("pagination", () => {
       );
       expect(decodeCursor(arrayPayload)).toBeUndefined();
 
-      const nullPayload = Buffer.from(JSON.stringify(null)).toString("base64url");
+      const nullPayload = Buffer.from(JSON.stringify(null)).toString(
+        "base64url",
+      );
       expect(decodeCursor(nullPayload)).toBeUndefined();
     });
 
@@ -315,7 +317,10 @@ describe("pagination", () => {
 
     it("should indicate hasMore when items exceed limit", () => {
       // Simulating fetch of limit+1 items
-      const items = [...testItems, { id: "item_4", name: "Fourth", createdAt: 4000 }];
+      const items = [
+        ...testItems,
+        { id: "item_4", name: "Fourth", createdAt: 4000 },
+      ];
       const meta = buildPaginationMeta(items, 3, (item) => item.id);
 
       expect(meta.hasMore).toBe(true);
@@ -328,7 +333,10 @@ describe("pagination", () => {
     });
 
     it("should generate nextCursor when hasMore", () => {
-      const items = [...testItems, { id: "item_4", name: "Fourth", createdAt: 4000 }];
+      const items = [
+        ...testItems,
+        { id: "item_4", name: "Fourth", createdAt: 4000 },
+      ];
       const meta = buildPaginationMeta(items, 3, (item) => item.id);
 
       expect(meta.nextCursor).toBeDefined();
@@ -353,7 +361,10 @@ describe("pagination", () => {
     });
 
     it("should include sortValue in cursor when getSortValueFn provided", () => {
-      const items = [...testItems, { id: "item_4", name: "Fourth", createdAt: 4000 }];
+      const items = [
+        ...testItems,
+        { id: "item_4", name: "Fourth", createdAt: 4000 },
+      ];
       const meta = buildPaginationMeta(
         items,
         3,

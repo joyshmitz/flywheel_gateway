@@ -7,7 +7,11 @@
 
 import { readdir, stat } from "node:fs/promises";
 import { join, relative } from "node:path";
-import type { JobHandler, JobContext, ValidationResult } from "../../types/job.types";
+import type {
+  JobContext,
+  JobHandler,
+  ValidationResult,
+} from "../../types/job.types";
 
 export interface CodebaseScanInput {
   path: string;
@@ -37,7 +41,9 @@ interface ScanCheckpoint {
   totalSize: number;
 }
 
-export class CodebaseScanHandler implements JobHandler<CodebaseScanInput, CodebaseScanOutput> {
+export class CodebaseScanHandler
+  implements JobHandler<CodebaseScanInput, CodebaseScanOutput>
+{
   async validate(input: CodebaseScanInput): Promise<ValidationResult> {
     const errors: string[] = [];
 
@@ -55,7 +61,9 @@ export class CodebaseScanHandler implements JobHandler<CodebaseScanInput, Codeba
     };
   }
 
-  async execute(context: JobContext<CodebaseScanInput>): Promise<CodebaseScanOutput> {
+  async execute(
+    context: JobContext<CodebaseScanInput>,
+  ): Promise<CodebaseScanOutput> {
     const { input } = context;
     const maxFiles = input.maxFiles ?? 10000;
 
@@ -71,7 +79,10 @@ export class CodebaseScanHandler implements JobHandler<CodebaseScanInput, Codeba
     await context.setStage("scanning");
 
     // Get all directories to scan
-    const dirsToScan = await this.getDirectories(input.path, input.excludePatterns ?? []);
+    const dirsToScan = await this.getDirectories(
+      input.path,
+      input.excludePatterns ?? [],
+    );
 
     for (let i = 0; i < dirsToScan.length; i++) {
       // Check for cancellation
@@ -120,12 +131,19 @@ export class CodebaseScanHandler implements JobHandler<CodebaseScanInput, Codeba
       }
 
       if (files.length >= maxFiles) {
-        context.log("warn", "Max files limit reached", { maxFiles, found: files.length });
+        context.log("warn", "Max files limit reached", {
+          maxFiles,
+          found: files.length,
+        });
         break;
       }
     }
 
-    await context.updateProgress(dirsToScan.length, dirsToScan.length, "Scan complete");
+    await context.updateProgress(
+      dirsToScan.length,
+      dirsToScan.length,
+      "Scan complete",
+    );
 
     context.log("info", "Codebase scan complete", {
       totalFiles: files.length,
