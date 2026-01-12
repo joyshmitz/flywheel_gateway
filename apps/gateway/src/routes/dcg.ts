@@ -20,6 +20,20 @@ import {
   validateExceptionForExecution,
 } from "../services/dcg-pending.service";
 import {
+  DCGCommandError,
+  DCGNotAvailableError,
+  DCGPackNotFoundError,
+  explainCommand,
+  getPackInfo,
+  getPacksCached,
+  invalidatePacksCache,
+  preValidateCommand,
+  scanContent,
+  scanFile,
+  testCommand,
+  validateAgentScript,
+} from "../services/dcg-cli.service";
+import {
   addToAllowlist,
   type DCGConfig,
   type DCGSeverity,
@@ -29,7 +43,10 @@ import {
   getBlockEvents,
   getConfig,
   getDcgVersion,
+  getFullStats,
+  getOverviewStats,
   getStats,
+  getTrendStats,
   isDcgAvailable,
   listPacks,
   markFalsePositive,
@@ -91,6 +108,34 @@ const ValidateRequestSchema = z.object({
   commandHash: z.string().length(64),
 });
 
+const ExplainRequestSchema = z.object({
+  command: z.string().min(1).max(10000),
+});
+
+const TestRequestSchema = z.object({
+  command: z.string().min(1).max(10000),
+});
+
+const ScanRequestSchema = z.object({
+  filePath: z.string().min(1).optional(),
+  content: z.string().max(1000000).optional(),
+  filename: z.string().max(256).optional(),
+}).refine(
+  (data) => data.filePath || data.content,
+  { message: "Either filePath or content must be provided" },
+);
+
+const PreValidateRequestSchema = z.object({
+  command: z.string().min(1).max(10000),
+  agentId: z.string().min(1).max(256),
+});
+
+const ValidateScriptRequestSchema = z.object({
+  content: z.string().min(1).max(1000000),
+  scriptName: z.string().min(1).max(256),
+  agentId: z.string().min(1).max(256),
+});
+
 // ============================================================================
 // Error Handler
 // ============================================================================
@@ -100,6 +145,18 @@ function handleError(error: unknown, c: Context) {
 
   if (error instanceof z.ZodError) {
     return sendValidationError(c, transformZodError(error));
+  }
+
+  if (error instanceof DCGPackNotFoundError) {
+    return sendNotFound(c, "pack", error.packId);
+  }
+
+  if (error instanceof DCGNotAvailableError) {
+    return sendError(c, "DCG_NOT_AVAILABLE", "DCG CLI is not installed or not accessible", 503);
+  }
+
+  if (error instanceof DCGCommandError) {
+    return sendError(c, "DCG_COMMAND_FAILED", error.message, 500);
   }
 
   if (error instanceof Error && error.message.includes("Unknown packs")) {
@@ -587,12 +644,217 @@ dcg.post("/pending/validate-hash", async (c) => {
 // ============================================================================
 
 /**
- * GET /dcg/stats - Get block statistics
+ * GET /dcg/stats - Get block statistics (legacy format)
  */
 dcg.get("/stats", async (c) => {
   try {
     const stats = await getStats();
     return sendResource(c, "dcg_statistics", stats);
+  } catch (error) {
+    return handleError(error, c);
+  }
+});
+
+/**
+ * GET /dcg/stats/full - Get comprehensive statistics with trends and time series
+ */
+dcg.get("/stats/full", async (c) => {
+  try {
+    const stats = await getFullStats();
+    return sendResource(c, "dcg_full_statistics", stats);
+  } catch (error) {
+    return handleError(error, c);
+  }
+});
+
+/**
+ * GET /dcg/stats/overview - Get overview statistics only
+ */
+dcg.get("/stats/overview", async (c) => {
+  try {
+    const stats = await getOverviewStats();
+    return sendResource(c, "dcg_overview_statistics", stats);
+  } catch (error) {
+    return handleError(error, c);
+  }
+});
+
+/**
+ * GET /dcg/stats/trends - Get trend statistics only
+ */
+dcg.get("/stats/trends", async (c) => {
+  try {
+    const stats = await getTrendStats();
+    return sendResource(c, "dcg_trend_statistics", stats);
+  } catch (error) {
+    return handleError(error, c);
+  }
+});
+
+// ============================================================================
+// CLI Integration Routes
+// ============================================================================
+
+/**
+ * POST /dcg/explain - Explain a command and why it might be blocked
+ */
+dcg.post("/explain", async (c) => {
+  try {
+    const body = await c.req.json();
+    const validated = ExplainRequestSchema.parse(body);
+
+    const result = await explainCommand(validated.command);
+    return sendResource(c, "explain_result", result);
+  } catch (error) {
+    return handleError(error, c);
+  }
+});
+
+/**
+ * POST /dcg/test - Test if a command would be blocked
+ */
+dcg.post("/test", async (c) => {
+  try {
+    const body = await c.req.json();
+    const validated = TestRequestSchema.parse(body);
+
+    const result = await testCommand(validated.command);
+    return sendResource(c, "test_result", result);
+  } catch (error) {
+    return handleError(error, c);
+  }
+});
+
+/**
+ * POST /dcg/scan - Scan a file or content for dangerous commands
+ */
+dcg.post("/scan", async (c) => {
+  try {
+    const body = await c.req.json();
+    const validated = ScanRequestSchema.parse(body);
+
+    let result;
+    if (validated.filePath) {
+      result = await scanFile(validated.filePath);
+    } else if (validated.content) {
+      result = await scanContent(validated.content, validated.filename);
+    } else {
+      return sendError(c, "INVALID_REQUEST", "Either filePath or content is required", 400);
+    }
+
+    return sendResource(c, "scan_result", result);
+  } catch (error) {
+    return handleError(error, c);
+  }
+});
+
+/**
+ * GET /dcg/cli/packs - List packs with full details (cached)
+ */
+dcg.get("/cli/packs", async (c) => {
+  try {
+    const packs = await getPacksCached();
+    if (packs.length === 0) {
+      return sendEmptyList(c);
+    }
+    return sendList(c, packs);
+  } catch (error) {
+    return handleError(error, c);
+  }
+});
+
+/**
+ * GET /dcg/cli/packs/:packId - Get detailed info about a specific pack
+ */
+dcg.get("/cli/packs/:packId", async (c) => {
+  try {
+    const packId = c.req.param("packId");
+    const pack = await getPackInfo(packId);
+    return sendResource(c, "pack_info", pack);
+  } catch (error) {
+    return handleError(error, c);
+  }
+});
+
+/**
+ * POST /dcg/cli/packs/:packId/enable - Enable a pack (with cache invalidation)
+ */
+dcg.post("/cli/packs/:packId/enable", async (c) => {
+  try {
+    const packId = c.req.param("packId");
+    const success = await enablePack(packId);
+
+    if (!success) {
+      return sendNotFound(c, "pack", packId);
+    }
+
+    invalidatePacksCache();
+
+    return sendResource(c, "pack_status", {
+      packId,
+      enabled: true,
+    });
+  } catch (error) {
+    return handleError(error, c);
+  }
+});
+
+/**
+ * POST /dcg/cli/packs/:packId/disable - Disable a pack (with cache invalidation)
+ */
+dcg.post("/cli/packs/:packId/disable", async (c) => {
+  try {
+    const packId = c.req.param("packId");
+    const success = await disablePack(packId);
+
+    if (!success) {
+      return sendNotFound(c, "pack", packId);
+    }
+
+    invalidatePacksCache();
+
+    return sendResource(c, "pack_status", {
+      packId,
+      enabled: false,
+    });
+  } catch (error) {
+    return handleError(error, c);
+  }
+});
+
+// ============================================================================
+// Agent Pre-Validation Routes
+// ============================================================================
+
+/**
+ * POST /dcg/pre-validate - Pre-validate a command before agent execution
+ */
+dcg.post("/pre-validate", async (c) => {
+  try {
+    const body = await c.req.json();
+    const validated = PreValidateRequestSchema.parse(body);
+
+    const result = await preValidateCommand(validated.agentId, validated.command);
+    return sendResource(c, "pre_validation_result", result);
+  } catch (error) {
+    return handleError(error, c);
+  }
+});
+
+/**
+ * POST /dcg/validate-script - Validate an agent-generated script
+ */
+dcg.post("/validate-script", async (c) => {
+  try {
+    const body = await c.req.json();
+    const validated = ValidateScriptRequestSchema.parse(body);
+
+    const result = await validateAgentScript(
+      validated.agentId,
+      validated.content,
+      validated.scriptName,
+    );
+    return sendResource(c, "script_validation_result", result);
   } catch (error) {
     return handleError(error, c);
   }

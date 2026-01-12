@@ -609,19 +609,37 @@ export async function removeFromAllowlist(ruleId: string): Promise<boolean> {
 // Statistics
 // ============================================================================
 
+// Import stats service for database-backed statistics
+import * as dcgStatsService from "./dcg-stats.service";
+
+// Re-export full stats types
+export type {
+  DCGOverviewStats,
+  DCGTrendStats,
+  DCGPatternStats,
+  DCGTimeSeriesPoint,
+  DCGFullStats,
+} from "./dcg-stats.service";
+
 /**
  * Get DCG statistics.
+ * Uses database queries for accurate counts, with fallback to in-memory for
+ * pack/severity data (which isn't stored in the database schema).
  */
 export async function getStats(): Promise<DCGStats> {
+  // Get database-backed stats
+  const dbStats = await dcgStatsService.getLegacyStats();
+
+  // Supplement with in-memory data for pack/severity which aren't in the DB
   const events = recentBlocks;
 
-  // Count by pack
+  // Count by pack from in-memory
   const blocksByPack: Record<string, number> = {};
   for (const event of events) {
     blocksByPack[event.pack] = (blocksByPack[event.pack] ?? 0) + 1;
   }
 
-  // Count by severity
+  // Count by severity from in-memory
   const blocksBySeverity: Record<string, number> = {
     critical: 0,
     high: 0,
@@ -633,31 +651,35 @@ export async function getStats(): Promise<DCGStats> {
       (blocksBySeverity[event.severity] ?? 0) + 1;
   }
 
-  // Calculate false positive rate
-  const falsePositives = events.filter((e) => e.falsePositive).length;
-  const falsePositiveRate =
-    events.length > 0 ? falsePositives / events.length : 0;
-
-  // Top blocked commands (simplified/redacted)
-  const commandCounts: Record<string, number> = {};
-  for (const event of events) {
-    // Extract just the command name, not args
-    const cmdName = event.command.split(/\s+/)[0] ?? event.command;
-    commandCounts[cmdName] = (commandCounts[cmdName] ?? 0) + 1;
-  }
-
-  const topBlockedCommands = Object.entries(commandCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([command, count]) => ({ command, count }));
-
   return {
-    totalBlocks: events.length,
+    totalBlocks: dbStats.totalBlocks,
     blocksByPack,
     blocksBySeverity,
-    falsePositiveRate,
-    topBlockedCommands,
+    falsePositiveRate: dbStats.falsePositiveRate,
+    topBlockedCommands: dbStats.topBlockedCommands,
   };
+}
+
+/**
+ * Get comprehensive DCG statistics with time-based filtering and trends.
+ * This is the new enhanced statistics endpoint.
+ */
+export async function getFullStats(): Promise<dcgStatsService.DCGFullStats> {
+  return dcgStatsService.getFullStats();
+}
+
+/**
+ * Get overview statistics only.
+ */
+export async function getOverviewStats(): Promise<dcgStatsService.DCGOverviewStats> {
+  return dcgStatsService.getOverviewStats();
+}
+
+/**
+ * Get trend statistics only.
+ */
+export async function getTrendStats(): Promise<dcgStatsService.DCGTrendStats> {
+  return dcgStatsService.getTrendStats();
 }
 
 // ============================================================================
