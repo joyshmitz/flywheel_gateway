@@ -876,9 +876,10 @@ export function FleetPage() {
               isApproving={isApprovingSweep}
               isCancelling={isCancelling}
             />
-            {sessions.find((s) => s.status === "paused") && (
-              <PlanApproval sessionId={sessions.find((s) => s.status === "paused")!.id} />
-            )}
+            {(() => {
+              const pausedSession = sessions.find((s) => s.status === "paused");
+              return pausedSession ? <PlanApproval sessionId={pausedSession.id} /> : null;
+            })()}
           </>
         )}
 

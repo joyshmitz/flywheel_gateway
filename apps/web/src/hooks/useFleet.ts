@@ -110,21 +110,6 @@ export interface SweepPlan {
   updatedAt: string;
 }
 
-export interface SweepLog {
-  id: string;
-  sessionId: string;
-  planId?: string;
-  repoId?: string;
-  phase: string;
-  level: "debug" | "info" | "warn" | "error";
-  message: string;
-  data?: unknown;
-  timestamp: string;
-  durationMs?: number;
-  actionType?: string;
-  actionIndex?: number;
-}
-
 // ============================================================================
 // Mock Data
 // ============================================================================

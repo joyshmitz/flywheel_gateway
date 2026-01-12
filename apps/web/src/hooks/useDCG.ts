@@ -58,11 +58,6 @@ export interface DCGPendingException {
   denyReason?: string;
 }
 
-export interface DCGConfig {
-  enabledPacks: string[];
-  disabledPacks: string[];
-}
-
 export interface DCGPack {
   id: string;
   name: string;
