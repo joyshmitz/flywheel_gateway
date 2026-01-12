@@ -413,51 +413,6 @@ export function useDCGAllowlist(): UseQueryResult<DCGAllowlistEntry[]> {
 // Mutation Hooks
 // ============================================================================
 
-interface UseMutationResult<TInput, TOutput> {
-  mutate: (input: TInput) => Promise<TOutput>;
-  isLoading: boolean;
-  error: Error | null;
-}
-
-function useMutation<TInput, TOutput>(
-  endpoint: string,
-  method: "POST" | "PUT" | "DELETE",
-): UseMutationResult<TInput, TOutput> {
-  const mockMode = useUiStore((state) => state.mockMode);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-
-  const mutate = useCallback(
-    async (input: TInput): Promise<TOutput> => {
-      setIsLoading(true);
-      setError(null);
-
-      if (mockMode) {
-        await new Promise((r) => setTimeout(r, 500));
-        setIsLoading(false);
-        return { success: true } as TOutput;
-      }
-
-      try {
-        const result = await fetchAPI<TOutput>(endpoint, {
-          method,
-          body: JSON.stringify(input),
-        });
-        return result;
-      } catch (e) {
-        const err = e instanceof Error ? e : new Error("Unknown error");
-        setError(err);
-        throw err;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [endpoint, method, mockMode],
-  );
-
-  return { mutate, isLoading, error };
-}
-
 /**
  * Hook to approve a pending exception.
  */

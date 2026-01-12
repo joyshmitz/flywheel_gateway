@@ -409,22 +409,86 @@ function SweepsTab({
           <span>Duration</span>
         </div>
         {sessions.map((session) => (
-          <div
-            key={session.id}
-            className="table__row"
-            style={{ cursor: "pointer" }}
-            onClick={() => setExpandedSession(expandedSession === session.id ? null : session.id)}
-          >
-            <span className="mono">{session.id}</span>
-            <span>
-              <StatusPill tone={getSweepStatusTone(session.status)}>{session.status}</StatusPill>
-            </span>
-            <span>
-              {session.reposExecuted}/{session.repoCount} repos
-            </span>
-            <span>
-              {session.totalDurationMs ? `${Math.round(session.totalDurationMs / 60000)}m` : "-"}
-            </span>
+          <div key={session.id}>
+            <div
+              className="table__row"
+              style={{ cursor: "pointer" }}
+              onClick={() => setExpandedSession(expandedSession === session.id ? null : session.id)}
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                {expandedSession === session.id ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                <span className="mono">{session.id}</span>
+              </span>
+              <span>
+                <StatusPill tone={getSweepStatusTone(session.status)}>{session.status}</StatusPill>
+              </span>
+              <span>
+                {session.reposExecuted}/{session.repoCount} repos
+              </span>
+              <span>
+                {session.totalDurationMs ? `${Math.round(session.totalDurationMs / 60000)}m` : "-"}
+              </span>
+            </div>
+
+            {/* Expanded Session Details */}
+            {expandedSession === session.id && (
+              <div
+                style={{
+                  padding: "16px",
+                  marginBottom: "12px",
+                  background: "var(--surface-muted)",
+                  borderRadius: "8px",
+                }}
+              >
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px" }}>
+                  <div>
+                    <div className="eyebrow">Phase</div>
+                    <div>{session.currentPhase}/3</div>
+                  </div>
+                  <div>
+                    <div className="eyebrow">Parallelism</div>
+                    <div>{session.parallelism} workers</div>
+                  </div>
+                  <div>
+                    <div className="eyebrow">Triggered By</div>
+                    <div>{session.triggeredBy}</div>
+                  </div>
+                  <div>
+                    <div className="eyebrow">Started</div>
+                    <div>{formatRelativeTime(session.startedAt)}</div>
+                  </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "16px", marginTop: "12px" }}>
+                  <div>
+                    <div className="eyebrow">Analyzed</div>
+                    <div>{session.reposAnalyzed}</div>
+                  </div>
+                  <div>
+                    <div className="eyebrow">Planned</div>
+                    <div>{session.reposPlanned}</div>
+                  </div>
+                  <div>
+                    <div className="eyebrow">Executed</div>
+                    <div>{session.reposExecuted}</div>
+                  </div>
+                  <div>
+                    <div className="eyebrow">Failed</div>
+                    <div style={{ color: session.reposFailed > 0 ? "var(--danger)" : "inherit" }}>
+                      {session.reposFailed}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="eyebrow">Skipped</div>
+                    <div>{session.reposSkipped}</div>
+                  </div>
+                </div>
+                {session.slbApprovedBy && (
+                  <div style={{ marginTop: "12px", padding: "8px", background: "var(--surface)", borderRadius: "4px" }}>
+                    <span className="muted">Approved by {session.slbApprovedBy}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
 

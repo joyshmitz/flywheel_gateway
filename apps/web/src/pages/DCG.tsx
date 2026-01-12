@@ -757,7 +757,7 @@ export function DCGPage() {
   } | null>(null);
 
   // Data hooks
-  const { data: stats, isLoading: statsLoading } = useDCGStats();
+  const { data: stats } = useDCGStats();
   const { data: blocks, refetch: refetchBlocks } = useDCGBlocks({ limit: 50 });
   const { data: pending, refetch: refetchPending } = useDCGPending({ status: "pending" });
   const { data: packs, refetch: refetchPacks } = useDCGPacks();
