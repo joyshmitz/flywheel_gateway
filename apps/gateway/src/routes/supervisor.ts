@@ -164,7 +164,13 @@ supervisor.get("/:name/logs", async (c) => {
   try {
     const name = c.req.param("name");
     const limitStr = c.req.query("limit");
-    const limit = limitStr ? Math.min(parseInt(limitStr, 10), 1000) : 100;
+    let limit = 100;
+    if (limitStr) {
+      const parsed = parseInt(limitStr, 10);
+      if (!Number.isNaN(parsed) && parsed > 0) {
+        limit = Math.min(parsed, 1000);
+      }
+    }
 
     const svc = getSupervisor();
     const logs = svc.getLogs(name, limit);

@@ -106,6 +106,7 @@ export class SupervisorService {
   private specs = new Map<string, DaemonSpec>();
   private logs = new Map<string, DaemonLogEntry[]>();
   private healthCheckIntervals = new Map<string, ReturnType<typeof setInterval>>();
+  private startingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
   private started = false;
 
   private static readonly MAX_LOG_ENTRIES = 1000;
@@ -215,13 +216,17 @@ export class SupervisorService {
         this.startHealthCheck(name);
       } else {
         // No health endpoint - assume running after short delay
-        setTimeout(() => {
+        // Track the timeout so we can clear it if daemon exits
+        this.clearStartingTimeout(name);
+        const timeout = setTimeout(() => {
+          this.startingTimeouts.delete(name);
           const currentState = this.daemons.get(name);
           if (currentState && currentState.status === "starting") {
             currentState.status = "running";
             this.emitEvent("daemon.started", currentState);
           }
         }, 500);
+        this.startingTimeouts.set(name, timeout);
       }
 
       log.info({ correlationId, daemon: name, pid: proc.pid }, "Daemon process started");
@@ -411,7 +416,8 @@ export class SupervisorService {
     state.stoppedAt = new Date();
     state.pid = undefined;
 
-    // Stop health checks
+    // Clear any pending starting timeout and health checks
+    this.clearStartingTimeout(name);
     this.stopHealthCheck(name);
 
     // Check restart policy
@@ -477,6 +483,14 @@ export class SupervisorService {
     if (interval) {
       clearInterval(interval);
       this.healthCheckIntervals.delete(name);
+    }
+  }
+
+  private clearStartingTimeout(name: string): void {
+    const timeout = this.startingTimeouts.get(name);
+    if (timeout) {
+      clearTimeout(timeout);
+      this.startingTimeouts.delete(name);
     }
   }
 
