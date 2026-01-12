@@ -1,0 +1,2 @@
+{"agent_name":"claude-opus-agent","display_name":"Claude Opus Agent","project_key":"/data/projects/flywheel_private","registered_at":"2026-01-12T06:15:00Z","capabilities":["code-review","implementation","testing","research"],"status":"active"}
+{"agent_name":"gateway-opus-agent","display_name":"Gateway Opus Agent","project_key":"/data/projects/flywheel_gateway","registered_at":"2026-01-12T09:30:00Z","capabilities":["code-review","implementation","testing","architecture","api-design"],"status":"active"}
