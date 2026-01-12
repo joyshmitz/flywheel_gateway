@@ -5,9 +5,11 @@ import {
 } from "@tanstack/react-router";
 
 import { Shell } from "./components/layout/Shell";
+import { AccountsPage } from "./pages/Accounts";
 import { AgentsPage } from "./pages/Agents";
 import { BeadsPage } from "./pages/Beads";
 import { CollaborationGraphPage } from "./pages/CollaborationGraph";
+import { CostAnalyticsPage } from "./pages/CostAnalytics";
 import { DashboardPage } from "./pages/Dashboard";
 import { DCGPage } from "./pages/DCG";
 import { FleetPage } from "./pages/Fleet";
@@ -35,6 +37,12 @@ const beadsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/beads",
   component: BeadsPage,
+});
+
+const accountsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/accounts",
+  component: AccountsPage,
 });
 
 const settingsRoute = createRoute({
@@ -67,6 +75,12 @@ const collaborationRoute = createRoute({
   component: CollaborationGraphPage,
 });
 
+const costAnalyticsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/cost-analytics",
+  component: CostAnalyticsPage,
+});
+
 const notFoundRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "*",
@@ -77,6 +91,8 @@ const routeTree = rootRoute.addChildren([
   dashboardRoute,
   agentsRoute,
   beadsRoute,
+  accountsRoute,
+  costAnalyticsRoute,
   dcgRoute,
   fleetRoute,
   velocityRoute,
