@@ -701,6 +701,16 @@ See the WebSocket documentation for event types and subscription.
         bearerAuth: [],
       },
     ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+          description: "JWT Bearer token authentication",
+        },
+      },
+    },
   });
 }
 

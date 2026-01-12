@@ -203,9 +203,9 @@ export function NotificationItem({
     >
       {/* Unread indicator dot */}
       {isUnread && (
-        <output
+        <span
           className={`absolute top-3 left-3 w-2 h-2 rounded-full ${priorityClasses.dot}`}
-          aria-label="Unread"
+          aria-hidden="true"
         />
       )}
 
@@ -246,6 +246,7 @@ export function NotificationItem({
             <AnimatePresence>
               {(isHovered || compact) && (
                 <motion.button
+                  type="button"
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}

@@ -270,7 +270,7 @@ export function NotificationList({
             <button
               type="button"
               onClick={() => setShowFilterPanel(!showFilterPanel)}
-              className={`p-1.5 rounded-md transition-colors ${
+              className={`relative p-1.5 rounded-md transition-colors ${
                 showFilterPanel || activeFilterCount > 0
                   ? "text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-900"
                   : "text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
