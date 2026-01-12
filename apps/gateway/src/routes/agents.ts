@@ -22,6 +22,7 @@ import {
   getAgentState,
   getAgentStateHistory,
 } from "../services/agent-state-machine";
+import { agentLinks, agentListLinks, getLinkContext } from "../utils/links";
 import {
   sendCreated,
   sendError,
@@ -60,16 +61,6 @@ const InterruptRequestSchema = z.object({
 // ============================================================================
 // Error Handler Helper
 // ============================================================================
-
-/**
- * Convert HTTP URL to WebSocket URL.
- * Handles both http→ws and https→wss correctly.
- */
-function toWebSocketUrl(httpUrl: string): string {
-  const url = new URL(httpUrl);
-  const protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${url.host}`;
-}
 
 /**
  * Safely parse an integer from query param, returning default if invalid.
@@ -131,14 +122,10 @@ agents.post("/", async (c) => {
       ...(validated.maxTokens && { maxTokens: validated.maxTokens }),
     });
 
-    const baseUrl = new URL(c.req.url).origin;
+    const ctx = getLinkContext(c);
 
     return sendResource(c, "agent", result, 201, {
-      links: {
-        self: `${baseUrl}/agents/${result.agentId}`,
-        output: `${baseUrl}/agents/${result.agentId}/output`,
-        ws: `${toWebSocketUrl(baseUrl)}/agents/${result.agentId}/ws`,
-      },
+      links: agentLinks({ agentId: result.agentId }, ctx),
     });
   } catch (error) {
     return handleAgentError(error, c);
@@ -166,14 +153,12 @@ agents.get("/", async (c) => {
       ...(cursorParam && { cursor: cursorParam }),
     });
 
-    const baseUrl = new URL(c.req.url).origin;
+    const ctx = getLinkContext(c);
 
     // Add links to each agent
     const agentsWithLinks = result.agents.map((agent) => ({
       ...agent,
-      links: {
-        self: `${baseUrl}/agents/${agent.agentId}`,
-      },
+      links: agentListLinks({ agentId: agent.agentId }, ctx),
     }));
 
     const listOptions: Parameters<typeof sendList>[2] = {
@@ -200,17 +185,10 @@ agents.get("/:agentId", async (c) => {
     const agentId = c.req.param("agentId");
     const result = await getAgent(agentId);
 
-    const baseUrl = new URL(c.req.url).origin;
+    const ctx = getLinkContext(c);
 
     return sendResource(c, "agent", result, 200, {
-      links: {
-        self: `${baseUrl}/agents/${agentId}`,
-        output: `${baseUrl}/agents/${agentId}/output`,
-        ws: `${toWebSocketUrl(baseUrl)}/agents/${agentId}/ws`,
-        terminate: `${baseUrl}/agents/${agentId}`,
-        send: `${baseUrl}/agents/${agentId}/send`,
-        interrupt: `${baseUrl}/agents/${agentId}/interrupt`,
-      },
+      links: agentLinks({ agentId }, ctx),
     });
   } catch (error) {
     return handleAgentError(error, c);
