@@ -765,3 +765,28 @@ export function getDashboardStats(): {
       dashboards.length > 0 ? totalWidgets / dashboards.length : 0,
   };
 }
+
+// ============================================================================
+// Testing Utilities
+// ============================================================================
+
+/**
+ * Toggle favorite status for a dashboard.
+ */
+export function toggleFavorite(dashboardId: string, userId: string): boolean {
+  const favorites = favoritesStore.get(userId);
+  if (favorites?.has(dashboardId)) {
+    favorites.delete(dashboardId);
+    return false;
+  }
+  return addFavorite(userId, dashboardId);
+}
+
+/**
+ * Clear all in-memory stores (for testing only).
+ */
+export function clearDashboardStore(): void {
+  dashboardsStore.clear();
+  permissionsStore.clear();
+  favoritesStore.clear();
+}

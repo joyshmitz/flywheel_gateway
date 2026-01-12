@@ -1,0 +1,115 @@
+/* AgentListWidget styles */
+
+.agent-list-widget {
+  height: 100%;
+  overflow: auto;
+}
+
+.agent-list-widget--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted, #6b7280);
+  font-size: 14px;
+}
+
+.agent-list-widget__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.agent-list-widget__item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid var(--color-border, #2a2a4a);
+  transition: background-color 0.15s ease;
+}
+
+.agent-list-widget__item:hover {
+  background: var(--color-bg-hover, rgba(255, 255, 255, 0.03));
+}
+
+.agent-list-widget__item:last-child {
+  border-bottom: none;
+}
+
+.agent-list-widget__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.agent-list-widget__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.agent-list-widget__status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.agent-list-widget__status--active {
+  background: var(--color-success, #10b981);
+  box-shadow: 0 0 6px var(--color-success, #10b981);
+}
+
+.agent-list-widget__status--idle {
+  background: var(--color-warning, #f59e0b);
+}
+
+.agent-list-widget__status--error {
+  background: var(--color-error, #ef4444);
+  animation: pulse-error 2s infinite;
+}
+
+.agent-list-widget__status--offline {
+  background: var(--color-text-muted, #6b7280);
+}
+
+@keyframes pulse-error {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.agent-list-widget__name {
+  font-weight: 600;
+  color: var(--color-text-primary, #f3f4f6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-list-widget__task {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--color-text-secondary, #d1d5db);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-list-widget__activity {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--color-text-muted, #6b7280);
+}
+
+.agent-list-widget__metrics {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.agent-list-widget__metric {
+  font-size: 12px;
+  color: var(--color-text-muted, #6b7280);
+  white-space: nowrap;
+}

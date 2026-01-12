@@ -11,6 +11,7 @@ import { BeadsPage } from "./pages/Beads";
 import { CollaborationGraphPage } from "./pages/CollaborationGraph";
 import { CostAnalyticsPage } from "./pages/CostAnalytics";
 import { DashboardPage } from "./pages/Dashboard";
+import { DashboardsPage } from "./pages/Dashboards";
 import { DCGPage } from "./pages/DCG";
 import { FleetPage } from "./pages/Fleet";
 import { NotFoundPage } from "./pages/NotFound";
@@ -49,6 +50,18 @@ const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings",
   component: SettingsPage,
+});
+
+const dashboardsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/dashboards",
+  component: DashboardsPage,
+});
+
+const dashboardViewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/dashboards/$dashboardId",
+  component: DashboardsPage,
 });
 
 const dcgRoute = createRoute({
@@ -93,6 +106,8 @@ const routeTree = rootRoute.addChildren([
   beadsRoute,
   accountsRoute,
   costAnalyticsRoute,
+  dashboardsRoute,
+  dashboardViewRoute,
   dcgRoute,
   fleetRoute,
   velocityRoute,

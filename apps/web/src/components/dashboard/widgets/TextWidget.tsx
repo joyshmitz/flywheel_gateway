@@ -1,0 +1,103 @@
+/**
+ * TextWidget - Markdown content display.
+ *
+ * Data shape expected:
+ * {
+ *   content: string, // Markdown content
+ * }
+ *
+ * Supports basic markdown: headers, bold, italic, links, lists, code
+ */
+
+import type { Widget, WidgetData } from "@flywheel/shared";
+import "./TextWidget.css";
+
+interface TextData {
+  content: string;
+}
+
+interface TextWidgetProps {
+  widget: Widget;
+  data: WidgetData;
+}
+
+export function TextWidget({ widget, data }: TextWidgetProps) {
+  const textData = data.data as TextData | null;
+
+  if (!textData?.content) {
+    return (
+      <div className="text-widget text-widget--empty">
+        No content
+      </div>
+    );
+  }
+
+  // Simple markdown rendering
+  const html = renderMarkdown(textData.content);
+
+  return (
+    <div
+      className="text-widget"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
+function renderMarkdown(markdown: string): string {
+  let html = escapeHtml(markdown);
+
+  // Headers
+  html = html.replace(/^### (.+)$/gm, "<h4>$1</h4>");
+  html = html.replace(/^## (.+)$/gm, "<h3>$1</h3>");
+  html = html.replace(/^# (.+)$/gm, "<h2>$1</h2>");
+
+  // Bold and italic
+  html = html.replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>");
+  html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/\*(.+?)\*/g, "<em>$1</em>");
+  html = html.replace(/___(.+?)___/g, "<strong><em>$1</em></strong>");
+  html = html.replace(/__(.+?)__/g, "<strong>$1</strong>");
+  html = html.replace(/_(.+?)_/g, "<em>$1</em>");
+
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+
+  // Links
+  html = html.replace(
+    /\[([^\]]+)\]\(([^)]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
+  );
+
+  // Unordered lists
+  html = html.replace(/^[*-] (.+)$/gm, "<li>$1</li>");
+  html = html.replace(/(<li>.*<\/li>\n?)+/g, "<ul>$&</ul>");
+
+  // Ordered lists
+  html = html.replace(/^\d+\. (.+)$/gm, "<li>$1</li>");
+
+  // Horizontal rule
+  html = html.replace(/^---$/gm, "<hr />");
+
+  // Paragraphs
+  html = html.replace(/\n\n/g, "</p><p>");
+  html = `<p>${html}</p>`;
+
+  // Clean up empty paragraphs
+  html = html.replace(/<p>\s*<\/p>/g, "");
+  html = html.replace(/<p>(<h[234]>)/g, "$1");
+  html = html.replace(/(<\/h[234]>)<\/p>/g, "$1");
+  html = html.replace(/<p>(<ul>)/g, "$1");
+  html = html.replace(/(<\/ul>)<\/p>/g, "$1");
+  html = html.replace(/<p>(<hr \/>)<\/p>/g, "$1");
+
+  // Line breaks within paragraphs
+  html = html.replace(/\n/g, "<br />");
+
+  return html;
+}
+
+function escapeHtml(text: string): string {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}

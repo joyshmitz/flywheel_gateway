@@ -1,0 +1,51 @@
+/* GaugeWidget styles */
+
+.gauge-widget {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 8px;
+}
+
+.gauge-widget--empty {
+  color: var(--color-text-muted, #6b7280);
+  font-size: 14px;
+}
+
+.gauge-widget__canvas-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: 200px;
+  max-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gauge-widget__value-container {
+  text-align: center;
+  margin-top: -40px;
+}
+
+.gauge-widget__value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text-primary, #f3f4f6);
+  line-height: 1;
+}
+
+.gauge-widget__unit {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--color-text-muted, #6b7280);
+  margin-left: 2px;
+}
+
+.gauge-widget__label {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--color-text-muted, #6b7280);
+}
