@@ -12,6 +12,7 @@ import { beads } from "./beads";
 import { cass } from "./cass";
 import { checkpoints } from "./checkpoints";
 import { conflicts } from "./conflicts";
+import { costAnalytics } from "./cost-analytics";
 import { context } from "./context";
 import { dcg } from "./dcg";
 import { handoffs } from "./handoffs";
@@ -22,6 +23,7 @@ import { mail } from "./mail";
 import { memory } from "./memory";
 import { metrics } from "./metrics";
 import { notifications } from "./notifications";
+import openapi from "./openapi";
 import { pipelines } from "./pipelines";
 import { reservations } from "./reservations";
 import { ru } from "./ru";
@@ -40,6 +42,7 @@ routes.route("/audit", audit);
 routes.route("/beads", beads);
 routes.route("/cass", cass);
 routes.route("/conflicts", conflicts);
+routes.route("/cost-analytics", costAnalytics);
 routes.route("/dcg", dcg);
 routes.route("/handoffs", handoffs);
 routes.route("/health", health);
@@ -57,5 +60,8 @@ routes.route("/ru", ru);
 routes.route("/scanner", scanner);
 routes.route("/supervisor", supervisor);
 routes.route("/utilities", utilities);
+
+// Mount OpenAPI routes at root level
+routes.route("/", openapi);
 
 export { routes };
