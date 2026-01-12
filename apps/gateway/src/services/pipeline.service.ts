@@ -624,19 +624,41 @@ async function executeLoop(
 
   // Execute iterations
   const iterator = getIterator();
-  const executeIteration = async (item: unknown, index: number): Promise<void> => {
-    // Set loop variables in context
-    context[config.itemVariable] = item;
-    context[config.indexVariable] = index;
+
+  // For parallel execution, we need to isolate loop variables per iteration
+  // to avoid race conditions where parallel iterations overwrite each other's variables
+  const executeIteration = async (item: unknown, index: number, isolated = false): Promise<unknown> => {
+    // Set loop variables - for parallel execution, use unique keys per iteration
+    const itemKey = isolated ? `${config.itemVariable}_${index}` : config.itemVariable;
+    const indexKey = isolated ? `${config.indexVariable}_${index}` : config.indexVariable;
+
+    context[itemKey] = item;
+    context[indexKey] = index;
+
+    // Also set the standard keys for step access (last write wins in parallel, but steps
+    // can use the indexed keys for isolation)
+    if (isolated) {
+      context[config.itemVariable] = item;
+      context[config.indexVariable] = index;
+    }
 
     await executeSteps(config.steps);
 
     // Capture result (if output variable set, take last step result)
     const lastStepId = config.steps[config.steps.length - 1];
+    let result: unknown;
     if (lastStepId) {
       const stepResultKey = `_step_${lastStepId}_result`;
-      results.push(context[stepResultKey]);
+      result = context[stepResultKey];
     }
+
+    // Clean up isolated keys
+    if (isolated) {
+      delete context[itemKey];
+      delete context[indexKey];
+    }
+
+    return result;
   };
 
   if (config.mode === "for_each" || config.mode === "times") {
@@ -658,14 +680,28 @@ async function executeLoop(
         if (signal?.aborted) break;
         if (iteration >= config.maxIterations) break;
 
-        await Promise.all(
-          batch.map((item, batchIndex) => {
-            const index = iteration + batchIndex;
-            if (index >= config.maxIterations) return Promise.resolve();
-            iteration++;
-            return executeIteration(item, index);
-          }),
-        );
+        // Capture the starting iteration for this batch to avoid index calculation bug
+        const batchStartIteration = iteration;
+        const batchPromises = batch.map((item, batchIndex) => {
+          const index = batchStartIteration + batchIndex;
+          if (index >= config.maxIterations) return Promise.resolve(undefined);
+          return executeIteration(item, index, true); // true = isolated mode for parallel
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+
+        // Count how many actually executed (not skipped due to maxIterations)
+        const executedCount = batch.filter((_, batchIndex) =>
+          batchStartIteration + batchIndex < config.maxIterations
+        ).length;
+        iteration += executedCount;
+
+        // Collect results in order
+        for (const result of batchResults) {
+          if (result !== undefined) {
+            results.push(result);
+          }
+        }
       }
     } else {
       // Sequential execution
@@ -673,14 +709,20 @@ async function executeLoop(
         if (signal?.aborted) break;
         if (iteration >= config.maxIterations) break;
 
-        await executeIteration(item, iteration);
+        const result = await executeIteration(item, iteration);
+        if (result !== undefined) {
+          results.push(result);
+        }
         iteration++;
       }
     }
   } else {
     // while/until modes
     while (shouldContinue()) {
-      await executeIteration(iteration, iteration);
+      const result = await executeIteration(iteration, iteration);
+      if (result !== undefined) {
+        results.push(result);
+      }
       iteration++;
     }
   }
@@ -815,12 +857,14 @@ async function executeTransform(
         const sourceArray = getValueByPath(context, operation.source);
         if (Array.isArray(sourceArray)) {
           const mapped = sourceArray.map((item, index) => {
-            // Simple expression evaluation
+            // Expression evaluation using Function constructor
+            // WARNING: This uses new Function() which is essentially eval().
+            // Only use trusted expressions. For production, consider using
+            // a proper expression parser like expr-eval or mathjs.
             const expr = operation.expression
               .replace(/\$item/g, JSON.stringify(item))
               .replace(/\$index/g, String(index));
             try {
-              // Safe evaluation for simple expressions
               return new Function("return " + expr)();
             } catch {
               return item;
@@ -836,6 +880,7 @@ async function executeTransform(
         const filterSource = getValueByPath(context, operation.source);
         if (Array.isArray(filterSource)) {
           const filtered = filterSource.filter((item, index) => {
+            // WARNING: Uses new Function() - see map case for security notes
             const cond = operation.condition
               .replace(/\$item/g, JSON.stringify(item))
               .replace(/\$index/g, String(index));
@@ -855,6 +900,7 @@ async function executeTransform(
         const reduceSource = getValueByPath(context, operation.source);
         if (Array.isArray(reduceSource)) {
           const reduced = reduceSource.reduce((acc, item, index) => {
+            // WARNING: Uses new Function() - see map case for security notes
             const expr = operation.expression
               .replace(/\$acc/g, JSON.stringify(acc))
               .replace(/\$item/g, JSON.stringify(item))
