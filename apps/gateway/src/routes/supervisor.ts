@@ -64,7 +64,7 @@ supervisor.get("/status", async (c) => {
         startedAt: s.startedAt?.toISOString(),
         stoppedAt: s.stoppedAt?.toISOString(),
         lastHealthCheck: s.lastHealthCheck?.toISOString(),
-        _links: daemonLinks({ name: s.name }, linkCtx),
+        links: daemonLinks({ name: s.name }, linkCtx),
       })),
     );
   } catch (error) {
@@ -188,7 +188,7 @@ supervisor.get("/:name/logs", async (c) => {
       logs.map((entry) => ({
         ...entry,
         timestamp: entry.timestamp.toISOString(),
-        _links: daemonLinks({ name }, linkCtx),
+        links: daemonLinks({ name }, linkCtx),
       })),
     );
   } catch (error) {
@@ -217,7 +217,7 @@ supervisor.post("/start-all", async (c) => {
         startedAt: s.startedAt?.toISOString(),
         stoppedAt: s.stoppedAt?.toISOString(),
         lastHealthCheck: s.lastHealthCheck?.toISOString(),
-        _links: daemonLinks({ name: s.name }, linkCtx),
+        links: daemonLinks({ name: s.name }, linkCtx),
       })),
     }, 200, { links: { self: `${linkCtx.baseUrl}/supervisor/start-all` } });
   } catch (error) {
@@ -242,7 +242,7 @@ supervisor.post("/stop-all", async (c) => {
         startedAt: s.startedAt?.toISOString(),
         stoppedAt: s.stoppedAt?.toISOString(),
         lastHealthCheck: s.lastHealthCheck?.toISOString(),
-        _links: daemonLinks({ name: s.name }, linkCtx),
+        links: daemonLinks({ name: s.name }, linkCtx),
       })),
     }, 200, { links: { self: `${linkCtx.baseUrl}/supervisor/stop-all` } });
   } catch (error) {
@@ -261,7 +261,7 @@ supervisor.get("/daemons", async (c) => {
 
     return sendList(c, names.map((name) => ({
       name,
-      _links: daemonLinks({ name }, linkCtx),
+      links: daemonLinks({ name }, linkCtx),
     })));
   } catch (error) {
     return handleError(error, c);
