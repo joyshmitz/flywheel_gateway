@@ -176,9 +176,7 @@ describe("reservations routes", () => {
         method: "DELETE",
         headers: { "X-Agent-Id": "agent-1" },
       });
-      expect(deleteRes.status).toBe(200);
-      const deleteData = await deleteRes.json();
-      expect(deleteData.data.released).toBe(true);
+      expect(deleteRes.status).toBe(204);
     });
 
     test("releases reservation with body (deprecated)", async () => {
@@ -205,9 +203,7 @@ describe("reservations routes", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ agentId: "agent-1" }),
       });
-      expect(deleteRes.status).toBe(200);
-      const deleteData = await deleteRes.json();
-      expect(deleteData.data.released).toBe(true);
+      expect(deleteRes.status).toBe(204);
     });
 
     test("returns 400 without X-Agent-Id header or body", async () => {

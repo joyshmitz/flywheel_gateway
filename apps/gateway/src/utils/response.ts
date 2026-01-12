@@ -297,3 +297,23 @@ export function sendUnauthorized(c: Context, message = "Authentication required"
     401,
   );
 }
+
+/**
+ * Send a no content response (HTTP 204).
+ *
+ * Used for successful DELETE operations where no body is needed.
+ *
+ * @param c - Hono context
+ * @returns Empty response with 204 status
+ *
+ * @example
+ * ```typescript
+ * app.delete("/items/:id", async (c) => {
+ *   await deleteItem(c.req.param("id"));
+ *   return sendNoContent(c);
+ * });
+ * ```
+ */
+export function sendNoContent(c: Context) {
+  return c.body(null, 204);
+}

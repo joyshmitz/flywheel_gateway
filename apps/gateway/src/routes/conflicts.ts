@@ -301,6 +301,29 @@ conflicts.post("/:conflictId/resolve", async (c) => {
   const conflictId = c.req.param("conflictId");
 
   try {
+    // First check if the conflict exists and its current state
+    const existingConflict = getConflict(conflictId);
+    if (!existingConflict) {
+      return sendNotFound(c, "conflict", conflictId);
+    }
+
+    // Check if already resolved
+    if (existingConflict.resolvedAt) {
+      return sendError(
+        c,
+        "CONFLICT_ALREADY_RESOLVED",
+        `Conflict ${conflictId} has already been resolved`,
+        400,
+        {
+          hint: "This conflict was already resolved. Check the conflict history for details.",
+          details: {
+            resolvedAt: existingConflict.resolvedAt.toISOString(),
+            resolution: existingConflict.resolution,
+          },
+        },
+      );
+    }
+
     const body = await c.req.json();
     const validated = ResolveConflictSchema.parse(body);
 
@@ -320,6 +343,8 @@ conflicts.post("/:conflictId/resolve", async (c) => {
     const resolved = resolveConflict(conflictId, resolution);
 
     if (!resolved) {
+      // This shouldn't happen since we checked existence above,
+      // but handle it just in case
       return sendNotFound(c, "conflict", conflictId);
     }
 

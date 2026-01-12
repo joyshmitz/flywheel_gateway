@@ -31,6 +31,7 @@ import {
   sendCreated,
   sendList,
   sendNotFound,
+  sendNoContent,
   sendError,
   sendValidationError,
   sendInternalError,
@@ -500,10 +501,7 @@ reservations.delete("/:id", async (c) => {
       return sendForbidden(c, result.error);
     }
 
-    return sendResource(c, "release_result", {
-      released: true,
-      reservationId: id,
-    });
+    return sendNoContent(c);
   } catch (error) {
     return handleError(error, c);
   }

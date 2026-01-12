@@ -59,6 +59,7 @@ import {
   sendError,
   sendInternalError,
   sendList,
+  sendNoContent,
   sendNotFound,
   sendResource,
   sendValidationError,
@@ -426,12 +427,7 @@ dcg.delete("/allowlist/:ruleId", async (c) => {
       return sendNotFound(c, "allowlist_entry", ruleId);
     }
 
-    const result = {
-      deleted: true,
-      ruleId,
-    };
-
-    return sendResource(c, "deletion_result", result);
+    return sendNoContent(c);
   } catch (error) {
     return handleError(error, c);
   }

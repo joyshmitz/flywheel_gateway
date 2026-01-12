@@ -29,6 +29,7 @@ import {
   sendError,
   sendInternalError,
   sendList,
+  sendNoContent,
   sendNotFound,
   sendResource,
   sendValidationError,
@@ -510,13 +511,7 @@ checkpoints.delete("/:sessionId/checkpoints/:checkpointId", async (c) => {
       sessionId,
     });
 
-    const deletionData = {
-      deleted: true,
-      checkpointId,
-      sessionId,
-    };
-
-    return sendResource(c, "checkpoint_deletion", deletionData);
+    return sendNoContent(c);
   } catch (error) {
     return handleError(error, c);
   }
