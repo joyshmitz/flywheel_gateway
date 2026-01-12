@@ -874,3 +874,221 @@ export const gitSyncOperations = sqliteTable(
     index("git_sync_operations_correlation_idx").on(table.correlationId),
   ],
 );
+
+// ============================================================================
+// SLB Safety Guardrails Tables
+// ============================================================================
+
+/**
+ * Safety configurations - Per-workspace safety settings.
+ */
+export const safetyConfigs = sqliteTable(
+  "safety_configs",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+
+    // Category enables (JSON object)
+    categoryEnables: text("category_enables").notNull(), // JSON: { filesystem: true, git: true, ... }
+
+    // Rate limits (JSON object)
+    rateLimits: text("rate_limits").notNull(), // JSON: SafetyRateLimitConfig
+
+    // Budget config (JSON object)
+    budget: text("budget").notNull(), // JSON: SafetyBudgetConfig
+
+    // Approval workflow (JSON object)
+    approvalWorkflow: text("approval_workflow").notNull(), // JSON: ApprovalWorkflowConfig
+
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [
+    index("safety_configs_workspace_idx").on(table.workspaceId),
+    uniqueIndex("safety_configs_workspace_name_idx").on(
+      table.workspaceId,
+      table.name,
+    ),
+  ],
+);
+
+/**
+ * Safety rules - Custom safety rules per workspace.
+ */
+export const safetyRules = sqliteTable(
+  "safety_rules",
+  {
+    id: text("id").primaryKey(),
+    configId: text("config_id")
+      .notNull()
+      .references(() => safetyConfigs.id, { onDelete: "cascade" }),
+    workspaceId: text("workspace_id").notNull(),
+
+    // Rule definition
+    name: text("name").notNull(),
+    description: text("description"),
+    category: text("category").notNull(), // filesystem | git | network | execution | resources | content
+    conditions: text("conditions").notNull(), // JSON array of RuleCondition
+    conditionLogic: text("condition_logic").notNull().default("and"), // and | or
+    action: text("action").notNull(), // allow | deny | warn | approve
+    severity: text("severity").notNull(), // low | medium | high | critical
+    message: text("message").notNull(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    alternatives: text("alternatives"), // JSON array of strings
+
+    // Ordering (lower = higher priority)
+    priority: integer("priority").notNull().default(100),
+
+    // Metadata
+    metadata: blob("metadata", { mode: "json" }),
+
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [
+    index("safety_rules_config_idx").on(table.configId),
+    index("safety_rules_workspace_idx").on(table.workspaceId),
+    index("safety_rules_category_idx").on(table.category),
+    index("safety_rules_enabled_idx").on(table.enabled),
+    index("safety_rules_priority_idx").on(table.priority),
+  ],
+);
+
+/**
+ * Safety violations - Record of blocked/warned operations.
+ */
+export const safetyViolations = sqliteTable(
+  "safety_violations",
+  {
+    id: text("id").primaryKey(),
+
+    // Context
+    workspaceId: text("workspace_id").notNull(),
+    agentId: text("agent_id").references(() => agents.id),
+    sessionId: text("session_id"),
+
+    // Rule that triggered
+    ruleId: text("rule_id").references(() => safetyRules.id),
+    ruleName: text("rule_name").notNull(),
+    ruleCategory: text("rule_category").notNull(),
+    ruleSeverity: text("rule_severity").notNull(),
+
+    // Operation details
+    operationType: text("operation_type").notNull(),
+    operationDetails: blob("operation_details", { mode: "json" }),
+
+    // Action taken: blocked | warned | pending_approval
+    actionTaken: text("action_taken").notNull(),
+
+    // Context
+    taskDescription: text("task_description"),
+    recentHistory: text("recent_history"), // JSON array
+
+    // Tracking
+    correlationId: text("correlation_id"),
+    timestamp: integer("timestamp", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [
+    index("safety_violations_workspace_idx").on(table.workspaceId),
+    index("safety_violations_agent_idx").on(table.agentId),
+    index("safety_violations_rule_idx").on(table.ruleId),
+    index("safety_violations_severity_idx").on(table.ruleSeverity),
+    index("safety_violations_timestamp_idx").on(table.timestamp),
+    index("safety_violations_correlation_idx").on(table.correlationId),
+  ],
+);
+
+/**
+ * Approval requests - Operations pending human approval.
+ */
+export const approvalRequests = sqliteTable(
+  "approval_requests",
+  {
+    id: text("id").primaryKey(),
+
+    // Context
+    workspaceId: text("workspace_id").notNull(),
+    agentId: text("agent_id").references(() => agents.id),
+    sessionId: text("session_id"),
+
+    // Rule that triggered approval
+    ruleId: text("rule_id").references(() => safetyRules.id),
+    ruleName: text("rule_name").notNull(),
+
+    // Operation details
+    operationType: text("operation_type").notNull(),
+    operationCommand: text("operation_command"),
+    operationPath: text("operation_path"),
+    operationDescription: text("operation_description").notNull(),
+    operationDetails: blob("operation_details", { mode: "json" }),
+
+    // Context
+    taskDescription: text("task_description"),
+    recentActions: text("recent_actions"), // JSON array
+
+    // Status: pending | approved | denied | expired | cancelled
+    status: text("status").notNull().default("pending"),
+
+    // Priority: low | normal | high | urgent
+    priority: text("priority").notNull().default("normal"),
+
+    // Timing
+    requestedAt: integer("requested_at", { mode: "timestamp" }).notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+
+    // Decision
+    decidedBy: text("decided_by"),
+    decidedAt: integer("decided_at", { mode: "timestamp" }),
+    decisionReason: text("decision_reason"),
+
+    // Tracking
+    correlationId: text("correlation_id"),
+  },
+  (table) => [
+    index("approval_requests_workspace_idx").on(table.workspaceId),
+    index("approval_requests_agent_idx").on(table.agentId),
+    index("approval_requests_status_idx").on(table.status),
+    index("approval_requests_priority_idx").on(table.priority),
+    index("approval_requests_requested_at_idx").on(table.requestedAt),
+    index("approval_requests_expires_at_idx").on(table.expiresAt),
+    index("approval_requests_correlation_idx").on(table.correlationId),
+  ],
+);
+
+/**
+ * Budget usage tracking - Track token/cost usage per scope.
+ */
+export const budgetUsage = sqliteTable(
+  "budget_usage",
+  {
+    id: text("id").primaryKey(),
+
+    // Scope
+    scope: text("scope").notNull(), // agent | workspace | session
+    scopeId: text("scope_id").notNull(), // agentId, workspaceId, or sessionId
+    workspaceId: text("workspace_id").notNull(),
+
+    // Usage
+    tokensUsed: integer("tokens_used").notNull().default(0),
+    dollarsUsed: real("dollars_used").notNull().default(0),
+
+    // Period
+    periodStart: integer("period_start", { mode: "timestamp" }).notNull(),
+    periodEnd: integer("period_end", { mode: "timestamp" }),
+
+    // Last update
+    lastUpdatedAt: integer("last_updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [
+    index("budget_usage_workspace_idx").on(table.workspaceId),
+    index("budget_usage_scope_idx").on(table.scope, table.scopeId),
+    uniqueIndex("budget_usage_scope_period_idx").on(
+      table.scope,
+      table.scopeId,
+      table.periodStart,
+    ),
+  ],
+);
