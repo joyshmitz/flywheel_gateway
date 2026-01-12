@@ -12,7 +12,7 @@ import { spawn } from "bun";
 import { createHash } from "crypto";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
-import { agentSweepPlans, dcgPendingExceptions } from "../db/schema";
+import { agentSweepPlans } from "../db/schema";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
 import {
   createPendingException,

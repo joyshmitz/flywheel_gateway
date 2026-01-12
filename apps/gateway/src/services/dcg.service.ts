@@ -398,6 +398,8 @@ export function getConfig(): DCGConfig {
 export async function updateConfig(
   updates: Partial<DCGConfig>,
 ): Promise<DCGConfig> {
+  // Ensure we have the latest config from persistent storage before updating
+  await syncConfigFromPersistent();
   const log = logger.child({ correlationId: getCorrelationId() });
 
   if (updates.enabledPacks) {
@@ -453,6 +455,9 @@ export function listPacks(): DCGPackInfo[] {
  * Enable a pack.
  */
 export async function enablePack(packName: string): Promise<boolean> {
+  // Ensure we have the latest config from persistent storage
+  await syncConfigFromPersistent();
+
   const pack = KNOWN_PACKS.find((p) => p.name === packName);
   if (!pack) {
     return false;
@@ -481,6 +486,9 @@ export async function enablePack(packName: string): Promise<boolean> {
  * Disable a pack.
  */
 export async function disablePack(packName: string): Promise<boolean> {
+  // Ensure we have the latest config from persistent storage
+  await syncConfigFromPersistent();
+
   const pack = KNOWN_PACKS.find((p) => p.name === packName);
   if (!pack) {
     return false;
