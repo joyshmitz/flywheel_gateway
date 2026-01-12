@@ -950,10 +950,12 @@ async function cleanupExpiredHandoffs(): Promise<number> {
 
   for (const [id, record] of handoffStore) {
     // Only clean up non-terminal handoffs that have expired
+    // Note: rejected is excluded because fallback was already triggered
     if (
       record.phase !== "complete" &&
       record.phase !== "cancelled" &&
       record.phase !== "failed" &&
+      record.phase !== "rejected" &&
       now > record.request.expiresAt
     ) {
       addAuditEntry(record, "handoff_expired", {
