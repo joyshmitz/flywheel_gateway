@@ -4,7 +4,36 @@
  * Tests profile management, pool operations, and rotation strategies.
  */
 
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+
+// Mock the logger with child method (needed for service dependencies)
+const mockLogger = {
+  info: () => {},
+  error: () => {},
+  warn: () => {},
+  debug: () => {},
+  child: () => mockLogger,
+};
+
+mock.module("../services/logger", () => ({
+  logger: mockLogger,
+}));
+
+// Ensure we use the real db by re-mocking with the real implementation
+// This prevents other test files' db mocks from affecting these tests
+import { Database } from "bun:sqlite";
+import { drizzle } from "drizzle-orm/bun-sqlite";
+import * as schema from "../db/schema";
+
+const dbFile = process.env["DB_FILE_NAME"] ?? "./data/gateway.db";
+const realSqlite = new Database(dbFile);
+const realDb = drizzle(realSqlite, { schema });
+
+mock.module("../db", () => ({
+  db: realDb,
+  sqlite: realSqlite,
+}));
+
 import { eq } from "drizzle-orm";
 import {
   activateProfile,

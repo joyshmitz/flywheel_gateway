@@ -20,6 +20,7 @@ import { metrics } from "./metrics";
 import { reservations } from "./reservations";
 import { ru } from "./ru";
 import { scanner } from "./scanner";
+import { supervisor } from "./supervisor";
 import { utilities } from "./utilities";
 
 const routes = new Hono();
@@ -42,6 +43,7 @@ routes.route("/sessions", checkpoints);
 routes.route("/sessions", context);
 routes.route("/ru", ru);
 routes.route("/scanner", scanner);
+routes.route("/supervisor", supervisor);
 routes.route("/utilities", utilities);
 
 export { routes };

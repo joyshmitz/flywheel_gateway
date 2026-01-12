@@ -1,4 +1,18 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+
+// Mock the logger with child method
+const mockLogger = {
+  info: () => {},
+  error: () => {},
+  warn: () => {},
+  debug: () => {},
+  child: () => mockLogger,
+};
+
+mock.module("../services/logger", () => ({
+  logger: mockLogger,
+}));
+
 import { Hono } from "hono";
 import { reservations } from "../routes/reservations";
 import {

@@ -36,7 +36,8 @@ export type SystemChannel =
   | { type: "system:health" }
   | { type: "system:metrics" }
   | { type: "system:dcg" }
-  | { type: "system:fleet" };
+  | { type: "system:fleet" }
+  | { type: "system:supervisor" };
 
 /**
  * Fleet-scoped channels for RU (Repo Updater) operations.
@@ -75,6 +76,7 @@ export type ChannelTypePrefix =
   | "system:metrics"
   | "system:dcg"
   | "system:fleet"
+  | "system:supervisor"
   | "fleet:repos"
   | "fleet:sync"
   | "fleet:sync:session"
@@ -109,6 +111,7 @@ export function channelToString(channel: Channel): string {
     case "system:metrics":
     case "system:dcg":
     case "system:fleet":
+    case "system:supervisor":
       return channel.type;
 
     case "fleet:repos":
@@ -143,6 +146,9 @@ export function parseChannel(str: string): Channel | undefined {
   }
   if (str === "system:fleet") {
     return { type: "system:fleet" };
+  }
+  if (str === "system:supervisor") {
+    return { type: "system:supervisor" };
   }
 
   // Fleet channels (some with IDs)
@@ -251,6 +257,7 @@ export function getChannelResourceId(channel: Channel): string | undefined {
     case "system:metrics":
     case "system:dcg":
     case "system:fleet":
+    case "system:supervisor":
       return undefined;
     case "fleet:repos":
     case "fleet:sync":
