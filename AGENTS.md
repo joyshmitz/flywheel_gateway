@@ -603,3 +603,342 @@ Real-time notification UI components:
 Auto-generated OpenAPI 3.1 schemas from Zod validators:
 - `apps/gateway/src/api/generate-openapi.ts` - Generation logic
 - `apps/gateway/src/routes/openapi.ts` - Serving endpoints
+
+---
+
+## Code Patterns and Conventions
+
+### Component Patterns
+
+**Functional components with explicit props:**
+
+```typescript
+// apps/web/src/components/AgentCard.tsx
+interface AgentCardProps {
+  agent: Agent;
+  onSelect?: (id: string) => void;
+  isSelected?: boolean;
+}
+
+export function AgentCard({ agent, onSelect, isSelected = false }: AgentCardProps) {
+  return (
+    <div className={`card ${isSelected ? 'card--selected' : ''}`}>
+      <h3>{agent.name}</h3>
+      <StatusPill tone={agent.status === 'running' ? 'positive' : 'neutral'}>
+        {agent.status}
+      </StatusPill>
+      {onSelect && (
+        <button onClick={() => onSelect(agent.id)}>Select</button>
+      )}
+    </div>
+  );
+}
+```
+
+**Custom hooks for data fetching:**
+
+```typescript
+// apps/web/src/hooks/useAgents.ts
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+export function useAgents(options?: { status?: string }) {
+  return useQuery({
+    queryKey: ['agents', options],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (options?.status) params.set('status', options.status);
+      const response = await fetch(`/api/agents?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch agents');
+      return response.json();
+    },
+  });
+}
+
+export function useRestartAgent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (agentId: string) => {
+      const response = await fetch(`/api/agents/${agentId}/restart`, { method: 'POST' });
+      if (!response.ok) throw new Error('Failed to restart agent');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agents'] });
+    },
+  });
+}
+```
+
+### Service Patterns
+
+**Services are stateless classes with dependency injection:**
+
+```typescript
+// apps/gateway/src/services/agent.service.ts
+export class AgentService {
+  constructor(
+    private db: Database,
+    private drivers: DriverRegistry,
+    private metrics: MetricsService
+  ) {}
+
+  async create(input: CreateAgentInput): Promise<Agent> {
+    const agent = await this.db.insert(agents).values({
+      id: ulid(),
+      ...input,
+      createdAt: new Date(),
+    }).returning();
+
+    this.metrics.increment('agent.created');
+    return agent[0];
+  }
+}
+```
+
+### Route Patterns
+
+**Thin route handlers that delegate to services:**
+
+```typescript
+// apps/gateway/src/routes/agents.ts
+import { Hono } from 'hono';
+import { zValidator } from '@hono/zod-validator';
+import { CreateAgentSchema } from '../models/agent';
+
+export const agentsRoutes = new Hono()
+  .get('/', async (c) => {
+    const agents = await c.get('services').agent.list();
+    return c.json({ agents });
+  })
+  .post('/', zValidator('json', CreateAgentSchema), async (c) => {
+    const input = c.req.valid('json');
+    const agent = await c.get('services').agent.create(input);
+    return c.json(agent, 201);
+  })
+  .post('/:id/restart', async (c) => {
+    const id = c.req.param('id');
+    await c.get('services').agent.restart(id);
+    return c.json({ success: true });
+  });
+```
+
+### Error Handling
+
+**Use consistent error responses:**
+
+```typescript
+// apps/gateway/src/utils/errors.ts
+export class AppError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public status: number = 400
+  ) {
+    super(message);
+  }
+}
+
+export class NotFoundError extends AppError {
+  constructor(resource: string, id: string) {
+    super(`${resource} not found: ${id}`, 'NOT_FOUND', 404);
+  }
+}
+
+// Usage in service
+if (!agent) {
+  throw new NotFoundError('Agent', id);
+}
+```
+
+---
+
+## Testing Requirements
+
+### Unit Tests
+
+Run with `bun test`:
+
+```typescript
+// apps/gateway/src/__tests__/agent.service.test.ts
+import { describe, it, expect, beforeEach } from 'bun:test';
+import { AgentService } from '../services/agent.service';
+import { createTestDb } from '@flywheel/test-utils';
+
+describe('AgentService', () => {
+  let service: AgentService;
+  let db: TestDatabase;
+
+  beforeEach(async () => {
+    db = await createTestDb();
+    service = new AgentService(db);
+  });
+
+  describe('create', () => {
+    it('should create agent with valid input', async () => {
+      const agent = await service.create({
+        name: 'Test Agent',
+        type: 'sdk',
+      });
+
+      expect(agent.id).toBeDefined();
+      expect(agent.name).toBe('Test Agent');
+      expect(agent.status).toBe('stopped');
+    });
+
+    it('should reject invalid type', async () => {
+      await expect(
+        service.create({ name: 'Test', type: 'invalid' })
+      ).rejects.toThrow('Invalid agent type');
+    });
+  });
+});
+```
+
+### Integration Tests
+
+Test API endpoints with real database:
+
+```typescript
+// tests/integration/api/agents.test.ts
+import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
+import { createTestApp } from '../../helpers';
+
+describe('Agents API', () => {
+  let app: TestApp;
+
+  beforeAll(async () => {
+    app = await createTestApp();
+  });
+
+  afterAll(async () => {
+    await app.cleanup();
+  });
+
+  it('GET /api/agents returns empty list', async () => {
+    const response = await app.request('/api/agents');
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.agents).toEqual([]);
+  });
+
+  it('POST /api/agents creates agent', async () => {
+    const response = await app.request('/api/agents', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Test', type: 'sdk' }),
+    });
+    expect(response.status).toBe(201);
+  });
+});
+```
+
+### E2E Tests
+
+Run with `bun test:e2e` (Playwright):
+
+```typescript
+// tests/e2e/agents.spec.ts
+import { test, expect } from '@playwright/test';
+
+test.describe('Agent Management', () => {
+  test('should display agents list', async ({ page }) => {
+    await page.goto('/fleet');
+    await expect(page.locator('h1')).toHaveText('Fleet');
+    await expect(page.locator('[data-testid="agent-card"]')).toBeVisible();
+  });
+
+  test('should create new agent', async ({ page }) => {
+    await page.goto('/fleet');
+    await page.click('[data-testid="create-agent"]');
+    await page.fill('[data-testid="agent-name"]', 'E2E Test Agent');
+    await page.click('[data-testid="submit"]');
+    await expect(page.locator('text=E2E Test Agent')).toBeVisible();
+  });
+});
+```
+
+### Test Coverage Requirements
+
+- **Unit tests**: 80% coverage on services and utilities
+- **Integration tests**: Cover all API endpoints
+- **E2E tests**: Cover critical user paths
+
+Run coverage: `bun test --coverage`
+
+### Contract Tests
+
+Validate API responses match OpenAPI spec:
+
+```typescript
+// tests/contract/api-schemas.test.ts
+import { describe, it, expect } from 'bun:test';
+import { validateResponse } from '../helpers/openapi';
+
+describe('API Contract Tests', () => {
+  it('GET /api/agents matches schema', async () => {
+    const response = await fetch('/api/agents');
+    const body = await response.json();
+    const result = validateResponse('GET /api/agents', 200, body);
+    expect(result.valid).toBe(true);
+  });
+});
+```
+
+---
+
+## Common Tasks
+
+### Adding a New API Endpoint
+
+1. Define Zod schema in `apps/gateway/src/models/`
+2. Add service method in `apps/gateway/src/services/`
+3. Add route handler in `apps/gateway/src/routes/`
+4. Register route in `apps/gateway/src/routes/index.ts`
+5. Add tests in `apps/gateway/src/__tests__/`
+6. Update OpenAPI spec if needed
+
+### Adding a New Page
+
+1. Create page component in `apps/web/src/pages/`
+2. Add route in `apps/web/src/router.tsx`
+3. Add navigation link in `apps/web/src/components/layout/Sidebar.tsx`
+4. Create hooks if needed in `apps/web/src/hooks/`
+5. Add E2E test in `tests/e2e/`
+
+### Adding Database Migration
+
+```bash
+# 1. Modify schema
+vim apps/gateway/src/db/schema.ts
+
+# 2. Generate migration
+bun db:generate
+
+# 3. Review migration in apps/gateway/src/db/migrations/
+
+# 4. Apply migration
+bun db:migrate
+
+# 5. Commit both schema and migration files
+```
+
+### Running Quality Checks
+
+```bash
+# Type checking
+bun typecheck
+
+# Linting
+bun lint
+
+# Auto-fix lint issues
+bun lint:fix
+
+# Run all tests
+bun test
+
+# Run E2E tests
+bun test:e2e
+
+# Run contract tests
+bun test:contract
+```
