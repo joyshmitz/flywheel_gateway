@@ -444,16 +444,53 @@ reservations.get("/:id", async (c) => {
  *
  * Releases the specified reservation. The agent ID must match the reservation
  * holder.
+ *
+ * Agent ID can be provided via:
+ * - X-Agent-Id header (preferred)
+ * - Request body (deprecated, for backwards compatibility)
  */
 reservations.delete("/:id", async (c) => {
+  const log = getLogger();
+
   try {
     const id = c.req.param("id");
-    const body = await c.req.json();
-    const validated = ReleaseReservationSchema.parse(body);
+
+    // Try header first (preferred method)
+    let agentId = c.req.header("X-Agent-Id");
+
+    // Fall back to body for backwards compatibility
+    if (!agentId) {
+      try {
+        const body = await c.req.json();
+        const validated = ReleaseReservationSchema.parse(body);
+        agentId = validated.agentId;
+
+        // Log deprecation warning
+        log.warn(
+          { reservationId: id },
+          "DEPRECATED: agentId in DELETE body, use X-Agent-Id header instead",
+        );
+      } catch {
+        // No body or invalid body, that's fine if header is provided
+      }
+    }
+
+    if (!agentId) {
+      return sendError(
+        c,
+        "MISSING_AGENT_ID",
+        "X-Agent-Id header is required",
+        400,
+        {
+          hint: "Provide the agent ID via X-Agent-Id header for authorization",
+          example: { header: "X-Agent-Id: agent-123" },
+        },
+      );
+    }
 
     const result = await releaseReservation({
       reservationId: id,
-      agentId: validated.agentId,
+      agentId,
     });
 
     if (!result.released) {

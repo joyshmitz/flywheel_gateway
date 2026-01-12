@@ -147,4 +147,132 @@ describe("reservations routes", () => {
     const res = await app.request("/reservations/conflicts");
     expect(res.status).toBe(400);
   });
+
+  // ==========================================================================
+  // DELETE /reservations/:id Tests
+  // ==========================================================================
+
+  describe("DELETE /reservations/:id", () => {
+    test("releases reservation with X-Agent-Id header", async () => {
+      const app = createTestApp();
+
+      // Create a reservation
+      const createRes = await app.request("/reservations", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          projectId: "project-1",
+          agentId: "agent-1",
+          patterns: ["src/**/*.ts"],
+          mode: "exclusive",
+        }),
+      });
+      expect(createRes.status).toBe(201);
+      const createData = await createRes.json();
+      const reservationId = createData.data.reservation.id;
+
+      // Release with X-Agent-Id header
+      const deleteRes = await app.request(`/reservations/${reservationId}`, {
+        method: "DELETE",
+        headers: { "X-Agent-Id": "agent-1" },
+      });
+      expect(deleteRes.status).toBe(200);
+      const deleteData = await deleteRes.json();
+      expect(deleteData.data.released).toBe(true);
+    });
+
+    test("releases reservation with body (deprecated)", async () => {
+      const app = createTestApp();
+
+      // Create a reservation
+      const createRes = await app.request("/reservations", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          projectId: "project-1",
+          agentId: "agent-1",
+          patterns: ["src/**/*.ts"],
+          mode: "exclusive",
+        }),
+      });
+      expect(createRes.status).toBe(201);
+      const createData = await createRes.json();
+      const reservationId = createData.data.reservation.id;
+
+      // Release with body (deprecated but still supported)
+      const deleteRes = await app.request(`/reservations/${reservationId}`, {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ agentId: "agent-1" }),
+      });
+      expect(deleteRes.status).toBe(200);
+      const deleteData = await deleteRes.json();
+      expect(deleteData.data.released).toBe(true);
+    });
+
+    test("returns 400 without X-Agent-Id header or body", async () => {
+      const app = createTestApp();
+
+      // Create a reservation
+      const createRes = await app.request("/reservations", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          projectId: "project-1",
+          agentId: "agent-1",
+          patterns: ["src/**/*.ts"],
+          mode: "exclusive",
+        }),
+      });
+      expect(createRes.status).toBe(201);
+      const createData = await createRes.json();
+      const reservationId = createData.data.reservation.id;
+
+      // Try to release without agent ID
+      const deleteRes = await app.request(`/reservations/${reservationId}`, {
+        method: "DELETE",
+      });
+      expect(deleteRes.status).toBe(400);
+      const deleteData = await deleteRes.json();
+      expect(deleteData.error.code).toBe("MISSING_AGENT_ID");
+      expect(deleteData.error.hint).toBeDefined();
+      expect(deleteData.error.example).toBeDefined();
+    });
+
+    test("returns 404 for non-existent reservation", async () => {
+      const app = createTestApp();
+
+      const deleteRes = await app.request("/reservations/rsv_nonexistent", {
+        method: "DELETE",
+        headers: { "X-Agent-Id": "agent-1" },
+      });
+      expect(deleteRes.status).toBe(404);
+    });
+
+    test("returns 403 when non-holder tries to release", async () => {
+      const app = createTestApp();
+
+      // Create a reservation
+      const createRes = await app.request("/reservations", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          projectId: "project-1",
+          agentId: "agent-1",
+          patterns: ["src/**/*.ts"],
+          mode: "exclusive",
+        }),
+      });
+      expect(createRes.status).toBe(201);
+      const createData = await createRes.json();
+      const reservationId = createData.data.reservation.id;
+
+      // Try to release as different agent
+      const deleteRes = await app.request(`/reservations/${reservationId}`, {
+        method: "DELETE",
+        headers: { "X-Agent-Id": "agent-2" },
+      });
+      expect(deleteRes.status).toBe(403);
+    });
+  });
 });

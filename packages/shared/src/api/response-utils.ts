@@ -181,6 +181,8 @@ export interface WrapErrorOptions {
   hint?: string;
   /** Override alternative approach (uses AI hint default if not provided) */
   alternative?: string;
+  /** Example of valid input/usage that would succeed */
+  example?: unknown;
 }
 
 /**
@@ -234,6 +236,11 @@ export function wrapError(options: WrapErrorOptions): ApiErrorResponse {
   const alternative = options.alternative ?? aiHint?.alternativeApproach;
   if (alternative) {
     error.alternative = alternative;
+  }
+
+  // Add example of valid input
+  if (options.example !== undefined) {
+    error.example = options.example;
   }
 
   // Add optional fields

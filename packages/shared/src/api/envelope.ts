@@ -247,6 +247,12 @@ export interface ApiError {
   alternative?: string;
 
   /**
+   * Example of valid input/usage that would succeed.
+   * Helps clients understand the expected format.
+   */
+  example?: unknown;
+
+  /**
    * Specific field/parameter that caused the error.
    * Useful for validation errors.
    */
