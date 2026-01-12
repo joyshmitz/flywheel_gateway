@@ -64,6 +64,11 @@ import {
   sendResource,
   sendValidationError,
 } from "../utils/response";
+import {
+  allowlistLinks,
+  getLinkContext,
+  pendingExceptionLinks,
+} from "../utils/links";
 import { transformZodError } from "../utils/validation";
 
 const dcg = new Hono();
@@ -336,13 +341,19 @@ dcg.get("/blocks", async (c) => {
       return sendEmptyList(c);
     }
 
+    const ctx = getLinkContext(c);
+    const eventsWithLinks = result.events.map((event) => ({
+      ...event,
+      links: { self: `${ctx.baseUrl}/dcg/blocks/${event.id}` },
+    }));
+
     const listOptions: Parameters<typeof sendList>[2] = {
       hasMore: result.hasMore,
     };
     if (result.nextCursor) listOptions.nextCursor = result.nextCursor;
     if (result.prevCursor) listOptions.prevCursor = result.prevCursor;
 
-    return sendList(c, result.events, listOptions);
+    return sendList(c, eventsWithLinks, listOptions);
   } catch (error) {
     return handleError(error, c);
   }
@@ -363,7 +374,10 @@ dcg.post("/blocks/:id/false-positive", async (c) => {
       return sendNotFound(c, "block_event", id);
     }
 
-    return sendResource(c, "block_event", event);
+    const ctx = getLinkContext(c);
+    return sendResource(c, "block_event", event, 200, {
+      links: { self: `${ctx.baseUrl}/dcg/blocks/${event.id}` },
+    });
   } catch (error) {
     return handleError(error, c);
   }
@@ -382,7 +396,14 @@ dcg.get("/allowlist", async (c) => {
     if (entries.length === 0) {
       return sendEmptyList(c);
     }
-    return sendList(c, entries);
+
+    const ctx = getLinkContext(c);
+    const entriesWithLinks = entries.map((entry) => ({
+      ...entry,
+      links: allowlistLinks({ ruleId: entry.ruleId }, ctx),
+    }));
+
+    return sendList(c, entriesWithLinks);
   } catch (error) {
     return handleError(error, c);
   }
@@ -409,7 +430,10 @@ dcg.post("/allowlist", async (c) => {
 
     const entry = await addToAllowlist(entryInput);
 
-    return sendCreated(c, "allowlist_entry", entry, `/dcg/allowlist/${entry.ruleId}`);
+    const ctx = getLinkContext(c);
+    return sendResource(c, "allowlist_entry", entry, 201, {
+      links: allowlistLinks({ ruleId: entry.ruleId }, ctx),
+    });
   } catch (error) {
     return handleError(error, c);
   }
@@ -467,13 +491,19 @@ dcg.get("/pending", async (c) => {
       return sendEmptyList(c);
     }
 
+    const ctx = getLinkContext(c);
+    const exceptionsWithLinks = result.exceptions.map((exception) => ({
+      ...exception,
+      links: pendingExceptionLinks({ shortCode: exception.shortCode }, ctx),
+    }));
+
     const listOptions: Parameters<typeof sendList>[2] = {
       hasMore: result.hasMore,
     };
     if (result.nextCursor) listOptions.nextCursor = result.nextCursor;
     if (result.prevCursor) listOptions.prevCursor = result.prevCursor;
 
-    return sendList(c, result.exceptions, listOptions);
+    return sendList(c, exceptionsWithLinks, listOptions);
   } catch (error) {
     return handleError(error, c);
   }
@@ -491,7 +521,10 @@ dcg.get("/pending/:shortCode", async (c) => {
       return sendNotFound(c, "pending_exception", shortCode);
     }
 
-    return sendResource(c, "pending_exception", exception);
+    const ctx = getLinkContext(c);
+    return sendResource(c, "pending_exception", exception, 200, {
+      links: pendingExceptionLinks({ shortCode: exception.shortCode }, ctx),
+    });
   } catch (error) {
     return handleError(error, c);
   }
@@ -508,7 +541,10 @@ dcg.post("/pending/:shortCode/approve", async (c) => {
 
     const exception = await approvePendingException(shortCode, approvedBy);
 
-    return sendResource(c, "pending_exception", exception);
+    const ctx = getLinkContext(c);
+    return sendResource(c, "pending_exception", exception, 200, {
+      links: pendingExceptionLinks({ shortCode: exception.shortCode }, ctx),
+    });
   } catch (error) {
     if (error instanceof PendingExceptionNotFoundError) {
       return sendNotFound(c, "pending_exception", c.req.param("shortCode"));
@@ -548,7 +584,10 @@ dcg.post("/pending/:shortCode/deny", async (c) => {
 
     const exception = await denyPendingException(shortCode, deniedBy, reason);
 
-    return sendResource(c, "pending_exception", exception);
+    const ctx = getLinkContext(c);
+    return sendResource(c, "pending_exception", exception, 200, {
+      links: pendingExceptionLinks({ shortCode: exception.shortCode }, ctx),
+    });
   } catch (error) {
     if (error instanceof PendingExceptionNotFoundError) {
       return sendNotFound(c, "pending_exception", c.req.param("shortCode"));

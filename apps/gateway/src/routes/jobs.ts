@@ -27,6 +27,7 @@ import {
   sendValidationError,
 } from "../utils/response";
 import { transformZodError } from "../utils/validation";
+import { getLinkContext, jobLinks, jobListLinks } from "../utils/links";
 
 const jobs = new Hono();
 
@@ -154,7 +155,10 @@ jobs.post("/", async (c) => {
 
     log.info({ jobId: job.id, type: job.type }, "Job created");
 
-    return sendCreated(c, "job", jobToResponse(job), `/jobs/${job.id}`);
+    const ctx = getLinkContext(c);
+    return sendCreated(c, "job", jobToResponse(job), `/jobs/${job.id}`, {
+      links: jobLinks({ id: job.id }, ctx),
+    });
   } catch (error) {
     if (error instanceof JobValidationError) {
       return sendValidationError(
@@ -192,9 +196,13 @@ jobs.get("/", async (c) => {
       cursor: query.data.cursor,
     });
 
+    const ctx = getLinkContext(c);
     return sendList(
       c,
-      result.jobs.map(jobToResponse),
+      result.jobs.map((job) => ({
+        ...jobToResponse(job),
+        links: jobListLinks({ id: job.id }, ctx),
+      })),
       {
         hasMore: result.hasMore,
         total: result.total,
@@ -221,7 +229,10 @@ jobs.get("/:id", async (c) => {
       return sendNotFound(c, "job", id);
     }
 
-    return sendResource(c, "job", jobToResponse(job));
+    const ctx = getLinkContext(c);
+    return sendResource(c, "job", jobToResponse(job), 200, {
+      links: jobLinks({ id: job.id }, ctx),
+    });
   } catch (error) {
     log.error({ error, jobId: id }, "Failed to get job");
     return sendInternalError(c);
@@ -253,7 +264,10 @@ jobs.post("/:id/cancel", async (c) => {
 
     log.info({ jobId: id }, "Job cancelled");
 
-    return sendResource(c, "job", jobToResponse(job));
+    const ctx = getLinkContext(c);
+    return sendResource(c, "job", jobToResponse(job), 200, {
+      links: jobLinks({ id: job.id }, ctx),
+    });
   } catch (error) {
     if (error instanceof JobNotFoundError) {
       return sendNotFound(c, "job", id);
@@ -276,7 +290,10 @@ jobs.post("/:id/retry", async (c) => {
 
     log.info({ jobId: id }, "Job queued for retry");
 
-    return sendResource(c, "job", jobToResponse(job));
+    const ctx = getLinkContext(c);
+    return sendResource(c, "job", jobToResponse(job), 200, {
+      links: jobLinks({ id: job.id }, ctx),
+    });
   } catch (error) {
     if (error instanceof JobNotFoundError) {
       return sendNotFound(c, "job", id);
@@ -305,7 +322,10 @@ jobs.post("/:id/pause", async (c) => {
 
     log.info({ jobId: id }, "Job paused");
 
-    return sendResource(c, "job", jobToResponse(job));
+    const ctx = getLinkContext(c);
+    return sendResource(c, "job", jobToResponse(job), 200, {
+      links: jobLinks({ id: job.id }, ctx),
+    });
   } catch (error) {
     if (error instanceof JobNotFoundError) {
       return sendNotFound(c, "job", id);
@@ -334,7 +354,10 @@ jobs.post("/:id/resume", async (c) => {
 
     log.info({ jobId: id }, "Job resumed");
 
-    return sendResource(c, "job", jobToResponse(job));
+    const ctx = getLinkContext(c);
+    return sendResource(c, "job", jobToResponse(job), 200, {
+      links: jobLinks({ id: job.id }, ctx),
+    });
   } catch (error) {
     if (error instanceof JobNotFoundError) {
       return sendNotFound(c, "job", id);
@@ -373,7 +396,10 @@ jobs.get("/:id/output", async (c) => {
       });
     }
 
-    return sendResource(c, "job_output", { jobId: id, output });
+    const ctx = getLinkContext(c);
+    return sendResource(c, "job_output", { jobId: id, output }, 200, {
+      links: { job: `${ctx.baseUrl}/jobs/${id}` },
+    });
   } catch (error) {
     if (error instanceof JobNotFoundError) {
       return sendNotFound(c, "job", id);

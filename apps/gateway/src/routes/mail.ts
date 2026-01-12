@@ -38,6 +38,7 @@ import {
   sendConflict,
 } from "../utils/response";
 import { transformZodError } from "../utils/validation";
+import { getLinkContext, messageLinks } from "../utils/links";
 
 // ============================================================================
 // Validation Schemas
@@ -222,12 +223,11 @@ function createMailRoutes(
         ttl: validated.ttl,
       });
 
-      return sendCreated(
-        c,
-        "message",
-        message,
-        `/mail/messages/${message.messageId || "unknown"}`,
-      );
+      const ctx = getLinkContext(c);
+      const msgId = message.messageId || "unknown";
+      return sendCreated(c, "message", message, `/mail/messages/${msgId}`, {
+        links: messageLinks({ id: msgId }, ctx),
+      });
     } catch (error) {
       return handleError(error, c);
     }
@@ -297,12 +297,21 @@ function createMailRoutes(
       if (priority !== undefined) fetchInput.priority = priority;
 
       const result = await service.client.fetchInbox(fetchInput);
+      const ctx = getLinkContext(c);
 
       if (Array.isArray(result) && result.length === 0) {
         return sendList(c, result);
       }
 
-      return sendList(c, Array.isArray(result) ? result : [result]);
+      const messages = Array.isArray(result) ? result : [result];
+      const messagesWithLinks = messages.map((msg) => ({
+        ...msg,
+        links: msg.messageId
+          ? { self: `${ctx.baseUrl}/mail/messages/${msg.messageId}` }
+          : undefined,
+      }));
+
+      return sendList(c, messagesWithLinks);
     } catch (error) {
       return handleError(error, c);
     }
@@ -378,11 +387,19 @@ function createMailRoutes(
         });
       }
 
+      const ctx = getLinkContext(c);
+      const resId = result.reservationId || "unknown";
       return sendCreated(
         c,
         "reservation",
         result,
-        `/mail/reservations/${result.reservationId || "unknown"}`,
+        `/mail/reservations/${resId}`,
+        {
+          links: {
+            self: `${ctx.baseUrl}/mail/reservations/${resId}`,
+            release: `${ctx.baseUrl}/mail/reservations/${resId}`,
+          },
+        },
       );
     } catch (error) {
       return handleError(error, c);
@@ -401,6 +418,7 @@ function createMailRoutes(
 
       const engine = c.get("conflictEngine");
       const reservations = engine.getActiveReservations(projectId);
+      const ctx = getLinkContext(c);
 
       return sendList(
         c,
@@ -412,6 +430,7 @@ function createMailRoutes(
           exclusive: r.exclusive,
           createdAt: r.createdAt.toISOString(),
           expiresAt: r.expiresAt.toISOString(),
+          links: { self: `${ctx.baseUrl}/mail/reservations/${r.id}` },
         })),
       );
     } catch (error) {

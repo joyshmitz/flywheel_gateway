@@ -39,6 +39,11 @@ import {
   sendForbidden,
 } from "../utils/response";
 import { transformZodError } from "../utils/validation";
+import {
+  getLinkContext,
+  reservationLinks,
+  conflictLinks,
+} from "../utils/links";
 
 const reservations = new Hono();
 
@@ -161,6 +166,7 @@ reservations.post("/", async (c) => {
     }
 
     const reservation = result.reservation!;
+    const ctx = getLinkContext(c);
     return sendCreated(
       c,
       "reservation",
@@ -180,6 +186,7 @@ reservations.post("/", async (c) => {
         },
       },
       `/reservations/${reservation.id}`,
+      { links: reservationLinks({ id: reservation.id }, ctx) },
     );
   } catch (error) {
     return handleError(error, c);
@@ -264,6 +271,7 @@ reservations.get("/conflicts", async (c) => {
       conflictParams.endingBefore = query.ending_before;
 
     const result = await listConflicts(conflictParams);
+    const ctx = getLinkContext(c);
 
     const conflicts = result.conflicts.map((conflict) => ({
       conflictId: conflict.conflictId,
@@ -290,6 +298,7 @@ reservations.get("/conflicts", async (c) => {
         resolutions: conflict.conflict.resolutions,
         detectedAt: conflict.conflict.detectedAt.toISOString(),
       },
+      links: conflictLinks({ id: conflict.conflictId }, ctx),
     }));
 
     // Build pagination meta conditionally (for exactOptionalPropertyTypes)
@@ -332,11 +341,18 @@ reservations.post("/conflicts/:id/resolve", async (c) => {
       return sendNotFound(c, "conflict", id);
     }
 
-    return sendResource(c, "conflict_resolution", {
-      resolved: true,
-      conflictId: id,
-      resolvedAt: result.conflict?.resolvedAt?.toISOString(),
-    });
+    const ctx = getLinkContext(c);
+    return sendResource(
+      c,
+      "conflict_resolution",
+      {
+        resolved: true,
+        conflictId: id,
+        resolvedAt: result.conflict?.resolvedAt?.toISOString(),
+      },
+      200,
+      { links: { self: `${ctx.baseUrl}/reservations/conflicts/${id}` } },
+    );
   } catch (error) {
     return handleError(error, c);
   }
@@ -376,6 +392,7 @@ reservations.get("/", async (c) => {
       listParams.endingBefore = query.ending_before;
 
     const result = await listReservations(listParams);
+    const ctx = getLinkContext(c);
 
     const reservations_data = result.reservations.map((r) => ({
       id: r.id,
@@ -388,6 +405,7 @@ reservations.get("/", async (c) => {
       expiresAt: r.expiresAt.toISOString(),
       renewCount: r.renewCount,
       metadata: r.metadata,
+      links: { self: `${ctx.baseUrl}/reservations/${r.id}` },
     }));
 
     // Build pagination meta conditionally (for exactOptionalPropertyTypes)
@@ -419,18 +437,25 @@ reservations.get("/:id", async (c) => {
       return sendNotFound(c, "reservation", id);
     }
 
-    return sendResource(c, "reservation", {
-      id: reservation.id,
-      projectId: reservation.projectId,
-      agentId: reservation.agentId,
-      patterns: reservation.patterns,
-      mode: reservation.mode,
-      ttl: reservation.ttl,
-      createdAt: reservation.createdAt.toISOString(),
-      expiresAt: reservation.expiresAt.toISOString(),
-      renewCount: reservation.renewCount,
-      metadata: reservation.metadata,
-    });
+    const ctx = getLinkContext(c);
+    return sendResource(
+      c,
+      "reservation",
+      {
+        id: reservation.id,
+        projectId: reservation.projectId,
+        agentId: reservation.agentId,
+        patterns: reservation.patterns,
+        mode: reservation.mode,
+        ttl: reservation.ttl,
+        createdAt: reservation.createdAt.toISOString(),
+        expiresAt: reservation.expiresAt.toISOString(),
+        renewCount: reservation.renewCount,
+        metadata: reservation.metadata,
+      },
+      200,
+      { links: reservationLinks({ id: reservation.id }, ctx) },
+    );
   } catch (error) {
     return handleError(error, c);
   }
@@ -548,11 +573,18 @@ reservations.post("/:id/renew", async (c) => {
       return sendForbidden(c, result.error);
     }
 
-    return sendResource(c, "renewal_result", {
-      renewed: true,
-      reservationId: id,
-      newExpiresAt: result.newExpiresAt?.toISOString(),
-    });
+    const ctx = getLinkContext(c);
+    return sendResource(
+      c,
+      "renewal_result",
+      {
+        renewed: true,
+        reservationId: id,
+        newExpiresAt: result.newExpiresAt?.toISOString(),
+      },
+      200,
+      { links: reservationLinks({ id }, ctx) },
+    );
   } catch (error) {
     return handleError(error, c);
   }

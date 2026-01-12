@@ -250,3 +250,27 @@ export const daemonLinks: LinkGenerator<{ name: string }> = (daemon, ctx) => ({
   restart: `${ctx.baseUrl}/supervisor/${daemon.name}/restart`,
   logs: `${ctx.baseUrl}/supervisor/${daemon.name}/logs`,
 });
+
+// ============================================================================
+// Job Links
+// ============================================================================
+
+/**
+ * Generate HATEOAS links for a job resource.
+ */
+export const jobLinks: LinkGenerator<{ id: string }> = (job, ctx) => ({
+  self: `${ctx.baseUrl}/jobs/${job.id}`,
+  cancel: `${ctx.baseUrl}/jobs/${job.id}/cancel`,
+  retry: `${ctx.baseUrl}/jobs/${job.id}/retry`,
+  pause: `${ctx.baseUrl}/jobs/${job.id}/pause`,
+  resume: `${ctx.baseUrl}/jobs/${job.id}/resume`,
+  output: `${ctx.baseUrl}/jobs/${job.id}/output`,
+  logs: `${ctx.baseUrl}/jobs/${job.id}/logs`,
+});
+
+/**
+ * Generate minimal self-only link for job in list context.
+ */
+export const jobListLinks: LinkGenerator<{ id: string }> = (job, ctx) => ({
+  self: `${ctx.baseUrl}/jobs/${job.id}`,
+});
