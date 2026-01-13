@@ -17,8 +17,6 @@ import type {
   DashboardPermissionEntry,
   DashboardSharing,
   DashboardSummary,
-  DEFAULT_LAYOUT,
-  DEFAULT_SHARING,
   UpdateDashboardInput,
   Widget,
   WidgetData,
@@ -132,7 +130,7 @@ export function getDashboard(id: string): Dashboard | undefined {
  * Get a dashboard by public slug.
  */
 export function getDashboardBySlug(slug: string): Dashboard | undefined {
-  for (const dashboard of dashboardsStore.values()) {
+  for (const dashboard of Array.from(dashboardsStore.values())) {
     if (dashboard.sharing.publicSlug === slug) {
       return dashboard;
     }
@@ -185,7 +183,7 @@ export function deleteDashboard(id: string): boolean {
     permissionsStore.delete(id);
 
     // Clean up favorites
-    for (const userFavorites of favoritesStore.values()) {
+    for (const userFavorites of Array.from(favoritesStore.values())) {
       userFavorites.delete(id);
     }
 
@@ -241,12 +239,17 @@ interface ListDashboardsOptions {
   offset?: number;
 }
 
+interface ListDashboardsResult {
+  items: DashboardSummary[];
+  total: number;
+}
+
 /**
  * List dashboards with filtering.
  */
 export function listDashboards(
   options: ListDashboardsOptions = {},
-): DashboardSummary[] {
+): ListDashboardsResult {
   const { workspaceId, ownerId, visibility, userId, limit = 50, offset = 0 } = options;
 
   let results = Array.from(dashboardsStore.values());
@@ -276,6 +279,9 @@ export function listDashboards(
     (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
   );
 
+  // Store total before pagination
+  const total = results.length;
+
   // Get user favorites
   const userFavorites = userId ? favoritesStore.get(userId) ?? new Set() : new Set();
 
@@ -283,7 +289,7 @@ export function listDashboards(
   const paginated = results.slice(offset, offset + limit);
 
   // Map to summaries
-  return paginated.map((d) => ({
+  const items = paginated.map((d) => ({
     id: d.id,
     name: d.name,
     description: d.description,
@@ -294,6 +300,8 @@ export function listDashboards(
     createdAt: d.createdAt,
     updatedAt: d.updatedAt,
   }));
+
+  return { items, total };
 }
 
 // ============================================================================
@@ -543,6 +551,12 @@ export function removeWidget(
   const dashboard = dashboardsStore.get(dashboardId);
 
   if (!dashboard) {
+    return undefined;
+  }
+
+  // Check if widget exists
+  const widgetExists = dashboard.widgets.some((w) => w.id === widgetId);
+  if (!widgetExists) {
     return undefined;
   }
 
