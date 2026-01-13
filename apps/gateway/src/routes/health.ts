@@ -1,11 +1,20 @@
 /**
  * Health Routes - Health check and readiness probe endpoints.
+ *
+ * Provides comprehensive health information for operations and monitoring:
+ * - /health - Basic liveness probe with version info
+ * - /health/ready - Detailed readiness probe with dependency checks
  */
 
 import { count } from "drizzle-orm";
 import { Hono } from "hono";
 import { db } from "../db";
 import { agents } from "../db/schema";
+import {
+  getBuildInfo,
+  getCapabilities,
+  getRuntimeInfo,
+} from "../services/build-info";
 import { sendResource } from "../utils/response";
 
 const health = new Hono();
@@ -19,12 +28,20 @@ interface CheckResult {
 /**
  * GET /health - Liveness probe
  *
- * Returns 200 if the server is running.
+ * Returns 200 if the server is running with version and uptime info.
  * This endpoint is used by load balancers and orchestrators.
  */
 health.get("/", (c) => {
+  const buildInfo = getBuildInfo();
+  const runtimeInfo = getRuntimeInfo();
+
   return sendResource(c, "health_status", {
     status: "healthy",
+    version: buildInfo.version,
+    commit: buildInfo.commit,
+    environment: buildInfo.environment,
+    uptime: runtimeInfo.uptimeFormatted,
+    uptimeSeconds: runtimeInfo.uptimeSeconds,
     timestamp: new Date().toISOString(),
   });
 });
@@ -32,7 +49,8 @@ health.get("/", (c) => {
 /**
  * GET /health/ready - Readiness probe
  *
- * Checks all dependencies and returns detailed status.
+ * Checks all dependencies and returns detailed status including
+ * build info, runtime stats, and feature capabilities.
  * Returns 200 if ready to accept traffic, 503 if not.
  */
 health.get("/ready", async (c) => {
@@ -56,11 +74,30 @@ health.get("/ready", async (c) => {
   const status = anyFail ? "unhealthy" : allPass ? "ready" : "degraded";
   const httpStatus = anyFail ? 503 : 200;
 
+  const buildInfo = getBuildInfo();
+  const runtimeInfo = getRuntimeInfo();
+  const capabilities = getCapabilities();
+
   return sendResource(
     c,
     "readiness_status",
     {
       status,
+      build: {
+        version: buildInfo.version,
+        commit: buildInfo.commit,
+        branch: buildInfo.branch,
+        runtime: buildInfo.runtime,
+        environment: buildInfo.environment,
+        buildTime: buildInfo.buildTime,
+      },
+      runtime: {
+        uptime: runtimeInfo.uptimeFormatted,
+        uptimeSeconds: runtimeInfo.uptimeSeconds,
+        memoryMB: runtimeInfo.memoryUsageMB,
+        pid: runtimeInfo.pid,
+      },
+      capabilities,
       checks,
       timestamp: new Date().toISOString(),
     },
