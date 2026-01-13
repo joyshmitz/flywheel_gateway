@@ -360,8 +360,8 @@ function parseUBSTextOutput(stdout: string, exitCode: number): UBSScanResult {
     // Match: emoji, category name, count
     const categoryMatch = line.match(/^(.)\s*(.+?)\s*\((\d+)\s*\w+\)/);
     if (categoryMatch) {
-      const emoji = categoryMatch[1];
-      currentCategory = categoryMatch[2].trim();
+      const emoji = categoryMatch[1] ?? "";
+      currentCategory = (categoryMatch[2] ?? "").trim();
       // Map emoji to severity
       if (emoji === "❌" || emoji === "X") {
         currentSeverity = "critical";
@@ -396,10 +396,10 @@ function parseUBSTextOutput(stdout: string, exitCode: number): UBSScanResult {
         });
       }
 
-      currentFile = findingMatch[1];
-      currentLine = parseInt(findingMatch[2], 10);
-      currentColumn = parseInt(findingMatch[3], 10);
-      currentMessage = findingMatch[4];
+      currentFile = findingMatch[1] ?? "";
+      currentLine = parseInt(findingMatch[2] ?? "0", 10);
+      currentColumn = parseInt(findingMatch[3] ?? "0", 10);
+      currentMessage = findingMatch[4] ?? "";
       currentSuggestion = undefined;
       continue;
     }
@@ -538,10 +538,10 @@ ${finding.codeSnippet ? `## Code Context\n\`\`\`\n${finding.codeSnippet}\n\`\`\`
       priority,
       type,
       metadata: {
-        findingId: finding.id,
+        ...(finding.id != null && { findingId: finding.id }),
         rule: finding.rule,
         file: finding.file,
-        line: finding.line,
+        ...(finding.line != null && { line: finding.line }),
       },
     };
   };

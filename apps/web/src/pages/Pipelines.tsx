@@ -197,9 +197,11 @@ function PipelineCard({
                 >
                   <span className="mono">{i + 1}.</span>
                   <span>{step.name}</span>
-                  <StatusPill tone={statusTone[step.status]} style={{ fontSize: "0.625rem", padding: "0 0.25rem" }}>
-                    {step.type}
-                  </StatusPill>
+                  <span style={{ fontSize: "0.625rem" }}>
+                    <StatusPill tone={statusTone[step.status]}>
+                      {step.type}
+                    </StatusPill>
+                  </span>
                 </div>
               ))}
             </div>

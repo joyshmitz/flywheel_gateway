@@ -81,7 +81,7 @@ export class FlowControl {
     this.send({
       type: FlowControlSignal.PAUSE,
       timestamp: Date.now(),
-      metadata: queueDepth !== undefined ? { queueDepth } : undefined,
+      ...(queueDepth !== undefined && { metadata: { queueDepth } }),
     });
   }
 
@@ -95,7 +95,7 @@ export class FlowControl {
     this.send({
       type: FlowControlSignal.RESUME,
       timestamp: Date.now(),
-      metadata: queueDepth !== undefined ? { queueDepth } : undefined,
+      ...(queueDepth !== undefined && { metadata: { queueDepth } }),
     });
   }
 
@@ -120,7 +120,7 @@ export class FlowControl {
       timestamp: Date.now(),
       metadata: {
         suggestedRate,
-        queueDepth,
+        ...(queueDepth != null && { queueDepth }),
       },
     });
   }

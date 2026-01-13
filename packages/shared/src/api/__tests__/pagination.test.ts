@@ -2,7 +2,7 @@
  * Unit tests for pagination utilities.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 import {
   buildPaginationMeta,
   CURSOR_EXPIRATION_MS,

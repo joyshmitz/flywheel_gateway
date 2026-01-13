@@ -238,10 +238,10 @@ export class BackpressureManager<T = unknown> {
   dispose(): void {
     this.stop();
     this.queue = [];
-    this.messageHandler = undefined;
-    this.onStateChange = undefined;
-    this.onPause = undefined;
-    this.onResume = undefined;
+    delete this.messageHandler;
+    delete this.onStateChange;
+    delete this.onPause;
+    delete this.onResume;
   }
 }
 

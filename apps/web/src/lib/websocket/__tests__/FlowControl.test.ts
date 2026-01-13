@@ -31,14 +31,14 @@ describe("FlowControl", () => {
       flowControl.pause();
 
       expect(sentMessages.length).toBe(1);
-      const msg = JSON.parse(sentMessages[0]);
+      const msg = JSON.parse(sentMessages[0]!);
       expect(msg.type).toBe(FlowControlSignal.PAUSE);
     });
 
     it("should include queueDepth in metadata if provided", () => {
       flowControl.pause(500);
 
-      const msg = JSON.parse(sentMessages[0]);
+      const msg = JSON.parse(sentMessages[0]!);
       expect(msg.metadata.queueDepth).toBe(500);
     });
 
@@ -56,7 +56,7 @@ describe("FlowControl", () => {
       flowControl.resume();
 
       expect(sentMessages.length).toBe(2);
-      const msg = JSON.parse(sentMessages[1]);
+      const msg = JSON.parse(sentMessages[1]!);
       expect(msg.type).toBe(FlowControlSignal.RESUME);
     });
 
@@ -76,8 +76,8 @@ describe("FlowControl", () => {
       expect(state.pendingAckCount).toBe(0);
       // Should have sent 2 ACK messages
       expect(sentMessages.length).toBe(2);
-      const msg1 = JSON.parse(sentMessages[0]);
-      const msg2 = JSON.parse(sentMessages[1]);
+      const msg1 = JSON.parse(sentMessages[0]!);
+      const msg2 = JSON.parse(sentMessages[1]!);
       expect(msg1.type).toBe(FlowControlSignal.ACK);
       expect(msg1.metadata.ackCount).toBe(5);
       expect(msg2.metadata.ackCount).toBe(3);
@@ -89,7 +89,7 @@ describe("FlowControl", () => {
       flowControl.slowDown(100, 1000);
 
       expect(sentMessages.length).toBe(1);
-      const msg = JSON.parse(sentMessages[0]);
+      const msg = JSON.parse(sentMessages[0]!);
       expect(msg.type).toBe(FlowControlSignal.SLOW_DOWN);
       expect(msg.metadata.suggestedRate).toBe(100);
       expect(msg.metadata.queueDepth).toBe(1000);
@@ -146,7 +146,7 @@ describe("FlowControl", () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(sentMessages.length).toBeGreaterThan(0);
-      const msg = JSON.parse(sentMessages[0]);
+      const msg = JSON.parse(sentMessages[0]!);
       expect(msg.type).toBe(FlowControlSignal.ACK);
       expect(msg.metadata.ackCount).toBe(5);
 
@@ -160,7 +160,7 @@ describe("FlowControl", () => {
       flowControl.dispose();
 
       expect(sentMessages.length).toBe(1);
-      const msg = JSON.parse(sentMessages[0]);
+      const msg = JSON.parse(sentMessages[0]!);
       expect(msg.type).toBe(FlowControlSignal.ACK);
     });
   });

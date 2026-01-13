@@ -83,7 +83,9 @@ describe("BackpressureManager", () => {
 
       expect(processed.length).toBeGreaterThan(0);
       // First batch should have batchSize messages
-      expect(processed[0].length).toBe(5);
+      const firstBatch = processed[0];
+      expect(firstBatch).toBeDefined();
+      expect(firstBatch!.length).toBe(5);
 
       manager.stop();
     });

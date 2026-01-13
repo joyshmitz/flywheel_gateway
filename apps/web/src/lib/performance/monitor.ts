@@ -175,7 +175,7 @@ class PerformanceMonitor {
             // INP is p75 of all interactions
             interactions.sort((a, b) => a - b);
             const p75Index = Math.floor(interactions.length * 0.75);
-            this.metrics.inp = interactions[p75Index];
+            this.metrics.inp = interactions[p75Index] ?? null;
             this.notifyCallbacks();
           }
         }
@@ -359,47 +359,47 @@ class PerformanceMonitor {
 
     // LCP thresholds: good < 2.5s, poor > 4s
     if (this.metrics.lcp !== null) {
-      if (this.metrics.lcp < 2500) ratings.lcp = "good";
-      else if (this.metrics.lcp < 4000) ratings.lcp = "needs-improvement";
-      else ratings.lcp = "poor";
+      if (this.metrics.lcp < 2500) ratings["lcp"] = "good";
+      else if (this.metrics.lcp < 4000) ratings["lcp"] = "needs-improvement";
+      else ratings["lcp"] = "poor";
     } else {
-      ratings.lcp = "unknown";
+      ratings["lcp"] = "unknown";
     }
 
     // FID thresholds: good < 100ms, poor > 300ms
     if (this.metrics.fid !== null) {
-      if (this.metrics.fid < 100) ratings.fid = "good";
-      else if (this.metrics.fid < 300) ratings.fid = "needs-improvement";
-      else ratings.fid = "poor";
+      if (this.metrics.fid < 100) ratings["fid"] = "good";
+      else if (this.metrics.fid < 300) ratings["fid"] = "needs-improvement";
+      else ratings["fid"] = "poor";
     } else {
-      ratings.fid = "unknown";
+      ratings["fid"] = "unknown";
     }
 
     // CLS thresholds: good < 0.1, poor > 0.25
     if (this.metrics.cls !== null) {
-      if (this.metrics.cls < 0.1) ratings.cls = "good";
-      else if (this.metrics.cls < 0.25) ratings.cls = "needs-improvement";
-      else ratings.cls = "poor";
+      if (this.metrics.cls < 0.1) ratings["cls"] = "good";
+      else if (this.metrics.cls < 0.25) ratings["cls"] = "needs-improvement";
+      else ratings["cls"] = "poor";
     } else {
-      ratings.cls = "unknown";
+      ratings["cls"] = "unknown";
     }
 
     // INP thresholds: good < 200ms, poor > 500ms
     if (this.metrics.inp !== null) {
-      if (this.metrics.inp < 200) ratings.inp = "good";
-      else if (this.metrics.inp < 500) ratings.inp = "needs-improvement";
-      else ratings.inp = "poor";
+      if (this.metrics.inp < 200) ratings["inp"] = "good";
+      else if (this.metrics.inp < 500) ratings["inp"] = "needs-improvement";
+      else ratings["inp"] = "poor";
     } else {
-      ratings.inp = "unknown";
+      ratings["inp"] = "unknown";
     }
 
     // TTFB thresholds: good < 800ms, poor > 1800ms
     if (this.metrics.ttfb !== null) {
-      if (this.metrics.ttfb < 800) ratings.ttfb = "good";
-      else if (this.metrics.ttfb < 1800) ratings.ttfb = "needs-improvement";
-      else ratings.ttfb = "poor";
+      if (this.metrics.ttfb < 800) ratings["ttfb"] = "good";
+      else if (this.metrics.ttfb < 1800) ratings["ttfb"] = "needs-improvement";
+      else ratings["ttfb"] = "poor";
     } else {
-      ratings.ttfb = "unknown";
+      ratings["ttfb"] = "unknown";
     }
 
     return ratings;

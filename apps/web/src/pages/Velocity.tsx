@@ -1135,10 +1135,13 @@ function HistoryTab() {
         </div>
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <span className="muted">
-            {formatDate(history.points[0]?.timestamp)}
+            {history.points[0]?.timestamp ? formatDate(history.points[0].timestamp) : ""}
           </span>
           <span className="muted">
-            {formatDate(history.points[history.points.length - 1]?.timestamp)}
+            {(() => {
+              const lastPoint = history.points[history.points.length - 1];
+              return lastPoint?.timestamp ? formatDate(lastPoint.timestamp) : "";
+            })()}
           </span>
         </div>
       </div>

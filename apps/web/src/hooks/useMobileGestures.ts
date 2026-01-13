@@ -86,6 +86,7 @@ export function useMobileGestures(config: GestureConfig = {}) {
       if (!mergedConfig.enabled) return;
 
       const touch = e.touches[0];
+      if (!touch) return;
       touchStartRef.current = {
         x: touch.clientX,
         y: touch.clientY,
@@ -108,6 +109,7 @@ export function useMobileGestures(config: GestureConfig = {}) {
       if (!mergedConfig.enabled || !touchStartRef.current) return;
 
       const touch = e.touches[0];
+      if (!touch) return;
       const start = touchStartRef.current;
       const deltaX = touch.clientX - start.x;
       const deltaY = touch.clientY - start.y;
@@ -302,10 +304,12 @@ export function useSwipeToDismiss(
   const [isDismissing, setIsDismissing] = useState(false);
 
   const { handlers, state } = useMobileGestures({
-    onSwipeLeft:
-      direction === "left" || direction === "both" ? onDismiss : undefined,
-    onSwipeRight:
-      direction === "right" || direction === "both" ? onDismiss : undefined,
+    ...(direction === "left" || direction === "both"
+      ? { onSwipeLeft: onDismiss }
+      : {}),
+    ...(direction === "right" || direction === "both"
+      ? { onSwipeRight: onDismiss }
+      : {}),
     swipeThreshold: threshold,
     preventDefaultOnHorizontal: true,
   });

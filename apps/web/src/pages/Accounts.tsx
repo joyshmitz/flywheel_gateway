@@ -14,6 +14,7 @@ import { OnboardingWizard, ProfileList } from "../components/caam";
 import { Modal } from "../components/ui/Modal";
 import { StatusPill } from "../components/ui/StatusPill";
 import {
+  type AccountProfile,
   PROVIDER_INFO,
   type ProviderId,
   useByoaStatus,
@@ -196,7 +197,7 @@ export function AccountsPage() {
     refetchProfiles();
   };
 
-  const handleReauth = (profile: (typeof profiles)[0]) => {
+  const handleReauth = (profile: AccountProfile) => {
     setOnboardingProvider(profile.provider);
     setShowOnboarding(true);
   };
@@ -349,13 +350,12 @@ export function AccountsPage() {
 
       {/* Onboarding Modal */}
       <Modal
-        isOpen={showOnboarding}
+        open={showOnboarding}
         onClose={() => setShowOnboarding(false)}
         title=""
-        size="lg"
       >
         <OnboardingWizard
-          initialProvider={onboardingProvider}
+          {...(onboardingProvider != null && { initialProvider: onboardingProvider })}
           workspaceId="default"
           onComplete={handleOnboardingComplete}
           onCancel={() => setShowOnboarding(false)}

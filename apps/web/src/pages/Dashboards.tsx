@@ -99,8 +99,8 @@ export function DashboardsPage() {
         y: maxY,
         w: Math.min(definition.defaultSize.w, columns),
         h: definition.defaultSize.h,
-        minW: definition.minSize?.w,
-        minH: definition.minSize?.h,
+        ...(definition.minSize?.w != null && { minW: definition.minSize.w }),
+        ...(definition.minSize?.h != null && { minH: definition.minSize.h }),
       },
       config: {
         dataSource: {

@@ -16,6 +16,7 @@ import {
   Circle,
   Eye,
   File,
+  FileText,
   Folder,
   GitBranch,
   Lock,

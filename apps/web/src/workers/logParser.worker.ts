@@ -140,7 +140,7 @@ function parseAnsiCodes(text: string): ParsedSegment[] {
     }
 
     // Parse escape code
-    const codes = match[1].split(";").map(Number);
+    const codes = (match[1] ?? "0").split(";").map(Number);
     for (const code of codes) {
       if (code === 0) {
         currentStyle = {}; // Reset

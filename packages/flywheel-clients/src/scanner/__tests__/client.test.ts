@@ -412,7 +412,7 @@ describe("UBS Client", () => {
 
       expect(error.kind).toBe("command_failed");
       expect(error.message).toBe("Test error");
-      expect(error.details?.exitCode).toBe(127);
+      expect(error.details?.["exitCode"]).toBe(127);
     });
   });
 

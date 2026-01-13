@@ -851,7 +851,7 @@ function AddRepoTab({ onAdd, isAdding, groups }: AddRepoTabProps) {
       owner,
       name,
       url,
-      group: group || undefined,
+      ...(group && { group }),
     });
     setOwner("");
     setName("");
@@ -1012,12 +1012,13 @@ export function FleetPage() {
   const activeSweeps =
     sessions?.filter((s) => s.status === "running" || s.status === "paused")
       .length ?? 0;
+  const reposCount = repos?.length;
   const tabs: Tab[] = [
-    { id: "repos", label: "Repositories", badge: repos?.length },
+    { id: "repos", label: "Repositories", ...(reposCount != null && { badge: reposCount }) },
     {
       id: "sweeps",
       label: "Sweeps",
-      badge: activeSweeps > 0 ? activeSweeps : undefined,
+      ...(activeSweeps > 0 && { badge: activeSweeps }),
     },
     { id: "add", label: "Add Repo" },
   ];

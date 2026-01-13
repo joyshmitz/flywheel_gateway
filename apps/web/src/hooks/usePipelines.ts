@@ -686,7 +686,7 @@ export function useRunPipeline(): MutationResult<
       try {
         const result = await fetchAPI<PipelineRun>(`/${pipelineId}/run`, {
           method: "POST",
-          body: params ? JSON.stringify(params) : undefined,
+          ...(params && { body: JSON.stringify(params) }),
         });
         return result;
       } catch (e) {

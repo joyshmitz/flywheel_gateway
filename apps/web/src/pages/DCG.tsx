@@ -978,12 +978,13 @@ export function DCGPage() {
   };
 
   // Tab configuration
+  const pendingCount = pending?.filter((p) => p.status === "pending").length;
   const tabs: Tab[] = [
     { id: "feed", label: "Live Feed" },
     {
       id: "pending",
       label: "Pending",
-      badge: pending?.filter((p) => p.status === "pending").length,
+      ...(pendingCount != null && { badge: pendingCount }),
     },
     { id: "stats", label: "Statistics" },
     { id: "config", label: "Configuration" },
@@ -1016,7 +1017,7 @@ export function DCGPage() {
           title="Blocks (24h)"
           value={stats?.overview.blocksLast24h ?? "-"}
           icon={<ShieldAlert size={18} />}
-          trend={stats?.overview.trendVsYesterday}
+          {...(stats?.overview.trendVsYesterday != null && { trend: stats.overview.trendVsYesterday })}
         />
         <QuickStatCard
           title="Total Blocks"

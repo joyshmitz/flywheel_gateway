@@ -327,8 +327,8 @@ describe("CM Client", () => {
 
       expect(result.success).toBe(true);
       expect(result.total).toBe(42);
-      expect(result.byScope.typescript).toBe(15);
-      expect(result.byState.active).toBe(35);
+      expect(result.byScope["typescript"]).toBe(15);
+      expect(result.byState["active"]).toBe(35);
       expect(result.scoreDistribution.excellent).toBe(10);
       expect(result.topPerformers).toHaveLength(1);
       expect(runner.calls[0]?.args).toContain("stats");
@@ -487,7 +487,7 @@ describe("CM Client", () => {
 
       expect(error.kind).toBe("command_failed");
       expect(error.message).toBe("Test error");
-      expect(error.details?.exitCode).toBe(127);
+      expect(error.details?.["exitCode"]).toBe(127);
     });
   });
 

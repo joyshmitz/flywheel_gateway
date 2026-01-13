@@ -78,7 +78,7 @@ const MetricsResponseSchema = z
   .or(z.any()); // Allow any shape for metrics
 
 // Test configuration
-const BASE_URL = process.env.API_URL || "http://localhost:3000";
+const BASE_URL = process.env["API_URL"] || "http://localhost:3000";
 
 // Helper to make API requests
 async function apiRequest(path: string, options?: RequestInit) {
@@ -163,7 +163,7 @@ describe("API Contract Tests", () => {
       const result = AgentListResponseSchema.safeParse(body);
 
       if (!result.success) {
-        console.log("Schema validation failed:", result.error.errors);
+        console.log("Schema validation failed:", result.error.issues);
       }
       expect(result.success).toBe(true);
     });
