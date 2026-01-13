@@ -60,7 +60,7 @@ export const ApiErrorSchema = z
     param: z.string().optional().openapi({
       description: "Specific field that caused the error",
     }),
-    details: z.record(z.unknown()).optional().openapi({
+    details: z.record(z.string(), z.unknown()).optional().openapi({
       description: "Additional error details",
     }),
   })
@@ -405,7 +405,7 @@ export const PipelineStepSchema = z
       description: "Human-readable step name",
     }),
     type: PipelineStepTypeSchema,
-    config: z.record(z.unknown()).openapi({
+    config: z.record(z.string(), z.unknown()).openapi({
       description: "Step-specific configuration",
     }),
     dependsOn: z.array(z.string()).optional().openapi({

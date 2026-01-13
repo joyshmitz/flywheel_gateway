@@ -150,7 +150,7 @@ const CreateNotificationSchema = z.object({
         description: z.string().optional(),
         style: z.enum(["primary", "secondary", "danger", "link"]),
         action: z.string().min(1),
-        payload: z.record(z.unknown()).optional(),
+        payload: z.record(z.string(), z.unknown()).optional(),
       }),
     )
     .optional(),
@@ -158,7 +158,7 @@ const CreateNotificationSchema = z.object({
   forceChannels: z
     .array(z.enum(["in_app", "email", "slack", "webhook"]))
     .optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 // ============================================================================

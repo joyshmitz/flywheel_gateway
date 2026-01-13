@@ -203,7 +203,7 @@ const HandoffContextSchema = z.object({
   keyPoints: z.array(z.string()).optional(),
   userRequirements: z.array(z.string()).optional(),
   constraints: z.array(z.string()).optional(),
-  workingMemory: z.record(z.unknown()).optional(),
+  workingMemory: z.record(z.string(), z.unknown()).optional(),
   hypotheses: z.array(HypothesisSchema).optional(),
   todoItems: z.array(TodoItemSchema).optional(),
   environmentSnapshot: EnvironmentSnapshotSchema.optional(),
