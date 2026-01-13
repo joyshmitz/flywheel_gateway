@@ -894,8 +894,8 @@ export function useTogglePipeline(): MutationResult<Pipeline, [string, boolean]>
       if (mockMode) {
         await new Promise((r) => setTimeout(r, 300));
         setIsLoading(false);
-        const existing = mockPipelines.find((p) => p.id === pipelineId);
-        return { ...existing!, enabled };
+        const existing = mockPipelines.find((p) => p.id === pipelineId) ?? mockPipelines[0];
+        return { ...existing, enabled };
       }
 
       try {
