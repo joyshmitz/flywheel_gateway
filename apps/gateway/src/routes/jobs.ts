@@ -16,7 +16,7 @@ import {
   JobNotFoundError,
   JobValidationError,
 } from "../services/job.service";
-import type { JobPriority, JobStatus, JobType } from "../types/job.types";
+import type { Job, JobPriority, JobStatus, JobType } from "../types/job.types";
 import { getLinkContext, jobLinks, jobListLinks } from "../utils/links";
 import {
   sendCreated,
@@ -51,11 +51,11 @@ const CreateJobSchema = z.object({
     "cache_warm",
   ]),
   name: z.string().min(1).max(255).optional(),
-  input: z.record(z.unknown()),
+  input: z.record(z.string(), z.unknown()),
   priority: z.number().min(0).max(3).optional(),
   sessionId: z.string().optional(),
   agentId: z.string().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 const CancelJobSchema = z.object({
@@ -100,13 +100,7 @@ const ListJobsQuerySchema = z.object({
 // Helper Functions
 // ============================================================================
 
-function jobToResponse(
-  job: ReturnType<typeof getJobService>["createJob"] extends (
-    input: unknown,
-  ) => Promise<infer R>
-    ? R
-    : never,
-) {
+function jobToResponse(job: Job) {
   return {
     id: job.id,
     type: job.type,
