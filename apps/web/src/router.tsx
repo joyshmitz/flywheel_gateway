@@ -15,6 +15,7 @@ import { DashboardsPage } from "./pages/Dashboards";
 import { DCGPage } from "./pages/DCG";
 import { FleetPage } from "./pages/Fleet";
 import { NotFoundPage } from "./pages/NotFound";
+import { PipelinesPage } from "./pages/Pipelines";
 import { SettingsPage } from "./pages/Settings";
 import { VelocityPage } from "./pages/Velocity";
 
@@ -76,6 +77,12 @@ const fleetRoute = createRoute({
   component: FleetPage,
 });
 
+const pipelinesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/pipelines",
+  component: PipelinesPage,
+});
+
 const velocityRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/velocity",
@@ -110,6 +117,7 @@ const routeTree = rootRoute.addChildren([
   dashboardViewRoute,
   dcgRoute,
   fleetRoute,
+  pipelinesRoute,
   velocityRoute,
   collaborationRoute,
   settingsRoute,

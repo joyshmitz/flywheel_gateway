@@ -14,6 +14,7 @@ import {
   Settings,
   Shield,
   Sparkles,
+  Workflow,
 } from "lucide-react";
 
 import { mockAgents, mockBeads } from "../../lib/mock-data";
@@ -28,6 +29,7 @@ const navItems = [
   { label: "Costs", icon: DollarSign, to: "/cost-analytics" },
   { label: "DCG", icon: Shield, to: "/dcg" },
   { label: "Fleet", icon: GitBranch, to: "/fleet" },
+  { label: "Pipelines", icon: Workflow, to: "/pipelines" },
   { label: "Velocity", icon: Activity, to: "/velocity" },
   { label: "Collab", icon: Network, to: "/collaboration" },
   { label: "Settings", icon: Settings, to: "/settings" },
