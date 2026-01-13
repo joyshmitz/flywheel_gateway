@@ -198,8 +198,8 @@ export function useResponsiveValue<T>(
 
     for (let i = currentIndex; i < breakpoints.length; i++) {
       const bp = breakpoints[i];
-      if (values[bp] !== undefined) {
-        return values[bp]!;
+      if (bp !== undefined && values[bp] !== undefined) {
+        return values[bp];
       }
     }
 
