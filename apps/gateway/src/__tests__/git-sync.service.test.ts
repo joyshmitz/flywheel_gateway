@@ -208,7 +208,7 @@ describe("Git Sync Operations Service", () => {
       // After max retries, should be failed
       const final = await getOperation(operation.id);
       // Either still retrying or failed
-      expect(["queued", "failed"]).toContain(final?.status);
+      expect(["queued", "failed"]).toContain(final!.status);
     });
 
     test("parses different error types correctly", async () => {

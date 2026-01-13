@@ -510,7 +510,7 @@ export function createApiResponseSchema<T extends z.ZodTypeAny>(
       data: dataSchema,
       requestId: RequestIdSchema,
       timestamp: TimestampSchema,
-      links: z.record(z.string()).optional().openapi({
+      links: z.record(z.string(), z.string()).optional().openapi({
         description: "HATEOAS links for resource navigation",
       }),
     })
@@ -1379,7 +1379,7 @@ registry.register("Recommendation", RecommendationSchema);
 export const OptimizationSummarySchema = z
   .object({
     totalRecommendations: z.number().int(),
-    byCategory: z.record(z.number().int()),
+    byCategory: z.record(z.string(), z.number().int()),
     totalPotentialSavingsUnits: z.number().int(),
     formattedPotentialSavings: z.string(),
     implementedSavingsUnits: z.number().int(),

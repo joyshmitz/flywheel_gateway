@@ -355,7 +355,7 @@ export function CostDashboard() {
                 formattedBudget={`$${(((budget.usedUnits / budget.usedPercent) * 100) / 100000).toFixed(2)}`}
                 formattedUsed={budget.formattedUsed}
                 formattedRemaining={budget.formattedRemaining}
-                daysUntilExhausted={budget.daysUntilExhausted}
+                {...(budget.daysUntilExhausted !== undefined && { daysUntilExhausted: budget.daysUntilExhausted })}
                 projectedExceed={budget.projectedExceed}
                 burnRateFormatted={`$${(budget.burnRateUnitsPerDay / 100000).toFixed(2)}`}
               />
@@ -390,8 +390,8 @@ export function CostDashboard() {
             trendDirection={forecast.trendDirection}
             trendStrength={forecast.trendStrength}
             methodology={forecast.methodology}
-            seasonalityDetected={forecast.seasonalityDetected}
-            accuracyMetrics={forecast.accuracyMetrics}
+            {...(forecast.seasonalityDetected !== undefined && { seasonalityDetected: forecast.seasonalityDetected })}
+            {...(forecast.accuracyMetrics !== undefined && { accuracyMetrics: forecast.accuracyMetrics })}
           />
         </section>
       )}

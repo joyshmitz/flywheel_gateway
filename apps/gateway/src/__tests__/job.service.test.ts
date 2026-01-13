@@ -246,7 +246,7 @@ describe("JobService", () => {
 
       const result = await service.listJobs({ type: "codebase_scan" });
       expect(result.jobs).toHaveLength(1);
-      expect(result.jobs[0].type).toBe("codebase_scan");
+      expect(result.jobs[0]!.type).toBe("codebase_scan");
     });
 
     test("filters by status", async () => {

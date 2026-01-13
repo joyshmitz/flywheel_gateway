@@ -143,6 +143,7 @@ function VirtualizedListInner<T>(
   const visibleItems = [];
   for (let i = startIndex; i <= endIndex && i < items.length; i++) {
     const item = items[i];
+    if (item === undefined) continue;
     const key = getItemKey(item, i);
     const top = i * rowHeight;
 

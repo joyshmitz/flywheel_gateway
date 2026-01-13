@@ -88,7 +88,8 @@ export function PieChartWidget({ widget, data }: PieChartWidgetProps) {
 
     chartData.items.forEach((item, i) => {
       const sliceAngle = (item.value / total) * Math.PI * 2;
-      const color = item.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length];
+      const defaultColor = DEFAULT_COLORS[i % DEFAULT_COLORS.length] as string;
+      const color = item.color ?? defaultColor;
 
       // Draw slice
       ctx.fillStyle = color;

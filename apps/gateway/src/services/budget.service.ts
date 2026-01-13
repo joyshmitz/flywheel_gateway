@@ -98,15 +98,15 @@ export async function createBudget(input: BudgetInput): Promise<Budget> {
   const budget: Budget = {
     id,
     name: input.name,
-    organizationId: input.organizationId,
-    projectId: input.projectId,
+    ...(input.organizationId && { organizationId: input.organizationId }),
+    ...(input.projectId && { projectId: input.projectId }),
     period: input.period,
     amountUnits: input.amountUnits,
     alertThresholds: input.alertThresholds ?? [50, 75, 90, 100],
     actionOnExceed: input.actionOnExceed ?? "alert",
     rollover: input.rollover ?? false,
     effectiveDate: input.effectiveDate ?? now,
-    expiresAt: input.expiresAt,
+    ...(input.expiresAt && { expiresAt: input.expiresAt }),
     enabled: input.enabled ?? true,
     createdAt: now,
     updatedAt: now,
@@ -155,15 +155,15 @@ export async function getBudget(budgetId: string): Promise<Budget | undefined> {
   return {
     id: row.id,
     name: row.name,
-    organizationId: row.organizationId ?? undefined,
-    projectId: row.projectId ?? undefined,
+    ...(row.organizationId && { organizationId: row.organizationId }),
+    ...(row.projectId && { projectId: row.projectId }),
     period: row.period as BudgetPeriod,
     amountUnits: row.amountUnits,
     alertThresholds: JSON.parse(row.alertThresholds) as number[],
     actionOnExceed: row.actionOnExceed as BudgetAction,
     rollover: row.rollover,
     effectiveDate: row.effectiveDate,
-    expiresAt: row.expiresAt ?? undefined,
+    ...(row.expiresAt && { expiresAt: row.expiresAt }),
     enabled: row.enabled,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -250,22 +250,25 @@ export async function listBudgets(filter?: {
     .where(whereClause)
     .orderBy(desc(budgets.createdAt));
 
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    organizationId: row.organizationId ?? undefined,
-    projectId: row.projectId ?? undefined,
-    period: row.period as BudgetPeriod,
-    amountUnits: row.amountUnits,
-    alertThresholds: JSON.parse(row.alertThresholds) as number[],
-    actionOnExceed: row.actionOnExceed as BudgetAction,
-    rollover: row.rollover,
-    effectiveDate: row.effectiveDate,
-    expiresAt: row.expiresAt ?? undefined,
-    enabled: row.enabled,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  }));
+  return rows.map((row) => {
+    const budget: Budget = {
+      id: row.id,
+      name: row.name,
+      period: row.period as BudgetPeriod,
+      amountUnits: row.amountUnits,
+      alertThresholds: JSON.parse(row.alertThresholds) as number[],
+      actionOnExceed: row.actionOnExceed as BudgetAction,
+      rollover: row.rollover,
+      effectiveDate: row.effectiveDate,
+      enabled: row.enabled,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+    if (row.organizationId) budget.organizationId = row.organizationId;
+    if (row.projectId) budget.projectId = row.projectId;
+    if (row.expiresAt) budget.expiresAt = row.expiresAt;
+    return budget;
+  });
 }
 
 // ============================================================================
@@ -383,7 +386,7 @@ export async function getBudgetStatus(
     status = "healthy";
   }
 
-  return {
+  const budgetStatus: BudgetStatus = {
     budget,
     periodStart,
     periodEnd,
@@ -393,14 +396,15 @@ export async function getBudgetStatus(
     burnRateUnitsPerDay,
     projectedEndOfPeriodUnits,
     projectedExceed,
-    daysUntilExhausted,
-    previousPeriodUnits,
-    changePercent,
     currentThreshold,
     alertsTriggered,
     status,
     lastUpdatedAt: now,
   };
+  if (daysUntilExhausted !== undefined) budgetStatus.daysUntilExhausted = daysUntilExhausted;
+  if (previousPeriodUnits !== undefined) budgetStatus.previousPeriodUnits = previousPeriodUnits;
+  if (changePercent !== undefined) budgetStatus.changePercent = changePercent;
+  return budgetStatus;
 }
 
 /**
@@ -551,20 +555,36 @@ export async function getBudgetAlerts(filter?: {
     .orderBy(desc(budgetAlerts.createdAt))
     .limit(limit);
 
-  return rows.map((row) => ({
-    id: row.id,
-    budgetId: row.budgetId,
-    threshold: row.threshold,
-    usedPercent: row.usedPercent,
-    usedUnits: row.usedUnits,
-    budgetUnits: row.budgetUnits,
-    periodStart: row.periodStart,
-    periodEnd: row.periodEnd,
-    acknowledged: row.acknowledged,
-    acknowledgedBy: row.acknowledgedBy ?? undefined,
-    acknowledgedAt: row.acknowledgedAt ?? undefined,
-    createdAt: row.createdAt,
-  }));
+  return rows.map((row) => {
+    const alert: {
+      id: string;
+      budgetId: string;
+      threshold: number;
+      usedPercent: number;
+      usedUnits: number;
+      budgetUnits: number;
+      periodStart: Date;
+      periodEnd: Date;
+      acknowledged: boolean;
+      acknowledgedBy?: string;
+      acknowledgedAt?: Date;
+      createdAt: Date;
+    } = {
+      id: row.id,
+      budgetId: row.budgetId,
+      threshold: row.threshold,
+      usedPercent: row.usedPercent,
+      usedUnits: row.usedUnits,
+      budgetUnits: row.budgetUnits,
+      periodStart: row.periodStart,
+      periodEnd: row.periodEnd,
+      acknowledged: row.acknowledged,
+      createdAt: row.createdAt,
+    };
+    if (row.acknowledgedBy) alert.acknowledgedBy = row.acknowledgedBy;
+    if (row.acknowledgedAt) alert.acknowledgedAt = row.acknowledgedAt;
+    return alert;
+  });
 }
 
 /**

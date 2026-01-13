@@ -2,6 +2,7 @@
  * WidgetGallery - Panel showing available widget types for drag-and-drop.
  */
 
+import type { JSX } from "react";
 import type { WidgetType, WidgetDefinition } from "@flywheel/shared";
 import "./WidgetGallery.css";
 

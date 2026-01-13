@@ -282,7 +282,7 @@ export class GraphBridgeService {
           this.graphEvents.publishNodeAdded(workspaceId, {
             id: event.node.id,
             type: event.node.type,
-            label: (event.node.data?.label as string) ?? event.node.id,
+            label: (event.node.data?.["label"] as string) ?? event.node.id,
             status: event.node.status,
             data: event.node.data,
           });
@@ -304,7 +304,7 @@ export class GraphBridgeService {
           this.graphEvents.publishNodeUpdated(workspaceId, {
             id: event.node.id,
             type: event.node.type,
-            label: (event.node.data?.label as string) ?? event.node.id,
+            label: (event.node.data?.["label"] as string) ?? event.node.id,
             status: event.node.status,
             data: event.node.data,
           });
@@ -313,15 +313,24 @@ export class GraphBridgeService {
 
       case "edge_added":
         if (event.edge) {
-          this.graphEvents.publishEdgeAdded(workspaceId, {
+          const edgeAddedPayload: {
+            id: string;
+            source: string;
+            target: string;
+            type: "reservation" | "handoff" | "message" | "dependency" | "conflict";
+            animated?: boolean;
+            label?: string;
+            metadata?: Record<string, unknown>;
+          } = {
             id: event.edge.id,
             source: event.edge.source,
             target: event.edge.target,
             type: event.edge.type,
-            animated: event.edge.animated,
-            label: event.edge.label,
-            metadata: event.edge.metadata,
-          });
+          };
+          if (event.edge.animated !== undefined) edgeAddedPayload.animated = event.edge.animated;
+          if (event.edge.label) edgeAddedPayload.label = event.edge.label;
+          if (event.edge.metadata) edgeAddedPayload.metadata = event.edge.metadata;
+          this.graphEvents.publishEdgeAdded(workspaceId, edgeAddedPayload);
         }
         break;
 
@@ -337,15 +346,24 @@ export class GraphBridgeService {
 
       case "edge_updated":
         if (event.edge) {
-          this.graphEvents.publishEdgeUpdated(workspaceId, {
+          const edgeUpdatedPayload: {
+            id: string;
+            source: string;
+            target: string;
+            type: "reservation" | "handoff" | "message" | "dependency" | "conflict";
+            animated?: boolean;
+            label?: string;
+            metadata?: Record<string, unknown>;
+          } = {
             id: event.edge.id,
             source: event.edge.source,
             target: event.edge.target,
             type: event.edge.type,
-            animated: event.edge.animated,
-            label: event.edge.label,
-            metadata: event.edge.metadata,
-          });
+          };
+          if (event.edge.animated !== undefined) edgeUpdatedPayload.animated = event.edge.animated;
+          if (event.edge.label) edgeUpdatedPayload.label = event.edge.label;
+          if (event.edge.metadata) edgeUpdatedPayload.metadata = event.edge.metadata;
+          this.graphEvents.publishEdgeUpdated(workspaceId, edgeUpdatedPayload);
         }
         break;
 

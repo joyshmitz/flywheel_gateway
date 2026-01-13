@@ -88,7 +88,7 @@ export class CodebaseScanHandler
       // Check for cancellation
       context.throwIfCancelled();
 
-      const dir = dirsToScan[i];
+      const dir = dirsToScan[i]!;
 
       // Skip already scanned directories
       if (scannedDirs.has(dir)) {

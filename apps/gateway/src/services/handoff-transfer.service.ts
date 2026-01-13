@@ -146,12 +146,13 @@ export async function transferResources(
         handoff.request.projectId,
       );
 
-      results.push({
+      const transferResult: SingleTransferResult = {
         resourceId: reservation.reservationId,
         resourceType: "reservation",
         success: result.success,
-        error: result.error,
-      });
+      };
+      if (result.error) transferResult.error = result.error;
+      results.push(transferResult);
 
       if (result.success) {
         transferredCount++;
@@ -186,12 +187,13 @@ export async function transferResources(
         targetAgentId,
       );
 
-      results.push({
+      const transferResult: SingleTransferResult = {
         resourceId: checkpoint.checkpointId,
         resourceType: "checkpoint",
         success: result.success,
-        error: result.error,
-      });
+      };
+      if (result.error) transferResult.error = result.error;
+      results.push(transferResult);
 
       if (result.success) {
         transferredCount++;
@@ -222,12 +224,13 @@ export async function transferResources(
     try {
       const result = await forwardMessage(message.messageId, targetAgentId);
 
-      results.push({
+      const transferResult: SingleTransferResult = {
         resourceId: message.messageId,
         resourceType: "message",
         success: result.success,
-        error: result.error,
-      });
+      };
+      if (result.error) transferResult.error = result.error;
+      results.push(transferResult);
 
       if (result.success) {
         transferredCount++;
@@ -262,12 +265,13 @@ export async function transferResources(
         targetAgentId,
       );
 
-      results.push({
+      const transferResult: SingleTransferResult = {
         resourceId: subscription.subscriptionId,
         resourceType: "subscription",
         success: result.success,
-        error: result.error,
-      });
+      };
+      if (result.error) transferResult.error = result.error;
+      results.push(transferResult);
 
       if (result.success) {
         transferredCount++;
@@ -320,14 +324,15 @@ export async function transferResources(
     },
   );
 
-  return {
+  const result: TransferResult = {
     success,
     transferredResources: transferredCount,
     failedResources,
-    error: success
-      ? undefined
-      : `${failedResources.length} resources failed to transfer`,
   };
+  if (!success) {
+    result.error = `${failedResources.length} resources failed to transfer`;
+  }
+  return result;
 }
 
 /**
@@ -406,7 +411,7 @@ async function transferReservation(
       Math.floor((reservation.expiresAt.getTime() - Date.now()) / 1000),
     ),
     reason: `Transferred from ${sourceAgentId} via handoff`,
-    taskId: reservation.metadata.taskId,
+    ...(reservation.metadata.taskId && { taskId: reservation.metadata.taskId }),
   });
 
   if (!createResult.granted) {
@@ -422,7 +427,7 @@ async function transferReservation(
       mode: reservation.mode,
       ttl: reservation.ttl,
       reason: "Restored after failed transfer",
-      taskId: reservation.metadata.taskId,
+      ...(reservation.metadata.taskId && { taskId: reservation.metadata.taskId }),
     });
 
     return {

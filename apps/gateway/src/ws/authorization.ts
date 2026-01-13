@@ -76,7 +76,10 @@ export function canSubscribe(
     // Workspace channels: require membership in the workspace
     case "workspace:agents":
     case "workspace:reservations":
-    case "workspace:conflicts": {
+    case "workspace:conflicts":
+    case "workspace:graph":
+    case "workspace:git":
+    case "workspace:handoffs": {
       if (!auth.workspaceIds.includes(channel.workspaceId)) {
         return {
           allowed: false,
@@ -102,10 +105,38 @@ export function canSubscribe(
     case "system:health":
     case "system:metrics":
     case "system:dcg":
-    case "system:fleet": {
+    case "system:fleet":
+    case "system:supervisor":
+    case "system:jobs":
+    case "system:context": {
+      return { allowed: true };
+    }
+
+    // Session channels: just need authentication
+    case "session:job":
+    case "session:health": {
+      return { allowed: true };
+    }
+
+    // Fleet channels: just need authentication
+    case "fleet:repos":
+    case "fleet:sync":
+    case "fleet:sync:session":
+    case "fleet:sweep":
+    case "fleet:sweep:session": {
+      return { allowed: true };
+    }
+
+    // Pipeline channels: just need authentication
+    case "pipeline:all":
+    case "pipeline:run": {
       return { allowed: true };
     }
   }
+
+  // Exhaustive check: should never reach here
+  const _exhaustive: never = channel;
+  return { allowed: false, reason: `Unknown channel type: ${(_exhaustive as Channel).type}` };
 }
 
 /**
@@ -147,7 +178,10 @@ export function canPublish(
     // Workspace channels: can publish if member
     case "workspace:agents":
     case "workspace:reservations":
-    case "workspace:conflicts": {
+    case "workspace:conflicts":
+    case "workspace:graph":
+    case "workspace:git":
+    case "workspace:handoffs": {
       if (!auth.workspaceIds.includes(channel.workspaceId)) {
         return {
           allowed: false,
@@ -177,10 +211,43 @@ export function canPublish(
     case "system:health":
     case "system:metrics":
     case "system:dcg":
-    case "system:fleet": {
+    case "system:fleet":
+    case "system:supervisor":
+    case "system:jobs":
+    case "system:context": {
       return {
         allowed: false,
         reason: "Only system services can publish to system channels",
+      };
+    }
+
+    // Session channels: only internal services can publish
+    case "session:job":
+    case "session:health": {
+      return {
+        allowed: false,
+        reason: "Only internal services can publish to session channels",
+      };
+    }
+
+    // Fleet channels: only internal services can publish
+    case "fleet:repos":
+    case "fleet:sync":
+    case "fleet:sync:session":
+    case "fleet:sweep":
+    case "fleet:sweep:session": {
+      return {
+        allowed: false,
+        reason: "Only internal services can publish to fleet channels",
+      };
+    }
+
+    // Pipeline channels: only internal services can publish
+    case "pipeline:all":
+    case "pipeline:run": {
+      return {
+        allowed: false,
+        reason: "Only internal services can publish to pipeline channels",
       };
     }
   }

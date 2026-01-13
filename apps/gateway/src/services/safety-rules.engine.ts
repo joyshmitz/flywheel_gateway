@@ -262,13 +262,16 @@ export function evaluateRule(
     );
   }
 
-  return {
+  const result: RuleEvaluationResult = {
     rule,
     matched,
     action: matched ? rule.action : "allow",
     message: matched ? rule.message : "",
-    alternatives: matched ? rule.alternatives : undefined,
   };
+  if (matched && rule.alternatives !== undefined) {
+    result.alternatives = rule.alternatives;
+  }
+  return result;
 }
 
 /**

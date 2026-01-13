@@ -27,6 +27,8 @@ export type MessageType =
   | "conflict.updated"
   | "conflict.resolved"
   | "conflict.escalated"
+  // Conflict Resolution
+  | "resolution.suggested"
   // DCG
   | "dcg.block"
   | "dcg.warn"
@@ -89,9 +91,52 @@ export type MessageType =
   | "pipeline.step_skipped"
   | "pipeline.approval_pending"
   | "pipeline.approval_received"
+  // Jobs
+  | "job.created"
+  | "job.started"
+  | "job.progress"
+  | "job.completed"
+  | "job.failed"
+  | "job.cancelled"
+  | "job.paused"
+  | "job.resumed"
+  | "job.retrying"
+  // Git coordination
+  | "git.branch.assigned"
+  | "git.branch.released"
+  | "git.branch.renewed"
+  | "git.branch.status_changed"
+  | "git.branch.expired"
+  | "git.branch.expiring"
+  | "git.sync.coordinated"
+  | "git.sync.completed"
+  | "git.sync.queued"
+  | "git.sync.started"
+  | "git.sync.retrying"
+  | "git.sync.failed"
+  | "git.sync.cancelled"
   // System
   | "health.ping"
-  | "error";
+  | "error"
+  // Context Health
+  | "context.warning"
+  | "context.compacted"
+  | "context.emergency_rotated"
+  // Supervisor/Daemon
+  | "daemon.started"
+  | "daemon.stopped"
+  | "daemon.failed"
+  | "daemon.health_changed"
+  | "daemon.restarting"
+  // Graph
+  | "graph.node_added"
+  | "graph.node_removed"
+  | "graph.node_updated"
+  | "graph.edge_added"
+  | "graph.edge_removed"
+  | "graph.edge_updated"
+  | "graph.full_refresh"
+  | "graph.stats";
 
 /**
  * Metadata attached to hub messages.

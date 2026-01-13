@@ -16,6 +16,7 @@ import { costAggregates, costRecords, modelRateCards } from "../db/schema";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
 import type {
   AggregationPeriod,
+  ComplexityTier,
   CostAggregate,
   CostBreakdown,
   CostFilter,
@@ -72,11 +73,14 @@ async function refreshRateCardCache(): Promise<void> {
         provider: card.provider as ProviderId,
         promptCostPer1kTokens: card.promptCostPer1kTokens,
         completionCostPer1kTokens: card.completionCostPer1kTokens,
-        cachedPromptCostPer1kTokens:
-          card.cachedPromptCostPer1kTokens ?? undefined,
         effectiveDate: card.effectiveDate,
-        expiresAt: card.expiresAt ?? undefined,
       };
+      if (card.cachedPromptCostPer1kTokens !== null) {
+        rateCard.cachedPromptCostPer1kTokens = card.cachedPromptCostPer1kTokens;
+      }
+      if (card.expiresAt) {
+        rateCard.expiresAt = card.expiresAt;
+      }
       newCache.set(
         getRateCardKey(card.model, card.provider as ProviderId),
         rateCard,
@@ -232,23 +236,23 @@ export async function recordCost(input: CostRecordInput): Promise<CostRecord> {
   const record: CostRecord = {
     id,
     timestamp,
-    organizationId: input.organizationId,
-    projectId: input.projectId,
-    agentId: input.agentId,
-    taskId: input.taskId,
-    sessionId: input.sessionId,
     model: input.model,
     provider: input.provider,
     promptTokens: input.promptTokens,
     completionTokens: input.completionTokens,
     cachedTokens: input.cachedTokens ?? 0,
     ...costs,
-    taskType: input.taskType,
-    complexityTier: input.complexityTier,
     success: input.success,
-    requestDurationMs: input.requestDurationMs,
     correlationId,
   };
+  if (input.organizationId) record.organizationId = input.organizationId;
+  if (input.projectId) record.projectId = input.projectId;
+  if (input.agentId) record.agentId = input.agentId;
+  if (input.taskId) record.taskId = input.taskId;
+  if (input.sessionId) record.sessionId = input.sessionId;
+  if (input.taskType) record.taskType = input.taskType;
+  if (input.complexityTier) record.complexityTier = input.complexityTier;
+  if (input.requestDurationMs !== undefined) record.requestDurationMs = input.requestDurationMs;
 
   // Insert into database
   await db.insert(costRecords).values({
@@ -368,29 +372,32 @@ export async function getCostRecords(
   const hasMore = rows.length > limit;
   const resultRows = hasMore ? rows.slice(0, limit) : rows;
 
-  const records: CostRecord[] = resultRows.map((row) => ({
-    id: row.id,
-    timestamp: row.timestamp,
-    organizationId: row.organizationId ?? undefined,
-    projectId: row.projectId ?? undefined,
-    agentId: row.agentId ?? undefined,
-    taskId: row.taskId ?? undefined,
-    sessionId: row.sessionId ?? undefined,
-    model: row.model,
-    provider: row.provider as ProviderId,
-    promptTokens: row.promptTokens,
-    completionTokens: row.completionTokens,
-    cachedTokens: row.cachedTokens,
-    promptCostUnits: row.promptCostUnits,
-    completionCostUnits: row.completionCostUnits,
-    cachedCostUnits: row.cachedCostUnits,
-    totalCostUnits: row.totalCostUnits,
-    taskType: row.taskType ?? undefined,
-    complexityTier: row.complexityTier as CostRecord["complexityTier"],
-    success: row.success,
-    requestDurationMs: row.requestDurationMs ?? undefined,
-    correlationId: row.correlationId ?? undefined,
-  }));
+  const records: CostRecord[] = resultRows.map((row) => {
+    const record: CostRecord = {
+      id: row.id,
+      timestamp: row.timestamp,
+      model: row.model,
+      provider: row.provider as ProviderId,
+      promptTokens: row.promptTokens,
+      completionTokens: row.completionTokens,
+      cachedTokens: row.cachedTokens,
+      promptCostUnits: row.promptCostUnits,
+      completionCostUnits: row.completionCostUnits,
+      cachedCostUnits: row.cachedCostUnits,
+      totalCostUnits: row.totalCostUnits,
+      success: row.success,
+    };
+    if (row.organizationId) record.organizationId = row.organizationId;
+    if (row.projectId) record.projectId = row.projectId;
+    if (row.agentId) record.agentId = row.agentId;
+    if (row.taskId) record.taskId = row.taskId;
+    if (row.sessionId) record.sessionId = row.sessionId;
+    if (row.taskType) record.taskType = row.taskType;
+    if (row.complexityTier !== null) record.complexityTier = row.complexityTier as ComplexityTier;
+    if (row.requestDurationMs !== null) record.requestDurationMs = row.requestDurationMs;
+    if (row.correlationId) record.correlationId = row.correlationId;
+    return record;
+  });
 
   const result: CostRecordListResponse = {
     records,
@@ -764,15 +771,22 @@ export async function getAllRateCards(): Promise<ModelRateCard[]> {
     .from(modelRateCards)
     .orderBy(desc(modelRateCards.effectiveDate));
 
-  return rows.map((row) => ({
-    model: row.model,
-    provider: row.provider as ProviderId,
-    promptCostPer1kTokens: row.promptCostPer1kTokens,
-    completionCostPer1kTokens: row.completionCostPer1kTokens,
-    cachedPromptCostPer1kTokens: row.cachedPromptCostPer1kTokens ?? undefined,
-    effectiveDate: row.effectiveDate,
-    expiresAt: row.expiresAt ?? undefined,
-  }));
+  return rows.map((row) => {
+    const rateCard: ModelRateCard = {
+      model: row.model,
+      provider: row.provider as ProviderId,
+      promptCostPer1kTokens: row.promptCostPer1kTokens,
+      completionCostPer1kTokens: row.completionCostPer1kTokens,
+      effectiveDate: row.effectiveDate,
+    };
+    if (row.cachedPromptCostPer1kTokens !== null) {
+      rateCard.cachedPromptCostPer1kTokens = row.cachedPromptCostPer1kTokens;
+    }
+    if (row.expiresAt) {
+      rateCard.expiresAt = row.expiresAt;
+    }
+    return rateCard;
+  });
 }
 
 // ============================================================================

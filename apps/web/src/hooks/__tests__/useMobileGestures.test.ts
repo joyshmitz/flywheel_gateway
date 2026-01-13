@@ -1,5 +1,4 @@
-import { describe, expect, it, mock } from "bun:test";
-import { act, renderHook } from "@testing-library/react";
+import { describe, expect, it } from "bun:test";
 
 // Test the gesture detection logic
 describe("useMobileGestures", () => {

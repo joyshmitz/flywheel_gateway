@@ -945,7 +945,10 @@ export class ContextHealthService {
   /**
    * Emit a health event via WebSocket.
    */
-  private emitHealthEvent(type: string, data: Record<string, unknown>): void {
+  private emitHealthEvent(
+    type: "context.warning" | "context.compacted" | "context.emergency_rotated",
+    data: Record<string, unknown>,
+  ): void {
     try {
       const channel: Channel = { type: "system:context" };
       getHub().publish(channel, type, {

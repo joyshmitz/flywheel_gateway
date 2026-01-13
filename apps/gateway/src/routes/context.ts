@@ -20,6 +20,7 @@ import type {
   BudgetStrategy,
   ContextPackRequest,
 } from "../types/context.types";
+import type { RotationConfig } from "../types/context-health.types";
 import {
   sendCreated,
   sendError,
@@ -315,8 +316,8 @@ context.post("/:sessionId/context/compact", async (c) => {
 
     const healthService = getContextHealthService();
     const result = await healthService.compact(sessionId, {
-      strategy: validated.strategy,
-      targetReduction: validated.targetReduction,
+      ...(validated.strategy && { strategy: validated.strategy }),
+      ...(validated.targetReduction !== undefined && { targetReduction: validated.targetReduction }),
     });
 
     return sendResource(c, "compaction_result", {
@@ -348,8 +349,8 @@ context.post("/:sessionId/context/rotate", async (c) => {
 
     const healthService = getContextHealthService();
     const result = await healthService.rotate(sessionId, {
-      reason: validated.reason,
-      config: validated.config,
+      ...(validated.reason && { reason: validated.reason }),
+      ...(validated.config && { config: validated.config as Partial<RotationConfig> }),
     });
 
     return sendCreated(
@@ -401,7 +402,10 @@ context.get("/:sessionId/context/history", async (c) => {
     const limit = limitParam ? parseInt(limitParam, 10) : 100;
 
     const healthService = getContextHealthService();
-    const history = healthService.getHistory(sessionId, { since, limit });
+    const history = healthService.getHistory(sessionId, {
+      limit,
+      ...(since && { since }),
+    });
 
     return sendList(
       c,

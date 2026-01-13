@@ -86,7 +86,7 @@ export class ContextBuildHandler
     for (let i = 0; i < input.files.length; i++) {
       context.throwIfCancelled();
 
-      const filePath = input.files[i];
+      const filePath = input.files[i]!;
       await context.updateProgress(
         i,
         input.files.length,
@@ -252,14 +252,14 @@ export class ContextBuildHandler
     const result: Record<string, unknown> = {};
 
     if (includeMetadata) {
-      result.metadata = {
+      result["metadata"] = {
         generated: new Date().toISOString(),
         fileCount: files.length,
         totalTokens: files.reduce((sum, f) => sum + f.tokens, 0),
       };
     }
 
-    result.files = files.map((file) => ({
+    result["files"] = files.map((file) => ({
       path: file.path,
       name: file.name,
       language: file.extension,

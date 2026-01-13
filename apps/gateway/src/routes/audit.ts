@@ -153,7 +153,7 @@ app.get("/retention-policies/:id", async (c) => {
     return sendNotFound(c, "retention_policy", id);
   }
 
-  return sendResource(c, policy);
+  return sendResource(c, "retention_policy", policy);
 });
 
 /**
@@ -175,17 +175,25 @@ app.post("/retention-policies", async (c) => {
     const id = crypto.randomUUID();
     const now = new Date();
 
-    const policy: RetentionPolicy = {
+    const policy = {
       id,
       name: validBody.name,
-      description: validBody.description,
-      filter: validBody.filter,
-      retention: validBody.retention,
+      ...(validBody.description && { description: validBody.description }),
+      filter: {
+        ...(validBody.filter.actions && { actions: validBody.filter.actions }),
+        ...(validBody.filter.severities && { severities: validBody.filter.severities }),
+        ...(validBody.filter.resourceTypes && { resourceTypes: validBody.filter.resourceTypes }),
+      },
+      retention: {
+        duration: validBody.retention.duration,
+        archiveFirst: validBody.retention.archiveFirst,
+        ...(validBody.retention.archiveLocation && { archiveLocation: validBody.retention.archiveLocation }),
+      },
       enabled: validBody.enabled,
       createdAt: now,
       updatedAt: now,
       createdBy: "current-user",
-    };
+    } as RetentionPolicy;
 
     retentionPolicies.set(id, policy);
     log.info(
@@ -223,27 +231,37 @@ app.put("/retention-policies/:id", async (c) => {
 
     const validBody = parseResult.data;
 
-    const updatedPolicy: RetentionPolicy = {
+    const updatedPolicy = {
       ...policy,
       ...(validBody.name !== undefined && { name: validBody.name }),
       ...(validBody.description !== undefined && {
         description: validBody.description,
       }),
-      ...(validBody.filter !== undefined && { filter: validBody.filter }),
+      ...(validBody.filter !== undefined && {
+        filter: {
+          ...(validBody.filter.actions && { actions: validBody.filter.actions }),
+          ...(validBody.filter.severities && { severities: validBody.filter.severities }),
+          ...(validBody.filter.resourceTypes && { resourceTypes: validBody.filter.resourceTypes }),
+        },
+      }),
       ...(validBody.retention !== undefined && {
-        retention: validBody.retention,
+        retention: {
+          duration: validBody.retention.duration,
+          archiveFirst: validBody.retention.archiveFirst,
+          ...(validBody.retention.archiveLocation && { archiveLocation: validBody.retention.archiveLocation }),
+        },
       }),
       ...(validBody.enabled !== undefined && { enabled: validBody.enabled }),
       id,
       createdAt: policy.createdAt,
       createdBy: policy.createdBy,
       updatedAt: new Date(),
-    };
+    } as RetentionPolicy;
 
     retentionPolicies.set(id, updatedPolicy);
     log.info({ policyId: id }, "Retention policy updated");
 
-    return sendResource(c, updatedPolicy);
+    return sendResource(c, "retention_policy", updatedPolicy);
   } catch (error) {
     log.error({ error, id }, "Failed to update retention policy");
     return sendInternalError(c);
@@ -266,9 +284,9 @@ app.delete("/retention-policies/:id", async (c) => {
   if (policy.name === "Default Policy") {
     return sendError(
       c,
-      400,
       "CANNOT_DELETE_DEFAULT",
       "Cannot delete the default retention policy",
+      400,
     );
   }
 
@@ -381,7 +399,7 @@ app.get("/export/:jobId", async (c) => {
     return sendNotFound(c, "export_job", jobId);
   }
 
-  return sendResource(c, job);
+  return sendResource(c, "export_job", job);
 });
 
 /**
@@ -400,9 +418,9 @@ app.get("/export/:jobId/download", async (c) => {
   if (job.status !== "completed") {
     return sendError(
       c,
-      400,
       "EXPORT_NOT_READY",
       `Export job status: ${job.status}`,
+      400,
     );
   }
 
@@ -567,14 +585,12 @@ app.get("/", async (c) => {
       metadata: event.metadata ? redactSensitiveData(event.metadata) : null,
     }));
 
+    const hasMore = query.offset + events.length < total;
     const result: AuditSearchResult = {
       events: redactedEvents as unknown as AuditSearchResult["events"],
       total,
-      hasMore: query.offset + events.length < total,
-      nextCursor:
-        query.offset + events.length < total
-          ? String(query.offset + query.limit)
-          : undefined,
+      hasMore,
+      ...(hasMore && { nextCursor: String(query.offset + query.limit) }),
     };
 
     return c.json(result);
@@ -608,7 +624,7 @@ app.get("/:id", async (c) => {
       metadata: event.metadata ? redactSensitiveData(event.metadata) : null,
     };
 
-    return sendResource(c, redactedEvent);
+    return sendResource(c, "audit_event", redactedEvent);
   } catch (error) {
     log.error({ error, id }, "Failed to get audit event");
     return sendInternalError(c);

@@ -6,7 +6,7 @@
  */
 
 import type { WebSocketHub } from "../ws/hub";
-import type { MessageMetadata } from "../ws/messages";
+import type { MessageMetadata, MessageType } from "../ws/messages";
 import { logger } from "./logger";
 
 /**
@@ -149,7 +149,7 @@ export class GraphEventsService {
       {
         updateType: "node_added",
         node,
-        stats,
+        ...(stats && { stats }),
         version: this.incrementVersion(),
         timestamp: new Date().toISOString(),
       },
@@ -183,7 +183,7 @@ export class GraphEventsService {
           status: "idle",
           data: {},
         },
-        stats,
+        ...(stats && { stats }),
         version: this.incrementVersion(),
         timestamp: new Date().toISOString(),
       },
@@ -207,7 +207,7 @@ export class GraphEventsService {
       {
         updateType: "node_updated",
         node,
-        stats,
+        ...(stats && { stats }),
         version: this.incrementVersion(),
         timestamp: new Date().toISOString(),
       },
@@ -234,7 +234,7 @@ export class GraphEventsService {
       {
         updateType: "edge_added",
         edge,
-        stats,
+        ...(stats && { stats }),
         version: this.incrementVersion(),
         timestamp: new Date().toISOString(),
       },
@@ -267,7 +267,7 @@ export class GraphEventsService {
           target: "",
           type: edgeType,
         },
-        stats,
+        ...(stats && { stats }),
         version: this.incrementVersion(),
         timestamp: new Date().toISOString(),
       },
@@ -291,7 +291,7 @@ export class GraphEventsService {
       {
         updateType: "edge_updated",
         edge,
-        stats,
+        ...(stats && { stats }),
         version: this.incrementVersion(),
         timestamp: new Date().toISOString(),
       },
@@ -317,7 +317,7 @@ export class GraphEventsService {
       workspaceId,
       {
         updateType: "full_refresh",
-        stats,
+        ...(stats && { stats }),
         version: this.incrementVersion(),
         timestamp: new Date().toISOString(),
       },
@@ -356,7 +356,7 @@ export class GraphEventsService {
     payload: GraphUpdatePayload,
     metadata?: MessageMetadata,
   ): void {
-    const messageType = `graph.${payload.updateType}`;
+    const messageType = `graph.${payload.updateType}` as MessageType;
 
     this.hub.publish(
       { type: "workspace:graph", workspaceId },

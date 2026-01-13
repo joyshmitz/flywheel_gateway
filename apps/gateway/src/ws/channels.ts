@@ -40,7 +40,16 @@ export type SystemChannel =
   | { type: "system:metrics" }
   | { type: "system:dcg" }
   | { type: "system:fleet" }
-  | { type: "system:supervisor" };
+  | { type: "system:supervisor" }
+  | { type: "system:jobs" }
+  | { type: "system:context" };
+
+/**
+ * Session-scoped channels for per-session subscriptions.
+ */
+export type SessionChannel =
+  | { type: "session:job"; id: string }
+  | { type: "session:health"; id: string };
 
 /**
  * Fleet-scoped channels for RU (Repo Updater) operations.
@@ -67,6 +76,7 @@ export type Channel =
   | WorkspaceChannel
   | UserChannel
   | SystemChannel
+  | SessionChannel
   | FleetChannel
   | PipelineChannel;
 
@@ -91,6 +101,10 @@ export type ChannelTypePrefix =
   | "system:dcg"
   | "system:fleet"
   | "system:supervisor"
+  | "system:jobs"
+  | "system:context"
+  | "session:job"
+  | "session:health"
   | "fleet:repos"
   | "fleet:sync"
   | "fleet:sync:session"
@@ -131,7 +145,13 @@ export function channelToString(channel: Channel): string {
     case "system:dcg":
     case "system:fleet":
     case "system:supervisor":
+    case "system:jobs":
+    case "system:context":
       return channel.type;
+
+    case "session:job":
+    case "session:health":
+      return `${channel.type}:${channel.id}`;
 
     case "fleet:repos":
     case "fleet:sync":
@@ -150,6 +170,10 @@ export function channelToString(channel: Channel): string {
     case "pipeline:run":
       return `pipeline:run:${channel.pipelineId}:${channel.runId}`;
   }
+
+  // Exhaustive check: should never reach here
+  const _exhaustive: never = channel;
+  return `unknown:${(_exhaustive as Channel).type}`;
 }
 
 /**

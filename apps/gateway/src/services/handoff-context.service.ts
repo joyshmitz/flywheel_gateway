@@ -142,7 +142,6 @@ export function buildContext(params: BuildContextParams): BuildContextResult {
   }
 
   const context: HandoffContext = {
-    beadId: params.beadId,
     taskDescription: params.taskDescription,
     currentPhase: params.currentPhase ?? "planning",
     progressPercentage: params.progressPercentage ?? 0,
@@ -166,6 +165,9 @@ export function buildContext(params: BuildContextParams): BuildContextResult {
 
     environmentSnapshot,
   };
+  if (params.beadId !== undefined) {
+    context.beadId = params.beadId;
+  }
 
   // Validate the built context
   const validation = validateContext(context);

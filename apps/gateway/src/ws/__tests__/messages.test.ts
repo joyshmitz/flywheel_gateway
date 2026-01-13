@@ -21,11 +21,10 @@ describe("WebSocket messages", () => {
           channel: "agent:output:agent-123",
         }),
       );
-      expect(msg).toEqual({
-        type: "subscribe",
-        channel: "agent:output:agent-123",
-        cursor: undefined,
-      });
+      expect(msg).toBeDefined();
+      expect(msg!.type).toBe("subscribe");
+      expect((msg as { channel: string }).channel).toBe("agent:output:agent-123");
+      expect((msg as { cursor?: string }).cursor).toBeUndefined();
     });
 
     test("parses subscribe message with cursor", () => {

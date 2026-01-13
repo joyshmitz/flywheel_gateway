@@ -236,7 +236,7 @@ export async function initiateHandoff(params: {
       sourceAgentId: params.sourceAgentId,
       targetAgentId: params.targetAgentId,
       projectId: params.projectId,
-      beadId: params.beadId,
+      ...(params.beadId !== undefined && { beadId: params.beadId }),
       reason: params.reason,
       urgency: params.urgency ?? "normal",
       context: params.context,
@@ -450,8 +450,12 @@ export async function acceptHandoff(params: {
     receivingAgentId: params.receivingAgentId,
     status: "accepted",
     acceptedAt: now,
-    estimatedResumeTime: params.estimatedResumeTime,
-    receiverNotes: params.receiverNotes,
+    ...(params.estimatedResumeTime !== undefined && {
+      estimatedResumeTime: params.estimatedResumeTime,
+    }),
+    ...(params.receiverNotes !== undefined && {
+      receiverNotes: params.receiverNotes,
+    }),
   };
 
   addAuditEntry(record, "handoff_accepted", {
@@ -526,7 +530,9 @@ export async function rejectHandoff(params: {
     status: "rejected",
     rejectedAt: now,
     rejectionReason: params.reason,
-    suggestedAlternative: params.suggestedAlternative,
+    ...(params.suggestedAlternative !== undefined && {
+      suggestedAlternative: params.suggestedAlternative,
+    }),
   };
 
   addAuditEntry(record, "handoff_rejected", {

@@ -21,12 +21,20 @@ import type {
 // ============================================================================
 
 // Mock the cm.service module
-const mockGetCMStatus = mock(() =>
+type CMStatusResult = {
+  available: boolean;
+  healthy: boolean;
+  version: string;
+  overallStatus: "healthy" | "degraded" | "unhealthy";
+  error?: string;
+};
+
+const mockGetCMStatus = mock((): Promise<CMStatusResult> =>
   Promise.resolve({
     available: true,
     healthy: true,
     version: "0.2.0",
-    overallStatus: "healthy" as const,
+    overallStatus: "healthy",
   }),
 );
 
@@ -177,7 +185,7 @@ mock.module("../services/cm.service", () => ({
   recordOutcome: mockRecordOutcome,
   CMClientError: class CMClientError extends Error {
     kind: string;
-    details?: Record<string, unknown>;
+    details: Record<string, unknown> | undefined;
     constructor(
       kind: string,
       message: string,
@@ -236,6 +244,7 @@ describe("Memory Routes", () => {
         Promise.resolve({
           available: true,
           healthy: false,
+          version: "0.2.0",
           overallStatus: "degraded" as const,
           error: "Some checks failed",
         }),

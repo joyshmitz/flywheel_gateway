@@ -360,6 +360,7 @@ export function usePool(
   pool: AccountPool;
   nextProfile: { id: string; name: string } | null;
 }> {
+  const activeProfile = mockProfiles.find((p) => p.provider === provider);
   const mockPool: AccountPool = {
     id: `pool_${provider}`,
     workspaceId,
@@ -367,7 +368,7 @@ export function usePool(
     rotationStrategy: "smart",
     cooldownMinutesDefault: 15,
     maxRetries: 3,
-    activeProfileId: mockProfiles.find((p) => p.provider === provider)?.id,
+    ...(activeProfile && { activeProfileId: activeProfile.id }),
     createdAt: new Date(Date.now() - 86400000 * 30).toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -601,9 +602,10 @@ export function useRotatePool() {
             retriesRemaining: 0,
           };
         }
+        const previousProfile = profiles[0];
         return {
           success: true,
-          previousProfileId: profiles[0]?.id,
+          ...(previousProfile && { previousProfileId: previousProfile.id }),
           newProfileId: profiles[profiles.length > 1 ? 1 : 0]!.id,
           reason: reason ?? "Manual rotation",
           retriesRemaining: 2,

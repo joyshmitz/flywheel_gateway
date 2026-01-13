@@ -40,6 +40,7 @@ import { ulid } from "ulid";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
 import type { Channel } from "../ws/channels";
 import { getHub } from "../ws/hub";
+import type { MessageType } from "../ws/messages";
 import { getBvTriage } from "./bv.service";
 import * as cassService from "./cass.service";
 import {
@@ -176,13 +177,13 @@ export async function requestResolution(
     // Calculate confidence
     const confidenceInput: ConfidenceScoringInput = {
       strategy: recommendedStrategy.type,
-      requestingAgentPriority: inputData.requestingPriority,
-      holdingAgentPriority: inputData.holdingPriority,
-      holdingAgentProgress: inputData.holdingProgress,
-      cassHistory: inputData.cassHistory,
       contestedResources: request.contestedResources,
       hasDeadlinePressure: hasDeadlinePressure(inputData.requestingPriority),
       strategySpecificScore: recommendedStrategy.score,
+      ...(inputData.requestingPriority && { requestingAgentPriority: inputData.requestingPriority }),
+      ...(inputData.holdingPriority && { holdingAgentPriority: inputData.holdingPriority }),
+      ...(inputData.holdingProgress && { holdingAgentProgress: inputData.holdingProgress }),
+      ...(inputData.cassHistory && { cassHistory: inputData.cassHistory }),
     };
 
     const confidenceResult = calculateConfidence(confidenceInput);
@@ -199,26 +200,28 @@ export async function requestResolution(
     );
 
     // Generate rationale
+    const historicalSuccessRate = getHistoricalSuccessRate(
+      recommendedStrategy.type,
+      inputData.cassHistory,
+    );
+    const historicalSampleSize = getHistoricalSampleSize(
+      recommendedStrategy.type,
+      inputData.cassHistory,
+    );
     const rationaleInput: RationaleInput = {
       strategy: recommendedStrategy,
       confidence: confidenceResult.score,
       confidenceBreakdown: confidenceResult.breakdown,
       requestingAgentId: request.requestingAgentId,
-      holdingAgentId: request.holdingAgentId,
-      requestingPriority: inputData.requestingPriority,
-      holdingPriority: inputData.holdingPriority,
-      holdingProgress: inputData.holdingProgress,
       contestedResources: request.contestedResources,
-      historicalSuccessRate: getHistoricalSuccessRate(
-        recommendedStrategy.type,
-        inputData.cassHistory,
-      ),
-      historicalSampleSize: getHistoricalSampleSize(
-        recommendedStrategy.type,
-        inputData.cassHistory,
-      ),
       risks,
       autoResolutionEligible: autoCheck.eligible,
+      ...(request.holdingAgentId && { holdingAgentId: request.holdingAgentId }),
+      ...(inputData.requestingPriority && { requestingPriority: inputData.requestingPriority }),
+      ...(inputData.holdingPriority && { holdingPriority: inputData.holdingPriority }),
+      ...(inputData.holdingProgress && { holdingProgress: inputData.holdingProgress }),
+      ...(historicalSuccessRate !== undefined && { historicalSuccessRate }),
+      ...(historicalSampleSize !== undefined && { historicalSampleSize }),
     };
 
     const rationale = generateRationale(rationaleInput);
@@ -321,7 +324,10 @@ async function gatherInputData(
   const data: InputData = {};
 
   // Get conflict details
-  data.conflict = getConflict(request.conflictId);
+  const conflict = getConflict(request.conflictId);
+  if (conflict) {
+    data.conflict = conflict;
+  }
 
   // Gather data in parallel with timeout
   const _timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -339,16 +345,16 @@ async function gatherInputData(
   ]);
 
   // Process results
-  if (results[0]?.status === "fulfilled") {
+  if (results[0]?.status === "fulfilled" && results[0].value) {
     data.requestingPriority = results[0].value;
   }
-  if (results[1]?.status === "fulfilled") {
+  if (results[1]?.status === "fulfilled" && results[1].value) {
     data.holdingPriority = results[1].value;
   }
-  if (results[2]?.status === "fulfilled") {
+  if (results[2]?.status === "fulfilled" && results[2].value) {
     data.cassHistory = results[2].value;
   }
-  if (results[3]?.status === "fulfilled") {
+  if (results[3]?.status === "fulfilled" && results[3].value) {
     data.reservationInfo = results[3].value;
   }
 
@@ -376,8 +382,17 @@ async function fetchBvPriority(
   try {
     const triage = await getBvTriage();
 
+    // Helper to extract BV items from triage section
+    const extractItems = (section: unknown): Array<{ id: string; priority?: string; urgency?: number }> => {
+      if (Array.isArray(section)) {
+        return section as Array<{ id: string; priority?: string; urgency?: number }>;
+      }
+      return [];
+    };
+
     // Search in recommended items
-    for (const item of triage.recommended ?? []) {
+    const recommended = extractItems(triage["recommended"]);
+    for (const item of recommended) {
       if (item.id === bvId) {
         return {
           bvId: item.id,
@@ -388,11 +403,10 @@ async function fetchBvPriority(
     }
 
     // Search in other sections
-    for (const section of [
-      triage.urgent ?? [],
-      triage.ready ?? [],
-      triage.blocked ?? [],
-    ]) {
+    const urgent = extractItems(triage["urgent"]);
+    const ready = extractItems(triage["ready"]);
+    const blocked = extractItems(triage["blocked"]);
+    for (const section of [urgent, ready, blocked]) {
       for (const item of section) {
         if (item.id === bvId) {
           return {
@@ -774,10 +788,7 @@ function scoreTransferStrategy(
       {
         description: "Priority difference justifies transfer",
         satisfied: priorityDiff > 0,
-        satisfactionHint:
-          priorityDiff <= 0
-            ? "Requester priority is not higher than holder"
-            : undefined,
+        ...(priorityDiff <= 0 && { satisfactionHint: "Requester priority is not higher than holder" }),
       },
     ],
     expectedOutcome: {
@@ -1337,7 +1348,7 @@ export function getAuditRecords(limit = 50): ResolutionAuditRecord[] {
  */
 function publishResolutionEvent(
   projectId: string,
-  eventType: string,
+  eventType: MessageType,
   payload: Record<string, unknown>,
 ): void {
   const hub = getHub();

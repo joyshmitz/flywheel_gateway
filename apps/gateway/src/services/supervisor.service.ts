@@ -217,9 +217,9 @@ export class SupervisorService {
     const state: DaemonState = {
       name,
       status: "starting",
-      port: spec.port,
       restartCount: existingState?.restartCount ?? 0,
       startedAt: new Date(),
+      ...(spec.port && { port: spec.port }),
     };
     this.daemons.set(name, state);
 
@@ -314,7 +314,7 @@ export class SupervisorService {
 
     state.status = "stopped";
     state.stoppedAt = new Date();
-    state.pid = undefined;
+    delete state.pid;
 
     this.emitEvent("daemon.stopped", state);
 
@@ -369,8 +369,8 @@ export class SupervisorService {
         result.push({
           name: spec.name,
           status: "stopped",
-          port: spec.port,
           restartCount: 0,
+          ...(spec.port && { port: spec.port }),
         });
       }
     }
@@ -400,8 +400,8 @@ export class SupervisorService {
     return {
       name,
       status: "stopped",
-      port: spec.port,
       restartCount: 0,
+      ...(spec.port && { port: spec.port }),
     };
   }
 
@@ -454,7 +454,7 @@ export class SupervisorService {
 
     state.status = "stopped";
     state.stoppedAt = new Date();
-    state.pid = undefined;
+    delete state.pid;
 
     // Clear any pending starting timeout and health checks
     this.clearStartingTimeout(name);
@@ -583,15 +583,17 @@ export class SupervisorService {
     const logs = this.logs.get(name) ?? [];
 
     // Read stdout
-    if (proc.stdout) {
-      this.readStream(proc.stdout, (line) => {
+    const stdout = proc.stdout;
+    if (stdout && typeof stdout !== "number") {
+      this.readStream(stdout, (line) => {
         this.addLog(logs, "stdout", line);
       });
     }
 
     // Read stderr
-    if (proc.stderr) {
-      this.readStream(proc.stderr, (line) => {
+    const stderr = proc.stderr;
+    if (stderr && typeof stderr !== "number") {
+      this.readStream(stderr, (line) => {
         this.addLog(logs, "stderr", line);
       });
     }
@@ -661,17 +663,16 @@ export class SupervisorService {
   }
 
   private emitEvent(type: SupervisorEvent["type"], state: DaemonState): void {
-    const event: SupervisorEvent = {
-      type,
-      data: {
-        name: state.name,
-        status: state.status,
-        pid: state.pid,
-        port: state.port,
-        error: state.lastError,
-        restartCount: state.restartCount,
-      },
+    const data: SupervisorEvent["data"] = {
+      name: state.name,
+      status: state.status,
     };
+    if (state.pid !== undefined) data.pid = state.pid;
+    if (state.port !== undefined) data.port = state.port;
+    if (state.lastError !== undefined) data.error = state.lastError;
+    if (state.restartCount !== undefined) data.restartCount = state.restartCount;
+
+    const event: SupervisorEvent = { type, data };
 
     // Publish to WebSocket
     try {

@@ -33,6 +33,7 @@ import type {
 import { DEFAULT_JOB_QUEUE_CONFIG } from "../types/job.types";
 import type { Channel } from "../ws/channels";
 import { getHub } from "../ws/hub";
+import type { MessageType } from "../ws/messages";
 import { logger as baseLogger, createChildLogger } from "./logger";
 
 // ============================================================================
@@ -312,11 +313,8 @@ export class JobService {
     const job: Job = {
       id,
       type: input.type,
-      name: input.name,
       status: "pending",
       priority: input.priority ?? 1,
-      sessionId: input.sessionId,
-      agentId: input.agentId,
       input: input.input,
       progress: {
         current: 0,
@@ -332,6 +330,9 @@ export class JobService {
       },
       metadata: input.metadata ?? {},
       correlationId,
+      ...(input.name && { name: input.name }),
+      ...(input.sessionId && { sessionId: input.sessionId }),
+      ...(input.agentId && { agentId: input.agentId }),
     };
 
     // Persist to database
@@ -380,9 +381,10 @@ export class JobService {
       .where(eq(jobs.id, jobId))
       .limit(1);
 
-    if (rows.length === 0) return null;
+    const [row] = rows;
+    if (!row) return null;
 
-    return this.rowToJob(rows[0]);
+    return this.rowToJob(row);
   }
 
   /**
@@ -530,10 +532,10 @@ export class JobService {
       .where(eq(jobs.id, jobId));
 
     job.status = "pending";
-    job.error = undefined;
-    job.startedAt = undefined;
-    job.completedAt = undefined;
-    job.cancellation = undefined;
+    delete job.error;
+    delete job.startedAt;
+    delete job.completedAt;
+    delete job.cancellation;
     job.progress = {
       current: 0,
       total: job.progress.total,
@@ -628,15 +630,18 @@ export class JobService {
       .orderBy(desc(jobLogs.timestamp))
       .limit(limit);
 
-    return rows.map((row) => ({
-      id: row.id,
-      jobId: row.jobId,
-      level: row.level as JobLogLevel,
-      message: row.message,
-      data: row.data as Record<string, unknown> | undefined,
-      timestamp: row.timestamp,
-      durationMs: row.durationMs ?? undefined,
-    }));
+    return rows.map((row) => {
+      const entry: JobLogEntry = {
+        id: row.id,
+        jobId: row.jobId,
+        level: row.level as JobLogLevel,
+        message: row.message,
+        timestamp: row.timestamp,
+      };
+      if (row.data) entry.data = row.data as Record<string, unknown>;
+      if (row.durationMs !== null) entry.durationMs = row.durationMs;
+      return entry;
+    });
   }
 
   // ==========================================================================
@@ -936,11 +941,12 @@ export class JobService {
       !error.message.includes("validation") &&
       job.retry.attempts < job.retry.maxAttempts;
 
+    const stack = error instanceof Error ? error.stack : undefined;
     const jobError: JobError = {
       code: error instanceof Error ? error.name : "UNKNOWN_ERROR",
       message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
       retryable: isRetryable,
+      ...(stack && { stack }),
     };
 
     if (isRetryable) {
@@ -989,65 +995,75 @@ export class JobService {
    * Convert database row to Job object.
    */
   private rowToJob(row: typeof jobs.$inferSelect): Job {
-    return {
+    const progress: Job["progress"] = {
+      current: row.progressCurrent,
+      total: row.progressTotal,
+      percentage: Math.round((row.progressCurrent / row.progressTotal) * 100),
+      message: row.progressMessage ?? "Unknown",
+      ...(row.progressStage && { stage: row.progressStage }),
+    };
+
+    const retry: Job["retry"] = {
+      attempts: row.retryAttempts,
+      maxAttempts: row.retryMaxAttempts,
+      backoffMs: row.retryBackoffMs,
+      ...(row.retryNextAt && { nextRetryAt: row.retryNextAt }),
+    };
+
+    const error: Job["error"] = row.errorCode
+      ? {
+          code: row.errorCode,
+          message: row.errorMessage ?? "Unknown error",
+          retryable: row.errorRetryable ?? false,
+          ...(row.errorStack && { stack: row.errorStack }),
+        }
+      : undefined;
+
+    const cancellation: Job["cancellation"] = row.cancelRequestedAt
+      ? {
+          requestedAt: row.cancelRequestedAt,
+          requestedBy: row.cancelRequestedBy ?? "unknown",
+          ...(row.cancelReason && { reason: row.cancelReason }),
+        }
+      : undefined;
+
+    const job: Job = {
       id: row.id,
       type: row.type as JobType,
-      name: row.name ?? undefined,
       status: row.status as JobStatus,
       priority: row.priority as JobPriority,
-      sessionId: row.sessionId ?? undefined,
-      agentId: row.agentId ?? undefined,
-      userId: row.userId ?? undefined,
       input: (row.input as Record<string, unknown>) ?? {},
-      output: row.output as Record<string, unknown> | undefined,
-      progress: {
-        current: row.progressCurrent,
-        total: row.progressTotal,
-        percentage: Math.round((row.progressCurrent / row.progressTotal) * 100),
-        message: row.progressMessage ?? "Unknown",
-        stage: row.progressStage ?? undefined,
-      },
+      progress,
       createdAt: row.createdAt,
-      startedAt: row.startedAt ?? undefined,
-      completedAt: row.completedAt ?? undefined,
-      estimatedDurationMs: row.estimatedDurationMs ?? undefined,
-      actualDurationMs: row.actualDurationMs ?? undefined,
-      error: row.errorCode
-        ? {
-            code: row.errorCode,
-            message: row.errorMessage ?? "Unknown error",
-            stack: row.errorStack ?? undefined,
-            retryable: row.errorRetryable ?? false,
-          }
-        : undefined,
-      retry: {
-        attempts: row.retryAttempts,
-        maxAttempts: row.retryMaxAttempts,
-        backoffMs: row.retryBackoffMs,
-        nextRetryAt: row.retryNextAt ?? undefined,
-      },
-      cancellation: row.cancelRequestedAt
-        ? {
-            requestedAt: row.cancelRequestedAt,
-            requestedBy: row.cancelRequestedBy ?? "unknown",
-            reason: row.cancelReason ?? undefined,
-          }
-        : undefined,
+      retry,
       metadata: (row.metadata as Record<string, unknown>) ?? {},
-      correlationId: row.correlationId ?? undefined,
     };
+    if (row.name) job.name = row.name;
+    if (row.sessionId) job.sessionId = row.sessionId;
+    if (row.agentId) job.agentId = row.agentId;
+    if (row.userId) job.userId = row.userId;
+    if (row.output) job.output = row.output as Record<string, unknown>;
+    if (row.startedAt) job.startedAt = row.startedAt;
+    if (row.completedAt) job.completedAt = row.completedAt;
+    if (row.estimatedDurationMs !== null) job.estimatedDurationMs = row.estimatedDurationMs;
+    if (row.actualDurationMs !== null) job.actualDurationMs = row.actualDurationMs;
+    if (error) job.error = error;
+    if (cancellation) job.cancellation = cancellation;
+    if (row.correlationId) job.correlationId = row.correlationId;
+    return job;
   }
 
   /**
    * Emit a job event via WebSocket.
    */
   private emitEvent(
-    type: string,
+    type: MessageType,
     job: Job,
     data: Record<string, unknown>,
   ): void {
     try {
       const channel: Channel = { type: "system:jobs" };
+      const metadata = job.correlationId ? { correlationId: job.correlationId } : {};
       getHub().publish(
         channel,
         type,
@@ -1057,7 +1073,7 @@ export class JobService {
           timestamp: new Date().toISOString(),
           ...data,
         },
-        { correlationId: job.correlationId },
+        metadata,
       );
 
       // Also publish to session-specific channel if applicable
@@ -1075,7 +1091,7 @@ export class JobService {
             timestamp: new Date().toISOString(),
             ...data,
           },
-          { correlationId: job.correlationId },
+          metadata,
         );
       }
     } catch {
@@ -1094,13 +1110,14 @@ export class JobService {
       Date.now() - this.config.cleanup.failedRetentionHours * 60 * 60 * 1000,
     );
 
-    const result = await db
+    const deletedRows = await db
       .delete(jobs)
       .where(
         sql`(status = 'completed' AND completed_at < ${completedCutoff}) OR (status = 'failed' AND completed_at < ${failedCutoff})`,
-      );
+      )
+      .returning({ id: jobs.id });
 
-    const deleted = result.changes;
+    const deleted = deletedRows.length;
     if (deleted > 0) {
       baseLogger.info({ deleted }, "Cleaned up old jobs");
     }

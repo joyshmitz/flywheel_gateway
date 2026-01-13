@@ -15,6 +15,7 @@ import { getLogger } from "../middleware/correlation";
 import type {
   CreateDashboardInput,
   DashboardPermission,
+  DashboardSharing,
   UpdateDashboardInput,
   Widget,
 } from "@flywheel/shared";
@@ -180,10 +181,10 @@ dashboards.get("/", async (c) => {
   try {
     const { items, total } = listDashboards({
       userId,
-      workspaceId,
-      visibility,
       limit,
       offset,
+      ...(workspaceId && { workspaceId }),
+      ...(visibility && { visibility }),
     });
 
     return sendList(c, items, {
@@ -604,7 +605,7 @@ dashboards.put("/:id/sharing", async (c) => {
       return sendValidationError(c, transformZodError(parsed.error));
     }
 
-    const updated = updateSharing(id, parsed.data);
+    const updated = updateSharing(id, parsed.data as Partial<DashboardSharing>);
 
     if (!updated) {
       return sendNotFound(c, "Dashboard", id);

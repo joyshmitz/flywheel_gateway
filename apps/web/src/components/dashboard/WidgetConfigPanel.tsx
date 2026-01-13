@@ -5,6 +5,7 @@
 import { useState } from "react";
 import type {
   Widget,
+  WidgetConfig,
   WidgetType,
   DataSourceConfig,
   DisplayConfig,
@@ -87,10 +88,10 @@ export function WidgetConfigPanel({
     widget.config.thresholds || {},
   );
   const [textContent, setTextContent] = useState<string>(
-    (widget.config.customOptions?.content as string) || "",
+    (widget.config.customOptions?.["content"] as string) || "",
   );
   const [iframeUrl, setIframeUrl] = useState<string>(
-    (widget.config.customOptions?.url as string) || "",
+    (widget.config.customOptions?.["url"] as string) || "",
   );
 
   const presets = DATA_SOURCE_PRESETS[widget.type] || [];
@@ -102,25 +103,37 @@ export function WidgetConfigPanel({
 
     // Include text content for text widgets
     if (widget.type === "text" && textContent) {
-      customOptions.content = textContent;
+      customOptions["content"] = textContent;
     }
 
     // Include iframe URL for iframe widgets
     if (widget.type === "iframe" && iframeUrl) {
-      customOptions.url = iframeUrl;
+      customOptions["url"] = iframeUrl;
     }
 
-    onSave({
+    const config: WidgetConfig = {
+      dataSource,
+    };
+    if (Object.keys(display).length > 0) {
+      config.display = display;
+    }
+    if (Object.keys(thresholds).length > 0) {
+      config.thresholds = thresholds;
+    }
+    if (Object.keys(customOptions).length > 0) {
+      config.customOptions = customOptions;
+    }
+
+    const updates: Partial<Widget> = {
       title,
-      description: description || undefined,
       refreshInterval,
-      config: {
-        dataSource,
-        display,
-        thresholds,
-        customOptions: Object.keys(customOptions).length > 0 ? customOptions : undefined,
-      },
-    });
+      config,
+    };
+    if (description) {
+      updates.description = description;
+    }
+
+    onSave(updates);
   };
 
   const handlePresetSelect = (endpoint: string) => {
@@ -281,12 +294,14 @@ export function WidgetConfigPanel({
                 id="threshold-warning"
                 type="number"
                 value={thresholds.warning || ""}
-                onChange={(e) =>
-                  setThresholds({
-                    ...thresholds,
-                    warning: e.target.value ? Number(e.target.value) : undefined,
-                  })
-                }
+                onChange={(e) => {
+                  const { warning: _, ...rest } = thresholds;
+                  if (e.target.value) {
+                    setThresholds({ ...rest, warning: Number(e.target.value) });
+                  } else {
+                    setThresholds(rest);
+                  }
+                }}
                 placeholder="e.g., 80"
               />
             </div>
@@ -297,12 +312,14 @@ export function WidgetConfigPanel({
                 id="threshold-critical"
                 type="number"
                 value={thresholds.critical || ""}
-                onChange={(e) =>
-                  setThresholds({
-                    ...thresholds,
-                    critical: e.target.value ? Number(e.target.value) : undefined,
-                  })
-                }
+                onChange={(e) => {
+                  const { critical: _, ...rest } = thresholds;
+                  if (e.target.value) {
+                    setThresholds({ ...rest, critical: Number(e.target.value) });
+                  } else {
+                    setThresholds(rest);
+                  }
+                }}
                 placeholder="e.g., 95"
               />
             </div>

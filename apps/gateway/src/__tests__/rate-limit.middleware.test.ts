@@ -3,6 +3,7 @@
  */
 
 import { beforeEach, describe, expect, test } from "bun:test";
+import type { Context } from "hono";
 import { Hono } from "hono";
 import {
   byAPIKey,
@@ -20,6 +21,9 @@ import {
   strictRateLimitMiddleware,
   withPath,
 } from "../middleware/rate-limit";
+
+/** Test-specific context variables */
+type TestEnv = { Variables: { userId: string; workspaceId: string } };
 
 describe("Rate Limit Middleware", () => {
   beforeEach(() => {
@@ -185,12 +189,12 @@ describe("Rate Limit Middleware", () => {
     });
 
     test("byUser extracts from context", async () => {
-      const app = new Hono();
+      const app = new Hono<TestEnv>();
       app.use("*", (c, next) => {
         c.set("userId", "user_123");
         return next();
       });
-      app.get("/test", (c) => c.text(byUser(c)));
+      app.get("/test", (c) => c.text(byUser(c as unknown as Context)));
 
       const res = await app.request("/test");
       expect(await res.text()).toBe("user:user_123");
@@ -207,24 +211,26 @@ describe("Rate Limit Middleware", () => {
     });
 
     test("byWorkspace extracts from context", async () => {
-      const app = new Hono();
+      const app = new Hono<TestEnv>();
       app.use("*", (c, next) => {
-        c.set("workspaceId", "ws_456");
+        (c.set as (key: string, value: unknown) => void)("workspaceId", "ws_456");
         return next();
       });
-      app.get("/test", (c) => c.text(byWorkspace(c)));
+      app.get("/test", (c) => c.text(byWorkspace(c as unknown as Context)));
 
       const res = await app.request("/test");
       expect(await res.text()).toBe("ws:ws_456");
     });
 
     test("compositeKey combines multiple generators", async () => {
-      const app = new Hono();
+      const app = new Hono<TestEnv>();
       app.use("*", (c, next) => {
-        c.set("userId", "user_abc");
+        (c.set as (key: string, value: unknown) => void)("userId", "user_abc");
         return next();
       });
-      app.get("/test", (c) => c.text(compositeKey(byUser, byIP)(c)));
+      app.get("/test", (c) =>
+        c.text(compositeKey(byUser, byIP)(c as unknown as Context)),
+      );
 
       const res = await app.request("/test", {
         headers: { "X-Real-IP": "10.0.0.5" },
@@ -461,9 +467,9 @@ describe("Rate Limit Middleware", () => {
 
   describe("Integration scenarios", () => {
     test("per-user-per-endpoint rate limiting", async () => {
-      const app = new Hono();
+      const app = new Hono<TestEnv>();
       app.use("*", (c, next) => {
-        c.set("userId", c.req.header("X-User-Id") ?? "anon");
+        (c.set as (key: string, value: unknown) => void)("userId", c.req.header("X-User-Id") ?? "anon");
         return next();
       });
       app.use(

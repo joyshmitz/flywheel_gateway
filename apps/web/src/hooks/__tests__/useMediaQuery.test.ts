@@ -1,5 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
-import { act, renderHook } from "@testing-library/react";
+import { describe, expect, it } from "bun:test";
 import {
   BREAKPOINTS,
   getCurrentBreakpoint,

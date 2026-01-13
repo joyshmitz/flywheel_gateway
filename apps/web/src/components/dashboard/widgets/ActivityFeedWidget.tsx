@@ -15,6 +15,7 @@
  * }
  */
 
+import type { JSX } from "react";
 import type { Widget, WidgetData } from "@flywheel/shared";
 import "./ActivityFeedWidget.css";
 
@@ -87,7 +88,7 @@ export function ActivityFeedWidget({ widget, data }: ActivityFeedWidgetProps) {
               className={`activity-feed-widget__item activity-feed-widget__item--${severity}`}
             >
               <div className="activity-feed-widget__icon">
-                {SEVERITY_ICONS[severity] || SEVERITY_ICONS.info}
+                {SEVERITY_ICONS[severity] || SEVERITY_ICONS["info"]}
               </div>
 
               <div className="activity-feed-widget__content">

@@ -422,8 +422,8 @@ export async function generateForecast(options: {
     id,
     forecastDate: new Date(),
     horizonDays,
-    organizationId: options.organizationId,
-    projectId: options.projectId,
+    ...(options.organizationId !== undefined && { organizationId: options.organizationId }),
+    ...(options.projectId !== undefined && { projectId: options.projectId }),
     dailyForecasts,
     totalForecastUnits,
     confidenceInterval95: {
@@ -506,12 +506,10 @@ export async function getLatestForecast(filter?: {
   }
 
   const row = rows[0]!;
-  return {
+  const result: CostForecast = {
     id: row.id,
     forecastDate: row.forecastDate,
     horizonDays: row.horizonDays,
-    organizationId: row.organizationId ?? undefined,
-    projectId: row.projectId ?? undefined,
     dailyForecasts: row.dailyForecasts as DailyForecast[],
     totalForecastUnits: row.totalForecastUnits,
     confidenceInterval95: {
@@ -529,6 +527,13 @@ export async function getLatestForecast(filter?: {
     trendStrength: row.trendStrength ?? 0,
     createdAt: row.createdAt,
   };
+  if (row.organizationId !== null) {
+    result.organizationId = row.organizationId;
+  }
+  if (row.projectId !== null) {
+    result.projectId = row.projectId;
+  }
+  return result;
 }
 
 /**

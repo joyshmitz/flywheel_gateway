@@ -434,7 +434,9 @@ export async function preFlightCheck(
     result.allowed = false;
     result.action = "deny";
     result.rateLimited = true;
-    result.rateLimitInfo = rateLimitResult.info;
+    if (rateLimitResult.info) {
+      result.rateLimitInfo = rateLimitResult.info;
+    }
     result.reason = `Rate limit exceeded: ${rateLimitResult.info?.limitType}`;
     result.evaluationTimeMs = Date.now() - startTime;
 
@@ -454,7 +456,9 @@ export async function preFlightCheck(
   const budgetResult = checkBudget(request, config);
   if (budgetResult.exceeded) {
     result.budgetExceeded = true;
-    result.budgetInfo = budgetResult.info;
+    if (budgetResult.info) {
+      result.budgetInfo = budgetResult.info;
+    }
 
     if (config.budget.action === "terminate") {
       result.allowed = false;
@@ -516,10 +520,12 @@ export async function preFlightCheck(
               ? "pending_approval"
               : "warned",
         context: {
-          taskDescription: request.context?.taskDescription,
+          ...(request.context?.taskDescription && {
+            taskDescription: request.context.taskDescription,
+          }),
           recentHistory: request.context?.recentHistory ?? [],
         },
-        correlationId: request.correlationId,
+        ...(request.correlationId && { correlationId: request.correlationId }),
       };
 
       violations.push(violation);
@@ -535,7 +541,9 @@ export async function preFlightCheck(
   // Set result based on evaluation
   result.allowed = evalResult.allowed;
   result.action = evalResult.action;
-  result.reason = evalResult.reason;
+  if (evalResult.reason) {
+    result.reason = evalResult.reason;
+  }
   result.requiresApproval = evalResult.requiresApproval;
   result.warnings.push(...evalResult.warnings);
 
@@ -773,7 +781,8 @@ export async function getViolations(
     filtered = filtered.filter((v) => v.action === options.action);
   }
   if (options?.since) {
-    filtered = filtered.filter((v) => v.timestamp >= options.since);
+    const since = options.since;
+    filtered = filtered.filter((v) => v.timestamp >= since);
   }
 
   // Sort by timestamp descending

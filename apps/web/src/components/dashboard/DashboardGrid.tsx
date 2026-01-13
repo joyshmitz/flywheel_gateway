@@ -169,11 +169,11 @@ export function DashboardGrid({
           >
             <WidgetRenderer
               widget={widget}
-              data={widgetData.get(widget.id)}
+              {...(widgetData.get(widget.id) !== undefined ? { data: widgetData.get(widget.id)! } : {})}
               isEditing={isEditing}
-              onEdit={onWidgetEdit ? () => onWidgetEdit(widget.id) : undefined}
-              onRemove={onWidgetRemove ? () => onWidgetRemove(widget.id) : undefined}
-              onRefresh={onWidgetRefresh ? () => onWidgetRefresh(widget.id) : undefined}
+              {...(onWidgetEdit ? { onEdit: () => onWidgetEdit(widget.id) } : {})}
+              {...(onWidgetRemove ? { onRemove: () => onWidgetRemove(widget.id) } : {})}
+              {...(onWidgetRefresh ? { onRefresh: () => onWidgetRefresh(widget.id) } : {})}
             />
           </div>
         );

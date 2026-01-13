@@ -171,21 +171,23 @@ export async function createApprovalRequest(
     workspaceId: request.workspaceId,
     operation: {
       type: request.operation.type,
-      command: request.operation.command,
-      path: request.operation.path,
+      ...(request.operation.command && { command: request.operation.command }),
+      ...(request.operation.path && { path: request.operation.path }),
       description: request.operation.description,
       details: request.operation.details ?? {},
     },
     rule: request.rule,
     context: {
       recentActions: request.context?.recentActions ?? [],
-      taskDescription: request.context?.taskDescription,
+      ...(request.context?.taskDescription && {
+        taskDescription: request.context.taskDescription,
+      }),
     },
     status: "pending",
     requestedAt: now,
     expiresAt: new Date(now.getTime() + timeoutMinutes * 60 * 1000),
     priority: request.priority ?? "normal",
-    correlationId: request.correlationId,
+    ...(request.correlationId && { correlationId: request.correlationId }),
   };
 
   approvals.push(approval);
@@ -249,7 +251,9 @@ export async function decideApproval(
   approval.status = decision.decision === "approved" ? "approved" : "denied";
   approval.decidedBy = decision.decidedBy;
   approval.decidedAt = new Date();
-  approval.decisionReason = decision.reason;
+  if (decision.reason) {
+    approval.decisionReason = decision.reason;
+  }
 
   logger.info(
     {
@@ -347,7 +351,8 @@ export async function listApprovals(
     filtered = filtered.filter((a) => a.status === options.status);
   }
   if (options?.since) {
-    filtered = filtered.filter((a) => a.requestedAt >= options.since);
+    const since = options.since;
+    filtered = filtered.filter((a) => a.requestedAt >= since);
   }
   if (!options?.includeExpired) {
     filtered = filtered.filter(
@@ -388,7 +393,7 @@ export async function getPendingApprovals(
  */
 export async function getQueueDepth(workspaceId?: string): Promise<number> {
   const pending = await listApprovals({
-    workspaceId,
+    ...(workspaceId && { workspaceId }),
     status: "pending",
     includeExpired: false,
   });
@@ -437,7 +442,10 @@ export async function getApprovalStats(
 
   for (const approval of filtered) {
     stats[approval.status]++;
-    stats.byPriority[approval.priority]++;
+    const priorityCount = stats.byPriority[approval.priority];
+    if (priorityCount !== undefined) {
+      stats.byPriority[approval.priority] = priorityCount + 1;
+    }
     stats.byCategory[approval.operation.type]++;
 
     if (approval.decidedAt) {

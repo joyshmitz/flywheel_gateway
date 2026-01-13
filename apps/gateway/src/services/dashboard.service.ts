@@ -96,7 +96,7 @@ export function createDashboard(
   const dashboard: Dashboard = {
     id,
     name: input.name,
-    description: input.description,
+    ...(input.description && { description: input.description }),
     ownerId,
     workspaceId: input.workspaceId ?? "default",
     layout: {
@@ -155,7 +155,13 @@ export function updateDashboard(
   const updated: Dashboard = {
     ...dashboard,
     name: input.name ?? dashboard.name,
-    description: input.description ?? dashboard.description,
+    ...(input.description !== undefined
+      ? input.description
+        ? { description: input.description }
+        : {}
+      : dashboard.description
+        ? { description: dashboard.description }
+        : {}),
     layout: input.layout ? { ...dashboard.layout, ...input.layout } : dashboard.layout,
     widgets: input.widgets ?? dashboard.widgets,
     sharing: input.sharing
@@ -210,7 +216,7 @@ export function duplicateDashboard(
   return createDashboard(
     {
       name: newName ?? `${original.name} (Copy)`,
-      description: original.description,
+      ...(original.description && { description: original.description }),
       workspaceId: original.workspaceId,
       layout: original.layout,
       widgets: original.widgets.map((w) => ({
@@ -289,10 +295,10 @@ export function listDashboards(
   const paginated = results.slice(offset, offset + limit);
 
   // Map to summaries
-  const items = paginated.map((d) => ({
+  const items: DashboardSummary[] = paginated.map((d) => ({
     id: d.id,
     name: d.name,
-    description: d.description,
+    ...(d.description && { description: d.description }),
     ownerId: d.ownerId,
     visibility: d.sharing.visibility,
     widgetCount: d.widgets.length,
@@ -466,11 +472,11 @@ export function listFavorites(userId: string): DashboardSummary[] {
     .map((d) => ({
       id: d.id,
       name: d.name,
-      description: d.description,
+      ...(d.description && { description: d.description }),
       ownerId: d.ownerId,
       visibility: d.sharing.visibility,
       widgetCount: d.widgets.length,
-      isFavorite: true,
+      isFavorite: true as const,
       createdAt: d.createdAt,
       updatedAt: d.updatedAt,
     }));
@@ -526,10 +532,25 @@ export function updateWidget(
   }
 
   const widgets = [...dashboard.widgets];
-  widgets[widgetIndex] = {
-    ...widgets[widgetIndex],
-    ...widgetUpdate,
+  const existingWidget = widgets[widgetIndex]!;
+  const updatedWidget: Widget = {
+    id: widgetUpdate.id ?? existingWidget.id,
+    type: widgetUpdate.type ?? existingWidget.type,
+    title: widgetUpdate.title ?? existingWidget.title,
+    position: widgetUpdate.position ?? existingWidget.position,
+    config: widgetUpdate.config ?? existingWidget.config,
   };
+  if (widgetUpdate.description !== undefined) {
+    if (widgetUpdate.description) updatedWidget.description = widgetUpdate.description;
+  } else if (existingWidget.description) {
+    updatedWidget.description = existingWidget.description;
+  }
+  if (widgetUpdate.refreshInterval !== undefined) {
+    if (widgetUpdate.refreshInterval) updatedWidget.refreshInterval = widgetUpdate.refreshInterval;
+  } else if (existingWidget.refreshInterval) {
+    updatedWidget.refreshInterval = existingWidget.refreshInterval;
+  }
+  widgets[widgetIndex] = updatedWidget;
 
   const updated: Dashboard = {
     ...dashboard,
@@ -767,7 +788,8 @@ export function getDashboardStats(): {
   let totalWidgets = 0;
 
   for (const dashboard of dashboards) {
-    byVisibility[dashboard.sharing.visibility]++;
+    const visibility = dashboard.sharing.visibility;
+    byVisibility[visibility] = (byVisibility[visibility] ?? 0) + 1;
     totalWidgets += dashboard.widgets.length;
   }
 

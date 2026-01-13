@@ -230,9 +230,10 @@ function createMailRoutes(
 
       const ctx = getLinkContext(c);
       const msgId = message.messageId || "unknown";
-      return sendCreated(c, "message", message, `/mail/messages/${msgId}`, {
+      return sendCreated(c, "message", {
+        ...message,
         links: messageLinks({ id: msgId }, ctx),
-      });
+      }, `/mail/messages/${msgId}`);
     } catch (error) {
       return handleError(error, c);
     }
@@ -398,14 +399,14 @@ function createMailRoutes(
       return sendCreated(
         c,
         "reservation",
-        result,
-        `/mail/reservations/${resId}`,
         {
+          ...result,
           links: {
             self: `${ctx.baseUrl}/mail/reservations/${resId}`,
             release: `${ctx.baseUrl}/mail/reservations/${resId}`,
           },
         },
+        `/mail/reservations/${resId}`,
       );
     } catch (error) {
       return handleError(error, c);

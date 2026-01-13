@@ -678,7 +678,7 @@ export async function sendTestNotification(
   recipientId: string,
   channel?: NotificationChannel,
 ): Promise<Notification> {
-  return createNotification({
+  const request: CreateNotificationRequest = {
     type: "test",
     category: "system",
     priority: "low",
@@ -686,7 +686,6 @@ export async function sendTestNotification(
     body: "This is a test notification to verify your notification settings are working correctly.",
     recipientId,
     source: { type: "system", name: "notification-test" },
-    forceChannels: channel ? [channel] : undefined,
     actions: [
       {
         id: "dismiss",
@@ -695,5 +694,9 @@ export async function sendTestNotification(
         action: "dismiss",
       },
     ],
-  });
+  };
+  if (channel !== undefined) {
+    request.forceChannels = [channel];
+  }
+  return createNotification(request);
 }

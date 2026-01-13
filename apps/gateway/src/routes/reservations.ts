@@ -184,9 +184,9 @@ reservations.post("/", async (c) => {
           renewCount: reservation.renewCount,
           metadata: reservation.metadata,
         },
+        links: reservationLinks({ id: reservation.id }, ctx),
       },
       `/reservations/${reservation.id}`,
-      { links: reservationLinks({ id: reservation.id }, ctx) },
     );
   } catch (error) {
     return handleError(error, c);

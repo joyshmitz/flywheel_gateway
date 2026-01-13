@@ -124,7 +124,7 @@ export function BarChartWidget({ widget, data }: BarChartWidgetProps) {
 
     // Draw bars
     items.forEach((item, i) => {
-      const color = item.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length];
+      const color = item.color ?? DEFAULT_COLORS[i % DEFAULT_COLORS.length] ?? "#6366f1";
       const valueRatio = item.value / maxValue;
 
       if (isHorizontal) {

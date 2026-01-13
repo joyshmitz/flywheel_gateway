@@ -67,6 +67,17 @@ import {
 } from "./schemas";
 
 // ============================================================================
+// Security Schemes
+// ============================================================================
+
+registry.registerComponent("securitySchemes", "bearerAuth", {
+  type: "http",
+  scheme: "bearer",
+  bearerFormat: "JWT",
+  description: "JWT Bearer token authentication",
+});
+
+// ============================================================================
 // Route Definitions
 // ============================================================================
 
@@ -1965,8 +1976,9 @@ registry.registerPath({
 
 /**
  * Generate the complete OpenAPI 3.1 specification.
+ * Returns an OpenAPI 3.1 document object.
  */
-export function generateOpenAPISpec() {
+export function generateOpenAPISpec(): ReturnType<OpenApiGeneratorV31["generateDocument"]> {
   const generator = new OpenApiGeneratorV31(registry.definitions);
 
   return generator.generateDocument({
@@ -2081,16 +2093,6 @@ See the WebSocket documentation for event types and subscription.
         bearerAuth: [],
       },
     ],
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: "http",
-          scheme: "bearer",
-          bearerFormat: "JWT",
-          description: "JWT Bearer token authentication",
-        },
-      },
-    },
   });
 }
 

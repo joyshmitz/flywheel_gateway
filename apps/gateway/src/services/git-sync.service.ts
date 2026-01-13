@@ -145,7 +145,7 @@ function publishSyncEvent(
 ): void {
   const hub = getHub();
   const channel: Channel = { type: "workspace:git", workspaceId: repositoryId };
-  hub.publish(channel, eventType, payload, { repositoryId });
+  hub.publish(channel, eventType, payload, { workspaceId: repositoryId });
 }
 
 /**
@@ -728,8 +728,8 @@ export async function getQueueStats(
     runningCount,
     completedCount,
     failedCount,
-    averageWaitTime,
-    averageDuration,
+    ...(averageWaitTime !== undefined && { averageWaitTime }),
+    ...(averageDuration !== undefined && { averageDuration }),
   };
 }
 

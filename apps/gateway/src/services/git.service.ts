@@ -272,7 +272,7 @@ function publishGitEvent(
 ): void {
   const hub = getHub();
   const channel: Channel = { type: "workspace:git", workspaceId: repositoryId };
-  hub.publish(channel, eventType, payload, { repositoryId });
+  hub.publish(channel, eventType, payload, { workspaceId: repositoryId });
 }
 
 // ============================================================================
@@ -850,11 +850,12 @@ export async function getGitGraph(
   }
 
   // Add default branch
+  const mainAssignedTo = assignedBranches.get("main");
   branches.push({
     name: "main",
     sha: "simulated-main-sha",
     isDefault: true,
-    assignedTo: assignedBranches.get("main"),
+    ...(mainAssignedTo && { assignedTo: mainAssignedTo }),
   });
 
   // Add assigned branches

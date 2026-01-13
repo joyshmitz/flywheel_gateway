@@ -984,7 +984,7 @@ export function DCGPage() {
     {
       id: "pending",
       label: "Pending",
-      ...(pendingCount != null && { badge: pendingCount }),
+      ...(pendingCount != null && pendingCount > 0 && { badge: pendingCount }),
     },
     { id: "stats", label: "Statistics" },
     { id: "config", label: "Configuration" },

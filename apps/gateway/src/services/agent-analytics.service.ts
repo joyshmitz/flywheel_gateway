@@ -552,10 +552,8 @@ export async function getAgentPerformanceSummary(
     "Agent performance summary generated",
   );
 
-  return {
+  const summary: AgentPerformanceSummary = {
     agentId,
-    agentName,
-    model,
     period,
     productivity,
     quality,
@@ -564,6 +562,13 @@ export async function getAgentPerformanceSummary(
     duration,
     recommendations,
   };
+  if (agentName !== undefined) {
+    summary.agentName = agentName;
+  }
+  if (model !== undefined) {
+    summary.model = model;
+  }
+  return summary;
 }
 
 /**

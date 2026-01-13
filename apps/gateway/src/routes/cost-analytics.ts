@@ -5,7 +5,14 @@
 import { type Context, Hono } from "hono";
 import { z } from "zod";
 import { getLogger } from "../middleware/correlation";
-import type { BudgetPeriod, ProviderId } from "../models/cost";
+import type {
+  BudgetInput,
+  BudgetPeriod,
+  CostFilter,
+  CostRecordInput,
+  ModelRateCard,
+  ProviderId,
+} from "../models/cost";
 import {
   acknowledgeBudgetAlert,
   checkBudgetThresholds,
@@ -52,7 +59,7 @@ import {
   sendResource,
   sendValidationError,
 } from "../utils/response";
-import { transformZodError } from "../utils/validation";
+import { stripUndefined, transformZodError } from "../utils/validation";
 
 const costAnalytics = new Hono();
 
@@ -155,7 +162,7 @@ costAnalytics.post("/records", async (c) => {
     const record = await recordCost({
       ...validated,
       provider: validated.provider as ProviderId,
-    });
+    } as CostRecordInput);
 
     return sendCreated(
       c,
@@ -179,18 +186,26 @@ costAnalytics.post("/records", async (c) => {
  */
 costAnalytics.get("/records", async (c) => {
   try {
-    const filter = {
-      organizationId: c.req.query("organizationId") || undefined,
-      projectId: c.req.query("projectId") || undefined,
-      agentId: c.req.query("agentId") || undefined,
-      model: c.req.query("model") || undefined,
-      provider: (c.req.query("provider") as ProviderId) || undefined,
-      since: c.req.query("since") ? new Date(c.req.query("since")!) : undefined,
-      until: c.req.query("until") ? new Date(c.req.query("until")!) : undefined,
-      limit: c.req.query("limit")
-        ? parseInt(c.req.query("limit")!, 10)
-        : undefined,
-      startingAfter: c.req.query("startingAfter") || undefined,
+    const organizationId = c.req.query("organizationId");
+    const projectId = c.req.query("projectId");
+    const agentId = c.req.query("agentId");
+    const model = c.req.query("model");
+    const provider = c.req.query("provider") as ProviderId | undefined;
+    const since = c.req.query("since");
+    const until = c.req.query("until");
+    const limit = c.req.query("limit");
+    const startingAfter = c.req.query("startingAfter");
+
+    const filter: CostFilter = {
+      ...(organizationId && { organizationId }),
+      ...(projectId && { projectId }),
+      ...(agentId && { agentId }),
+      ...(model && { model }),
+      ...(provider && { provider }),
+      ...(since && { since: new Date(since) }),
+      ...(until && { until: new Date(until) }),
+      ...(limit && { limit: parseInt(limit, 10) }),
+      ...(startingAfter && { startingAfter }),
     };
 
     const result = await getCostRecords(filter);
@@ -212,8 +227,8 @@ costAnalytics.get("/records", async (c) => {
     return sendList(c, items, {
       total: result.total,
       hasMore: result.hasMore,
-      nextCursor: result.nextCursor,
-      prevCursor: result.prevCursor,
+      ...(result.nextCursor && { nextCursor: result.nextCursor }),
+      ...(result.prevCursor && { prevCursor: result.prevCursor }),
     });
   } catch (error) {
     return handleError(error, c);
@@ -225,12 +240,18 @@ costAnalytics.get("/records", async (c) => {
  */
 costAnalytics.get("/summary", async (c) => {
   try {
-    const filter = {
-      organizationId: c.req.query("organizationId") || undefined,
-      projectId: c.req.query("projectId") || undefined,
-      agentId: c.req.query("agentId") || undefined,
-      since: c.req.query("since") ? new Date(c.req.query("since")!) : undefined,
-      until: c.req.query("until") ? new Date(c.req.query("until")!) : undefined,
+    const organizationId = c.req.query("organizationId");
+    const projectId = c.req.query("projectId");
+    const agentId = c.req.query("agentId");
+    const since = c.req.query("since");
+    const until = c.req.query("until");
+
+    const filter: CostFilter = {
+      ...(organizationId && { organizationId }),
+      ...(projectId && { projectId }),
+      ...(agentId && { agentId }),
+      ...(since && { since: new Date(since) }),
+      ...(until && { until: new Date(until) }),
     };
 
     const summary = await getCostSummary(filter);
@@ -265,11 +286,16 @@ costAnalytics.get("/breakdown/:dimension", async (c) => {
       );
     }
 
-    const filter = {
-      organizationId: c.req.query("organizationId") || undefined,
-      projectId: c.req.query("projectId") || undefined,
-      since: c.req.query("since") ? new Date(c.req.query("since")!) : undefined,
-      until: c.req.query("until") ? new Date(c.req.query("until")!) : undefined,
+    const organizationId = c.req.query("organizationId");
+    const projectId = c.req.query("projectId");
+    const since = c.req.query("since");
+    const until = c.req.query("until");
+
+    const filter: CostFilter = {
+      ...(organizationId && { organizationId }),
+      ...(projectId && { projectId }),
+      ...(since && { since: new Date(since) }),
+      ...(until && { until: new Date(until) }),
     };
 
     const breakdown = await getCostBreakdown(dimension, filter);
@@ -297,15 +323,19 @@ costAnalytics.get("/breakdown/:dimension", async (c) => {
  */
 costAnalytics.get("/trends/hourly", async (c) => {
   try {
-    const filter = {
-      organizationId: c.req.query("organizationId") || undefined,
-      projectId: c.req.query("projectId") || undefined,
-      since: c.req.query("since") ? new Date(c.req.query("since")!) : undefined,
-      until: c.req.query("until") ? new Date(c.req.query("until")!) : undefined,
+    const organizationId = c.req.query("organizationId");
+    const projectId = c.req.query("projectId");
+    const since = c.req.query("since");
+    const until = c.req.query("until");
+    const hoursParam = c.req.query("hours");
+
+    const filter: CostFilter = {
+      ...(organizationId && { organizationId }),
+      ...(projectId && { projectId }),
+      ...(since && { since: new Date(since) }),
+      ...(until && { until: new Date(until) }),
     };
-    const hours = c.req.query("hours")
-      ? parseInt(c.req.query("hours")!, 10)
-      : 24;
+    const hours = hoursParam ? parseInt(hoursParam, 10) : 24;
 
     const trend = await getHourlyCostTrend(filter, hours);
 
@@ -329,13 +359,19 @@ costAnalytics.get("/trends/hourly", async (c) => {
  */
 costAnalytics.get("/trends/daily", async (c) => {
   try {
-    const filter = {
-      organizationId: c.req.query("organizationId") || undefined,
-      projectId: c.req.query("projectId") || undefined,
-      since: c.req.query("since") ? new Date(c.req.query("since")!) : undefined,
-      until: c.req.query("until") ? new Date(c.req.query("until")!) : undefined,
+    const organizationId = c.req.query("organizationId");
+    const projectId = c.req.query("projectId");
+    const since = c.req.query("since");
+    const until = c.req.query("until");
+    const daysParam = c.req.query("days");
+
+    const filter: CostFilter = {
+      ...(organizationId && { organizationId }),
+      ...(projectId && { projectId }),
+      ...(since && { since: new Date(since) }),
+      ...(until && { until: new Date(until) }),
     };
-    const days = c.req.query("days") ? parseInt(c.req.query("days")!, 10) : 30;
+    const days = daysParam ? parseInt(daysParam, 10) : 30;
 
     const trend = await getDailyCostTrend(filter, days);
 
@@ -359,15 +395,19 @@ costAnalytics.get("/trends/daily", async (c) => {
  */
 costAnalytics.get("/top-agents", async (c) => {
   try {
-    const filter = {
-      organizationId: c.req.query("organizationId") || undefined,
-      projectId: c.req.query("projectId") || undefined,
-      since: c.req.query("since") ? new Date(c.req.query("since")!) : undefined,
-      until: c.req.query("until") ? new Date(c.req.query("until")!) : undefined,
+    const organizationId = c.req.query("organizationId");
+    const projectId = c.req.query("projectId");
+    const since = c.req.query("since");
+    const until = c.req.query("until");
+    const limitParam = c.req.query("limit");
+
+    const filter: CostFilter = {
+      ...(organizationId && { organizationId }),
+      ...(projectId && { projectId }),
+      ...(since && { since: new Date(since) }),
+      ...(until && { until: new Date(until) }),
     };
-    const limit = c.req.query("limit")
-      ? parseInt(c.req.query("limit")!, 10)
-      : 10;
+    const limit = limitParam ? parseInt(limitParam, 10) : 10;
 
     const agents = await getTopSpendingAgents(filter, limit);
 
@@ -400,13 +440,9 @@ costAnalytics.post("/budgets", async (c) => {
     const budget = await createBudget({
       ...validated,
       period: validated.period as BudgetPeriod,
-      effectiveDate: validated.effectiveDate
-        ? new Date(validated.effectiveDate)
-        : undefined,
-      expiresAt: validated.expiresAt
-        ? new Date(validated.expiresAt)
-        : undefined,
-    });
+      ...(validated.effectiveDate && { effectiveDate: new Date(validated.effectiveDate) }),
+      ...(validated.expiresAt && { expiresAt: new Date(validated.expiresAt) }),
+    } as BudgetInput);
 
     return sendCreated(
       c,
@@ -431,13 +467,14 @@ costAnalytics.post("/budgets", async (c) => {
  */
 costAnalytics.get("/budgets", async (c) => {
   try {
+    const organizationId = c.req.query("organizationId");
+    const projectId = c.req.query("projectId");
+    const enabledParam = c.req.query("enabled");
+
     const filter = {
-      organizationId: c.req.query("organizationId") || undefined,
-      projectId: c.req.query("projectId") || undefined,
-      enabled:
-        c.req.query("enabled") !== undefined
-          ? c.req.query("enabled") === "true"
-          : undefined,
+      ...(organizationId && { organizationId }),
+      ...(projectId && { projectId }),
+      ...(enabledParam !== undefined && { enabled: enabledParam === "true" }),
     };
 
     const budgetList = await listBudgets(filter);
@@ -495,13 +532,9 @@ costAnalytics.put("/budgets/:budgetId", async (c) => {
 
     const updated = await updateBudget(budgetId, {
       ...validated,
-      effectiveDate: validated.effectiveDate
-        ? new Date(validated.effectiveDate)
-        : undefined,
-      expiresAt: validated.expiresAt
-        ? new Date(validated.expiresAt)
-        : undefined,
-    });
+      ...(validated.effectiveDate && { effectiveDate: new Date(validated.effectiveDate) }),
+      ...(validated.expiresAt && { expiresAt: new Date(validated.expiresAt) }),
+    } as Partial<BudgetInput>);
 
     if (!updated) {
       return sendNotFound(c, "budget", budgetId);
@@ -616,16 +649,16 @@ costAnalytics.post("/budgets/:budgetId/check", async (c) => {
  */
 costAnalytics.get("/budget-alerts", async (c) => {
   try {
+    const budgetId = c.req.query("budgetId");
+    const acknowledgedParam = c.req.query("acknowledged");
+    const since = c.req.query("since");
+    const limitParam = c.req.query("limit");
+
     const filter = {
-      budgetId: c.req.query("budgetId") || undefined,
-      acknowledged:
-        c.req.query("acknowledged") !== undefined
-          ? c.req.query("acknowledged") === "true"
-          : undefined,
-      since: c.req.query("since") ? new Date(c.req.query("since")!) : undefined,
-      limit: c.req.query("limit")
-        ? parseInt(c.req.query("limit")!, 10)
-        : undefined,
+      ...(budgetId && { budgetId }),
+      ...(acknowledgedParam !== undefined && { acknowledged: acknowledgedParam === "true" }),
+      ...(since && { since: new Date(since) }),
+      ...(limitParam && { limit: parseInt(limitParam, 10) }),
     };
 
     const alerts = await getBudgetAlerts(filter);
@@ -677,7 +710,13 @@ costAnalytics.post("/forecasts", async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const validated = ForecastOptionsSchema.parse(body);
 
-    const forecast = await generateForecast(validated);
+    const forecast = await generateForecast({
+      ...(validated.organizationId && { organizationId: validated.organizationId }),
+      ...(validated.projectId && { projectId: validated.projectId }),
+      ...(validated.horizonDays && { horizonDays: validated.horizonDays }),
+      ...(validated.historicalDays && { historicalDays: validated.historicalDays }),
+      ...(validated.methodology && { methodology: validated.methodology }),
+    });
 
     return sendCreated(
       c,
@@ -704,9 +743,12 @@ costAnalytics.post("/forecasts", async (c) => {
  */
 costAnalytics.get("/forecasts/latest", async (c) => {
   try {
+    const organizationId = c.req.query("organizationId");
+    const projectId = c.req.query("projectId");
+
     const filter = {
-      organizationId: c.req.query("organizationId") || undefined,
-      projectId: c.req.query("projectId") || undefined,
+      ...(organizationId && { organizationId }),
+      ...(projectId && { projectId }),
     };
 
     const forecast = await getLatestForecast(filter);
@@ -748,9 +790,12 @@ costAnalytics.get("/forecasts/latest", async (c) => {
  */
 costAnalytics.get("/forecasts/:forecastId/scenarios", async (c) => {
   try {
+    const organizationId = c.req.query("organizationId");
+    const projectId = c.req.query("projectId");
+
     const filter = {
-      organizationId: c.req.query("organizationId") || undefined,
-      projectId: c.req.query("projectId") || undefined,
+      ...(organizationId && { organizationId }),
+      ...(projectId && { projectId }),
     };
 
     const forecast = await getLatestForecast(filter);
@@ -802,11 +847,15 @@ costAnalytics.get("/forecasts/:forecastId/accuracy", async (c) => {
  */
 costAnalytics.post("/recommendations/generate", async (c) => {
   try {
-    const body = await c.req.json().catch(() => ({}));
+    const body = await c.req.json().catch(() => ({})) as {
+      organizationId?: string;
+      projectId?: string;
+      daysBack?: number;
+    };
     const options = {
-      organizationId: (body as { organizationId?: string }).organizationId,
-      projectId: (body as { projectId?: string }).projectId,
-      daysBack: (body as { daysBack?: number }).daysBack,
+      ...(body.organizationId && { organizationId: body.organizationId }),
+      ...(body.projectId && { projectId: body.projectId }),
+      ...(body.daysBack && { daysBack: body.daysBack }),
     };
 
     const recommendations = await generateRecommendations(options);
@@ -820,7 +869,7 @@ costAnalytics.post("/recommendations/generate", async (c) => {
       formattedSavings: formatCostUnits(
         recommendations.reduce((sum, r) => sum + r.estimatedSavingsUnits, 0),
       ),
-    });
+    }, "/cost-analytics/recommendations");
   } catch (error) {
     return handleError(error, c);
   }
@@ -831,28 +880,32 @@ costAnalytics.post("/recommendations/generate", async (c) => {
  */
 costAnalytics.get("/recommendations", async (c) => {
   try {
+    const organizationId = c.req.query("organizationId");
+    const projectId = c.req.query("projectId");
+    const categoryParam = c.req.query("category") as
+      | "model_optimization"
+      | "caching"
+      | "batching"
+      | "context_optimization"
+      | "consolidation"
+      | "scheduling"
+      | "rate_limiting"
+      | undefined;
+    const statusParam = c.req.query("status") as
+      | "pending"
+      | "in_progress"
+      | "implemented"
+      | "rejected"
+      | "failed"
+      | undefined;
+    const limitParam = c.req.query("limit");
+
     const filter = {
-      organizationId: c.req.query("organizationId") || undefined,
-      projectId: c.req.query("projectId") || undefined,
-      category: c.req.query("category") as
-        | "model_optimization"
-        | "caching"
-        | "batching"
-        | "context_optimization"
-        | "consolidation"
-        | "scheduling"
-        | "rate_limiting"
-        | undefined,
-      status: c.req.query("status") as
-        | "pending"
-        | "in_progress"
-        | "implemented"
-        | "rejected"
-        | "failed"
-        | undefined,
-      limit: c.req.query("limit")
-        ? parseInt(c.req.query("limit")!, 10)
-        : undefined,
+      ...(organizationId && { organizationId }),
+      ...(projectId && { projectId }),
+      ...(categoryParam && { category: categoryParam }),
+      ...(statusParam && { status: statusParam }),
+      ...(limitParam && { limit: parseInt(limitParam, 10) }),
     };
 
     const recommendations = await getRecommendations(filter);
@@ -884,9 +937,12 @@ costAnalytics.get("/recommendations", async (c) => {
  */
 costAnalytics.get("/recommendations/summary", async (c) => {
   try {
+    const organizationId = c.req.query("organizationId");
+    const projectId = c.req.query("projectId");
+
     const filter = {
-      organizationId: c.req.query("organizationId") || undefined,
-      projectId: c.req.query("projectId") || undefined,
+      ...(organizationId && { organizationId }),
+      ...(projectId && { projectId }),
     };
 
     const summary = await getOptimizationSummary(filter);
@@ -929,9 +985,9 @@ costAnalytics.put("/recommendations/:recommendationId/status", async (c) => {
       recommendationId,
       validated.status,
       {
-        implementedBy: validated.implementedBy,
-        rejectedReason: validated.rejectedReason,
-        actualSavingsUnits: validated.actualSavingsUnits,
+        ...(validated.implementedBy && { implementedBy: validated.implementedBy }),
+        ...(validated.rejectedReason && { rejectedReason: validated.rejectedReason }),
+        ...(validated.actualSavingsUnits !== undefined && { actualSavingsUnits: validated.actualSavingsUnits }),
       },
     );
 
@@ -988,13 +1044,9 @@ costAnalytics.post("/rate-cards", async (c) => {
     const rateCard = await upsertRateCard({
       ...validated,
       provider: validated.provider as ProviderId,
-      effectiveDate: validated.effectiveDate
-        ? new Date(validated.effectiveDate)
-        : undefined,
-      expiresAt: validated.expiresAt
-        ? new Date(validated.expiresAt)
-        : undefined,
-    });
+      ...(validated.effectiveDate && { effectiveDate: new Date(validated.effectiveDate) }),
+      ...(validated.expiresAt && { expiresAt: new Date(validated.expiresAt) }),
+    } as Omit<ModelRateCard, "effectiveDate"> & { effectiveDate?: Date });
 
     return sendCreated(c, "rateCard", {
       model: rateCard.model,
@@ -1002,7 +1054,7 @@ costAnalytics.post("/rate-cards", async (c) => {
       promptCostPer1kTokens: rateCard.promptCostPer1kTokens,
       completionCostPer1kTokens: rateCard.completionCostPer1kTokens,
       effectiveDate: rateCard.effectiveDate.toISOString(),
-    });
+    }, `/cost-analytics/rate-cards/${rateCard.model}`);
   } catch (error) {
     return handleError(error, c);
   }

@@ -111,7 +111,7 @@ export function LineChartWidget({ widget, data }: LineChartWidgetProps) {
 
     // Draw each series
     chartData.series.forEach((series, seriesIndex) => {
-      const color = series.color || DEFAULT_COLORS[seriesIndex % DEFAULT_COLORS.length];
+      const color = series.color ?? DEFAULT_COLORS[seriesIndex % DEFAULT_COLORS.length] ?? "#6366f1";
       const points = series.data;
 
       if (points.length === 0) return;
@@ -171,7 +171,7 @@ export function LineChartWidget({ widget, data }: LineChartWidgetProps) {
 
     // X-axis labels
     const firstSeries = chartData.series[0];
-    if (firstSeries?.data.length > 0) {
+    if (firstSeries && firstSeries.data.length > 0) {
       ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
       ctx.font = "11px system-ui";
       ctx.textAlign = "center";
@@ -181,6 +181,7 @@ export function LineChartWidget({ widget, data }: LineChartWidgetProps) {
 
       for (let i = 0; i < firstSeries.data.length; i += step) {
         const point = firstSeries.data[i];
+        if (!point) continue;
         const x =
           padding.left +
           (chartWidth / (firstSeries.data.length - 1 || 1)) * i;

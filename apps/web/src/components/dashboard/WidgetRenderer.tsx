@@ -97,11 +97,11 @@ export function WidgetRenderer({
   return (
     <WidgetWrapper
       widget={widget}
-      data={data}
-      isEditing={isEditing}
-      onEdit={onEdit}
-      onRemove={onRemove}
-      onRefresh={onRefresh}
+      {...(data !== undefined && { data })}
+      {...(isEditing !== undefined && { isEditing })}
+      {...(onEdit !== undefined && { onEdit })}
+      {...(onRemove !== undefined && { onRemove })}
+      {...(onRefresh !== undefined && { onRefresh })}
     >
       {renderWidget()}
     </WidgetWrapper>
@@ -117,7 +117,7 @@ function IframeWidget({
   data: WidgetData;
 }) {
   const iframeData = data.data as { url?: string } | null;
-  const url = iframeData?.url || widget.config.customOptions?.url;
+  const url = iframeData?.url || widget.config.customOptions?.["url"];
 
   if (!url || typeof url !== "string") {
     return <div className="widget-placeholder">No URL configured</div>;

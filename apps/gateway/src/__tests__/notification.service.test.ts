@@ -513,7 +513,7 @@ describe("Notification Pagination", () => {
     const page2 = getNotifications({
       recipientId: "user_001",
       limit: 3,
-      startingAfter: page1.nextCursor,
+      startingAfter: page1.nextCursor!,
     });
 
     expect(page2.notifications).toHaveLength(3);

@@ -278,6 +278,7 @@ export const VirtualizedOutput = forwardRef<
   const visibleItems = [];
   for (let i = startIndex; i <= endIndex && i < lines.length; i++) {
     const line = lines[i];
+    if (!line) continue;
     const top = getItemTop(i);
 
     visibleItems.push(

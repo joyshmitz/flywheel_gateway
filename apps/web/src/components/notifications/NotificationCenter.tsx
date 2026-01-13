@@ -175,10 +175,10 @@ export function NotificationCenter({
         // Handle navigation actions
         if (
           action.action === "navigate" &&
-          action.payload?.url &&
-          typeof action.payload.url === "string"
+          action.payload?.["url"] &&
+          typeof action.payload["url"] === "string"
         ) {
-          window.location.href = action.payload.url;
+          window.location.href = action.payload["url"];
         }
 
         refetch();

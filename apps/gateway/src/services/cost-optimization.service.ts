@@ -205,8 +205,8 @@ async function analyzeModelOptimization(
       implementation: `Update agent configuration to route ${taskDesc} tasks to ${bestAlternative.model}`,
       risk: "low",
       affectedModels: [usage.model, bestAlternative.model],
-      organizationId: filter?.organizationId,
-      projectId: filter?.projectId,
+      ...(filter?.organizationId && { organizationId: filter.organizationId }),
+      ...(filter?.projectId && { projectId: filter.projectId }),
       status: "pending",
       priority:
         estimatedSavings > 100000 ? 5 : estimatedSavings > 50000 ? 4 : 3,
@@ -288,8 +288,8 @@ async function analyzeCachingOpportunities(
           "Enable cache_control in API calls for system prompts and common context",
         risk: "low",
         affectedModels: [analysis.model],
-        organizationId: filter?.organizationId,
-        projectId: filter?.projectId,
+        ...(filter?.organizationId && { organizationId: filter.organizationId }),
+        ...(filter?.projectId && { projectId: filter.projectId }),
         status: "pending",
         priority: 4,
         createdAt: new Date(),
@@ -363,8 +363,8 @@ async function analyzeConsolidation(
       affectedAgents: lowUtilizationAgents
         .map((a) => a.agentId)
         .filter((id): id is string => id !== null),
-      organizationId: filter?.organizationId,
-      projectId: filter?.projectId,
+      ...(filter?.organizationId && { organizationId: filter.organizationId }),
+      ...(filter?.projectId && { projectId: filter.projectId }),
       status: "pending",
       priority: 2,
       createdAt: new Date(),
@@ -441,8 +441,8 @@ async function analyzeScheduling(
       implementation:
         "Configure batch queue for non-urgent tasks to process during off-peak hours with batch API",
       risk: "low",
-      organizationId: filter?.organizationId,
-      projectId: filter?.projectId,
+      ...(filter?.organizationId && { organizationId: filter.organizationId }),
+      ...(filter?.projectId && { projectId: filter.projectId }),
       status: "pending",
       priority: 3,
       createdAt: new Date(),
@@ -469,9 +469,9 @@ export async function generateRecommendations(options?: {
   const log = getLogger();
 
   const daysBack = options?.daysBack ?? 30;
-  const filter = {
-    organizationId: options?.organizationId,
-    projectId: options?.projectId,
+  const filter: { organizationId?: string; projectId?: string } = {
+    ...(options?.organizationId && { organizationId: options.organizationId }),
+    ...(options?.projectId && { projectId: options.projectId }),
   };
 
   const allRecommendations: OptimizationRecommendation[] = [];
@@ -593,26 +593,28 @@ export async function getRecommendations(filter?: {
     confidence: row.confidence,
     implementation: row.implementation,
     risk: row.risk as RiskLevel,
-    effortHours: row.effortHours ?? undefined,
-    prerequisites: row.prerequisites
-      ? (JSON.parse(row.prerequisites) as string[])
-      : undefined,
-    organizationId: row.organizationId ?? undefined,
-    projectId: row.projectId ?? undefined,
-    affectedAgents: row.affectedAgents
-      ? (JSON.parse(row.affectedAgents) as string[])
-      : undefined,
-    affectedModels: row.affectedModels
-      ? (JSON.parse(row.affectedModels) as string[])
-      : undefined,
+    ...(row.effortHours !== null && { effortHours: row.effortHours }),
+    ...(row.prerequisites && {
+      prerequisites: JSON.parse(row.prerequisites) as string[],
+    }),
+    ...(row.organizationId !== null && { organizationId: row.organizationId }),
+    ...(row.projectId !== null && { projectId: row.projectId }),
+    ...(row.affectedAgents && {
+      affectedAgents: JSON.parse(row.affectedAgents) as string[],
+    }),
+    ...(row.affectedModels && {
+      affectedModels: JSON.parse(row.affectedModels) as string[],
+    }),
     status: row.status as ImplementationStatus,
-    implementedAt: row.implementedAt ?? undefined,
-    implementedBy: row.implementedBy ?? undefined,
-    rejectedReason: row.rejectedReason ?? undefined,
-    actualSavingsUnits: row.actualSavingsUnits ?? undefined,
-    validatedAt: row.validatedAt ?? undefined,
+    ...(row.implementedAt !== null && { implementedAt: row.implementedAt }),
+    ...(row.implementedBy !== null && { implementedBy: row.implementedBy }),
+    ...(row.rejectedReason !== null && { rejectedReason: row.rejectedReason }),
+    ...(row.actualSavingsUnits !== null && {
+      actualSavingsUnits: row.actualSavingsUnits,
+    }),
+    ...(row.validatedAt !== null && { validatedAt: row.validatedAt }),
     priority: row.priority,
-    expiresAt: row.expiresAt ?? undefined,
+    ...(row.expiresAt !== null && { expiresAt: row.expiresAt }),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }));
@@ -734,13 +736,15 @@ export async function updateRecommendationStatus(
     confidence: row.confidence,
     implementation: row.implementation,
     risk: row.risk as RiskLevel,
-    effortHours: row.effortHours ?? undefined,
+    ...(row.effortHours !== null && { effortHours: row.effortHours }),
     status: row.status as ImplementationStatus,
-    implementedAt: row.implementedAt ?? undefined,
-    implementedBy: row.implementedBy ?? undefined,
-    rejectedReason: row.rejectedReason ?? undefined,
-    actualSavingsUnits: row.actualSavingsUnits ?? undefined,
-    validatedAt: row.validatedAt ?? undefined,
+    ...(row.implementedAt !== null && { implementedAt: row.implementedAt }),
+    ...(row.implementedBy !== null && { implementedBy: row.implementedBy }),
+    ...(row.rejectedReason !== null && { rejectedReason: row.rejectedReason }),
+    ...(row.actualSavingsUnits !== null && {
+      actualSavingsUnits: row.actualSavingsUnits,
+    }),
+    ...(row.validatedAt !== null && { validatedAt: row.validatedAt }),
     priority: row.priority,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

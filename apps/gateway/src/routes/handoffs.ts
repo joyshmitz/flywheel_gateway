@@ -2,7 +2,7 @@
  * Handoff Routes - REST API endpoints for session handoff protocol.
  */
 
-import type { HandoffReason, HandoffUrgency } from "@flywheel/shared/types";
+import type { HandoffPreferences, HandoffReason, HandoffUrgency } from "@flywheel/shared/types";
 import { Hono } from "hono";
 import { z } from "zod";
 import { getLogger } from "../middleware/correlation";
@@ -21,6 +21,7 @@ import {
 } from "../services/handoff.service";
 import {
   buildContext,
+  type BuildContextParams,
   calculateContextSize,
 } from "../services/handoff-context.service";
 import {
@@ -35,7 +36,7 @@ import {
   sendResource,
   sendValidationError,
 } from "../utils/response";
-import { transformZodError } from "../utils/validation";
+import { stripUndefined, transformZodError } from "../utils/validation";
 
 export const handoffs = new Hono();
 
@@ -50,7 +51,7 @@ export const handoffs = new Hono();
 handoffs.get("/stats", async (c) => {
   const stats = getHandoffStats();
 
-  return sendResource(c, {
+  return sendResource(c, "handoff_stats", {
     totalHandoffs: stats.totalHandoffs,
     completedHandoffs: stats.completedHandoffs,
     failedHandoffs: stats.failedHandoffs,
@@ -73,20 +74,20 @@ handoffs.post("/validate-context", async (c) => {
     const { context, validation } = buildContext({
       agentId: "validation-check",
       taskDescription: contextData.taskDescription,
-      currentPhase: contextData.currentPhase,
-      progressPercentage: contextData.progressPercentage,
-      filesModified: contextData.filesModified,
-      filesCreated: contextData.filesCreated,
-      filesDeleted: contextData.filesDeleted,
-      uncommittedChanges: contextData.uncommittedChanges,
-      todoItems: contextData.todoItems,
-      hypotheses: contextData.hypotheses,
-      keyPoints: contextData.keyPoints,
-      userRequirements: contextData.userRequirements,
-      constraints: contextData.constraints,
-    });
+      ...(contextData.currentPhase && { currentPhase: contextData.currentPhase }),
+      ...(contextData.progressPercentage !== undefined && { progressPercentage: contextData.progressPercentage }),
+      ...(contextData.filesModified && { filesModified: contextData.filesModified }),
+      ...(contextData.filesCreated && { filesCreated: contextData.filesCreated }),
+      ...(contextData.filesDeleted && { filesDeleted: contextData.filesDeleted }),
+      ...(contextData.uncommittedChanges && { uncommittedChanges: contextData.uncommittedChanges }),
+      ...(contextData.todoItems && { todoItems: contextData.todoItems }),
+      ...(contextData.hypotheses && { hypotheses: contextData.hypotheses }),
+      ...(contextData.keyPoints && { keyPoints: contextData.keyPoints }),
+      ...(contextData.userRequirements && { userRequirements: contextData.userRequirements }),
+      ...(contextData.constraints && { constraints: contextData.constraints }),
+    } as BuildContextParams);
 
-    return sendResource(c, {
+    return sendResource(c, "context_validation", {
       valid: validation.valid,
       errors: validation.errors,
       warnings: validation.warnings,
@@ -185,7 +186,7 @@ const EnvironmentSnapshotSchema = z.object({
   gitBranch: z.string(),
   gitCommit: z.string(),
   uncommittedFiles: z.array(z.string()),
-  envVars: z.record(z.string()),
+  envVars: z.record(z.string(), z.string()),
 });
 
 const HandoffContextSchema = z.object({
@@ -271,33 +272,33 @@ handoffs.post("/", async (c) => {
     // Build full context from provided data
     const { context: builtContext, validation } = buildContext({
       agentId: data.sourceAgentId,
-      beadId: data.beadId,
       taskDescription: data.context.taskDescription,
-      currentPhase: data.context.currentPhase,
-      progressPercentage: data.context.progressPercentage,
-      startedAt: data.context.startedAt
-        ? new Date(data.context.startedAt as string)
-        : undefined,
-      filesModified: data.context.filesModified,
-      filesCreated: data.context.filesCreated,
-      filesDeleted: data.context.filesDeleted,
-      uncommittedChanges: data.context.uncommittedChanges,
-      decisionsMade: data.context.decisionsMade?.map((d) => ({
-        ...d,
-        timestamp: new Date(d.timestamp as string),
-      })),
-      todoItems: data.context.todoItems,
-      workingMemory: data.context.workingMemory,
-      hypotheses: data.context.hypotheses,
-      keyPoints: data.context.keyPoints,
-      userRequirements: data.context.userRequirements,
-      constraints: data.context.constraints,
-      workingDirectory: data.context.environmentSnapshot?.workingDirectory,
-      gitBranch: data.context.environmentSnapshot?.gitBranch,
-      gitCommit: data.context.environmentSnapshot?.gitCommit,
-      uncommittedFiles: data.context.environmentSnapshot?.uncommittedFiles,
-      envVars: data.context.environmentSnapshot?.envVars,
-    });
+      ...(data.beadId && { beadId: data.beadId }),
+      ...(data.context.currentPhase && { currentPhase: data.context.currentPhase }),
+      ...(data.context.progressPercentage !== undefined && { progressPercentage: data.context.progressPercentage }),
+      ...(data.context.startedAt && { startedAt: new Date(data.context.startedAt as string) }),
+      ...(data.context.filesModified && { filesModified: data.context.filesModified }),
+      ...(data.context.filesCreated && { filesCreated: data.context.filesCreated }),
+      ...(data.context.filesDeleted && { filesDeleted: data.context.filesDeleted }),
+      ...(data.context.uncommittedChanges && { uncommittedChanges: data.context.uncommittedChanges }),
+      ...(data.context.decisionsMade && {
+        decisionsMade: data.context.decisionsMade.map((d) => ({
+          ...d,
+          timestamp: new Date(d.timestamp as string),
+        })),
+      }),
+      ...(data.context.todoItems && { todoItems: data.context.todoItems }),
+      ...(data.context.workingMemory && { workingMemory: data.context.workingMemory as Record<string, string> }),
+      ...(data.context.hypotheses && { hypotheses: data.context.hypotheses }),
+      ...(data.context.keyPoints && { keyPoints: data.context.keyPoints }),
+      ...(data.context.userRequirements && { userRequirements: data.context.userRequirements }),
+      ...(data.context.constraints && { constraints: data.context.constraints }),
+      ...(data.context.environmentSnapshot?.workingDirectory && { workingDirectory: data.context.environmentSnapshot.workingDirectory }),
+      ...(data.context.environmentSnapshot?.gitBranch && { gitBranch: data.context.environmentSnapshot.gitBranch }),
+      ...(data.context.environmentSnapshot?.gitCommit && { gitCommit: data.context.environmentSnapshot.gitCommit }),
+      ...(data.context.environmentSnapshot?.uncommittedFiles && { uncommittedFiles: data.context.environmentSnapshot.uncommittedFiles }),
+      ...(data.context.environmentSnapshot?.envVars && { envVars: data.context.environmentSnapshot.envVars }),
+    } as BuildContextParams);
 
     if (!validation.valid) {
       return sendError(
@@ -319,12 +320,12 @@ handoffs.post("/", async (c) => {
       sourceAgentId: data.sourceAgentId,
       targetAgentId: data.targetAgentId ?? null,
       projectId: data.projectId,
-      beadId: data.beadId,
       reason: data.reason as HandoffReason,
-      urgency: data.urgency as HandoffUrgency,
       context: builtContext,
       resourceManifest,
-      preferences: data.preferences,
+      ...(data.beadId && { beadId: data.beadId }),
+      ...(data.urgency && { urgency: data.urgency as HandoffUrgency }),
+      ...(data.preferences && { preferences: data.preferences as Partial<HandoffPreferences> }),
     });
 
     if (!result.success) {
@@ -338,7 +339,7 @@ handoffs.post("/", async (c) => {
 
     log.info({ handoffId: result.handoffId }, "Handoff initiated");
 
-    return sendCreated(c, {
+    return sendCreated(c, "handoff", {
       handoffId: result.handoffId,
       phase: result.phase,
       expiresAt: result.expiresAt?.toISOString(),
@@ -352,7 +353,7 @@ handoffs.post("/", async (c) => {
         messages: resourceManifest.pendingMessages.length,
         subscriptions: resourceManifest.activeSubscriptions.length,
       },
-    });
+    }, `/handoffs/${result.handoffId}`);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return sendValidationError(c, transformZodError(error));
@@ -371,10 +372,10 @@ handoffs.get("/:handoffId", async (c) => {
   const handoff = getHandoff(handoffId);
 
   if (!handoff) {
-    return sendNotFound(c, "Handoff not found");
+    return sendNotFound(c, "handoff", handoffId);
   }
 
-  return sendResource(c, {
+  return sendResource(c, "handoff", {
     id: handoff.id,
     phase: handoff.phase,
     sourceAgentId: handoff.request.sourceAgentId,
@@ -403,10 +404,10 @@ handoffs.get("/:handoffId/context", async (c) => {
   const handoff = getHandoff(handoffId);
 
   if (!handoff) {
-    return sendNotFound(c, "Handoff not found");
+    return sendNotFound(c, "handoff", handoffId);
   }
 
-  return sendResource(c, {
+  return sendResource(c, "handoff_context", {
     handoffId,
     context: handoff.request.context,
     sizeBytes: calculateContextSize(handoff.request.context),
@@ -422,7 +423,7 @@ handoffs.get("/:handoffId/audit", async (c) => {
   const handoff = getHandoff(handoffId);
 
   if (!handoff) {
-    return sendNotFound(c, "Handoff not found");
+    return sendNotFound(c, "handoff", handoffId);
   }
 
   return sendList(
@@ -447,14 +448,14 @@ handoffs.post("/:handoffId/accept", async (c) => {
     const body = await c.req.json();
     const data = AcceptHandoffSchema.parse(body);
 
-    const result = await acceptHandoff({
+    const result = await acceptHandoff(stripUndefined({
       handoffId,
       receivingAgentId: data.receivingAgentId,
-      estimatedResumeTime: data.estimatedResumeTime
-        ? new Date(data.estimatedResumeTime)
-        : undefined,
-      receiverNotes: data.receiverNotes,
-    });
+      ...(data.estimatedResumeTime && {
+        estimatedResumeTime: new Date(data.estimatedResumeTime),
+      }),
+      ...(data.receiverNotes && { receiverNotes: data.receiverNotes }),
+    }));
 
     if (!result.success) {
       return sendError(
@@ -501,7 +502,7 @@ handoffs.post("/:handoffId/accept", async (c) => {
       "Handoff accepted",
     );
 
-    return sendResource(c, {
+    return sendResource(c, "handoff_acceptance", {
       handoffId,
       phase: result.phase,
       accepted: true,
@@ -527,12 +528,14 @@ handoffs.post("/:handoffId/reject", async (c) => {
     const body = await c.req.json();
     const data = RejectHandoffSchema.parse(body);
 
-    const result = await rejectHandoff({
+    const result = await rejectHandoff(stripUndefined({
       handoffId,
       receivingAgentId: data.receivingAgentId,
       reason: data.reason,
-      suggestedAlternative: data.suggestedAlternative,
-    });
+      ...(data.suggestedAlternative && {
+        suggestedAlternative: data.suggestedAlternative,
+      }),
+    }));
 
     if (!result.success) {
       return sendError(
@@ -545,7 +548,7 @@ handoffs.post("/:handoffId/reject", async (c) => {
 
     log.info({ handoffId, reason: data.reason }, "Handoff rejected");
 
-    return sendResource(c, {
+    return sendResource(c, "handoff_rejection", {
       handoffId,
       phase: result.phase,
       rejected: true,
@@ -571,11 +574,11 @@ handoffs.post("/:handoffId/cancel", async (c) => {
     const body = await c.req.json();
     const data = CancelHandoffSchema.parse(body);
 
-    const result = await cancelHandoff({
+    const result = await cancelHandoff(stripUndefined({
       handoffId,
       agentId: data.agentId,
-      reason: data.reason,
-    });
+      ...(data.reason && { reason: data.reason }),
+    }));
 
     if (!result.success) {
       return sendError(
@@ -588,7 +591,7 @@ handoffs.post("/:handoffId/cancel", async (c) => {
 
     log.info({ handoffId, agentId: data.agentId }, "Handoff cancelled");
 
-    return sendResource(c, {
+    return sendResource(c, "handoff_cancellation", {
       handoffId,
       phase: result.phase,
       cancelled: true,
@@ -610,11 +613,12 @@ handoffs.get("/source/:agentId", async (c) => {
   const agentId = c.req.param("agentId");
   const phaseParam = c.req.query("phase");
   const limit = parseInt(c.req.query("limit") ?? "50", 10);
+  const phase = parsePhaseParam(phaseParam);
 
-  const handoffsList = listHandoffsForSource(agentId, {
-    phase: parsePhaseParam(phaseParam),
+  const handoffsList = listHandoffsForSource(agentId, stripUndefined({
+    ...(phase && { phase }),
     limit: Math.min(limit, 100),
-  });
+  }));
 
   return sendList(
     c,
@@ -639,11 +643,12 @@ handoffs.get("/target/:agentId", async (c) => {
   const agentId = c.req.param("agentId");
   const phaseParam = c.req.query("phase");
   const limit = parseInt(c.req.query("limit") ?? "50", 10);
+  const phase = parsePhaseParam(phaseParam);
 
-  const handoffsList = listHandoffsForTarget(agentId, {
-    phase: parsePhaseParam(phaseParam),
+  const handoffsList = listHandoffsForTarget(agentId, stripUndefined({
+    ...(phase && { phase }),
     limit: Math.min(limit, 100),
-  });
+  }));
 
   return sendList(
     c,

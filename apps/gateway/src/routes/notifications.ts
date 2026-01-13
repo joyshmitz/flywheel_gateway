@@ -13,11 +13,14 @@ import { type Context, Hono } from "hono";
 import { z } from "zod";
 import { getLogger } from "../middleware/correlation";
 import type {
+  CreateNotificationRequest,
+  Notification,
   NotificationCategory,
   NotificationChannel,
   NotificationFilter,
   NotificationPriority,
   NotificationStatus,
+  PreferencesUpdateRequest,
 } from "../models/notification";
 import {
   createNotification,
@@ -194,14 +197,7 @@ function safeParseInt(value: string | undefined, defaultValue: number): number {
   return Number.isNaN(parsed) ? defaultValue : parsed;
 }
 
-function serializeNotification(notification: {
-  createdAt: Date;
-  sentAt?: Date;
-  deliveredAt?: Date;
-  readAt?: Date;
-  actionedAt?: Date;
-  [key: string]: unknown;
-}) {
+function serializeNotification(notification: Notification) {
   return {
     ...notification,
     createdAt: notification.createdAt.toISOString(),
@@ -341,7 +337,7 @@ notifications.put("/preferences", async (c) => {
       return sendValidationError(c, transformZodError(parsed.error));
     }
 
-    const prefs = updatePreferences(userId, parsed.data);
+    const prefs = updatePreferences(userId, parsed.data as PreferencesUpdateRequest);
 
     return sendResource(c, "notification_preferences", {
       ...prefs,
@@ -499,7 +495,7 @@ notifications.post("/", async (c) => {
       return sendValidationError(c, transformZodError(parsed.error));
     }
 
-    const notification = await createNotification(parsed.data);
+    const notification = await createNotification(parsed.data as CreateNotificationRequest);
 
     return sendResource(
       c,

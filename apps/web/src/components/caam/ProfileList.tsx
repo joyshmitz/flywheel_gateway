@@ -269,8 +269,8 @@ function ProfileCard({
       <div className="mt-3 flex items-center justify-between">
         <StatusIndicator
           status={profile.status}
-          healthStatus={profile.healthStatus}
-          cooldownUntil={profile.cooldownUntil}
+          {...(profile.healthStatus !== undefined && { healthStatus: profile.healthStatus })}
+          {...(profile.cooldownUntil !== undefined && { cooldownUntil: profile.cooldownUntil })}
         />
         {profile.healthScore !== undefined && (
           <HealthBar score={profile.healthScore} />
@@ -327,7 +327,7 @@ export function ProfileList({
     refetch,
   } = useProfiles({
     workspaceId,
-    provider,
+    ...(provider !== undefined && { provider }),
   });
   const { activate, isLoading: activating } = useActivateProfile();
   const { remove, isLoading: deleting } = useDeleteProfile();
@@ -505,7 +505,7 @@ export function ProfileList({
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
         <Modal
-          isOpen={!!deleteConfirm}
+          open={!!deleteConfirm}
           onClose={() => setDeleteConfirm(null)}
           title="Delete Profile"
         >

@@ -379,13 +379,7 @@ export function NotificationList({
               {activeFilterCount > 0 && (
                 <button
                   type="button"
-                  onClick={() =>
-                    handleFilterChange({
-                      categories: undefined,
-                      priorities: undefined,
-                      unreadOnly: undefined,
-                    })
-                  }
+                  onClick={() => setFilter({})}
                   className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                 >
                   Clear all filters
@@ -415,13 +409,7 @@ export function NotificationList({
             {activeFilterCount > 0 && (
               <button
                 type="button"
-                onClick={() =>
-                  handleFilterChange({
-                    categories: undefined,
-                    priorities: undefined,
-                    unreadOnly: undefined,
-                  })
-                }
+                onClick={() => setFilter({})}
                 className="mt-2 text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
               >
                 Clear filters
@@ -444,9 +432,9 @@ export function NotificationList({
                         <NotificationItem
                           key={notification.id}
                           notification={notification}
-                          onMarkAsRead={onMarkAsRead}
-                          onAction={onAction}
-                          onDismiss={onDismiss}
+                          {...(onMarkAsRead && { onMarkAsRead })}
+                          {...(onAction && { onAction })}
+                          {...(onDismiss && { onDismiss })}
                           compact={compact}
                         />
                       ))}

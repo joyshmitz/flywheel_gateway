@@ -153,20 +153,21 @@ jobs.post("/", async (c) => {
     const jobService = getJobService();
     const job = await jobService.createJob({
       type: parsed.data.type as JobType,
-      name: parsed.data.name,
       input: parsed.data.input,
-      priority: parsed.data.priority as JobPriority | undefined,
-      sessionId: parsed.data.sessionId,
-      agentId: parsed.data.agentId,
-      metadata: parsed.data.metadata,
+      ...(parsed.data.name && { name: parsed.data.name }),
+      ...(parsed.data.priority !== undefined && { priority: parsed.data.priority as JobPriority }),
+      ...(parsed.data.sessionId && { sessionId: parsed.data.sessionId }),
+      ...(parsed.data.agentId && { agentId: parsed.data.agentId }),
+      ...(parsed.data.metadata && { metadata: parsed.data.metadata }),
     });
 
     log.info({ jobId: job.id, type: job.type }, "Job created");
 
     const ctx = getLinkContext(c);
-    return sendCreated(c, "job", jobToResponse(job), `/jobs/${job.id}`, {
+    return sendCreated(c, "job", {
+      ...jobToResponse(job),
       links: jobLinks({ id: job.id }, ctx),
-    });
+    }, `/jobs/${job.id}`);
   } catch (error) {
     if (error instanceof JobValidationError) {
       return sendValidationError(
@@ -196,12 +197,12 @@ jobs.get("/", async (c) => {
 
     const jobService = getJobService();
     const result = await jobService.listJobs({
-      type: query.data.type as JobType | undefined,
-      status: query.data.status as JobStatus | undefined,
-      sessionId: query.data.sessionId,
-      agentId: query.data.agentId,
       limit: query.data.limit,
-      cursor: query.data.cursor,
+      ...(query.data.type && { type: query.data.type as JobType }),
+      ...(query.data.status && { status: query.data.status as JobStatus }),
+      ...(query.data.sessionId && { sessionId: query.data.sessionId }),
+      ...(query.data.agentId && { agentId: query.data.agentId }),
+      ...(query.data.cursor && { cursor: query.data.cursor }),
     });
 
     const ctx = getLinkContext(c);

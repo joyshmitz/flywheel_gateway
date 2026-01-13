@@ -62,7 +62,7 @@ describe("GraphBridgeService", () => {
           ok: true,
           json: () => Promise.resolve(mockResponse),
         } as Response),
-      );
+      ) as unknown as typeof fetch;
 
       const service = new GraphBridgeService({
         controlPlaneUrl: "http://localhost:8080",
@@ -124,7 +124,7 @@ describe("GraphBridgeService", () => {
         } as Response);
       });
 
-      globalThis.fetch = fetchMock;
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
 
       const service = new GraphBridgeService({
         controlPlaneUrl: "http://localhost:8080",
@@ -164,7 +164,7 @@ describe("GraphBridgeService", () => {
               data: { data: [], currentVersion: 0 },
             }),
         } as Response);
-      });
+      }) as unknown as typeof fetch;
 
       const service = new GraphBridgeService({
         controlPlaneUrl: "http://localhost:8080",
@@ -212,7 +212,7 @@ describe("GraphBridgeService", () => {
               data: { data: events, currentVersion: 1 },
             }),
         } as Response),
-      );
+      ) as unknown as typeof fetch;
 
       const service = new GraphBridgeService({
         controlPlaneUrl: "http://localhost:8080",
@@ -261,7 +261,7 @@ describe("GraphBridgeService", () => {
               data: { data: events, currentVersion: 1 },
             }),
         } as Response),
-      );
+      ) as unknown as typeof fetch;
 
       const service = new GraphBridgeService({
         controlPlaneUrl: "http://localhost:8080",
@@ -310,7 +310,7 @@ describe("GraphBridgeService", () => {
               data: { data: events, currentVersion: 1 },
             }),
         } as Response),
-      );
+      ) as unknown as typeof fetch;
 
       const service = new GraphBridgeService({
         controlPlaneUrl: "http://localhost:8080",
@@ -355,7 +355,7 @@ describe("GraphBridgeService", () => {
               data: { data: events, currentVersion: 1 },
             }),
         } as Response),
-      );
+      ) as unknown as typeof fetch;
 
       const service = new GraphBridgeService({
         controlPlaneUrl: "http://localhost:8080",
@@ -410,7 +410,7 @@ describe("GraphBridgeService", () => {
               data: { data: events, currentVersion: 1 },
             }),
         } as Response),
-      );
+      ) as unknown as typeof fetch;
 
       const service = new GraphBridgeService({
         controlPlaneUrl: "http://localhost:8080",
@@ -445,7 +445,7 @@ describe("GraphBridgeService", () => {
               data: { data: [], currentVersion: 0 },
             }),
         } as Response),
-      );
+      ) as unknown as typeof fetch;
 
       const service = new GraphBridgeService({
         controlPlaneUrl: "http://localhost:8080",
@@ -473,7 +473,7 @@ describe("GraphBridgeService", () => {
               data: { data: [], currentVersion: 0 },
             }),
         } as Response);
-      });
+      }) as unknown as typeof fetch;
 
       const service = new GraphBridgeService({
         controlPlaneUrl: "http://localhost:8080",
