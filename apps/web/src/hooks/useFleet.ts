@@ -796,7 +796,7 @@ export function useAddRepo() {
           hasUnpushedCommits: false,
           aheadBy: 0,
           behindBy: 0,
-          description: repo.description,
+          description: repo.description ?? "",
           isPrivate: false,
           isArchived: false,
           ruGroup: repo.group,

@@ -454,7 +454,8 @@ export function usePipelines(options?: {
  * Hook to fetch a single pipeline by ID.
  */
 export function usePipeline(pipelineId: string): UseQueryResult<Pipeline> {
-  const mock = mockPipelines.find((p) => p.id === pipelineId) ?? mockPipelines[0];
+  const found = mockPipelines.find((p) => p.id === pipelineId);
+  const mock = found ?? mockPipelines[0]!;
   return useQuery(`/${pipelineId}`, mock, [pipelineId]);
 }
 
@@ -493,7 +494,8 @@ export function usePipelineRun(
   pipelineId: string,
   runId: string
 ): UseQueryResult<PipelineRun> {
-  const mock = mockRuns.find((r) => r.id === runId) ?? mockRuns[0];
+  const found = mockRuns.find((r) => r.id === runId);
+  const mock = found ?? mockRuns[0]!;
   return useQuery(`/${pipelineId}/runs/${runId}`, mock, [pipelineId, runId]);
 }
 
@@ -722,7 +724,8 @@ export function usePausePipeline(): MutationResult<
       if (mockMode) {
         await new Promise((r) => setTimeout(r, 300));
         setIsLoading(false);
-        const run = mockRuns.find((r) => r.id === runId) ?? mockRuns[0];
+        const foundRun = mockRuns.find((r) => r.id === runId);
+        const run = foundRun ?? mockRuns[0]!;
         return { ...run, status: "paused" };
       }
 
@@ -765,7 +768,8 @@ export function useResumePipeline(): MutationResult<
       if (mockMode) {
         await new Promise((r) => setTimeout(r, 300));
         setIsLoading(false);
-        const run = mockRuns.find((r) => r.id === runId) ?? mockRuns[0];
+        const foundRun = mockRuns.find((r) => r.id === runId);
+        const run = foundRun ?? mockRuns[0]!;
         return { ...run, status: "running" };
       }
 
@@ -808,7 +812,8 @@ export function useCancelPipeline(): MutationResult<
       if (mockMode) {
         await new Promise((r) => setTimeout(r, 300));
         setIsLoading(false);
-        const run = mockRuns.find((r) => r.id === runId) ?? mockRuns[0];
+        const foundRun = mockRuns.find((r) => r.id === runId);
+        const run = foundRun ?? mockRuns[0]!;
         return { ...run, status: "cancelled" };
       }
 
@@ -894,7 +899,8 @@ export function useTogglePipeline(): MutationResult<Pipeline, [string, boolean]>
       if (mockMode) {
         await new Promise((r) => setTimeout(r, 300));
         setIsLoading(false);
-        const existing = mockPipelines.find((p) => p.id === pipelineId) ?? mockPipelines[0];
+        const found = mockPipelines.find((p) => p.id === pipelineId);
+        const existing = found ?? mockPipelines[0]!;
         return { ...existing, enabled };
       }
 
