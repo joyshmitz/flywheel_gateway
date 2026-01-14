@@ -158,6 +158,7 @@ export function DashboardsPage() {
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
+              aria-hidden="true"
             >
               <path d="M12 5v14M5 12h14" />
             </svg>
@@ -183,6 +184,7 @@ export function DashboardsPage() {
               fill="none"
               stroke="currentColor"
               strokeWidth="1.5"
+              aria-hidden="true"
             >
               <rect x="3" y="3" width="7" height="7" rx="1" />
               <rect x="14" y="3" width="7" height="7" rx="1" />
@@ -232,6 +234,7 @@ export function DashboardsPage() {
                       fill={dashboard.isFavorite ? "currentColor" : "none"}
                       stroke="currentColor"
                       strokeWidth="2"
+                      aria-hidden="true"
                     >
                       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                     </svg>
@@ -326,6 +329,7 @@ export function DashboardsPage() {
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
+              aria-hidden="true"
             >
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
@@ -349,6 +353,7 @@ export function DashboardsPage() {
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
+                  aria-hidden="true"
                 >
                   <path d="M12 5v14M5 12h14" />
                 </svg>

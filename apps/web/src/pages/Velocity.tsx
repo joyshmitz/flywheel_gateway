@@ -167,7 +167,7 @@ function VelocityGauge({
           margin: "0 auto",
         }}
       >
-        <svg width="200" height="200" viewBox="0 0 200 200">
+        <svg width="200" height="200" viewBox="0 0 200 200" aria-hidden="true">
           {/* Background circle */}
           <circle
             cx="100"

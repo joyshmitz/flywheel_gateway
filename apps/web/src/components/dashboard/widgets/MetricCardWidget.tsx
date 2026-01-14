@@ -112,7 +112,7 @@ export function MetricCardWidget({ widget, data }: MetricCardWidgetProps) {
 function TrendIcon({ direction }: { direction: "up" | "down" | "stable" }) {
   if (direction === "up") {
     return (
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M7 17l5-5 5 5M7 7l5-5 5 5" />
       </svg>
     );
@@ -120,14 +120,14 @@ function TrendIcon({ direction }: { direction: "up" | "down" | "stable" }) {
 
   if (direction === "down") {
     return (
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M7 7l5 5 5-5M7 17l5 5 5-5" />
       </svg>
     );
   }
 
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M5 12h14" />
     </svg>
   );
