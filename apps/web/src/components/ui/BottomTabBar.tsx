@@ -77,7 +77,12 @@ interface FABProps {
 
 export function FAB({ icon, onClick, label, className = "" }: FABProps) {
   return (
-    <button type="button" className={`fab ${className}`} onClick={onClick} aria-label={label}>
+    <button
+      type="button"
+      className={`fab ${className}`}
+      onClick={onClick}
+      aria-label={label}
+    >
       <span className="fab__icon">{icon}</span>
     </button>
   );

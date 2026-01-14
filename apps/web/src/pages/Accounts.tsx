@@ -127,7 +127,11 @@ function ProviderStatusCard({
           marginTop: "16px",
         }}
       >
-        <button type="button" className="btn btn--primary btn--sm" onClick={onAddProfile}>
+        <button
+          type="button"
+          className="btn btn--primary btn--sm"
+          onClick={onAddProfile}
+        >
           <Plus size={14} />
           Add Account
         </button>
@@ -221,7 +225,11 @@ export function AccountsPage() {
           <Key size={28} />
           Account Management
         </h2>
-        <button type="button" className="btn btn--primary" onClick={() => handleAddProfile()}>
+        <button
+          type="button"
+          className="btn btn--primary"
+          onClick={() => handleAddProfile()}
+        >
           <Plus size={16} />
           Add Account
         </button>

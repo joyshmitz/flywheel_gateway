@@ -201,7 +201,9 @@ function buildPermissionsPolicy(policy: PermissionsPolicy): string {
     if (allowlist.length === 0) {
       directives.push(`${feature}=()`);
     } else {
-      const origins = allowlist.map((o: string) => (o === "self" ? "self" : `"${o}"`));
+      const origins = allowlist.map((o: string) =>
+        o === "self" ? "self" : `"${o}"`,
+      );
       directives.push(`${feature}=(${origins.join(" ")})`);
     }
   }

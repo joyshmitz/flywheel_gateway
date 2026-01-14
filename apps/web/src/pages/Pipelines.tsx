@@ -574,7 +574,11 @@ export function PipelinesPage() {
           </div>
           <div className="card__body">
             <p className="muted">{error.message}</p>
-            <button type="button" className="btn btn--primary btn--sm" onClick={refetch}>
+            <button
+              type="button"
+              className="btn btn--primary btn--sm"
+              onClick={refetch}
+            >
               Retry
             </button>
           </div>

@@ -422,7 +422,9 @@ export async function generateForecast(options: {
     id,
     forecastDate: new Date(),
     horizonDays,
-    ...(options.organizationId !== undefined && { organizationId: options.organizationId }),
+    ...(options.organizationId !== undefined && {
+      organizationId: options.organizationId,
+    }),
     ...(options.projectId !== undefined && { projectId: options.projectId }),
     dailyForecasts,
     totalForecastUnits,

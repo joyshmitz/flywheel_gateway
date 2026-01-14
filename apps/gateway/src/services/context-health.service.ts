@@ -875,7 +875,8 @@ export class ContextHealthService {
       recentHistory[recentHistory.length - 1]!.timestamp.getTime() -
       recentHistory[0]!.timestamp.getTime();
     const tokenIncrease =
-      recentHistory[recentHistory.length - 1]!.tokens - recentHistory[0]!.tokens;
+      recentHistory[recentHistory.length - 1]!.tokens -
+      recentHistory[0]!.tokens;
 
     if (timeSpan <= 0 || tokenIncrease <= 0) return null;
 

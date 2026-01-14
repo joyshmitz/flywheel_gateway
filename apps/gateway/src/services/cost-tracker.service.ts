@@ -252,7 +252,8 @@ export async function recordCost(input: CostRecordInput): Promise<CostRecord> {
   if (input.sessionId) record.sessionId = input.sessionId;
   if (input.taskType) record.taskType = input.taskType;
   if (input.complexityTier) record.complexityTier = input.complexityTier;
-  if (input.requestDurationMs !== undefined) record.requestDurationMs = input.requestDurationMs;
+  if (input.requestDurationMs !== undefined)
+    record.requestDurationMs = input.requestDurationMs;
 
   // Insert into database
   await db.insert(costRecords).values({
@@ -393,8 +394,10 @@ export async function getCostRecords(
     if (row.taskId) record.taskId = row.taskId;
     if (row.sessionId) record.sessionId = row.sessionId;
     if (row.taskType) record.taskType = row.taskType;
-    if (row.complexityTier !== null) record.complexityTier = row.complexityTier as ComplexityTier;
-    if (row.requestDurationMs !== null) record.requestDurationMs = row.requestDurationMs;
+    if (row.complexityTier !== null)
+      record.complexityTier = row.complexityTier as ComplexityTier;
+    if (row.requestDurationMs !== null)
+      record.requestDurationMs = row.requestDurationMs;
     if (row.correlationId) record.correlationId = row.correlationId;
     return record;
   });

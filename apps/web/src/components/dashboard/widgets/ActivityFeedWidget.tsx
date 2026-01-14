@@ -40,7 +40,13 @@ interface ActivityFeedWidgetProps {
 
 const SEVERITY_ICONS: Record<string, JSX.Element> = {
   info: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
       <circle cx="12" cy="12" r="10" opacity="0.2" />
       <path
         d="M12 16v-4M12 8h.01"
@@ -51,7 +57,13 @@ const SEVERITY_ICONS: Record<string, JSX.Element> = {
     </svg>
   ),
   warning: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
       <path d="M12 2L2 22h20L12 2z" opacity="0.2" />
       <path
         d="M12 9v4M12 17h.01"
@@ -62,7 +74,13 @@ const SEVERITY_ICONS: Record<string, JSX.Element> = {
     </svg>
   ),
   error: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
       <circle cx="12" cy="12" r="10" opacity="0.2" />
       <path
         d="M15 9l-6 6M9 9l6 6"
@@ -73,7 +91,13 @@ const SEVERITY_ICONS: Record<string, JSX.Element> = {
     </svg>
   ),
   success: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
       <circle cx="12" cy="12" r="10" opacity="0.2" />
       <path
         d="M9 12l2 2 4-4"
