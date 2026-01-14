@@ -9,9 +9,9 @@
  * - Configuration management
  */
 
+import type { ResourceIdentifier } from "@flywheel/shared/types";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { ResourceIdentifier } from "@flywheel/shared/types";
 import { getLogger } from "../middleware/correlation";
 import {
   type ConflictSeverity,
@@ -683,11 +683,19 @@ conflicts.post("/:conflictId/suggest", async (c) => {
       requestingAgentId: validated.requestingAgentId,
       projectId: validated.projectId,
       contestedResources: validated.contestedResources as ResourceIdentifier[],
-      ...(validated.requestingBvId && { requestingBvId: validated.requestingBvId }),
-      ...(validated.urgencyOverride && { urgencyOverride: validated.urgencyOverride }),
-      ...(validated.preferredStrategies && { preferredStrategies: validated.preferredStrategies }),
+      ...(validated.requestingBvId && {
+        requestingBvId: validated.requestingBvId,
+      }),
+      ...(validated.urgencyOverride && {
+        urgencyOverride: validated.urgencyOverride,
+      }),
+      ...(validated.preferredStrategies && {
+        preferredStrategies: validated.preferredStrategies,
+      }),
       ...(validated.context && { context: validated.context }),
-      ...(validated.holdingAgentId && { holdingAgentId: validated.holdingAgentId }),
+      ...(validated.holdingAgentId && {
+        holdingAgentId: validated.holdingAgentId,
+      }),
       ...(validated.holdingBvId && { holdingBvId: validated.holdingBvId }),
     });
 

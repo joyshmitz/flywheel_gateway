@@ -9,11 +9,10 @@
  * - AI-powered recommendations
  */
 
-import { and, count, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, eq, gte, lte } from "drizzle-orm";
 import { db } from "../db";
 import { agents as agentsTable, history as historyTable } from "../db/schema";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
-import { logger } from "./logger";
 
 // ============================================================================
 // Types
@@ -327,11 +326,11 @@ export async function getTaskDurationMetrics(
 
       // Categorize by duration as proxy for complexity
       if (row.durationMs < 5000) {
-        byComplexity["simple"]!.push(row.durationMs);
+        byComplexity["simple"]?.push(row.durationMs);
       } else if (row.durationMs < 30000) {
-        byComplexity["medium"]!.push(row.durationMs);
+        byComplexity["medium"]?.push(row.durationMs);
       } else {
-        byComplexity["complex"]!.push(row.durationMs);
+        byComplexity["complex"]?.push(row.durationMs);
       }
     }
   }

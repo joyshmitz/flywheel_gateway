@@ -23,7 +23,6 @@ import {
   toggleStar,
 } from "../services/history.service";
 import {
-  sendError,
   sendInternalError,
   sendList,
   sendNotFound,

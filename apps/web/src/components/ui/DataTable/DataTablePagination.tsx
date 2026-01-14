@@ -115,6 +115,7 @@ export function DataTablePagination({
 
         {/* First page */}
         <button
+          type="button"
           className="data-table__page-btn"
           onClick={() => onPageChange(0)}
           disabled={!canGoPrevious}
@@ -125,6 +126,7 @@ export function DataTablePagination({
 
         {/* Previous page */}
         <button
+          type="button"
           className="data-table__page-btn"
           onClick={() => onPageChange(page - 1)}
           disabled={!canGoPrevious}
@@ -146,6 +148,7 @@ export function DataTablePagination({
               </span>
             ) : (
               <button
+                type="button"
                 key={pageNum}
                 className={`data-table__page-btn ${
                   pageNum === page ? "data-table__page-btn--active" : ""
@@ -161,6 +164,7 @@ export function DataTablePagination({
 
         {/* Next page */}
         <button
+          type="button"
           className="data-table__page-btn"
           onClick={() => onPageChange(page + 1)}
           disabled={!canGoNext}
@@ -171,6 +175,7 @@ export function DataTablePagination({
 
         {/* Last page */}
         <button
+          type="button"
           className="data-table__page-btn"
           onClick={() => onPageChange(totalPages - 1)}
           disabled={!canGoNext}

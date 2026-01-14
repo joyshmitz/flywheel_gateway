@@ -15,10 +15,7 @@ import {
 } from "lucide-react";
 import { memo, type TouchEvent, useCallback, useState } from "react";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
-import {
-  useMobileGestures,
-  useSwipeToDismiss,
-} from "../../hooks/useMobileGestures";
+import { useMobileGestures } from "../../hooks/useMobileGestures";
 
 export interface AgentInfo {
   id: string;
@@ -167,6 +164,7 @@ export const MobileAgentCard = memo(function MobileAgentCard({
       <div className="absolute inset-y-0 right-0 flex items-stretch">
         {isRunning && (
           <button
+            type="button"
             className="w-15 bg-yellow-600 flex items-center justify-center text-white"
             onClick={() => handleAction("restart")}
             aria-label="Restart agent"
@@ -176,6 +174,7 @@ export const MobileAgentCard = memo(function MobileAgentCard({
         )}
         {isRunning ? (
           <button
+            type="button"
             className="w-15 bg-orange-600 flex items-center justify-center text-white"
             onClick={() => handleAction("stop")}
             aria-label="Stop agent"
@@ -184,6 +183,7 @@ export const MobileAgentCard = memo(function MobileAgentCard({
           </button>
         ) : (
           <button
+            type="button"
             className="w-15 bg-green-600 flex items-center justify-center text-white"
             onClick={() => handleAction("start")}
             aria-label="Start agent"
@@ -193,6 +193,7 @@ export const MobileAgentCard = memo(function MobileAgentCard({
         )}
         {isStopped && (
           <button
+            type="button"
             className="w-15 bg-red-600 flex items-center justify-center text-white"
             onClick={() => handleAction("delete")}
             aria-label="Delete agent"
@@ -253,6 +254,7 @@ export const MobileAgentCard = memo(function MobileAgentCard({
 
           {/* Expand button */}
           <button
+            type="button"
             className="p-2 text-gray-400 hover:text-white min-w-[44px] min-h-[44px] flex items-center justify-center"
             onClick={(e) => {
               e.stopPropagation();
@@ -310,6 +312,7 @@ export const MobileAgentCard = memo(function MobileAgentCard({
               {isRunning && (
                 <>
                   <button
+                    type="button"
                     className="flex-1 py-2 px-3 bg-yellow-600 hover:bg-yellow-700 text-white text-sm rounded-lg flex items-center justify-center gap-2 min-h-[44px]"
                     onClick={() => handleAction("restart")}
                   >
@@ -317,6 +320,7 @@ export const MobileAgentCard = memo(function MobileAgentCard({
                     Restart
                   </button>
                   <button
+                    type="button"
                     className="flex-1 py-2 px-3 bg-orange-600 hover:bg-orange-700 text-white text-sm rounded-lg flex items-center justify-center gap-2 min-h-[44px]"
                     onClick={() => handleAction("stop")}
                   >
@@ -328,6 +332,7 @@ export const MobileAgentCard = memo(function MobileAgentCard({
               {isStopped && (
                 <>
                   <button
+                    type="button"
                     className="flex-1 py-2 px-3 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg flex items-center justify-center gap-2 min-h-[44px]"
                     onClick={() => handleAction("start")}
                   >
@@ -335,6 +340,7 @@ export const MobileAgentCard = memo(function MobileAgentCard({
                     Start
                   </button>
                   <button
+                    type="button"
                     className="flex-1 py-2 px-3 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg flex items-center justify-center gap-2 min-h-[44px]"
                     onClick={() => handleAction("delete")}
                   >

@@ -121,6 +121,7 @@ export function BottomSheet({
                 {title && <h2 className="bottom-sheet__title">{title}</h2>}
                 {showCloseButton && (
                   <button
+                    type="button"
                     className="modal__close"
                     onClick={onClose}
                     aria-label="Close"

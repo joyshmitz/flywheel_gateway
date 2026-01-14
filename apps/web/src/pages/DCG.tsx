@@ -192,6 +192,7 @@ function BlocksFeed({ blocks, onMarkFalsePositive }: BlocksFeedProps) {
         <h3>Recent Blocks</h3>
         <div style={{ display: "flex", gap: "8px" }}>
           <button
+            type="button"
             className={`btn btn--sm ${filter === null ? "btn--primary" : "btn--secondary"}`}
             onClick={() => setFilter(null)}
           >
@@ -199,6 +200,7 @@ function BlocksFeed({ blocks, onMarkFalsePositive }: BlocksFeedProps) {
           </button>
           {["critical", "high", "medium", "low"].map((sev) => (
             <button
+              type="button"
               key={sev}
               className={`btn btn--sm ${filter === sev ? "btn--primary" : "btn--secondary"}`}
               onClick={() => setFilter(sev)}
@@ -234,6 +236,7 @@ function BlocksFeed({ blocks, onMarkFalsePositive }: BlocksFeedProps) {
               {formatRelativeTime(block.blockedAt)}
               {!block.falsePositive && (
                 <button
+                  type="button"
                   className="btn btn--ghost btn--sm btn--icon"
                   onClick={() => onMarkFalsePositive(block.id)}
                   title="Mark as false positive"
@@ -351,6 +354,7 @@ function PendingList({
                 <span className="muted">Agent: {exception.agentId}</span>
                 <div style={{ display: "flex", gap: "8px" }}>
                   <button
+                    type="button"
                     className="btn btn--danger btn--sm"
                     onClick={() => onDeny(exception.shortCode)}
                     disabled={isDenying}
@@ -359,6 +363,7 @@ function PendingList({
                     Deny
                   </button>
                   <button
+                    type="button"
                     className="btn btn--primary btn--sm"
                     onClick={() => onApprove(exception.shortCode)}
                     disabled={isApproving}
@@ -541,6 +546,7 @@ function ConfigTab({ packs, onToggle, isToggling }: ConfigTabProps) {
                 </div>
               </div>
               <button
+                type="button"
                 className={`btn btn--sm ${pack.enabled ? "btn--secondary" : "btn--primary"}`}
                 onClick={() => onToggle(pack.id, !pack.enabled)}
                 disabled={isToggling}
@@ -594,6 +600,7 @@ function AllowlistTab({
       <div className="card__header">
         <h3>Allowlist</h3>
         <button
+          type="button"
           className="btn btn--primary btn--sm"
           onClick={() => setShowAddForm(!showAddForm)}
         >
@@ -647,6 +654,7 @@ function AllowlistTab({
               />
             </div>
             <button
+              type="button"
               className="btn btn--primary"
               onClick={handleAdd}
               disabled={
@@ -711,6 +719,7 @@ function AllowlistTab({
                   </div>
                 </div>
                 <button
+                  type="button"
                   className="btn btn--danger btn--sm btn--icon"
                   onClick={() => onRemove(entry.ruleId)}
                   disabled={isRemoving}
@@ -787,6 +796,7 @@ function CommandTester({
             }}
           />
           <button
+            type="button"
             className="btn btn--primary"
             onClick={() => onTest(command)}
             disabled={!command || isTesting}
@@ -795,6 +805,7 @@ function CommandTester({
             Test
           </button>
           <button
+            type="button"
             className="btn btn--secondary"
             onClick={() => onExplain(command)}
             disabled={!command || isExplaining}
@@ -1017,7 +1028,9 @@ export function DCGPage() {
           title="Blocks (24h)"
           value={stats?.overview.blocksLast24h ?? "-"}
           icon={<ShieldAlert size={18} />}
-          {...(stats?.overview.trendVsYesterday != null && { trend: stats.overview.trendVsYesterday })}
+          {...(stats?.overview.trendVsYesterday != null && {
+            trend: stats.overview.trendVsYesterday,
+          })}
         />
         <QuickStatCard
           title="Total Blocks"
@@ -1054,6 +1067,7 @@ export function DCGPage() {
       >
         {tabs.map((tab) => (
           <button
+            type="button"
             key={tab.id}
             className={`btn btn--sm ${activeTab === tab.id ? "btn--primary" : "btn--ghost"}`}
             onClick={() => setActiveTab(tab.id)}

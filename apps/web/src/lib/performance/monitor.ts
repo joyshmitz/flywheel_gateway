@@ -98,7 +98,7 @@ class PerformanceMonitor {
       });
       observer.observe({ type: "paint", buffered: true });
       this.observers.push(observer);
-    } catch (e) {
+    } catch (_e) {
       console.debug("[PerfMonitor] Paint observer not supported");
     }
   }
@@ -115,7 +115,7 @@ class PerformanceMonitor {
       });
       observer.observe({ type: "largest-contentful-paint", buffered: true });
       this.observers.push(observer);
-    } catch (e) {
+    } catch (_e) {
       console.debug("[PerfMonitor] LCP observer not supported");
     }
   }
@@ -135,7 +135,7 @@ class PerformanceMonitor {
       });
       observer.observe({ type: "first-input", buffered: true });
       this.observers.push(observer);
-    } catch (e) {
+    } catch (_e) {
       console.debug("[PerfMonitor] FID observer not supported");
     }
   }
@@ -158,7 +158,7 @@ class PerformanceMonitor {
       });
       observer.observe({ type: "layout-shift", buffered: true });
       this.observers.push(observer);
-    } catch (e) {
+    } catch (_e) {
       console.debug("[PerfMonitor] CLS observer not supported");
     }
   }
@@ -169,7 +169,9 @@ class PerformanceMonitor {
       const observer = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
           // interactionId is experimental and not in all TS lib definitions
-          const eventEntry = entry as PerformanceEventTiming & { interactionId?: number };
+          const eventEntry = entry as PerformanceEventTiming & {
+            interactionId?: number;
+          };
           if (eventEntry.interactionId) {
             const duration = eventEntry.duration;
             interactions.push(duration);
@@ -183,7 +185,7 @@ class PerformanceMonitor {
       });
       observer.observe({ type: "event", buffered: true });
       this.observers.push(observer);
-    } catch (e) {
+    } catch (_e) {
       console.debug("[PerfMonitor] INP observer not supported");
     }
   }
@@ -207,7 +209,7 @@ class PerformanceMonitor {
       });
       observer.observe({ type: "longtask" });
       this.observers.push(observer);
-    } catch (e) {
+    } catch (_e) {
       console.debug("[PerfMonitor] Long tasks observer not supported");
     }
   }
@@ -223,7 +225,7 @@ class PerformanceMonitor {
       });
       observer.observe({ type: "navigation", buffered: true });
       this.observers.push(observer);
-    } catch (e) {
+    } catch (_e) {
       console.debug("[PerfMonitor] Navigation observer not supported");
     }
   }

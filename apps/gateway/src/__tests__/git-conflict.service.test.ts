@@ -4,7 +4,6 @@ import {
   analyzeRepositoryConflicts,
   type BranchChanges,
   clearBranchChanges,
-  type FileChange,
   getAnalysisHistory,
   getBranchChanges,
   getConflictPatterns,

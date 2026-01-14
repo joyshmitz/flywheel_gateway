@@ -127,12 +127,13 @@ function ProviderStatusCard({
           marginTop: "16px",
         }}
       >
-        <button className="btn btn--primary btn--sm" onClick={onAddProfile}>
+        <button type="button" className="btn btn--primary btn--sm" onClick={onAddProfile}>
           <Plus size={14} />
           Add Account
         </button>
         {profileCount > 1 && (
           <button
+            type="button"
             className="btn btn--secondary btn--sm"
             onClick={onRotate}
             disabled={isRotating}
@@ -220,7 +221,7 @@ export function AccountsPage() {
           <Key size={28} />
           Account Management
         </h2>
-        <button className="btn btn--primary" onClick={() => handleAddProfile()}>
+        <button type="button" className="btn btn--primary" onClick={() => handleAddProfile()}>
           <Plus size={16} />
           Add Account
         </button>
@@ -285,7 +286,7 @@ export function AccountsPage() {
         </div>
       )}
 
-      {byoaStatus && byoaStatus.ready && (
+      {byoaStatus?.ready && (
         <div
           className="card"
           style={{
@@ -355,7 +356,9 @@ export function AccountsPage() {
         title=""
       >
         <OnboardingWizard
-          {...(onboardingProvider != null && { initialProvider: onboardingProvider })}
+          {...(onboardingProvider != null && {
+            initialProvider: onboardingProvider,
+          })}
           workspaceId="default"
           onComplete={handleOnboardingComplete}
           onCancel={() => setShowOnboarding(false)}

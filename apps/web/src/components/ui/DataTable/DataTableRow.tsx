@@ -140,6 +140,7 @@ export function DataTableRow<T>({
           >
             {expandable && colIndex === 0 && (
               <button
+                type="button"
                 className="data-table__expand-btn btn btn--ghost btn--icon"
                 onClick={(e) => {
                   e.stopPropagation();

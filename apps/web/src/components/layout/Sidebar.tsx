@@ -91,6 +91,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
 
       <div className="sidebar__footer">
         <button
+          type="button"
           className="sidebar__collapse-btn"
           onClick={toggleSidebar}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}

@@ -8,16 +8,16 @@
  * - Optimistic updates
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import type {
+  CreateDashboardInput,
   Dashboard,
   DashboardSummary,
+  RefreshInterval,
+  UpdateDashboardInput,
   Widget,
   WidgetData,
-  CreateDashboardInput,
-  UpdateDashboardInput,
-  RefreshInterval,
 } from "@flywheel/shared";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const API_BASE = "/api/dashboards";
 
@@ -309,7 +309,8 @@ export function useDashboard(
         );
 
         // Find the newly added widget (it will be the last one)
-        const newWidget = updatedDashboard.widgets[updatedDashboard.widgets.length - 1];
+        const newWidget =
+          updatedDashboard.widgets[updatedDashboard.widgets.length - 1];
 
         setState((s) => ({
           ...s,
@@ -362,7 +363,9 @@ export function useDashboard(
         );
 
         // Find the updated widget
-        const updatedWidget = updatedDashboard.widgets.find((w) => w.id === widgetId);
+        const updatedWidget = updatedDashboard.widgets.find(
+          (w) => w.id === widgetId,
+        );
 
         setState((s) => ({
           ...s,
@@ -488,26 +491,29 @@ export function useDashboard(
   }, [state.currentDashboard, fetchWidgetData]);
 
   // Toggle favorite
-  const toggleFavorite = useCallback(async (id: string, isFavorite: boolean) => {
-    try {
-      if (isFavorite) {
-        await fetchJSON(`${API_BASE}/${id}/favorite`, { method: "DELETE" });
-      } else {
-        await fetchJSON(`${API_BASE}/${id}/favorite`, { method: "POST" });
+  const toggleFavorite = useCallback(
+    async (id: string, isFavorite: boolean) => {
+      try {
+        if (isFavorite) {
+          await fetchJSON(`${API_BASE}/${id}/favorite`, { method: "DELETE" });
+        } else {
+          await fetchJSON(`${API_BASE}/${id}/favorite`, { method: "POST" });
+        }
+
+        setState((s) => ({
+          ...s,
+          dashboards: s.dashboards.map((d) =>
+            d.id === id ? { ...d, isFavorite: !isFavorite } : d,
+          ),
+        }));
+
+        return true;
+      } catch {
+        return false;
       }
-
-      setState((s) => ({
-        ...s,
-        dashboards: s.dashboards.map((d) =>
-          d.id === id ? { ...d, isFavorite: !isFavorite } : d,
-        ),
-      }));
-
-      return true;
-    } catch {
-      return false;
-    }
-  }, []);
+    },
+    [],
+  );
 
   // Update layout positions (bulk widget position update)
   const updateLayout = useCallback(
@@ -527,7 +533,9 @@ export function useDashboard(
               ...s.currentDashboard,
               widgets: s.currentDashboard.widgets.map((widget) => {
                 const layout = layouts.find((l) => l.widgetId === widget.id);
-                return layout ? { ...widget, position: layout.position } : widget;
+                return layout
+                  ? { ...widget, position: layout.position }
+                  : widget;
               }),
             }
           : null,
@@ -538,7 +546,7 @@ export function useDashboard(
         await Promise.all(
           layouts.map(({ widgetId, position }) =>
             fetchJSON(
-              `${API_BASE}/${state.currentDashboard!.id}/widgets/${widgetId}`,
+              `${API_BASE}/${state.currentDashboard?.id}/widgets/${widgetId}`,
               {
                 method: "PUT",
                 body: JSON.stringify({ position }),

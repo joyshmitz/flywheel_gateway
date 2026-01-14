@@ -26,10 +26,8 @@ import type { DriverOptions } from "../interface";
 import type {
   Agent,
   AgentConfig,
-  AgentEvent,
   Checkpoint,
   CheckpointMetadata,
-  OutputLine,
   SendResult,
   TokenUsage,
 } from "../types";
@@ -652,7 +650,7 @@ export class AcpDriver extends BaseDriver {
    */
   private processStderr(
     agentId: string,
-    session: AcpAgentSession,
+    _session: AcpAgentSession,
     text: string,
   ): void {
     // Log stderr as system/error output
@@ -758,7 +756,7 @@ export class AcpDriver extends BaseDriver {
 
   private handleContentBlockStart(
     agentId: string,
-    session: AcpAgentSession,
+    _session: AcpAgentSession,
     event: Record<string, unknown>,
   ): void {
     const contentBlock = event["content_block"] as Record<string, unknown>;
@@ -774,7 +772,7 @@ export class AcpDriver extends BaseDriver {
 
   private handleContentBlockDelta(
     agentId: string,
-    session: AcpAgentSession,
+    _session: AcpAgentSession,
     event: Record<string, unknown>,
   ): void {
     const delta = event["delta"] as Record<string, unknown>;
@@ -812,8 +810,8 @@ export class AcpDriver extends BaseDriver {
   }
 
   private handleContentBlockStop(
-    agentId: string,
-    session: AcpAgentSession,
+    _agentId: string,
+    _session: AcpAgentSession,
     event: Record<string, unknown>,
   ): void {
     // Content block completed
@@ -996,85 +994,6 @@ export class AcpDriver extends BaseDriver {
       return JSON.stringify(value);
     } catch {
       return "[unserializable output]";
-    }
-  }
-
-  // ============================================================================
-  // JSON-RPC Helpers (for future bidirectional protocol support)
-  // ============================================================================
-
-  /**
-   * Send a JSON-RPC request and wait for response.
-   * This is for future use when the protocol supports bidirectional RPC.
-   */
-  private async sendRpcRequest(
-    session: AcpAgentSession,
-    method: string,
-    params?: unknown,
-  ): Promise<unknown> {
-    const id = ++session.rpcId;
-
-    const request: JsonRpcRequest = {
-      jsonrpc: "2.0",
-      id,
-      method,
-      params,
-    };
-
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        session.pendingRequests.delete(id);
-        reject(new Error(`RPC timeout for method: ${method}`));
-      }, this.rpcTimeoutMs);
-
-      session.pendingRequests.set(id, { resolve, reject, timeout });
-
-      try {
-        const stdin = session.process.stdin;
-        if (stdin && typeof stdin !== "number") {
-          stdin.write(JSON.stringify(request) + "\n");
-          if (typeof stdin.flush === "function") {
-            stdin.flush();
-          }
-        } else {
-          throw new Error("stdin not available");
-        }
-      } catch (err) {
-        clearTimeout(timeout);
-        session.pendingRequests.delete(id);
-        reject(err);
-      }
-    });
-  }
-
-  /**
-   * Send a JSON-RPC notification (no response expected).
-   */
-  private sendRpcNotification(
-    session: AcpAgentSession,
-    method: string,
-    params?: unknown,
-  ): void {
-    const notification: JsonRpcNotification = {
-      jsonrpc: "2.0",
-      method,
-      params,
-    };
-
-    try {
-      const stdin = session.process.stdin;
-      if (stdin && typeof stdin !== "number") {
-        stdin.write(JSON.stringify(notification) + "\n");
-        if (typeof stdin.flush === "function") {
-          stdin.flush();
-        }
-      } else {
-        logDriver("error", this.driverType, "stdin_not_available");
-      }
-    } catch (err) {
-      logDriver("error", this.driverType, "rpc_notification_failed", {
-        error: String(err),
-      });
     }
   }
 }

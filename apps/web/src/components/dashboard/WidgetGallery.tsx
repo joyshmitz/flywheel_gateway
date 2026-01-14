@@ -2,8 +2,8 @@
  * WidgetGallery - Panel showing available widget types for drag-and-drop.
  */
 
+import type { WidgetDefinition, WidgetType } from "@flywheel/shared";
 import type { JSX } from "react";
-import type { WidgetType, WidgetDefinition } from "@flywheel/shared";
 import "./WidgetGallery.css";
 
 interface WidgetGalleryProps {
@@ -167,7 +167,14 @@ export function WidgetGallery({ onAddWidget, onClose }: WidgetGalleryProps) {
           onClick={onClose}
           aria-label="Close"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <path d="M18 6L6 18M6 6l12 12" />
           </svg>
         </button>
@@ -186,7 +193,9 @@ export function WidgetGallery({ onAddWidget, onClose }: WidgetGalleryProps) {
             </div>
             <div className="widget-gallery__info">
               <span className="widget-gallery__name">{def.name}</span>
-              <span className="widget-gallery__description">{def.description}</span>
+              <span className="widget-gallery__description">
+                {def.description}
+              </span>
             </div>
             <div className="widget-gallery__size">
               {def.defaultSize.w}x{def.defaultSize.h}

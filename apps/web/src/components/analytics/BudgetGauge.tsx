@@ -74,6 +74,7 @@ export function BudgetGauge({
 
       <div className="budget-gauge__visual">
         <svg viewBox="0 0 100 100" className="budget-gauge__svg">
+          <title>Budget gauge visualization</title>
           {/* Background circle */}
           <circle
             cx="50"

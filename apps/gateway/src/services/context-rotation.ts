@@ -8,12 +8,7 @@
 
 import type { Agent, TokenUsage } from "@flywheel/agent-drivers";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
-import {
-  type CreateCheckpointOptions,
-  createCheckpoint,
-  getLatestCheckpoint,
-  restoreCheckpoint,
-} from "./checkpoint";
+import { createCheckpoint, restoreCheckpoint } from "./checkpoint";
 
 // ============================================================================
 // Types

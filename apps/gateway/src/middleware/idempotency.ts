@@ -321,7 +321,7 @@ export function idempotencyMiddleware(config: IdempotencyConfig = {}) {
           }
         }
         return c.body(record.body, record.status as any);
-      } catch (error) {
+      } catch (_error) {
         // Original request failed, let this one try
         log.debug(
           { idempotencyKey },

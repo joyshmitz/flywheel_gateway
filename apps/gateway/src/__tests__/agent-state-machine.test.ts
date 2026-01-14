@@ -182,7 +182,7 @@ describe("Agent State Model", () => {
 });
 
 describe("Agent State Machine Service", () => {
-  const testAgentId = "test-agent-" + Date.now();
+  const testAgentId = `test-agent-${Date.now()}`;
 
   beforeEach(() => {
     // Clean up any existing state

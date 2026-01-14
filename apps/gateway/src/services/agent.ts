@@ -15,7 +15,6 @@ import {
 import { eq } from "drizzle-orm";
 import { agents as agentsTable, db } from "../db";
 import { getLogger } from "../middleware/correlation";
-import { getHub } from "../ws/hub";
 import {
   initializeAgentState,
   markAgentExecuting,
@@ -35,7 +34,6 @@ import {
 } from "./auto-checkpoint";
 import {
   cleanupOutputBuffer,
-  type GetOutputOptions,
   getOutput as getOutputFromBuffer,
   pushOutput,
 } from "./output.service";
@@ -366,14 +364,14 @@ export async function listAgents(options: {
   // Filter by state
   if (options.state?.length) {
     agentList = agentList.filter((r) =>
-      options.state!.includes(r.agent.activityState),
+      options.state?.includes(r.agent.activityState),
     );
   }
 
   // Filter by driver
   if (options.driver?.length) {
     agentList = agentList.filter((r) =>
-      options.driver!.includes(r.agent.driverType),
+      options.driver?.includes(r.agent.driverType),
     );
   }
 

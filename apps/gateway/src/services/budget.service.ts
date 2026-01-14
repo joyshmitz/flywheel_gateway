@@ -401,8 +401,10 @@ export async function getBudgetStatus(
     status,
     lastUpdatedAt: now,
   };
-  if (daysUntilExhausted !== undefined) budgetStatus.daysUntilExhausted = daysUntilExhausted;
-  if (previousPeriodUnits !== undefined) budgetStatus.previousPeriodUnits = previousPeriodUnits;
+  if (daysUntilExhausted !== undefined)
+    budgetStatus.daysUntilExhausted = daysUntilExhausted;
+  if (previousPeriodUnits !== undefined)
+    budgetStatus.previousPeriodUnits = previousPeriodUnits;
   if (changePercent !== undefined) budgetStatus.changePercent = changePercent;
   return budgetStatus;
 }

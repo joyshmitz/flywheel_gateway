@@ -2,16 +2,15 @@
  * WidgetConfigPanel - Panel for editing widget configuration.
  */
 
-import { useState } from "react";
 import type {
-  Widget,
-  WidgetConfig,
-  WidgetType,
   DataSourceConfig,
   DisplayConfig,
-  ThresholdConfig,
   RefreshInterval,
+  ThresholdConfig,
+  Widget,
+  WidgetConfig,
 } from "@flywheel/shared";
+import { useState } from "react";
 import "./WidgetConfigPanel.css";
 
 interface WidgetConfigPanelProps {
@@ -29,7 +28,10 @@ const REFRESH_OPTIONS: { value: RefreshInterval; label: string }[] = [
   { value: 900, label: "15 minutes" },
 ];
 
-const DATA_SOURCE_PRESETS: Record<string, { endpoint: string; label: string }[]> = {
+const DATA_SOURCE_PRESETS: Record<
+  string,
+  { endpoint: string; label: string }[]
+> = {
   "metric-card": [
     { endpoint: "/api/analytics/summary", label: "Analytics Summary" },
     { endpoint: "/api/cost-analytics/summary", label: "Cost Summary" },
@@ -154,7 +156,14 @@ export function WidgetConfigPanel({
           onClick={onCancel}
           aria-label="Cancel"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <path d="M18 6L6 18M6 6l12 12" />
           </svg>
         </button>
@@ -315,7 +324,10 @@ export function WidgetConfigPanel({
                 onChange={(e) => {
                   const { critical: _, ...rest } = thresholds;
                   if (e.target.value) {
-                    setThresholds({ ...rest, critical: Number(e.target.value) });
+                    setThresholds({
+                      ...rest,
+                      critical: Number(e.target.value),
+                    });
                   } else {
                     setThresholds(rest);
                   }

@@ -636,10 +636,30 @@ export const WidgetPositionSchema = z
     y: z.number().int().min(0).openapi({ description: "Y position in grid" }),
     w: z.number().int().min(1).openapi({ description: "Width in grid units" }),
     h: z.number().int().min(1).openapi({ description: "Height in grid units" }),
-    minW: z.number().int().min(1).optional().openapi({ description: "Minimum width" }),
-    minH: z.number().int().min(1).optional().openapi({ description: "Minimum height" }),
-    maxW: z.number().int().min(1).optional().openapi({ description: "Maximum width" }),
-    maxH: z.number().int().min(1).optional().openapi({ description: "Maximum height" }),
+    minW: z
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .openapi({ description: "Minimum width" }),
+    minH: z
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .openapi({ description: "Minimum height" }),
+    maxW: z
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .openapi({ description: "Maximum width" }),
+    maxH: z
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .openapi({ description: "Maximum height" }),
   })
   .openapi("WidgetPosition");
 
@@ -710,9 +730,12 @@ export const DisplayConfigSchema = z
     showLabels: z.boolean().optional().openapi({
       description: "Whether to show data labels",
     }),
-    labelPosition: z.enum(["top", "bottom", "left", "right"]).optional().openapi({
-      description: "Position of labels",
-    }),
+    labelPosition: z
+      .enum(["top", "bottom", "left", "right"])
+      .optional()
+      .openapi({
+        description: "Position of labels",
+      }),
     animationEnabled: z.boolean().optional().openapi({
       description: "Whether animations are enabled",
     }),
@@ -901,11 +924,9 @@ export const DashboardSummarySchema = z
 
 registry.register("DashboardSummary", DashboardSummarySchema);
 
-export const DashboardPermissionTypeSchema = z
-  .enum(["view", "edit"])
-  .openapi({
-    description: "Permission level",
-  });
+export const DashboardPermissionTypeSchema = z.enum(["view", "edit"]).openapi({
+  description: "Permission level",
+});
 
 registry.register("DashboardPermissionType", DashboardPermissionTypeSchema);
 
@@ -1036,9 +1057,12 @@ export const CostRecordInputSchema = z
     taskType: z.string().optional().openapi({
       description: "Type of task performed",
     }),
-    complexityTier: z.enum(["simple", "moderate", "complex"]).optional().openapi({
-      description: "Complexity tier for tiered pricing",
-    }),
+    complexityTier: z
+      .enum(["simple", "moderate", "complex"])
+      .optional()
+      .openapi({
+        description: "Complexity tier for tiered pricing",
+      }),
     success: z.boolean().openapi({
       description: "Whether the request succeeded",
     }),
@@ -1299,10 +1323,12 @@ export const ForecastSchema = z
       upper: z.number().int(),
     }),
     methodology: ForecastMethodologySchema,
-    accuracyMetrics: z.object({
-      mape: z.number().optional(),
-      rmse: z.number().optional(),
-    }).optional(),
+    accuracyMetrics: z
+      .object({
+        mape: z.number().optional(),
+        rmse: z.number().optional(),
+      })
+      .optional(),
     trendDirection: z.enum(["increasing", "stable", "decreasing"]),
     trendStrength: z.number().optional(),
     seasonalityDetected: z.boolean().optional(),
@@ -1390,7 +1416,7 @@ export const OptimizationSummarySchema = z
         title: z.string(),
         estimatedSavingsUnits: z.number().int(),
         formattedSavings: z.string(),
-      })
+      }),
     ),
   })
   .openapi("OptimizationSummary");

@@ -13,7 +13,6 @@ import type { ServerWebSocket } from "bun";
 import { logger } from "../services/logger";
 import {
   type Channel,
-  type ChannelTypePrefix,
   channelRequiresAck,
   channelToString,
   getChannelTypePrefix,
@@ -21,7 +20,6 @@ import {
 } from "./channels";
 import {
   type AckResponseMessage,
-  type BackfillResponse,
   type ChannelMessage,
   createHubMessage,
   type HubMessage,
@@ -31,11 +29,7 @@ import {
   type ServerMessage,
   serializeServerMessage,
 } from "./messages";
-import {
-  getBufferConfig,
-  RingBuffer,
-  type RingBufferConfig,
-} from "./ring-buffer";
+import { getBufferConfig, RingBuffer } from "./ring-buffer";
 
 /**
  * Authentication context for a connection.
@@ -463,7 +457,7 @@ export class WebSocketHub {
       const hasMore = messages.length > limit;
       const trimmed = hasMore ? messages.slice(0, limit) : messages;
       const lastCursor =
-        trimmed.length > 0 ? trimmed[trimmed.length - 1]!.cursor : undefined;
+        trimmed.length > 0 ? trimmed[trimmed.length - 1]?.cursor : undefined;
 
       return {
         messages: trimmed,
@@ -478,7 +472,7 @@ export class WebSocketHub {
     const hasMore = messages.length > limit;
     const trimmed = hasMore ? messages.slice(0, limit) : messages;
     const lastCursor =
-      trimmed.length > 0 ? trimmed[trimmed.length - 1]!.cursor : undefined;
+      trimmed.length > 0 ? trimmed[trimmed.length - 1]?.cursor : undefined;
 
     return {
       messages: trimmed,

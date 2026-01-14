@@ -5,7 +5,7 @@
  * Publishes real-time updates via WebSocket.
  */
 
-import { and, count, desc, eq, sql } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 import { db } from "../db";
 import { fleetRepos } from "../db/schema";
 import { getCorrelationId } from "../middleware/correlation";

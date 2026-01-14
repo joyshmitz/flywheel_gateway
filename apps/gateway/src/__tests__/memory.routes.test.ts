@@ -29,13 +29,14 @@ type CMStatusResult = {
   error?: string;
 };
 
-const mockGetCMStatus = mock((): Promise<CMStatusResult> =>
-  Promise.resolve({
-    available: true,
-    healthy: true,
-    version: "0.2.0",
-    overallStatus: "healthy",
-  }),
+const mockGetCMStatus = mock(
+  (): Promise<CMStatusResult> =>
+    Promise.resolve({
+      available: true,
+      healthy: true,
+      version: "0.2.0",
+      overallStatus: "healthy",
+    }),
 );
 
 const mockIsCMAvailable = mock(() => Promise.resolve(true));

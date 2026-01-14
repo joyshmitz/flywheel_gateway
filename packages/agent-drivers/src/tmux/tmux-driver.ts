@@ -18,7 +18,7 @@
  * - Visual debugging
  */
 
-import { type Subprocess, spawn } from "bun";
+import { spawn } from "bun";
 import {
   BaseDriver,
   type BaseDriverConfig,
@@ -27,13 +27,7 @@ import {
   logDriver,
 } from "../base-driver";
 import type { DriverOptions } from "../interface";
-import type {
-  Agent,
-  AgentConfig,
-  AgentEvent,
-  OutputLine,
-  SendResult,
-} from "../types";
+import type { Agent, AgentConfig, SendResult } from "../types";
 
 // ============================================================================
 // Tmux Configuration
@@ -473,7 +467,7 @@ export class TmuxDriver extends BaseDriver {
         // Detect activity state from output
         this.detectActivityState(agentId, output);
       }
-    } catch (err) {
+    } catch (_err) {
       // Session might have ended
       if (!(await this.isSessionRunning(agentId))) {
         // Emit terminated event first (while agents Map still has subscribers)

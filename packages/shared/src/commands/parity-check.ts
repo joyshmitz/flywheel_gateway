@@ -96,7 +96,7 @@ export function checkCommandParity(cmd: RegisteredCommand): ParityCheckResult {
   const warnings: string[] = [];
 
   // Rule 1: Every command must have REST binding (enforced at define time, but double-check)
-  const hasValidRest = cmd.rest && cmd.rest.method && cmd.rest.path;
+  const hasValidRest = cmd.rest?.method && cmd.rest.path;
   if (!hasValidRest) {
     errors.push("Missing REST binding (method and path required)");
     // Return early - other checks depend on valid REST binding

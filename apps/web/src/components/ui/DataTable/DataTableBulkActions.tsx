@@ -37,6 +37,7 @@ export function DataTableBulkActions<T>({
       <div className="data-table__bulk-actions__buttons">
         {actions.map((action) => (
           <button
+            type="button"
             key={action.id}
             className={`btn btn--sm ${
               action.variant === "danger"
@@ -55,6 +56,7 @@ export function DataTableBulkActions<T>({
       </div>
 
       <button
+        type="button"
         className="btn btn--ghost btn--icon btn--sm"
         onClick={onClearSelection}
         aria-label="Clear selection"

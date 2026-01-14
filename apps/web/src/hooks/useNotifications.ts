@@ -390,16 +390,16 @@ export function useNotifications(filter: NotificationFilter = {}) {
 
       if (filter.category?.length) {
         filtered = filtered.filter((n) =>
-          filter.category!.includes(n.category),
+          filter.category?.includes(n.category),
         );
       }
       if (filter.priority?.length) {
         filtered = filtered.filter((n) =>
-          filter.priority!.includes(n.priority),
+          filter.priority?.includes(n.priority),
         );
       }
       if (filter.status?.length) {
-        filtered = filtered.filter((n) => filter.status!.includes(n.status));
+        filtered = filtered.filter((n) => filter.status?.includes(n.status));
       }
 
       const unreadCount = filtered.filter(

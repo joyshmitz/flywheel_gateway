@@ -37,7 +37,7 @@ function createRunner(
 /**
  * Helper to create runner that responds differently based on command/args
  */
-function createRunnerWithMap(
+function _createRunnerWithMap(
   map: Record<string, { stdout: string; exitCode?: number }>,
 ): CMCommandRunner & { calls: Array<{ command: string; args: string[] }> } {
   const calls: Array<{ command: string; args: string[] }> = [];

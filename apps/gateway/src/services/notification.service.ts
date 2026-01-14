@@ -21,7 +21,6 @@ import {
   type NotificationFilter,
   type NotificationListResponse,
   type NotificationPreferences,
-  type NotificationPriority,
   PRIORITY_ORDER,
   type PreferencesUpdateRequest,
 } from "../models/notification";
@@ -394,17 +393,17 @@ export function getNotifications(
   // Apply filters
   if (filter.category?.length) {
     notifications = notifications.filter((n) =>
-      filter.category!.includes(n.category),
+      filter.category?.includes(n.category),
     );
   }
   if (filter.priority?.length) {
     notifications = notifications.filter((n) =>
-      filter.priority!.includes(n.priority),
+      filter.priority?.includes(n.priority),
     );
   }
   if (filter.status?.length) {
     notifications = notifications.filter((n) =>
-      filter.status!.includes(n.status),
+      filter.status?.includes(n.status),
     );
   }
   if (filter.since) {

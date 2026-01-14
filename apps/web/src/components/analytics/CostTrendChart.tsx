@@ -148,6 +148,7 @@ export function CostTrendChart({
 
       <div className="cost-trend-chart__chart">
         <svg viewBox="0 0 100 150" preserveAspectRatio="none">
+          <title>Cost trend chart</title>
           {/* Gradient definition */}
           <defs>
             <linearGradient id="costGradient" x1="0%" y1="0%" x2="0%" y2="100%">

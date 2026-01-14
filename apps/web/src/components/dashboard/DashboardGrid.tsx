@@ -5,8 +5,8 @@
  * Widgets can span multiple columns and rows based on their position config.
  */
 
+import type { Dashboard, WidgetData, WidgetPosition } from "@flywheel/shared";
 import { useCallback, useState } from "react";
-import type { Dashboard, Widget, WidgetData, WidgetPosition } from "@flywheel/shared";
 import { WidgetRenderer } from "./WidgetRenderer";
 import "./DashboardGrid.css";
 
@@ -17,7 +17,9 @@ interface DashboardGridProps {
   onWidgetEdit?: (widgetId: string) => void;
   onWidgetRemove?: (widgetId: string) => void;
   onWidgetRefresh?: (widgetId: string) => void;
-  onLayoutChange?: (layouts: Array<{ widgetId: string; position: WidgetPosition }>) => void;
+  onLayoutChange?: (
+    layouts: Array<{ widgetId: string; position: WidgetPosition }>,
+  ) => void;
 }
 
 export function DashboardGrid({
@@ -30,7 +32,9 @@ export function DashboardGrid({
   onLayoutChange,
 }: DashboardGridProps) {
   const [draggedWidget, setDraggedWidget] = useState<string | null>(null);
-  const [dropTarget, setDropTarget] = useState<{ x: number; y: number } | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ x: number; y: number } | null>(
+    null,
+  );
 
   const { widgets, layout } = dashboard;
   const columns = layout.columns || 12;
@@ -118,13 +122,15 @@ export function DashboardGrid({
   return (
     <div
       className={`dashboard-grid ${isEditing ? "dashboard-grid--editing" : ""}`}
-      style={{
-        "--grid-columns": columns,
-        "--grid-row-height": `${rowHeight}px`,
-        "--grid-gap-x": `${marginX}px`,
-        "--grid-gap-y": `${marginY}px`,
-        "--grid-rows": maxRow + (isEditing ? 2 : 0),
-      } as React.CSSProperties}
+      style={
+        {
+          "--grid-columns": columns,
+          "--grid-row-height": `${rowHeight}px`,
+          "--grid-gap-x": `${marginX}px`,
+          "--grid-gap-y": `${marginY}px`,
+          "--grid-rows": maxRow + (isEditing ? 2 : 0),
+        } as React.CSSProperties
+      }
     >
       {/* Render grid cells for drag targets when editing */}
       {isEditing && draggedWidget && (
@@ -169,11 +175,19 @@ export function DashboardGrid({
           >
             <WidgetRenderer
               widget={widget}
-              {...(widgetData.get(widget.id) !== undefined ? { data: widgetData.get(widget.id)! } : {})}
+              {...(widgetData.get(widget.id) !== undefined
+                ? { data: widgetData.get(widget.id)! }
+                : {})}
               isEditing={isEditing}
-              {...(onWidgetEdit ? { onEdit: () => onWidgetEdit(widget.id) } : {})}
-              {...(onWidgetRemove ? { onRemove: () => onWidgetRemove(widget.id) } : {})}
-              {...(onWidgetRefresh ? { onRefresh: () => onWidgetRefresh(widget.id) } : {})}
+              {...(onWidgetEdit
+                ? { onEdit: () => onWidgetEdit(widget.id) }
+                : {})}
+              {...(onWidgetRemove
+                ? { onRemove: () => onWidgetRemove(widget.id) }
+                : {})}
+              {...(onWidgetRefresh
+                ? { onRefresh: () => onWidgetRefresh(widget.id) }
+                : {})}
             />
           </div>
         );
@@ -199,7 +213,7 @@ export function DashboardGrid({
             <h3>No widgets yet</h3>
             <p>
               {isEditing
-                ? "Click \"Add Widget\" to start building your dashboard"
+                ? 'Click "Add Widget" to start building your dashboard'
                 : "This dashboard has no widgets"}
             </p>
           </div>

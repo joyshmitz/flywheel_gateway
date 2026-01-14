@@ -25,10 +25,8 @@ import {
 } from "../services/agent-analytics.service";
 import { getLinkContext } from "../utils/links";
 import {
-  sendError,
   sendInternalError,
   sendList,
-  sendNotFound,
   sendResource,
   sendValidationError,
 } from "../utils/response";

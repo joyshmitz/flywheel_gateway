@@ -17,7 +17,6 @@ import type {
   ProviderId,
   RiskLevel,
 } from "../models/cost";
-import { logger } from "./logger";
 
 // ============================================================================
 // Recommendation ID Generation
@@ -288,7 +287,9 @@ async function analyzeCachingOpportunities(
           "Enable cache_control in API calls for system prompts and common context",
         risk: "low",
         affectedModels: [analysis.model],
-        ...(filter?.organizationId && { organizationId: filter.organizationId }),
+        ...(filter?.organizationId && {
+          organizationId: filter.organizationId,
+        }),
         ...(filter?.projectId && { projectId: filter.projectId }),
         status: "pending",
         priority: 4,

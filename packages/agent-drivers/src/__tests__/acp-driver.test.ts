@@ -2,17 +2,8 @@
  * Tests for the ACP Driver.
  */
 
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  mock,
-  spyOn,
-} from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { type AcpDriver, type AcpDriverOptions, createAcpDriver } from "../acp";
-import { createDriverOptions } from "../base-driver";
 import type { AgentConfig } from "../types";
 
 describe("AcpDriver", () => {
@@ -177,7 +168,7 @@ describe("AcpDriver", () => {
         // List checkpoints
         const checkpoints = await driver.listCheckpoints(config.id);
         expect(checkpoints.length).toBe(1);
-        expect(checkpoints[0]!.id).toBe(checkpoint.id);
+        expect(checkpoints[0]?.id).toBe(checkpoint.id);
 
         await driver.terminate(config.id);
       } catch (err) {

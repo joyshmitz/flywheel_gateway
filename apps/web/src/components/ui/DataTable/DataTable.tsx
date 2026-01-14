@@ -209,11 +209,7 @@ export function DataTable<T>({
       {/* Desktop Table */}
       {hasData && (
         <div className="data-table__container">
-          <table
-            className="data-table__table"
-            role="grid"
-            aria-rowcount={pagination.total}
-          >
+          <table className="data-table__table" aria-rowcount={pagination.total}>
             <DataTableHeader
               columns={columns}
               sortable={sortable}

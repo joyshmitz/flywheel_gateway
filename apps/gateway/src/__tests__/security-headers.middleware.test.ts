@@ -140,7 +140,7 @@ describe("Security Headers Middleware", () => {
     test("does not set HSTS in development by default", async () => {
       // Assuming NODE_ENV is not 'production' in tests
       const app = createApp();
-      const res = await app.request("/test");
+      const _res = await app.request("/test");
 
       // May or may not be set depending on env
       // Just verify we can configure it

@@ -9,20 +9,15 @@ import type { BvRecommendation } from "@flywheel/flywheel-clients";
 import { ulid } from "ulid";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
 import {
-  type BudgetStrategy,
   type ContextPack,
   type ContextPackPreview,
   type ContextPackRequest,
   DEFAULT_BUDGET_STRATEGY,
   DEFAULT_CONTEXT_BUILDER_CONFIG,
-  type HistoryEntry,
   type HistorySection,
-  type MemoryRule,
   type MemorySection,
-  type SearchResult,
   type SearchSection,
   type SystemSection,
-  type TokenBreakdown,
   type TriagedBead,
   type TriageSection,
   type TruncationRecord,
@@ -185,7 +180,7 @@ function normalizeBeadType(value?: string): TriagedBead["type"] {
  */
 async function buildMemorySection(
   sessionId: string,
-  taskContext: string | undefined,
+  _taskContext: string | undefined,
   tokenBudget: number,
 ): Promise<MemorySection> {
   const log = getLogger();
@@ -365,7 +360,7 @@ function formatHitContext(hit: CassSearchHit): string {
 async function buildHistorySection(
   sessionId: string,
   tokenBudget: number,
-  options?: {
+  _options?: {
     maxEntries?: number;
     maxAgeMs?: number;
   },

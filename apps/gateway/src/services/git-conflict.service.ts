@@ -385,7 +385,7 @@ export async function analyzeRepositoryConflicts(
 function detectPairConflicts(
   changesA: BranchChanges,
   changesB: BranchChanges,
-  repositoryId: string,
+  _repositoryId: string,
 ): ConflictDetails[] {
   const conflicts: ConflictDetails[] = [];
 
@@ -473,7 +473,7 @@ function trackConflictPattern(filePath: string): void {
  * Get common conflict patterns for a repository.
  */
 export async function getConflictPatterns(
-  repositoryId: string,
+  _repositoryId: string,
 ): Promise<ConflictPattern[]> {
   const patterns = Array.from(conflictPatterns.values());
 

@@ -9,11 +9,7 @@
 
 import { logger } from "../services/logger";
 import { getHub, type WebSocketHub } from "./hub";
-import {
-  type HeartbeatMessage,
-  type PongMessage,
-  serializeServerMessage,
-} from "./messages";
+import type { HeartbeatMessage, PongMessage } from "./messages";
 
 /** Default heartbeat interval in milliseconds */
 export const HEARTBEAT_INTERVAL_MS = 30000; // 30 seconds

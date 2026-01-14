@@ -73,9 +73,9 @@ export function globToRegex(pattern: string): RegExp {
     // Remove trailing slash
     .replace(/\/$/, "")
     // Handle **/ at the start or middle - matches zero or more directories
-    .replace(/\*\*\//g, GLOBSTAR_PLACEHOLDER + "/")
+    .replace(/\*\*\//g, `${GLOBSTAR_PLACEHOLDER}/`)
     // Handle /** at the end - matches zero or more path segments
-    .replace(/\/\*\*/g, "/" + GLOBSTAR_PLACEHOLDER)
+    .replace(/\/\*\*/g, `/${GLOBSTAR_PLACEHOLDER}`)
     // Handle remaining ** (in case it's standalone)
     .replace(/\*\*/g, GLOBSTAR_PLACEHOLDER)
     // Escape regex special chars (except glob chars *, ?, and **)
@@ -85,9 +85,9 @@ export function globToRegex(pattern: string): RegExp {
     // ? matches single character except path separator
     .replace(/\?/g, "[^/]")
     // Now replace placeholder/ with (.*/)? - matches zero or more directories
-    .replace(new RegExp(GLOBSTAR_PLACEHOLDER + "/", "g"), "(.*/)?")
+    .replace(new RegExp(`${GLOBSTAR_PLACEHOLDER}/`, "g"), "(.*/)?")
     // Replace /placeholder with (/.*)? - matches zero or more path segments
-    .replace(new RegExp("/" + GLOBSTAR_PLACEHOLDER, "g"), "(/.*)?")
+    .replace(new RegExp(`/${GLOBSTAR_PLACEHOLDER}`, "g"), "(/.*)?")
     // Replace standalone placeholder with .* - matches anything
     .replace(new RegExp(GLOBSTAR_PLACEHOLDER, "g"), ".*");
 
@@ -174,7 +174,7 @@ function generateTestPaths(pattern: string): string[] {
   // Try with just the prefix
   const prefix = pattern.split("*")[0];
   if (prefix && prefix !== pattern) {
-    paths.push(prefix + "file.ts");
+    paths.push(`${prefix}file.ts`);
   }
 
   return paths;

@@ -193,7 +193,7 @@ export function Dropdown({
             exit="exit"
             role="menu"
           >
-            {items.map((item, index) => {
+            {items.map((item, _index) => {
               if (item.divider) {
                 return <div key={item.id} className="dropdown__divider" />;
               }
@@ -205,6 +205,7 @@ export function Dropdown({
 
               return (
                 <button
+                  type="button"
                   key={item.id}
                   className={`dropdown__item ${
                     item.variant === "danger" ? "dropdown__item--danger" : ""

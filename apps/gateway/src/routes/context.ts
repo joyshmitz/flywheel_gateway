@@ -16,10 +16,7 @@ import {
   RotationError,
   SummarizationError,
 } from "../services/context-health.service";
-import type {
-  BudgetStrategy,
-  ContextPackRequest,
-} from "../types/context.types";
+import type { ContextPackRequest } from "../types/context.types";
 import type { RotationConfig } from "../types/context-health.types";
 import {
   sendCreated,
@@ -317,7 +314,9 @@ context.post("/:sessionId/context/compact", async (c) => {
     const healthService = getContextHealthService();
     const result = await healthService.compact(sessionId, {
       ...(validated.strategy && { strategy: validated.strategy }),
-      ...(validated.targetReduction !== undefined && { targetReduction: validated.targetReduction }),
+      ...(validated.targetReduction !== undefined && {
+        targetReduction: validated.targetReduction,
+      }),
     });
 
     return sendResource(c, "compaction_result", {
@@ -350,7 +349,9 @@ context.post("/:sessionId/context/rotate", async (c) => {
     const healthService = getContextHealthService();
     const result = await healthService.rotate(sessionId, {
       ...(validated.reason && { reason: validated.reason }),
-      ...(validated.config && { config: validated.config as Partial<RotationConfig> }),
+      ...(validated.config && {
+        config: validated.config as Partial<RotationConfig>,
+      }),
     });
 
     return sendCreated(

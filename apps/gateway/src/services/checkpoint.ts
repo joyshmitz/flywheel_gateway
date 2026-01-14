@@ -23,7 +23,7 @@ import { desc, eq, inArray } from "drizzle-orm";
 import { ulid } from "ulid";
 import { checkpoints as checkpointsTable, db } from "../db";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
-import { incrementCounter, recordHistogram, setGauge } from "./metrics";
+import { incrementCounter, recordHistogram } from "./metrics";
 
 // ============================================================================
 // Compression Utilities
@@ -953,14 +953,14 @@ async function computeCheckpointHash(checkpoint: Checkpoint): Promise<string> {
       return JSON.stringify(obj);
     }
     if (Array.isArray(obj)) {
-      return "[" + obj.map(stableStringify).join(",") + "]";
+      return `[${obj.map(stableStringify).join(",")}]`;
     }
     const keys = Object.keys(obj as Record<string, unknown>).sort();
     const parts = keys.map((key) => {
       const val = (obj as Record<string, unknown>)[key];
-      return JSON.stringify(key) + ":" + stableStringify(val);
+      return `${JSON.stringify(key)}:${stableStringify(val)}`;
     });
-    return "{" + parts.join(",") + "}";
+    return `{${parts.join(",")}}`;
   };
 
   const data = stableStringify({

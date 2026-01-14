@@ -127,6 +127,7 @@ export function Drawer({
                 {title && <h2 className="modal__title">{title}</h2>}
                 {showCloseButton && (
                   <button
+                    type="button"
                     className="drawer__close"
                     onClick={onClose}
                     aria-label="Close drawer"

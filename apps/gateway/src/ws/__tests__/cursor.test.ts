@@ -158,9 +158,9 @@ describe("cursor utilities", () => {
 
       const decoded = decodeCursor(cursor);
       expect(decoded).toBeDefined();
-      expect(decoded!.sequence).toBe(42);
-      expect(decoded!.timestamp).toBeGreaterThanOrEqual(before);
-      expect(decoded!.timestamp).toBeLessThanOrEqual(after);
+      expect(decoded?.sequence).toBe(42);
+      expect(decoded?.timestamp).toBeGreaterThanOrEqual(before);
+      expect(decoded?.timestamp).toBeLessThanOrEqual(after);
     });
 
     test("creates cursor with custom timestamp", () => {

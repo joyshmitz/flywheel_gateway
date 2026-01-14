@@ -275,7 +275,7 @@ export async function getBlockEvents(options: {
     events = events.filter((e) => e.agentId === options.agentId);
   }
   if (options.severity?.length) {
-    events = events.filter((e) => options.severity!.includes(e.severity));
+    events = events.filter((e) => options.severity?.includes(e.severity));
   }
   if (options.pack) {
     events = events.filter((e) => e.pack === options.pack);

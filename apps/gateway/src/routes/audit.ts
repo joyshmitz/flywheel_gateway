@@ -9,7 +9,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { db } from "../db";
 import { auditLogs } from "../db/schema";
-import { getCorrelationId, getLogger } from "../middleware/correlation";
+import { getLogger } from "../middleware/correlation";
 import { redactSensitiveData } from "../services/audit-redaction.service";
 import {
   type AuditExportResult,
@@ -181,13 +181,19 @@ app.post("/retention-policies", async (c) => {
       ...(validBody.description && { description: validBody.description }),
       filter: {
         ...(validBody.filter.actions && { actions: validBody.filter.actions }),
-        ...(validBody.filter.severities && { severities: validBody.filter.severities }),
-        ...(validBody.filter.resourceTypes && { resourceTypes: validBody.filter.resourceTypes }),
+        ...(validBody.filter.severities && {
+          severities: validBody.filter.severities,
+        }),
+        ...(validBody.filter.resourceTypes && {
+          resourceTypes: validBody.filter.resourceTypes,
+        }),
       },
       retention: {
         duration: validBody.retention.duration,
         archiveFirst: validBody.retention.archiveFirst,
-        ...(validBody.retention.archiveLocation && { archiveLocation: validBody.retention.archiveLocation }),
+        ...(validBody.retention.archiveLocation && {
+          archiveLocation: validBody.retention.archiveLocation,
+        }),
       },
       enabled: validBody.enabled,
       createdAt: now,
@@ -239,16 +245,24 @@ app.put("/retention-policies/:id", async (c) => {
       }),
       ...(validBody.filter !== undefined && {
         filter: {
-          ...(validBody.filter.actions && { actions: validBody.filter.actions }),
-          ...(validBody.filter.severities && { severities: validBody.filter.severities }),
-          ...(validBody.filter.resourceTypes && { resourceTypes: validBody.filter.resourceTypes }),
+          ...(validBody.filter.actions && {
+            actions: validBody.filter.actions,
+          }),
+          ...(validBody.filter.severities && {
+            severities: validBody.filter.severities,
+          }),
+          ...(validBody.filter.resourceTypes && {
+            resourceTypes: validBody.filter.resourceTypes,
+          }),
         },
       }),
       ...(validBody.retention !== undefined && {
         retention: {
           duration: validBody.retention.duration,
           archiveFirst: validBody.retention.archiveFirst,
-          ...(validBody.retention.archiveLocation && { archiveLocation: validBody.retention.archiveLocation }),
+          ...(validBody.retention.archiveLocation && {
+            archiveLocation: validBody.retention.archiveLocation,
+          }),
         },
       }),
       ...(validBody.enabled !== undefined && { enabled: validBody.enabled }),

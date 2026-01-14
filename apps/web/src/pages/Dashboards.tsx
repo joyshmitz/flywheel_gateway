@@ -8,21 +8,23 @@
  * - Widget gallery and configuration
  */
 
-import { useCallback, useState, useEffect } from "react";
-import { useSearch, useNavigate, useParams } from "@tanstack/react-router";
 import type { Widget, WidgetType } from "@flywheel/shared";
-import { useDashboard } from "../hooks/useDashboard";
+import { useNavigate, useParams } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import {
   DashboardGrid,
-  WidgetGallery,
-  WidgetConfigPanel,
   WIDGET_DEFINITIONS,
+  WidgetConfigPanel,
+  WidgetGallery,
 } from "../components/dashboard";
+import { useDashboard } from "../hooks/useDashboard";
 import "./Dashboards.css";
 
 export function DashboardsPage() {
   // Get dashboard ID from URL params if present
-  const { dashboardId } = useParams({ strict: false }) as { dashboardId?: string };
+  const { dashboardId } = useParams({ strict: false }) as {
+    dashboardId?: string;
+  };
   const navigate = useNavigate();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -149,7 +151,14 @@ export function DashboardsPage() {
             className="btn btn--primary"
             onClick={() => setShowCreateModal(true)}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M12 5v14M5 12h14" />
             </svg>
             New Dashboard
@@ -167,7 +176,14 @@ export function DashboardsPage() {
           </div>
         ) : dashboards.length === 0 ? (
           <div className="dashboards-page__empty">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <svg
+              width="64"
+              height="64"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
               <rect x="3" y="3" width="7" height="7" rx="1" />
               <rect x="14" y="3" width="7" height="7" rx="1" />
               <rect x="3" y="14" width="7" height="7" rx="1" />
@@ -198,11 +214,25 @@ export function DashboardsPage() {
                     className={`dashboards-page__favorite ${dashboard.isFavorite ? "dashboards-page__favorite--active" : ""}`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      toggleFavorite(dashboard.id, dashboard.isFavorite || false);
+                      toggleFavorite(
+                        dashboard.id,
+                        dashboard.isFavorite || false,
+                      );
                     }}
-                    aria-label={dashboard.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                    aria-label={
+                      dashboard.isFavorite
+                        ? "Remove from favorites"
+                        : "Add to favorites"
+                    }
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill={dashboard.isFavorite ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill={dashboard.isFavorite ? "currentColor" : "none"}
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                     </svg>
                   </button>
@@ -223,8 +253,14 @@ export function DashboardsPage() {
 
         {/* Create Modal */}
         {showCreateModal && (
-          <div className="dashboards-page__modal-overlay" onClick={() => setShowCreateModal(false)}>
-            <div className="dashboards-page__modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="dashboards-page__modal-overlay"
+            onClick={() => setShowCreateModal(false)}
+          >
+            <div
+              className="dashboards-page__modal"
+              onClick={(e) => e.stopPropagation()}
+            >
               <h2>Create Dashboard</h2>
               <div className="dashboards-page__modal-field">
                 <label htmlFor="dashboard-name">Name</label>
@@ -234,7 +270,6 @@ export function DashboardsPage() {
                   value={newDashboardName}
                   onChange={(e) => setNewDashboardName(e.target.value)}
                   placeholder="My Dashboard"
-                  autoFocus
                 />
               </div>
               <div className="dashboards-page__modal-actions">
@@ -284,7 +319,14 @@ export function DashboardsPage() {
             className="dashboards-page__back"
             onClick={() => navigate({ to: "/dashboards" })}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
           </button>
@@ -300,7 +342,14 @@ export function DashboardsPage() {
                 className="btn btn--secondary"
                 onClick={() => setShowGallery(true)}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M12 5v14M5 12h14" />
                 </svg>
                 Add Widget

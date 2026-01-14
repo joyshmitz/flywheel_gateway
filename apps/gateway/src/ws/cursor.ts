@@ -47,7 +47,7 @@ export function decodeCursor(cursor: string): CursorData | undefined {
     const timestamp = parseInt(parts[0]!, 10);
     const sequence = parseInt(parts[1]!, 10);
 
-    if (isNaN(timestamp) || isNaN(sequence)) return undefined;
+    if (Number.isNaN(timestamp) || Number.isNaN(sequence)) return undefined;
     if (timestamp < 0 || sequence < 0) return undefined;
 
     return { timestamp, sequence };

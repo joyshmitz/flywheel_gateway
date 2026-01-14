@@ -4,7 +4,7 @@
  * Tests for the pipeline workflow engine REST API endpoints and service.
  */
 
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 import type { CreatePipelineInput } from "../models/pipeline";
 import { pipelines } from "../routes/pipelines";
@@ -15,7 +15,6 @@ import {
   getPipeline,
   pauseRun,
   runPipeline,
-  submitApproval,
 } from "../services/pipeline.service";
 
 // ============================================================================

@@ -154,7 +154,7 @@ describe("Handoff Service", () => {
 
       const broadcasts = listBroadcastHandoffs("project-1");
       expect(broadcasts.length).toBe(1);
-      expect(broadcasts[0]!.request.targetAgentId).toBeNull();
+      expect(broadcasts[0]?.request.targetAgentId).toBeNull();
     });
 
     test("should fail when source agent has too many pending handoffs", async () => {
@@ -194,10 +194,11 @@ describe("Handoff Service", () => {
         resourceManifest: createMockResourceManifest(),
       });
 
-      const handoff = getHandoff(result.handoffId!);
+      expect(result.handoffId).toBeDefined();
+      const handoff = getHandoff(result.handoffId as string);
       expect(handoff).not.toBeNull();
-      expect(handoff!.request.preferences.requireAcknowledgment).toBe(true);
-      expect(handoff!.request.preferences.fallbackBehavior).toBe("escalate");
+      expect(handoff?.request.preferences.requireAcknowledgment).toBe(true);
+      expect(handoff?.request.preferences.fallbackBehavior).toBe("escalate");
     });
 
     test("should use provided urgency", async () => {
@@ -211,8 +212,9 @@ describe("Handoff Service", () => {
         resourceManifest: createMockResourceManifest(),
       });
 
-      const handoff = getHandoff(result.handoffId!);
-      expect(handoff!.request.urgency).toBe("critical");
+      expect(result.handoffId).toBeDefined();
+      const handoff = getHandoff(result.handoffId as string);
+      expect(handoff?.request.urgency).toBe("critical");
     });
   });
 
@@ -227,8 +229,11 @@ describe("Handoff Service", () => {
         resourceManifest: createMockResourceManifest(),
       });
 
+      expect(initResult.handoffId).toBeDefined();
+      const handoffId = initResult.handoffId as string;
+
       const acceptResult = await acceptHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId,
         receivingAgentId: "agent-2",
         receiverNotes: "Ready to take over",
       });
@@ -236,10 +241,10 @@ describe("Handoff Service", () => {
       expect(acceptResult.success).toBe(true);
       expect(acceptResult.phase).toBe("transfer");
 
-      const handoff = getHandoff(initResult.handoffId!);
-      expect(handoff!.acknowledgment).toBeDefined();
-      expect(handoff!.acknowledgment!.status).toBe("accepted");
-      expect(handoff!.acknowledgment!.receiverNotes).toBe("Ready to take over");
+      const handoff = getHandoff(handoffId);
+      expect(handoff?.acknowledgment).toBeDefined();
+      expect(handoff?.acknowledgment?.status).toBe("accepted");
+      expect(handoff?.acknowledgment?.receiverNotes).toBe("Ready to take over");
     });
 
     test("should fail when handoff is not in pending phase", async () => {
@@ -252,15 +257,18 @@ describe("Handoff Service", () => {
         resourceManifest: createMockResourceManifest(),
       });
 
+      expect(initResult.handoffId).toBeDefined();
+      const handoffId = initResult.handoffId as string;
+
       // Accept once
       await acceptHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId,
         receivingAgentId: "agent-2",
       });
 
       // Try to accept again
       const secondAccept = await acceptHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId,
         receivingAgentId: "agent-3",
       });
 
@@ -278,8 +286,9 @@ describe("Handoff Service", () => {
         resourceManifest: createMockResourceManifest(),
       });
 
+      expect(initResult.handoffId).toBeDefined();
       const acceptResult = await acceptHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId: initResult.handoffId as string,
         receivingAgentId: "agent-3", // Wrong agent
       });
 
@@ -297,8 +306,9 @@ describe("Handoff Service", () => {
         resourceManifest: createMockResourceManifest(),
       });
 
+      expect(initResult.handoffId).toBeDefined();
       const acceptResult = await acceptHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId: initResult.handoffId as string,
         receivingAgentId: "any-agent",
       });
 
@@ -327,8 +337,11 @@ describe("Handoff Service", () => {
         resourceManifest: createMockResourceManifest(),
       });
 
+      expect(initResult.handoffId).toBeDefined();
+      const handoffId = initResult.handoffId as string;
+
       const rejectResult = await rejectHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId,
         receivingAgentId: "agent-2",
         reason: "Busy with other work",
         suggestedAlternative: "agent-3",
@@ -337,12 +350,12 @@ describe("Handoff Service", () => {
       expect(rejectResult.success).toBe(true);
       expect(rejectResult.phase).toBe("rejected");
 
-      const handoff = getHandoff(initResult.handoffId!);
-      expect(handoff!.acknowledgment!.status).toBe("rejected");
-      expect(handoff!.acknowledgment!.rejectionReason).toBe(
+      const handoff = getHandoff(handoffId);
+      expect(handoff?.acknowledgment?.status).toBe("rejected");
+      expect(handoff?.acknowledgment?.rejectionReason).toBe(
         "Busy with other work",
       );
-      expect(handoff!.acknowledgment!.suggestedAlternative).toBe("agent-3");
+      expect(handoff?.acknowledgment?.suggestedAlternative).toBe("agent-3");
     });
 
     test("should fail when not in pending phase", async () => {
@@ -355,15 +368,18 @@ describe("Handoff Service", () => {
         resourceManifest: createMockResourceManifest(),
       });
 
+      expect(initResult.handoffId).toBeDefined();
+      const handoffId = initResult.handoffId as string;
+
       // Accept first
       await acceptHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId,
         receivingAgentId: "agent-2",
       });
 
       // Then try to reject
       const rejectResult = await rejectHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId,
         receivingAgentId: "agent-2",
         reason: "Changed my mind",
       });
@@ -384,8 +400,11 @@ describe("Handoff Service", () => {
         resourceManifest: createMockResourceManifest(),
       });
 
+      expect(initResult.handoffId).toBeDefined();
+      const handoffId = initResult.handoffId as string;
+
       const cancelResult = await cancelHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId,
         agentId: "agent-1",
         reason: "No longer needed",
       });
@@ -393,8 +412,8 @@ describe("Handoff Service", () => {
       expect(cancelResult.success).toBe(true);
       expect(cancelResult.phase).toBe("cancelled");
 
-      const handoff = getHandoff(initResult.handoffId!);
-      expect(handoff!.completedAt).toBeDefined();
+      const handoff = getHandoff(handoffId);
+      expect(handoff?.completedAt).toBeDefined();
     });
 
     test("should fail when non-source agent tries to cancel", async () => {
@@ -407,8 +426,9 @@ describe("Handoff Service", () => {
         resourceManifest: createMockResourceManifest(),
       });
 
+      expect(initResult.handoffId).toBeDefined();
       const cancelResult = await cancelHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId: initResult.handoffId as string,
         agentId: "agent-2", // Not the source
         reason: "Want to cancel",
       });
@@ -427,13 +447,16 @@ describe("Handoff Service", () => {
         resourceManifest: createMockResourceManifest(),
       });
 
+      expect(initResult.handoffId).toBeDefined();
+      const handoffId = initResult.handoffId as string;
+
       // Accept and complete
       await acceptHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId,
         receivingAgentId: "agent-2",
       });
       await completeHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId,
         transferSummary: {
           filesModified: 1,
           reservationsTransferred: 0,
@@ -444,7 +467,7 @@ describe("Handoff Service", () => {
 
       // Try to cancel
       const cancelResult = await cancelHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId,
         agentId: "agent-1",
         reason: "Too late",
       });
@@ -465,13 +488,16 @@ describe("Handoff Service", () => {
         resourceManifest: createMockResourceManifest(),
       });
 
+      expect(initResult.handoffId).toBeDefined();
+      const handoffId = initResult.handoffId as string;
+
       await acceptHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId,
         receivingAgentId: "agent-2",
       });
 
       const completeResult = await completeHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId,
         transferSummary: {
           filesModified: 5,
           reservationsTransferred: 2,
@@ -484,9 +510,9 @@ describe("Handoff Service", () => {
       expect(completeResult.newOwnerAgentId).toBe("agent-2");
       expect(completeResult.transferSummary.filesModified).toBe(5);
 
-      const handoff = getHandoff(initResult.handoffId!);
-      expect(handoff!.phase).toBe("complete");
-      expect(handoff!.completedAt).toBeDefined();
+      const handoff = getHandoff(handoffId);
+      expect(handoff?.phase).toBe("complete");
+      expect(handoff?.completedAt).toBeDefined();
     });
 
     test("should fail when not in transfer phase", async () => {
@@ -499,9 +525,11 @@ describe("Handoff Service", () => {
         resourceManifest: createMockResourceManifest(),
       });
 
+      expect(initResult.handoffId).toBeDefined();
+
       // Try to complete without accepting
       const completeResult = await completeHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId: initResult.handoffId as string,
         transferSummary: {
           filesModified: 0,
           reservationsTransferred: 0,
@@ -526,13 +554,16 @@ describe("Handoff Service", () => {
         resourceManifest: createMockResourceManifest(),
       });
 
+      expect(initResult.handoffId).toBeDefined();
+      const handoffId = initResult.handoffId as string;
+
       await acceptHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId,
         receivingAgentId: "agent-2",
       });
 
       const failResult = await failHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId,
         errorCode: "TRANSFER_FAILED",
         errorMessage: "Network error during transfer",
         recoverable: true,
@@ -541,10 +572,10 @@ describe("Handoff Service", () => {
       expect(failResult.success).toBe(true);
       expect(failResult.phase).toBe("failed");
 
-      const handoff = getHandoff(initResult.handoffId!);
-      expect(handoff!.error).toBeDefined();
-      expect(handoff!.error!.code).toBe("TRANSFER_FAILED");
-      expect(handoff!.error!.recoverable).toBe(true);
+      const handoff = getHandoff(handoffId);
+      expect(handoff?.error).toBeDefined();
+      expect(handoff?.error?.code).toBe("TRANSFER_FAILED");
+      expect(handoff?.error?.recoverable).toBe(true);
     });
   });
 
@@ -614,9 +645,11 @@ describe("Handoff Service", () => {
         resourceManifest: createMockResourceManifest(),
       });
 
+      expect(initResult.handoffId).toBeDefined();
+
       // Accept one to change its phase
       await acceptHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId: initResult.handoffId as string,
         receivingAgentId: "agent-2",
       });
 
@@ -661,13 +694,16 @@ describe("Handoff Service", () => {
         resourceManifest: createMockResourceManifest(),
       });
 
+      expect(initResult1.handoffId).toBeDefined();
+      const handoffId1 = initResult1.handoffId as string;
+
       await acceptHandoff({
-        handoffId: initResult1.handoffId!,
+        handoffId: handoffId1,
         receivingAgentId: "agent-2",
       });
 
       await completeHandoff({
-        handoffId: initResult1.handoffId!,
+        handoffId: handoffId1,
         transferSummary: {
           filesModified: 1,
           reservationsTransferred: 0,
@@ -687,13 +723,16 @@ describe("Handoff Service", () => {
         resourceManifest: createMockResourceManifest(),
       });
 
+      expect(initResult2.handoffId).toBeDefined();
+      const handoffId2 = initResult2.handoffId as string;
+
       await acceptHandoff({
-        handoffId: initResult2.handoffId!,
+        handoffId: handoffId2,
         receivingAgentId: "agent-3",
       });
 
       await failHandoff({
-        handoffId: initResult2.handoffId!,
+        handoffId: handoffId2,
         errorCode: "TEST_ERROR",
         errorMessage: "Test failure",
         recoverable: false,
@@ -721,13 +760,16 @@ describe("Handoff Service", () => {
         resourceManifest: createMockResourceManifest(),
       });
 
+      expect(initResult.handoffId).toBeDefined();
+      const handoffId = initResult.handoffId as string;
+
       await acceptHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId,
         receivingAgentId: "agent-2",
       });
 
       await completeHandoff({
-        handoffId: initResult.handoffId!,
+        handoffId,
         transferSummary: {
           filesModified: 1,
           reservationsTransferred: 0,
@@ -736,10 +778,10 @@ describe("Handoff Service", () => {
         },
       });
 
-      const handoff = getHandoff(initResult.handoffId!);
-      expect(handoff!.auditTrail.length).toBeGreaterThanOrEqual(4);
+      const handoff = getHandoff(handoffId);
+      expect(handoff?.auditTrail.length).toBeGreaterThanOrEqual(4);
 
-      const events = handoff!.auditTrail.map((e) => e.event);
+      const events = handoff?.auditTrail.map((e) => e.event);
       expect(events).toContain("handoff_initiated");
       expect(events).toContain("phase_transition");
       expect(events).toContain("handoff_accepted");

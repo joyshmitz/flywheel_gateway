@@ -7,9 +7,6 @@
  */
 
 import {
-  type ApiErrorResponse,
-  type ApiListResponse,
-  type ApiResponse,
   type WrapErrorOptions,
   type WrapListOptions,
   type WrapResourceOptions,
@@ -21,7 +18,7 @@ import {
   wrapResource,
   wrapValidationError,
 } from "@flywheel/shared";
-import type { Context, TypedResponse } from "hono";
+import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { getCorrelationId } from "../middleware/correlation";
 

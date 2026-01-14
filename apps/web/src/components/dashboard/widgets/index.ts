@@ -2,12 +2,12 @@
  * Dashboard Widgets - Export all widget components.
  */
 
-export { MetricCardWidget } from "./MetricCardWidget";
-export { LineChartWidget } from "./LineChartWidget";
+export { ActivityFeedWidget } from "./ActivityFeedWidget";
+export { AgentListWidget } from "./AgentListWidget";
 export { BarChartWidget } from "./BarChartWidget";
+export { GaugeWidget } from "./GaugeWidget";
+export { LineChartWidget } from "./LineChartWidget";
+export { MetricCardWidget } from "./MetricCardWidget";
 export { PieChartWidget } from "./PieChartWidget";
 export { TableWidget } from "./TableWidget";
-export { AgentListWidget } from "./AgentListWidget";
-export { ActivityFeedWidget } from "./ActivityFeedWidget";
-export { GaugeWidget } from "./GaugeWidget";
 export { TextWidget } from "./TextWidget";

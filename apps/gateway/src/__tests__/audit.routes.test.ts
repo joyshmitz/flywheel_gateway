@@ -77,7 +77,7 @@ mock.module("../db", () => ({
       from: () => {
         // Create a chainable mock that supports multiple query patterns
         const chain: any = {
-          where: (cond: any) => ({
+          where: (_cond: any) => ({
             orderBy: () => {
               // For correlated events route - returns a thenable
               const orderByChain: any = {
@@ -113,7 +113,7 @@ mock.module("drizzle-orm", () => ({
   lte: (col: unknown, val: unknown) => ({ col, val }),
   like: (col: unknown, val: unknown) => ({ col, val }),
   inArray: (col: unknown, vals: unknown) => ({ col, vals }),
-  sql: (strings: TemplateStringsArray, ...values: unknown[]) =>
+  sql: (strings: TemplateStringsArray, ..._values: unknown[]) =>
     strings.join(""),
   count: () => "count",
 }));

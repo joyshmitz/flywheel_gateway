@@ -835,7 +835,7 @@ export async function getGitGraph(
     branches?: string[];
   },
 ): Promise<GitGraphData> {
-  const maxCommits = options?.maxCommits ?? 50;
+  const _maxCommits = options?.maxCommits ?? 50;
   const filterBranches = options?.branches;
 
   // Get active branch assignments

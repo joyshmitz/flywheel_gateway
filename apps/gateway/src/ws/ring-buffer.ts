@@ -8,12 +8,7 @@
  * - Cursor-based slicing for replay
  */
 
-import {
-  type CursorData,
-  compareCursors,
-  createCursor,
-  decodeCursor,
-} from "./cursor";
+import { createCursor, decodeCursor } from "./cursor";
 
 /**
  * Item stored in the ring buffer with metadata.
@@ -163,7 +158,7 @@ export class RingBuffer<T> {
   getLatestCursor(): string | undefined {
     if (this.buffer.length === 0) return undefined;
     if (this.ttlMs <= 0) {
-      return this.buffer[this.buffer.length - 1]!.cursor;
+      return this.buffer[this.buffer.length - 1]?.cursor;
     }
 
     const now = Date.now();

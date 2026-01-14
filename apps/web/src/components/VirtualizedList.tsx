@@ -7,7 +7,6 @@
 
 import {
   forwardRef,
-  memo,
   useCallback,
   useImperativeHandle,
   useRef,
@@ -76,7 +75,7 @@ function VirtualizedListInner<T>(
   const totalHeight = items.length * rowHeight;
 
   // Calculate visible range
-  const visibleCount = Math.ceil(height / rowHeight);
+  const _visibleCount = Math.ceil(height / rowHeight);
   const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
   const endIndex = Math.min(
     items.length - 1,

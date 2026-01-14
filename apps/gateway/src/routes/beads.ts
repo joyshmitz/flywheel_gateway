@@ -24,7 +24,7 @@ import {
 } from "../utils/response";
 import { transformZodError } from "../utils/validation";
 
-const beads = new Hono<{ Variables: { beadsService: BeadsService } }>();
+const _beads = new Hono<{ Variables: { beadsService: BeadsService } }>();
 
 function respondWithGatewayError(c: Context, error: GatewayError) {
   const timestamp = new Date().toISOString();

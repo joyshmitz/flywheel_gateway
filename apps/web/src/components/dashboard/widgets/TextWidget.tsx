@@ -25,21 +25,14 @@ export function TextWidget({ widget, data }: TextWidgetProps) {
   const textData = data.data as TextData | null;
 
   if (!textData?.content) {
-    return (
-      <div className="text-widget text-widget--empty">
-        No content
-      </div>
-    );
+    return <div className="text-widget text-widget--empty">No content</div>;
   }
 
   // Simple markdown rendering
   const html = renderMarkdown(textData.content);
 
   return (
-    <div
-      className="text-widget"
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <div className="text-widget" dangerouslySetInnerHTML={{ __html: html }} />
   );
 }
 

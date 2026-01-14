@@ -116,6 +116,7 @@ export function Modal({
                 )}
                 {showCloseButton && (
                   <button
+                    type="button"
                     className="modal__close"
                     onClick={onClose}
                     aria-label="Close modal"
@@ -174,10 +175,11 @@ export function ConfirmModal({
       title={title}
       footer={
         <>
-          <button className="btn btn--secondary" onClick={onClose}>
+          <button type="button" className="btn btn--secondary" onClick={onClose}>
             {cancelLabel}
           </button>
           <button
+            type="button"
             className={`btn ${variant === "danger" ? "btn--danger" : "btn--primary"}`}
             onClick={onConfirm}
             disabled={loading}

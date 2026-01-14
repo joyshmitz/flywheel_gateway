@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import {
-  type BackpressureConfig,
   BackpressureManager,
   createBackpressureManager,
 } from "../BackpressureManager";
@@ -85,7 +84,7 @@ describe("BackpressureManager", () => {
       // First batch should have batchSize messages
       const firstBatch = processed[0];
       expect(firstBatch).toBeDefined();
-      expect(firstBatch!.length).toBe(5);
+      expect(firstBatch?.length).toBe(5);
 
       manager.stop();
     });

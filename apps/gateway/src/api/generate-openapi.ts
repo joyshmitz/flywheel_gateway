@@ -11,9 +11,21 @@ import {
   AgentListResponseSchema,
   AgentResponseSchema,
   ApiErrorResponseSchema,
+  // Cost Analytics
+  BudgetAlertListResponseSchema,
+  BudgetListResponseSchema,
+  BudgetResponseSchema,
+  BudgetStatusResponseSchema,
   CheckpointListResponseSchema,
   CheckpointResponseSchema,
   ConflictListResponseSchema,
+  CostBreakdownResponseSchema,
+  CostRecordInputSchema,
+  CostRecordListResponseSchema,
+  CostRecordResponseSchema,
+  CostSummaryResponseSchema,
+  CostTrendPointSchema,
+  CreateBudgetRequestSchema,
   CreateCheckpointRequestSchema,
   CreateDashboardRequestSchema,
   CreateNotificationRequestSchema,
@@ -25,45 +37,33 @@ import {
   DashboardSharingSchema,
   DashboardStatsResponseSchema,
   DashboardVisibilitySchema,
+  ForecastOptionsSchema,
+  ForecastResponseSchema,
+  ForecastScenarioSchema,
   GrantPermissionRequestSchema,
   HealthCheckResponseSchema,
   InterruptAgentRequestSchema,
   NotificationListResponseSchema,
+  OptimizationSummaryResponseSchema,
   PaginationQuerySchema,
   PermissionListResponseSchema,
   PermissionResponseSchema,
   PipelineResponseSchema,
-  ReservationResponseSchema,
-  RestoreCheckpointRequestSchema,
-  registry,
-  SendMessageRequestSchema,
-  SpawnAgentRequestSchema,
-  UpdateDashboardRequestSchema,
-  WidgetDataResponseSchema,
-  WidgetSchema,
-  // Cost Analytics
-  BudgetAlertListResponseSchema,
-  BudgetListResponseSchema,
-  BudgetResponseSchema,
-  BudgetStatusResponseSchema,
-  CostBreakdownResponseSchema,
-  CostRecordInputSchema,
-  CostRecordListResponseSchema,
-  CostRecordResponseSchema,
-  CostSummaryResponseSchema,
-  CostTrendPointSchema,
-  CreateBudgetRequestSchema,
-  ForecastOptionsSchema,
-  ForecastResponseSchema,
-  ForecastScenarioSchema,
-  OptimizationSummaryResponseSchema,
   ProviderIdSchema,
   RateCardListResponseSchema,
   RateCardSchema,
   RecommendationCategorySchema,
   RecommendationListResponseSchema,
   RecommendationStatusSchema,
+  ReservationResponseSchema,
+  RestoreCheckpointRequestSchema,
+  registry,
+  SendMessageRequestSchema,
+  SpawnAgentRequestSchema,
   TopSpendingAgentSchema,
+  UpdateDashboardRequestSchema,
+  WidgetDataResponseSchema,
+  WidgetSchema,
 } from "./schemas";
 
 // ============================================================================
@@ -1978,7 +1978,9 @@ registry.registerPath({
  * Generate the complete OpenAPI 3.1 specification.
  * Returns an OpenAPI 3.1 document object.
  */
-export function generateOpenAPISpec(): ReturnType<OpenApiGeneratorV31["generateDocument"]> {
+export function generateOpenAPISpec(): ReturnType<
+  OpenApiGeneratorV31["generateDocument"]
+> {
   const generator = new OpenApiGeneratorV31(registry.definitions);
 
   return generator.generateDocument({
@@ -2085,7 +2087,8 @@ See the WebSocket documentation for event types and subscription.
       },
       {
         name: "Cost Analytics",
-        description: "Cost tracking, budgets, forecasting, and optimization recommendations",
+        description:
+          "Cost tracking, budgets, forecasting, and optimization recommendations",
       },
     ],
     security: [

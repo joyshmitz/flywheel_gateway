@@ -32,7 +32,7 @@ const BASE_RETRY_DELAY_MS = 1000;
 const MAX_CONCURRENT_OPS = 3;
 
 /** Operation timeout (ms) */
-const OPERATION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const _OPERATION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 // ============================================================================
 // Types

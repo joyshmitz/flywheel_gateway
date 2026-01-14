@@ -14,8 +14,11 @@
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size:
-    calc((100% - var(--grid-gap-x, 16px) * (var(--grid-columns, 12) - 1)) / var(--grid-columns, 12) + var(--grid-gap-x, 16px))
+  background-size: calc(
+      (100% - var(--grid-gap-x, 16px) * (var(--grid-columns, 12) - 1)) /
+      var(--grid-columns, 12) +
+      var(--grid-gap-x, 16px)
+    )
     calc(var(--grid-row-height, 80px) + var(--grid-gap-y, 16px));
 }
 
@@ -24,7 +27,9 @@
   position: relative;
   min-width: 0;
   min-height: 0;
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .dashboard-grid__item--dragging {
@@ -57,7 +62,9 @@
   border: 2px dashed transparent;
   border-radius: 8px;
   pointer-events: auto;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .dashboard-grid__drop-zone--active {
@@ -103,19 +110,19 @@
 /* Responsive adjustments */
 @media (max-width: 1024px) {
   .dashboard-grid {
-    --grid-columns: 6 !important;
+    --grid-columns: 6;
   }
 }
 
 @media (max-width: 768px) {
   .dashboard-grid {
-    --grid-columns: 4 !important;
-    --grid-row-height: 60px !important;
+    --grid-columns: 4;
+    --grid-row-height: 60px;
   }
 }
 
 @media (max-width: 480px) {
   .dashboard-grid {
-    --grid-columns: 2 !important;
+    --grid-columns: 2;
   }
 }

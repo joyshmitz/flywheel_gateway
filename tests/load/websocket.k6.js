@@ -81,7 +81,7 @@ export default function () {
           socket.send(JSON.stringify({ type: "pong" }));
           messagesSent.add(1);
         }
-      } catch (e) {
+      } catch (_e) {
         // Message might not be JSON
       }
     });

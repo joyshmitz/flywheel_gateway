@@ -10,7 +10,7 @@
  */
 
 import { spawn } from "bun";
-import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { db } from "../db";
 import {
   agentSweepLogs,
@@ -541,7 +541,7 @@ async function runPhase1Analysis(
   repos: FleetRepo[],
   config: SweepConfig,
 ): Promise<void> {
-  const correlationId = getCorrelationId();
+  const _correlationId = getCorrelationId();
   await logSweepEvent(
     sessionId,
     "info",
@@ -659,7 +659,7 @@ async function runPhase2Planning(
   repos: FleetRepo[],
   config: SweepConfig,
 ): Promise<void> {
-  const correlationId = getCorrelationId();
+  const _correlationId = getCorrelationId();
   await logSweepEvent(
     sessionId,
     "info",
@@ -819,7 +819,7 @@ async function runPhase3Execution(
   sessionId: string,
   config: SweepConfig,
 ): Promise<void> {
-  const correlationId = getCorrelationId();
+  const _correlationId = getCorrelationId();
   await logSweepEvent(
     sessionId,
     "info",

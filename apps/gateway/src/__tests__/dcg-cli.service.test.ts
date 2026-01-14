@@ -4,10 +4,8 @@
  * Tests for the deep DCG CLI integration including explain, test, scan commands.
  */
 
-import { beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
+import { beforeEach, describe, expect, spyOn, test } from "bun:test";
 import {
-  DCGCommandError,
-  DCGNotAvailableError,
   DCGPackNotFoundError,
   explainCommand,
   getPackInfo,
@@ -26,7 +24,7 @@ import {
 // ============================================================================
 
 // Store original Bun.spawn for restoration
-const originalSpawn = Bun.spawn;
+const _originalSpawn = Bun.spawn;
 
 // Helper to create mock spawn result
 function createMockSpawn(
@@ -110,7 +108,7 @@ describe("DCG CLI Service", () => {
 
         expect(result.wouldBlock).toBe(true);
         expect(result.matchedRules).toHaveLength(1);
-        expect(result.matchedRules[0]!.severity).toBe("critical");
+        expect(result.matchedRules[0]?.severity).toBe("critical");
         expect(result.safeAlternatives).toBeDefined();
       } finally {
         spawnSpy.mockRestore();
@@ -186,7 +184,7 @@ describe("DCG CLI Service", () => {
 
         expect(result.blocked).toBe(true);
         expect(result.matchedRule).toBeDefined();
-        expect(result.matchedRule!.severity).toBe("high");
+        expect(result.matchedRule?.severity).toBe("high");
       } finally {
         spawnSpy.mockRestore();
       }
@@ -249,7 +247,7 @@ describe("DCG CLI Service", () => {
         const result = await scanFile("/tmp/test.sh");
 
         expect(result.findings).toHaveLength(1);
-        expect(result.findings[0]!.line).toBe(3);
+        expect(result.findings[0]?.line).toBe(3);
         expect(result.summary.medium).toBe(1);
       } finally {
         spawnSpy.mockRestore();
@@ -352,8 +350,8 @@ describe("DCG CLI Service", () => {
         const packs = await listPacks();
 
         expect(packs).toHaveLength(2);
-        expect(packs[0]!.id).toBe("core.git");
-        expect(packs[1]!.ruleCount).toBe(10);
+        expect(packs[0]?.id).toBe("core.git");
+        expect(packs[1]?.ruleCount).toBe(10);
       } finally {
         spawnSpy.mockRestore();
       }
@@ -395,7 +393,7 @@ describe("DCG CLI Service", () => {
 
         expect(pack.id).toBe("core.git");
         expect(pack.rules).toHaveLength(2);
-        expect(pack.rules[0]!.severity).toBe("critical");
+        expect(pack.rules[0]?.severity).toBe("critical");
       } finally {
         spawnSpy.mockRestore();
       }

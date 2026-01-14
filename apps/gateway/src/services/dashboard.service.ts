@@ -8,7 +8,6 @@
  * - Favorites management
  */
 
-import { ulid } from "ulid";
 import type {
   CreateDashboardInput,
   Dashboard,
@@ -21,6 +20,7 @@ import type {
   Widget,
   WidgetData,
 } from "@flywheel/shared";
+import { ulid } from "ulid";
 import { getLogger } from "../middleware/correlation";
 
 // ============================================================================
@@ -58,7 +58,7 @@ function generateDashboardId(): string {
   return `dash_${ulid()}`;
 }
 
-function generatePermissionId(): string {
+function _generatePermissionId(): string {
   return `perm_${ulid()}`;
 }
 
@@ -162,7 +162,9 @@ export function updateDashboard(
       : dashboard.description
         ? { description: dashboard.description }
         : {}),
-    layout: input.layout ? { ...dashboard.layout, ...input.layout } : dashboard.layout,
+    layout: input.layout
+      ? { ...dashboard.layout, ...input.layout }
+      : dashboard.layout,
     widgets: input.widgets ?? dashboard.widgets,
     sharing: input.sharing
       ? { ...dashboard.sharing, ...input.sharing }
@@ -256,7 +258,14 @@ interface ListDashboardsResult {
 export function listDashboards(
   options: ListDashboardsOptions = {},
 ): ListDashboardsResult {
-  const { workspaceId, ownerId, visibility, userId, limit = 50, offset = 0 } = options;
+  const {
+    workspaceId,
+    ownerId,
+    visibility,
+    userId,
+    limit = 50,
+    offset = 0,
+  } = options;
 
   let results = Array.from(dashboardsStore.values());
 
@@ -289,7 +298,9 @@ export function listDashboards(
   const total = results.length;
 
   // Get user favorites
-  const userFavorites = userId ? favoritesStore.get(userId) ?? new Set() : new Set();
+  const userFavorites = userId
+    ? (favoritesStore.get(userId) ?? new Set())
+    : new Set();
 
   // Apply pagination
   const paginated = results.slice(offset, offset + limit);
@@ -357,7 +368,9 @@ export function canUserEdit(dashboard: Dashboard, userId: string): boolean {
 
   // Check permissions store
   const permissions = permissionsStore.get(dashboard.id) ?? [];
-  return permissions.some((p) => p.userId === userId && p.permission === "edit");
+  return permissions.some(
+    (p) => p.userId === userId && p.permission === "edit",
+  );
 }
 
 /**
@@ -367,7 +380,7 @@ export function grantPermission(
   dashboardId: string,
   userId: string,
   permission: DashboardPermission,
-  grantedBy?: string,
+  _grantedBy?: string,
 ): DashboardPermissionEntry | undefined {
   const dashboard = dashboardsStore.get(dashboardId);
 
@@ -489,7 +502,10 @@ export function listFavorites(userId: string): DashboardSummary[] {
 /**
  * Add a widget to a dashboard.
  */
-export function addWidget(dashboardId: string, widget: Widget): Dashboard | undefined {
+export function addWidget(
+  dashboardId: string,
+  widget: Widget,
+): Dashboard | undefined {
   const dashboard = dashboardsStore.get(dashboardId);
 
   if (!dashboard) {
@@ -541,12 +557,14 @@ export function updateWidget(
     config: widgetUpdate.config ?? existingWidget.config,
   };
   if (widgetUpdate.description !== undefined) {
-    if (widgetUpdate.description) updatedWidget.description = widgetUpdate.description;
+    if (widgetUpdate.description)
+      updatedWidget.description = widgetUpdate.description;
   } else if (existingWidget.description) {
     updatedWidget.description = existingWidget.description;
   }
   if (widgetUpdate.refreshInterval !== undefined) {
-    if (widgetUpdate.refreshInterval) updatedWidget.refreshInterval = widgetUpdate.refreshInterval;
+    if (widgetUpdate.refreshInterval)
+      updatedWidget.refreshInterval = widgetUpdate.refreshInterval;
   } else if (existingWidget.refreshInterval) {
     updatedWidget.refreshInterval = existingWidget.refreshInterval;
   }
@@ -614,10 +632,7 @@ export function updateSharing(
   };
 
   // Generate public slug if making public and no slug exists
-  if (
-    newSharing.visibility === "public" &&
-    !newSharing.publicSlug
-  ) {
+  if (newSharing.visibility === "public" && !newSharing.publicSlug) {
     newSharing.publicSlug = `${generateSlug(dashboard.name)}-${ulid().slice(-6).toLowerCase()}`;
   }
 
@@ -698,7 +713,9 @@ function getMockDataForWidget(widget: Widget): unknown {
         datasets: [
           {
             label: "Usage",
-            data: Array.from({ length: 7 }, () => Math.floor(Math.random() * 100)),
+            data: Array.from({ length: 7 }, () =>
+              Math.floor(Math.random() * 100),
+            ),
           },
         ],
       };
@@ -709,7 +726,9 @@ function getMockDataForWidget(widget: Widget): unknown {
         datasets: [
           {
             label: "Requests",
-            data: Array.from({ length: 4 }, () => Math.floor(Math.random() * 500)),
+            data: Array.from({ length: 4 }, () =>
+              Math.floor(Math.random() * 500),
+            ),
           },
         ],
       };
@@ -742,9 +761,24 @@ function getMockDataForWidget(widget: Widget): unknown {
     case "activity-feed":
       return {
         events: [
-          { id: "1", type: "session_start", message: "Agent Alpha started session", timestamp: new Date().toISOString() },
-          { id: "2", type: "task_complete", message: "Task completed successfully", timestamp: new Date().toISOString() },
-          { id: "3", type: "error", message: "Rate limit exceeded", timestamp: new Date().toISOString() },
+          {
+            id: "1",
+            type: "session_start",
+            message: "Agent Alpha started session",
+            timestamp: new Date().toISOString(),
+          },
+          {
+            id: "2",
+            type: "task_complete",
+            message: "Task completed successfully",
+            timestamp: new Date().toISOString(),
+          },
+          {
+            id: "3",
+            type: "error",
+            message: "Rate limit exceeded",
+            timestamp: new Date().toISOString(),
+          },
         ],
       };
 

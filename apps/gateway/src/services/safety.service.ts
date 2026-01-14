@@ -13,7 +13,6 @@ import {
   getRuleStats,
   type SafetyAction,
   type SafetyCategory,
-  type SafetyEvaluationResult,
   type SafetyOperation,
   type SafetyRule,
   type SafetySeverity,

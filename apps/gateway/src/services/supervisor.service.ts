@@ -229,7 +229,7 @@ export class SupervisorService {
         stdout: "pipe",
         stderr: "pipe",
         env: { ...process.env, ...spec.env },
-        onExit: (proc, exitCode) => {
+        onExit: (_proc, exitCode) => {
           this.handleExit(name, exitCode);
         },
       });
@@ -670,7 +670,8 @@ export class SupervisorService {
     if (state.pid !== undefined) data.pid = state.pid;
     if (state.port !== undefined) data.port = state.port;
     if (state.lastError !== undefined) data.error = state.lastError;
-    if (state.restartCount !== undefined) data.restartCount = state.restartCount;
+    if (state.restartCount !== undefined)
+      data.restartCount = state.restartCount;
 
     const event: SupervisorEvent = { type, data };
 

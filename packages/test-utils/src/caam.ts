@@ -221,7 +221,7 @@ export class MockCaamExecutor {
       (a) => !a.startsWith("-") && a !== "activate" && a !== "--json",
     );
     const profile = args.find(
-      (a, i) => !a.startsWith("-") && a !== "activate" && a !== provider,
+      (a, _i) => !a.startsWith("-") && a !== "activate" && a !== provider,
     );
 
     const output = {
@@ -282,7 +282,7 @@ export class MockCaamExecutor {
     return { stdout: "Backup created", stderr: "", exitCode: 0 };
   }
 
-  private handleClear(args: string[]): {
+  private handleClear(_args: string[]): {
     stdout: string;
     stderr: string;
     exitCode: number;
@@ -395,6 +395,8 @@ export function createMockCaamExecutor(
     ],
     cooldowns: config?.cooldowns ?? [],
     version: config?.version ?? "1.0.0-mock",
-    ...(config?.failureScenarios != null && { failureScenarios: config.failureScenarios }),
+    ...(config?.failureScenarios != null && {
+      failureScenarios: config.failureScenarios,
+    }),
   });
 }

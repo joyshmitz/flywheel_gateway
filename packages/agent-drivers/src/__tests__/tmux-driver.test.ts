@@ -2,7 +2,7 @@
  * Tests for the Tmux Driver.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import {
   createTmuxDriver,
   type TmuxDriver,

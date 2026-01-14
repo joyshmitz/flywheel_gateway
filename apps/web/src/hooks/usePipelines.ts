@@ -165,7 +165,12 @@ const mockPipelines: Pipeline[] = [
       nextTriggerAt: new Date(Date.now() + 43200000).toISOString(),
     },
     steps: [
-      { id: "step-1", name: "Clean Build", type: "script", status: "completed" },
+      {
+        id: "step-1",
+        name: "Clean Build",
+        type: "script",
+        status: "completed",
+      },
       {
         id: "step-2",
         name: "Unit Tests",
@@ -332,7 +337,7 @@ const API_BASE = "/api/pipelines";
 
 async function fetchAPI<T>(
   endpoint: string,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     headers: {
@@ -367,7 +372,7 @@ interface UseQueryResult<T> {
 function useQuery<T>(
   endpoint: string,
   mockData: T,
-  deps: unknown[] = []
+  deps: unknown[] = [],
 ): UseQueryResult<T> {
   const mockMode = useUiStore((state) => state.mockMode);
   const [data, setData] = useState<T | null>(null);
@@ -400,7 +405,7 @@ function useQuery<T>(
       setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [endpoint, mockMode]);
+  }, [endpoint, mockMode, mockDataRef.current]);
 
   useEffect(() => {
     fetch();
@@ -431,7 +436,7 @@ export function usePipelines(options?: {
   }
   if (options?.tags?.length) {
     filtered = filtered.filter((p) =>
-      options.tags!.some((t) => p.tags?.includes(t))
+      options.tags?.some((t) => p.tags?.includes(t)),
     );
   }
   if (options?.search) {
@@ -439,7 +444,7 @@ export function usePipelines(options?: {
     filtered = filtered.filter(
       (p) =>
         p.name.toLowerCase().includes(search) ||
-        p.description?.toLowerCase().includes(search)
+        p.description?.toLowerCase().includes(search),
     );
   }
 
@@ -467,7 +472,7 @@ export function usePipelineRuns(
   options?: {
     status?: PipelineStatus[];
     limit?: number;
-  }
+  },
 ): UseQueryResult<PipelineRun[]> {
   const params = new URLSearchParams();
   if (options?.status) params.set("status", options.status.join(","));
@@ -492,7 +497,7 @@ export function usePipelineRuns(
  */
 export function usePipelineRun(
   pipelineId: string,
-  runId: string
+  runId: string,
 ): UseQueryResult<PipelineRun> {
   const found = mockRuns.find((r) => r.id === runId);
   const mock = found ?? mockRuns[0]!;
@@ -561,7 +566,7 @@ export function useCreatePipeline(): MutationResult<
         setIsLoading(false);
       }
     },
-    [mockMode]
+    [mockMode],
   );
 
   return { mutate, isLoading, error };
@@ -609,7 +614,7 @@ export function useUpdatePipeline(): MutationResult<
         setIsLoading(false);
       }
     },
-    [mockMode]
+    [mockMode],
   );
 
   return { mutate, isLoading, error };
@@ -646,7 +651,7 @@ export function useDeletePipeline(): MutationResult<void, [string]> {
         setIsLoading(false);
       }
     },
-    [mockMode]
+    [mockMode],
   );
 
   return { mutate, isLoading, error };
@@ -666,7 +671,7 @@ export function useRunPipeline(): MutationResult<
   const mutate = useCallback(
     async (
       pipelineId: string,
-      params?: Record<string, unknown>
+      params?: Record<string, unknown>,
     ): Promise<PipelineRun> => {
       setIsLoading(true);
       setError(null);
@@ -699,7 +704,7 @@ export function useRunPipeline(): MutationResult<
         setIsLoading(false);
       }
     },
-    [mockMode]
+    [mockMode],
   );
 
   return { mutate, isLoading, error };
@@ -732,7 +737,7 @@ export function usePausePipeline(): MutationResult<
       try {
         const result = await fetchAPI<PipelineRun>(
           `/${pipelineId}/runs/${runId}/pause`,
-          { method: "POST" }
+          { method: "POST" },
         );
         return result;
       } catch (e) {
@@ -743,7 +748,7 @@ export function usePausePipeline(): MutationResult<
         setIsLoading(false);
       }
     },
-    [mockMode]
+    [mockMode],
   );
 
   return { mutate, isLoading, error };
@@ -776,7 +781,7 @@ export function useResumePipeline(): MutationResult<
       try {
         const result = await fetchAPI<PipelineRun>(
           `/${pipelineId}/runs/${runId}/resume`,
-          { method: "POST" }
+          { method: "POST" },
         );
         return result;
       } catch (e) {
@@ -787,7 +792,7 @@ export function useResumePipeline(): MutationResult<
         setIsLoading(false);
       }
     },
-    [mockMode]
+    [mockMode],
   );
 
   return { mutate, isLoading, error };
@@ -820,7 +825,7 @@ export function useCancelPipeline(): MutationResult<
       try {
         const result = await fetchAPI<PipelineRun>(
           `/${pipelineId}/runs/${runId}/cancel`,
-          { method: "POST" }
+          { method: "POST" },
         );
         return result;
       } catch (e) {
@@ -831,7 +836,7 @@ export function useCancelPipeline(): MutationResult<
         setIsLoading(false);
       }
     },
-    [mockMode]
+    [mockMode],
   );
 
   return { mutate, isLoading, error };
@@ -853,7 +858,7 @@ export function useApproveStep(): MutationResult<
       pipelineId: string,
       runId: string,
       stepId: string,
-      comment?: string
+      comment?: string,
     ): Promise<void> => {
       setIsLoading(true);
       setError(null);
@@ -877,7 +882,7 @@ export function useApproveStep(): MutationResult<
         setIsLoading(false);
       }
     },
-    [mockMode]
+    [mockMode],
   );
 
   return { mutate, isLoading, error };
@@ -886,7 +891,10 @@ export function useApproveStep(): MutationResult<
 /**
  * Hook to toggle pipeline enabled state.
  */
-export function useTogglePipeline(): MutationResult<Pipeline, [string, boolean]> {
+export function useTogglePipeline(): MutationResult<
+  Pipeline,
+  [string, boolean]
+> {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const mockMode = useUiStore((state) => state.mockMode);
@@ -918,7 +926,7 @@ export function useTogglePipeline(): MutationResult<Pipeline, [string, boolean]>
         setIsLoading(false);
       }
     },
-    [mockMode]
+    [mockMode],
   );
 
   return { mutate, isLoading, error };

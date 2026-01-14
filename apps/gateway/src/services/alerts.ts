@@ -17,7 +17,6 @@ import {
   type AlertListResponse,
   type AlertRule,
   type AlertRuleUpdate,
-  type AlertSeverity,
   DEFAULT_COOLDOWN_MS,
   SEVERITY_ORDER,
 } from "../models/alert";
@@ -242,10 +241,10 @@ export function getActiveAlerts(filter?: AlertFilter): AlertListResponse {
 
   // Apply filters
   if (filter?.type?.length) {
-    alerts = alerts.filter((a) => filter.type!.includes(a.type));
+    alerts = alerts.filter((a) => filter.type?.includes(a.type));
   }
   if (filter?.severity?.length) {
-    alerts = alerts.filter((a) => filter.severity!.includes(a.severity));
+    alerts = alerts.filter((a) => filter.severity?.includes(a.severity));
   }
   if (filter?.acknowledged !== undefined) {
     alerts = alerts.filter((a) => a.acknowledged === filter.acknowledged);
@@ -323,10 +322,10 @@ export function getAlertHistory(filter?: AlertFilter): AlertListResponse {
 
   // Apply filters
   if (filter?.type?.length) {
-    alerts = alerts.filter((a) => filter.type!.includes(a.type));
+    alerts = alerts.filter((a) => filter.type?.includes(a.type));
   }
   if (filter?.severity?.length) {
-    alerts = alerts.filter((a) => filter.severity!.includes(a.severity));
+    alerts = alerts.filter((a) => filter.severity?.includes(a.severity));
   }
   if (filter?.since) {
     alerts = alerts.filter((a) => a.createdAt >= filter.since!);
@@ -490,12 +489,12 @@ export function initializeDefaultAlertRules(): void {
     type: "agent_stalled",
     severity: "warning",
     cooldown: 10 * 60 * 1000, // 10 minutes
-    condition: (ctx) => {
+    condition: (_ctx) => {
       // Would need to track per-agent last activity
       return false;
     },
     title: "Agent may be stalled",
-    message: (ctx) => `Agent has shown no output for over 5 minutes`,
+    message: (_ctx) => `Agent has shown no output for over 5 minutes`,
     source: "agent_monitor",
     actions: [
       { id: "interrupt", label: "Interrupt Agent", type: "custom" },

@@ -2,7 +2,7 @@
  * Tests for agent routes.
  */
 
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 import { agents as agentRoutes } from "../routes/agents";
 

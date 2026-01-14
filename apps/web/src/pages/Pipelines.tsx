@@ -8,7 +8,6 @@
  * - Run execution controls (run, pause, resume, cancel)
  */
 
-import { useState } from "react";
 import {
   AlertCircle,
   Calendar,
@@ -26,6 +25,7 @@ import {
   XCircle,
   Zap,
 } from "lucide-react";
+import { useState } from "react";
 
 import { StatusPill } from "../components/ui/StatusPill";
 import {
@@ -34,12 +34,12 @@ import {
   type PipelineStatus,
   type StepStatus,
   type TriggerType,
+  useCancelPipeline,
+  usePausePipeline,
   usePipelineRuns,
   usePipelines,
-  useRunPipeline,
-  usePausePipeline,
   useResumePipeline,
-  useCancelPipeline,
+  useRunPipeline,
   useTogglePipeline,
 } from "../hooks/usePipelines";
 
@@ -47,7 +47,10 @@ import {
 // Helpers
 // ============================================================================
 
-const statusTone: Record<PipelineStatus | StepStatus, "positive" | "warning" | "danger" | "muted"> = {
+const statusTone: Record<
+  PipelineStatus | StepStatus,
+  "positive" | "warning" | "danger" | "muted"
+> = {
   idle: "muted",
   running: "warning",
   paused: "muted",
@@ -68,7 +71,8 @@ const triggerIcons: Record<TriggerType, typeof Play> = {
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  if (ms < 3600000) return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
+  if (ms < 3600000)
+    return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
   return `${Math.floor(ms / 3600000)}h ${Math.floor((ms % 3600000) / 60000)}m`;
 }
 
@@ -89,7 +93,8 @@ function formatRelativeTime(dateString: string, isFuture = false): string {
 
   if (diff < 60000) return isFuture ? "in <1m" : "just now";
   if (diff < 3600000) return `${prefix}${Math.floor(diff / 60000)}m${suffix}`;
-  if (diff < 86400000) return `${prefix}${Math.floor(diff / 3600000)}h${suffix}`;
+  if (diff < 86400000)
+    return `${prefix}${Math.floor(diff / 3600000)}h${suffix}`;
   return `${prefix}${Math.floor(diff / 86400000)}d${suffix}`;
 }
 
@@ -126,21 +131,34 @@ function PipelineCard({
 
   return (
     <div className={`card ${!pipeline.enabled ? "card--muted" : ""}`}>
-      <div className="card__header" style={{ cursor: "pointer" }} onClick={onToggleExpand}>
+      <div
+        className="card__header"
+        style={{ cursor: "pointer" }}
+        onClick={onToggleExpand}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
           <h4 style={{ margin: 0 }}>{pipeline.name}</h4>
-          {!pipeline.enabled && (
-            <StatusPill tone="muted">disabled</StatusPill>
-          )}
+          {!pipeline.enabled && <StatusPill tone="muted">disabled</StatusPill>}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <span className="muted" style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+          <span
+            className="muted"
+            style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}
+          >
             <TriggerIcon size={14} />
             {pipeline.trigger.type}
           </span>
           <span className="muted">v{pipeline.version}</span>
-          <StatusPill tone={successRate >= 80 ? "positive" : successRate >= 50 ? "warning" : "danger"}>
+          <StatusPill
+            tone={
+              successRate >= 80
+                ? "positive"
+                : successRate >= 50
+                  ? "warning"
+                  : "danger"
+            }
+          >
             {successRate}% success
           </StatusPill>
         </div>
@@ -154,25 +172,54 @@ function PipelineCard({
             </p>
           )}
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: "1rem", marginBottom: "1rem" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+              gap: "1rem",
+              marginBottom: "1rem",
+            }}
+          >
             <div>
-              <div className="muted" style={{ fontSize: "0.75rem" }}>Total Runs</div>
-              <div style={{ fontSize: "1.25rem", fontWeight: 600 }}>{pipeline.stats.totalRuns}</div>
+              <div className="muted" style={{ fontSize: "0.75rem" }}>
+                Total Runs
+              </div>
+              <div style={{ fontSize: "1.25rem", fontWeight: 600 }}>
+                {pipeline.stats.totalRuns}
+              </div>
             </div>
             <div>
-              <div className="muted" style={{ fontSize: "0.75rem" }}>Successful</div>
-              <div style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--color-positive)" }}>
+              <div className="muted" style={{ fontSize: "0.75rem" }}>
+                Successful
+              </div>
+              <div
+                style={{
+                  fontSize: "1.25rem",
+                  fontWeight: 600,
+                  color: "var(--color-positive)",
+                }}
+              >
                 {pipeline.stats.successfulRuns}
               </div>
             </div>
             <div>
-              <div className="muted" style={{ fontSize: "0.75rem" }}>Failed</div>
-              <div style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--color-danger)" }}>
+              <div className="muted" style={{ fontSize: "0.75rem" }}>
+                Failed
+              </div>
+              <div
+                style={{
+                  fontSize: "1.25rem",
+                  fontWeight: 600,
+                  color: "var(--color-danger)",
+                }}
+              >
                 {pipeline.stats.failedRuns}
               </div>
             </div>
             <div>
-              <div className="muted" style={{ fontSize: "0.75rem" }}>Avg Duration</div>
+              <div className="muted" style={{ fontSize: "0.75rem" }}>
+                Avg Duration
+              </div>
               <div style={{ fontSize: "1.25rem", fontWeight: 600 }}>
                 {formatDuration(pipeline.stats.averageDurationMs)}
               </div>
@@ -180,7 +227,12 @@ function PipelineCard({
           </div>
 
           <div style={{ marginBottom: "1rem" }}>
-            <div className="muted" style={{ fontSize: "0.75rem", marginBottom: "0.5rem" }}>Steps ({pipeline.steps.length})</div>
+            <div
+              className="muted"
+              style={{ fontSize: "0.75rem", marginBottom: "0.5rem" }}
+            >
+              Steps ({pipeline.steps.length})
+            </div>
             <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>
               {pipeline.steps.map((step, i) => (
                 <div
@@ -209,7 +261,12 @@ function PipelineCard({
 
           {pipeline.tags && pipeline.tags.length > 0 && (
             <div style={{ marginBottom: "1rem" }}>
-              <div className="muted" style={{ fontSize: "0.75rem", marginBottom: "0.25rem" }}>Tags</div>
+              <div
+                className="muted"
+                style={{ fontSize: "0.75rem", marginBottom: "0.25rem" }}
+              >
+                Tags
+              </div>
               <div style={{ display: "flex", gap: "0.25rem" }}>
                 {pipeline.tags.map((tag) => (
                   <span
@@ -228,13 +285,22 @@ function PipelineCard({
             </div>
           )}
 
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
             <div className="muted" style={{ fontSize: "0.75rem" }}>
-              {pipeline.lastRunAt && `Last run ${formatRelativeTime(pipeline.lastRunAt)}`}
-              {pipeline.trigger.nextTriggerAt && ` · Next: ${formatRelativeTime(pipeline.trigger.nextTriggerAt, true)}`}
+              {pipeline.lastRunAt &&
+                `Last run ${formatRelativeTime(pipeline.lastRunAt)}`}
+              {pipeline.trigger.nextTriggerAt &&
+                ` · Next: ${formatRelativeTime(pipeline.trigger.nextTriggerAt, true)}`}
             </div>
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <button
+                type="button"
                 className="btn btn--ghost btn--sm"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -242,10 +308,15 @@ function PipelineCard({
                 }}
                 disabled={isToggling}
               >
-                {isToggling ? <Loader2 size={14} className="spin" /> : <Settings size={14} />}
+                {isToggling ? (
+                  <Loader2 size={14} className="spin" />
+                ) : (
+                  <Settings size={14} />
+                )}
                 {pipeline.enabled ? "Disable" : "Enable"}
               </button>
               <button
+                type="button"
                 className="btn btn--primary btn--sm"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -253,7 +324,11 @@ function PipelineCard({
                 }}
                 disabled={!pipeline.enabled || isRunning}
               >
-                {isRunning ? <Loader2 size={14} className="spin" /> : <Play size={14} />}
+                {isRunning ? (
+                  <Loader2 size={14} className="spin" />
+                ) : (
+                  <Play size={14} />
+                )}
                 Run
               </button>
             </div>
@@ -286,7 +361,10 @@ function RunRow({ run, onPause, onResume, onCancel, isLoading }: RunRowProps) {
     <div className="table__row">
       <span className="mono">{run.id}</span>
       <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-        <StatusIcon size={14} className={run.status === "running" ? "spin" : ""} />
+        <StatusIcon
+          size={14}
+          className={run.status === "running" ? "spin" : ""}
+        />
         <StatusPill tone={statusTone[run.status]}>{run.status}</StatusPill>
       </span>
       <span>{formatRelativeTime(run.startedAt)}</span>
@@ -295,26 +373,49 @@ function RunRow({ run, onPause, onResume, onCancel, isLoading }: RunRowProps) {
       <span style={{ display: "flex", gap: "0.25rem" }}>
         {run.status === "running" && (
           <>
-            <button className="btn btn--ghost btn--xs" onClick={onPause} disabled={isLoading}>
+            <button
+              type="button"
+              className="btn btn--ghost btn--xs"
+              onClick={onPause}
+              disabled={isLoading}
+            >
               <Pause size={12} />
             </button>
-            <button className="btn btn--ghost btn--xs" onClick={onCancel} disabled={isLoading}>
+            <button
+              type="button"
+              className="btn btn--ghost btn--xs"
+              onClick={onCancel}
+              disabled={isLoading}
+            >
               <Square size={12} />
             </button>
           </>
         )}
         {run.status === "paused" && (
           <>
-            <button className="btn btn--ghost btn--xs" onClick={onResume} disabled={isLoading}>
+            <button
+              type="button"
+              className="btn btn--ghost btn--xs"
+              onClick={onResume}
+              disabled={isLoading}
+            >
               <Play size={12} />
             </button>
-            <button className="btn btn--ghost btn--xs" onClick={onCancel} disabled={isLoading}>
+            <button
+              type="button"
+              className="btn btn--ghost btn--xs"
+              onClick={onCancel}
+              disabled={isLoading}
+            >
               <Square size={12} />
             </button>
           </>
         )}
         {run.error && (
-          <span title={run.error.message} style={{ color: "var(--color-danger)" }}>
+          <span
+            title={run.error.message}
+            style={{ color: "var(--color-danger)" }}
+          >
             <AlertCircle size={14} />
           </span>
         )}
@@ -328,7 +429,11 @@ interface PipelineRunsProps {
 }
 
 function PipelineRuns({ pipelineId }: PipelineRunsProps) {
-  const { data: runs, isLoading, refetch } = usePipelineRuns(pipelineId, { limit: 10 });
+  const {
+    data: runs,
+    isLoading,
+    refetch,
+  } = usePipelineRuns(pipelineId, { limit: 10 });
   const { mutate: pause, isLoading: isPausing } = usePausePipeline();
   const { mutate: resume, isLoading: isResuming } = useResumePipeline();
   const { mutate: cancel, isLoading: isCancelling } = useCancelPipeline();
@@ -384,8 +489,13 @@ export function PipelinesPage() {
   const [showRuns, setShowRuns] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "enabled" | "disabled">("all");
 
-  const { data: pipelines, isLoading, error, refetch } = usePipelines(
-    filter === "all" ? undefined : { enabled: filter === "enabled" }
+  const {
+    data: pipelines,
+    isLoading,
+    error,
+    refetch,
+  } = usePipelines(
+    filter === "all" ? undefined : { enabled: filter === "enabled" },
   );
 
   const { mutate: runPipeline, isLoading: isRunning } = useRunPipeline();
@@ -404,14 +514,21 @@ export function PipelinesPage() {
   return (
     <div className="page">
       <header className="page__header">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <div>
             <h1>Pipelines</h1>
             <p className="muted">
-              Orchestrate multi-step agent workflows with triggers, conditions, and approvals.
+              Orchestrate multi-step agent workflows with triggers, conditions,
+              and approvals.
             </p>
           </div>
-          <button className="btn btn--ghost" onClick={refetch}>
+          <button type="button" className="btn btn--ghost" onClick={refetch}>
             <RefreshCw size={16} />
             Refresh
           </button>
@@ -420,18 +537,21 @@ export function PipelinesPage() {
 
       <div style={{ marginBottom: "1rem", display: "flex", gap: "0.5rem" }}>
         <button
+          type="button"
           className={`btn btn--sm ${filter === "all" ? "btn--primary" : "btn--ghost"}`}
           onClick={() => setFilter("all")}
         >
           All
         </button>
         <button
+          type="button"
           className={`btn btn--sm ${filter === "enabled" ? "btn--primary" : "btn--ghost"}`}
           onClick={() => setFilter("enabled")}
         >
           Enabled
         </button>
         <button
+          type="button"
           className={`btn btn--sm ${filter === "disabled" ? "btn--primary" : "btn--ghost"}`}
           onClick={() => setFilter("disabled")}
         >
@@ -454,7 +574,7 @@ export function PipelinesPage() {
           </div>
           <div className="card__body">
             <p className="muted">{error.message}</p>
-            <button className="btn btn--primary btn--sm" onClick={refetch}>
+            <button type="button" className="btn btn--primary btn--sm" onClick={refetch}>
               Retry
             </button>
           </div>
@@ -463,7 +583,10 @@ export function PipelinesPage() {
 
       {!isLoading && pipelines && pipelines.length === 0 && (
         <div className="card">
-          <div className="card__body" style={{ textAlign: "center", padding: "2rem" }}>
+          <div
+            className="card__body"
+            style={{ textAlign: "center", padding: "2rem" }}
+          >
             <Zap size={48} className="muted" style={{ marginBottom: "1rem" }} />
             <h3>No pipelines yet</h3>
             <p className="muted">
@@ -474,14 +597,18 @@ export function PipelinesPage() {
       )}
 
       {pipelines && pipelines.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+        <div
+          style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
+        >
           {pipelines.map((pipeline) => (
             <div key={pipeline.id}>
               <PipelineCard
                 pipeline={pipeline}
                 isExpanded={expandedId === pipeline.id}
                 onToggleExpand={() => {
-                  setExpandedId(expandedId === pipeline.id ? null : pipeline.id);
+                  setExpandedId(
+                    expandedId === pipeline.id ? null : pipeline.id,
+                  );
                   if (expandedId !== pipeline.id) {
                     setShowRuns(pipeline.id);
                   }

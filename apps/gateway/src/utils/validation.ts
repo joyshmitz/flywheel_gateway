@@ -287,7 +287,7 @@ export function isZodError(error: unknown): error is ZodError {
 export function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
   const result: Record<string, unknown> = {};
   for (const key in obj) {
-    if (Object.prototype.hasOwnProperty.call(obj, key) && obj[key] !== undefined) {
+    if (Object.hasOwn(obj, key) && obj[key] !== undefined) {
       result[key] = obj[key];
     }
   }

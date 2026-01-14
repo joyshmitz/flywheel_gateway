@@ -59,7 +59,6 @@ import {
   pendingExceptionLinks,
 } from "../utils/links";
 import {
-  sendCreated,
   sendEmptyList,
   sendError,
   sendInternalError,

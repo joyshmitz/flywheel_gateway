@@ -11,9 +11,7 @@ import {
   getContextHealth,
   getRotationConfig,
   needsRotation,
-  type RotationConfig,
   type RotationHandlers,
-  type RotationStrategy,
   setRotationConfig,
 } from "../services/context-rotation";
 
@@ -28,7 +26,7 @@ async function ensureAgent(agentId: string) {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-  } catch (e) {
+  } catch (_e) {
     // Ignore
   }
 }
@@ -307,7 +305,7 @@ describe("Context Rotation Service", () => {
       let agentTerminated = false;
 
       const handlers: RotationHandlers = {
-        spawnAgent: async (config) => {
+        spawnAgent: async (_config) => {
           agentSpawned = true;
           return { agentId: "new-agent-123" };
         },
@@ -329,7 +327,7 @@ describe("Context Rotation Service", () => {
     });
 
     test("executes checkpoint_and_restart strategy", async () => {
-      const checkpointRestored = false;
+      const _checkpointRestored = false;
 
       const handlers: RotationHandlers = {
         spawnAgent: async () => ({ agentId: "restarted-agent" }),

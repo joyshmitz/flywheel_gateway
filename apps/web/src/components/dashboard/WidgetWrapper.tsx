@@ -8,8 +8,8 @@
  * - Edit mode controls
  */
 
-import type { ReactNode } from "react";
 import type { Widget, WidgetData } from "@flywheel/shared";
+import type { ReactNode } from "react";
 import "./WidgetWrapper.css";
 
 interface WidgetWrapperProps {

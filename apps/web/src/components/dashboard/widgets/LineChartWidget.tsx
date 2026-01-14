@@ -13,8 +13,8 @@
  * }
  */
 
-import { useEffect, useRef } from "react";
 import type { Widget, WidgetData } from "@flywheel/shared";
+import { useEffect, useRef } from "react";
 import "./ChartWidget.css";
 
 interface DataPoint {
@@ -54,7 +54,11 @@ export function LineChartWidget({ widget, data }: LineChartWidgetProps) {
   const chartData = data.data as ChartData | null;
 
   useEffect(() => {
-    if (!chartData?.series?.length || !canvasRef.current || !containerRef.current)
+    if (
+      !chartData?.series?.length ||
+      !canvasRef.current ||
+      !containerRef.current
+    )
       return;
 
     const canvas = canvasRef.current;
@@ -111,7 +115,10 @@ export function LineChartWidget({ widget, data }: LineChartWidgetProps) {
 
     // Draw each series
     chartData.series.forEach((series, seriesIndex) => {
-      const color = series.color ?? DEFAULT_COLORS[seriesIndex % DEFAULT_COLORS.length] ?? "#6366f1";
+      const color =
+        series.color ??
+        DEFAULT_COLORS[seriesIndex % DEFAULT_COLORS.length] ??
+        "#6366f1";
       const points = series.data;
 
       if (points.length === 0) return;
@@ -149,10 +156,7 @@ export function LineChartWidget({ widget, data }: LineChartWidgetProps) {
           ctx.lineTo(x, y);
         }
       });
-      ctx.lineTo(
-        padding.left + chartWidth,
-        padding.top + chartHeight,
-      );
+      ctx.lineTo(padding.left + chartWidth, padding.top + chartHeight);
       ctx.closePath();
       ctx.fill();
 
@@ -183,8 +187,7 @@ export function LineChartWidget({ widget, data }: LineChartWidgetProps) {
         const point = firstSeries.data[i];
         if (!point) continue;
         const x =
-          padding.left +
-          (chartWidth / (firstSeries.data.length - 1 || 1)) * i;
+          padding.left + (chartWidth / (firstSeries.data.length - 1 || 1)) * i;
         const label = formatXLabel(point.x);
         ctx.fillText(label, x, height - padding.bottom + 20);
       }
@@ -205,9 +208,7 @@ export function LineChartWidget({ widget, data }: LineChartWidgetProps) {
 
   if (!chartData?.series?.length) {
     return (
-      <div className="chart-widget chart-widget--empty">
-        No data available
-      </div>
+      <div className="chart-widget chart-widget--empty">No data available</div>
     );
   }
 
@@ -253,13 +254,13 @@ function formatXLabel(value: string | number): string {
   if (typeof value === "string") {
     // Try to parse as date
     const date = new Date(value);
-    if (!isNaN(date.getTime())) {
+    if (!Number.isNaN(date.getTime())) {
       return date.toLocaleDateString(undefined, {
         month: "short",
         day: "numeric",
       });
     }
-    return value.length > 10 ? value.substring(0, 10) + "..." : value;
+    return value.length > 10 ? `${value.substring(0, 10)}...` : value;
   }
   return String(value);
 }

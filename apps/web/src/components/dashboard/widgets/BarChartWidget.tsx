@@ -12,8 +12,8 @@
  * }
  */
 
-import { useEffect, useRef } from "react";
 import type { Widget, WidgetData } from "@flywheel/shared";
+import { useEffect, useRef } from "react";
 import "./ChartWidget.css";
 
 interface BarItem {
@@ -47,7 +47,11 @@ export function BarChartWidget({ widget, data }: BarChartWidgetProps) {
   const chartData = data.data as BarChartData | null;
 
   useEffect(() => {
-    if (!chartData?.items?.length || !canvasRef.current || !containerRef.current)
+    if (
+      !chartData?.items?.length ||
+      !canvasRef.current ||
+      !containerRef.current
+    )
       return;
 
     const canvas = canvasRef.current;
@@ -124,7 +128,8 @@ export function BarChartWidget({ widget, data }: BarChartWidgetProps) {
 
     // Draw bars
     items.forEach((item, i) => {
-      const color = item.color ?? DEFAULT_COLORS[i % DEFAULT_COLORS.length] ?? "#6366f1";
+      const color =
+        item.color ?? DEFAULT_COLORS[i % DEFAULT_COLORS.length] ?? "#6366f1";
       const valueRatio = item.value / maxValue;
 
       if (isHorizontal) {
@@ -191,9 +196,7 @@ export function BarChartWidget({ widget, data }: BarChartWidgetProps) {
 
   if (!chartData?.items?.length) {
     return (
-      <div className="chart-widget chart-widget--empty">
-        No data available
-      </div>
+      <div className="chart-widget chart-widget--empty">No data available</div>
     );
   }
 
@@ -218,6 +221,6 @@ function formatValue(value: number): string {
 
 function truncateLabel(label: string, maxLength: number): string {
   return label.length > maxLength
-    ? label.substring(0, maxLength - 1) + "..."
+    ? `${label.substring(0, maxLength - 1)}...`
     : label;
 }

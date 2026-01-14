@@ -191,7 +191,7 @@ cass.get("/available", async (c) => {
   try {
     const available = await isCassAvailable();
     return sendResource(c, "cass_available", { available });
-  } catch (error) {
+  } catch (_error) {
     return sendResource(c, "cass_available", { available: false });
   }
 });

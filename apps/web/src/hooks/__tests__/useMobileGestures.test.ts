@@ -138,7 +138,7 @@ describe("useMobileGestures", () => {
     it("should validate horizontal swipe distance", () => {
       const swipeThreshold = 50;
       const deltaX = 60;
-      const deltaY = 10;
+      const _deltaY = 10;
       const absDeltaX = Math.abs(deltaX);
       const isValidDistance = absDeltaX >= swipeThreshold;
 

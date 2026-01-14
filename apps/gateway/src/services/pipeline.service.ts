@@ -23,7 +23,6 @@ import {
   type PipelineFilter,
   type PipelineRun,
   type PipelineRunFilter,
-  type PipelineStatus,
   type PipelineStep,
   type RetryPolicy,
   type ScriptConfig,
@@ -31,7 +30,6 @@ import {
   type StepStatus,
   type SubPipelineConfig,
   type TransformConfig,
-  type TransformOperation,
   type UpdatePipelineInput,
   type WaitConfig,
   type WebhookConfig,
@@ -452,7 +450,6 @@ async function executeApproval(
           case "reject":
             resolve({ approved: false, approvals });
             break;
-          case "fail":
           default:
             reject(new Error("Approval timeout"));
         }
@@ -918,7 +915,7 @@ async function executeTransform(
               .replace(/\$item/g, JSON.stringify(item))
               .replace(/\$index/g, String(index));
             try {
-              return new Function("return " + expr)();
+              return new Function(`return ${expr}`)();
             } catch {
               return item;
             }
@@ -938,7 +935,7 @@ async function executeTransform(
               .replace(/\$item/g, JSON.stringify(item))
               .replace(/\$index/g, String(index));
             try {
-              return new Function("return " + cond)();
+              return new Function(`return ${cond}`)();
             } catch {
               return true;
             }
@@ -959,7 +956,7 @@ async function executeTransform(
               .replace(/\$item/g, JSON.stringify(item))
               .replace(/\$index/g, String(index));
             try {
-              return new Function("return " + expr)();
+              return new Function(`return ${expr}`)();
             } catch {
               return acc;
             }
@@ -975,7 +972,7 @@ async function executeTransform(
         const extractSource = getValueByPath(context, operation.source);
         const extracted = getValueByPath(
           { root: extractSource } as Record<string, unknown>,
-          "root" + operation.query.replace(/^\$/, ""),
+          `root${operation.query.replace(/^\$/, "")}`,
         );
         setValueByPath(context, operation.target, extracted);
         transformedCount++;
@@ -1793,7 +1790,7 @@ export function listPipelines(filter: PipelineFilter = {}): {
 
   if (filter.tags?.length) {
     result = result.filter((p) =>
-      filter.tags!.some((tag) => p.tags?.includes(tag)),
+      filter.tags?.some((tag) => p.tags?.includes(tag)),
     );
   }
 
@@ -2017,7 +2014,7 @@ export function listRuns(
 
   // Apply filters
   if (filter.status?.length) {
-    result = result.filter((r) => filter.status!.includes(r.status));
+    result = result.filter((r) => filter.status?.includes(r.status));
   }
 
   if (filter.since) {

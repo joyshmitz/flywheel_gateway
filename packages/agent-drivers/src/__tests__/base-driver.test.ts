@@ -2,7 +2,7 @@
  * Tests for the Base Driver class.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import {
   BaseDriver,
   type BaseDriverConfig,
@@ -47,21 +47,21 @@ class TestDriver extends BaseDriver {
   }
 
   protected async doSend(
-    agentId: string,
-    message: string,
+    _agentId: string,
+    _message: string,
   ): Promise<SendResult> {
     this.sent = true;
     return { messageId: `msg_${Date.now()}`, queued: false };
   }
 
   protected async doTerminate(
-    agentId: string,
-    graceful: boolean,
+    _agentId: string,
+    _graceful: boolean,
   ): Promise<void> {
     this.terminated = true;
   }
 
-  protected async doInterrupt(agentId: string): Promise<void> {
+  protected async doInterrupt(_agentId: string): Promise<void> {
     this.interrupted = true;
   }
 
@@ -288,7 +288,7 @@ describe("BaseDriver", () => {
 
       const output = await driver.getOutput(agentConfig.id);
       expect(output.length).toBe(1);
-      expect(output[0]!.content).toBe("Hello");
+      expect(output[0]?.content).toBe("Hello");
     });
 
     it("should filter by timestamp", async () => {
@@ -314,7 +314,7 @@ describe("BaseDriver", () => {
         new Date(Date.now() - 5000),
       );
       expect(filtered.length).toBe(1);
-      expect(filtered[0]!.content).toBe("New");
+      expect(filtered[0]?.content).toBe("New");
     });
   });
 
@@ -324,7 +324,7 @@ describe("BaseDriver", () => {
       await driver.spawn(agentConfig);
 
       const events: AgentEvent[] = [];
-      let collectorDone = false;
+      let _collectorDone = false;
 
       // Start collecting events in background
       const collector = (async () => {
@@ -334,7 +334,7 @@ describe("BaseDriver", () => {
             if (event.type === "terminated") break;
           }
         } finally {
-          collectorDone = true;
+          _collectorDone = true;
         }
       })();
 

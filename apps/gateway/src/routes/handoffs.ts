@@ -2,7 +2,11 @@
  * Handoff Routes - REST API endpoints for session handoff protocol.
  */
 
-import type { HandoffPreferences, HandoffReason, HandoffUrgency } from "@flywheel/shared/types";
+import type {
+  HandoffPreferences,
+  HandoffReason,
+  HandoffUrgency,
+} from "@flywheel/shared/types";
 import { Hono } from "hono";
 import { z } from "zod";
 import { getLogger } from "../middleware/correlation";
@@ -20,8 +24,8 @@ import {
   rejectHandoff,
 } from "../services/handoff.service";
 import {
-  buildContext,
   type BuildContextParams,
+  buildContext,
   calculateContextSize,
 } from "../services/handoff-context.service";
 import {
@@ -74,16 +78,30 @@ handoffs.post("/validate-context", async (c) => {
     const { context, validation } = buildContext({
       agentId: "validation-check",
       taskDescription: contextData.taskDescription,
-      ...(contextData.currentPhase && { currentPhase: contextData.currentPhase }),
-      ...(contextData.progressPercentage !== undefined && { progressPercentage: contextData.progressPercentage }),
-      ...(contextData.filesModified && { filesModified: contextData.filesModified }),
-      ...(contextData.filesCreated && { filesCreated: contextData.filesCreated }),
-      ...(contextData.filesDeleted && { filesDeleted: contextData.filesDeleted }),
-      ...(contextData.uncommittedChanges && { uncommittedChanges: contextData.uncommittedChanges }),
+      ...(contextData.currentPhase && {
+        currentPhase: contextData.currentPhase,
+      }),
+      ...(contextData.progressPercentage !== undefined && {
+        progressPercentage: contextData.progressPercentage,
+      }),
+      ...(contextData.filesModified && {
+        filesModified: contextData.filesModified,
+      }),
+      ...(contextData.filesCreated && {
+        filesCreated: contextData.filesCreated,
+      }),
+      ...(contextData.filesDeleted && {
+        filesDeleted: contextData.filesDeleted,
+      }),
+      ...(contextData.uncommittedChanges && {
+        uncommittedChanges: contextData.uncommittedChanges,
+      }),
       ...(contextData.todoItems && { todoItems: contextData.todoItems }),
       ...(contextData.hypotheses && { hypotheses: contextData.hypotheses }),
       ...(contextData.keyPoints && { keyPoints: contextData.keyPoints }),
-      ...(contextData.userRequirements && { userRequirements: contextData.userRequirements }),
+      ...(contextData.userRequirements && {
+        userRequirements: contextData.userRequirements,
+      }),
       ...(contextData.constraints && { constraints: contextData.constraints }),
     } as BuildContextParams);
 
@@ -274,13 +292,27 @@ handoffs.post("/", async (c) => {
       agentId: data.sourceAgentId,
       taskDescription: data.context.taskDescription,
       ...(data.beadId && { beadId: data.beadId }),
-      ...(data.context.currentPhase && { currentPhase: data.context.currentPhase }),
-      ...(data.context.progressPercentage !== undefined && { progressPercentage: data.context.progressPercentage }),
-      ...(data.context.startedAt && { startedAt: new Date(data.context.startedAt as string) }),
-      ...(data.context.filesModified && { filesModified: data.context.filesModified }),
-      ...(data.context.filesCreated && { filesCreated: data.context.filesCreated }),
-      ...(data.context.filesDeleted && { filesDeleted: data.context.filesDeleted }),
-      ...(data.context.uncommittedChanges && { uncommittedChanges: data.context.uncommittedChanges }),
+      ...(data.context.currentPhase && {
+        currentPhase: data.context.currentPhase,
+      }),
+      ...(data.context.progressPercentage !== undefined && {
+        progressPercentage: data.context.progressPercentage,
+      }),
+      ...(data.context.startedAt && {
+        startedAt: new Date(data.context.startedAt as string),
+      }),
+      ...(data.context.filesModified && {
+        filesModified: data.context.filesModified,
+      }),
+      ...(data.context.filesCreated && {
+        filesCreated: data.context.filesCreated,
+      }),
+      ...(data.context.filesDeleted && {
+        filesDeleted: data.context.filesDeleted,
+      }),
+      ...(data.context.uncommittedChanges && {
+        uncommittedChanges: data.context.uncommittedChanges,
+      }),
       ...(data.context.decisionsMade && {
         decisionsMade: data.context.decisionsMade.map((d) => ({
           ...d,
@@ -288,16 +320,32 @@ handoffs.post("/", async (c) => {
         })),
       }),
       ...(data.context.todoItems && { todoItems: data.context.todoItems }),
-      ...(data.context.workingMemory && { workingMemory: data.context.workingMemory as Record<string, string> }),
+      ...(data.context.workingMemory && {
+        workingMemory: data.context.workingMemory as Record<string, string>,
+      }),
       ...(data.context.hypotheses && { hypotheses: data.context.hypotheses }),
       ...(data.context.keyPoints && { keyPoints: data.context.keyPoints }),
-      ...(data.context.userRequirements && { userRequirements: data.context.userRequirements }),
-      ...(data.context.constraints && { constraints: data.context.constraints }),
-      ...(data.context.environmentSnapshot?.workingDirectory && { workingDirectory: data.context.environmentSnapshot.workingDirectory }),
-      ...(data.context.environmentSnapshot?.gitBranch && { gitBranch: data.context.environmentSnapshot.gitBranch }),
-      ...(data.context.environmentSnapshot?.gitCommit && { gitCommit: data.context.environmentSnapshot.gitCommit }),
-      ...(data.context.environmentSnapshot?.uncommittedFiles && { uncommittedFiles: data.context.environmentSnapshot.uncommittedFiles }),
-      ...(data.context.environmentSnapshot?.envVars && { envVars: data.context.environmentSnapshot.envVars }),
+      ...(data.context.userRequirements && {
+        userRequirements: data.context.userRequirements,
+      }),
+      ...(data.context.constraints && {
+        constraints: data.context.constraints,
+      }),
+      ...(data.context.environmentSnapshot?.workingDirectory && {
+        workingDirectory: data.context.environmentSnapshot.workingDirectory,
+      }),
+      ...(data.context.environmentSnapshot?.gitBranch && {
+        gitBranch: data.context.environmentSnapshot.gitBranch,
+      }),
+      ...(data.context.environmentSnapshot?.gitCommit && {
+        gitCommit: data.context.environmentSnapshot.gitCommit,
+      }),
+      ...(data.context.environmentSnapshot?.uncommittedFiles && {
+        uncommittedFiles: data.context.environmentSnapshot.uncommittedFiles,
+      }),
+      ...(data.context.environmentSnapshot?.envVars && {
+        envVars: data.context.environmentSnapshot.envVars,
+      }),
     } as BuildContextParams);
 
     if (!validation.valid) {
@@ -325,7 +373,9 @@ handoffs.post("/", async (c) => {
       resourceManifest,
       ...(data.beadId && { beadId: data.beadId }),
       ...(data.urgency && { urgency: data.urgency as HandoffUrgency }),
-      ...(data.preferences && { preferences: data.preferences as Partial<HandoffPreferences> }),
+      ...(data.preferences && {
+        preferences: data.preferences as Partial<HandoffPreferences>,
+      }),
     });
 
     if (!result.success) {
@@ -339,21 +389,26 @@ handoffs.post("/", async (c) => {
 
     log.info({ handoffId: result.handoffId }, "Handoff initiated");
 
-    return sendCreated(c, "handoff", {
-      handoffId: result.handoffId,
-      phase: result.phase,
-      expiresAt: result.expiresAt?.toISOString(),
-      contextValidation: {
-        sizeBytes: validation.sizeBytes,
-        warnings: validation.warnings,
+    return sendCreated(
+      c,
+      "handoff",
+      {
+        handoffId: result.handoffId,
+        phase: result.phase,
+        expiresAt: result.expiresAt?.toISOString(),
+        contextValidation: {
+          sizeBytes: validation.sizeBytes,
+          warnings: validation.warnings,
+        },
+        resourceManifest: {
+          reservations: resourceManifest.fileReservations.length,
+          checkpoints: resourceManifest.checkpoints.length,
+          messages: resourceManifest.pendingMessages.length,
+          subscriptions: resourceManifest.activeSubscriptions.length,
+        },
       },
-      resourceManifest: {
-        reservations: resourceManifest.fileReservations.length,
-        checkpoints: resourceManifest.checkpoints.length,
-        messages: resourceManifest.pendingMessages.length,
-        subscriptions: resourceManifest.activeSubscriptions.length,
-      },
-    }, `/handoffs/${result.handoffId}`);
+      `/handoffs/${result.handoffId}`,
+    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return sendValidationError(c, transformZodError(error));
@@ -448,14 +503,16 @@ handoffs.post("/:handoffId/accept", async (c) => {
     const body = await c.req.json();
     const data = AcceptHandoffSchema.parse(body);
 
-    const result = await acceptHandoff(stripUndefined({
-      handoffId,
-      receivingAgentId: data.receivingAgentId,
-      ...(data.estimatedResumeTime && {
-        estimatedResumeTime: new Date(data.estimatedResumeTime),
+    const result = await acceptHandoff(
+      stripUndefined({
+        handoffId,
+        receivingAgentId: data.receivingAgentId,
+        ...(data.estimatedResumeTime && {
+          estimatedResumeTime: new Date(data.estimatedResumeTime),
+        }),
+        ...(data.receiverNotes && { receiverNotes: data.receiverNotes }),
       }),
-      ...(data.receiverNotes && { receiverNotes: data.receiverNotes }),
-    }));
+    );
 
     if (!result.success) {
       return sendError(
@@ -528,14 +585,16 @@ handoffs.post("/:handoffId/reject", async (c) => {
     const body = await c.req.json();
     const data = RejectHandoffSchema.parse(body);
 
-    const result = await rejectHandoff(stripUndefined({
-      handoffId,
-      receivingAgentId: data.receivingAgentId,
-      reason: data.reason,
-      ...(data.suggestedAlternative && {
-        suggestedAlternative: data.suggestedAlternative,
+    const result = await rejectHandoff(
+      stripUndefined({
+        handoffId,
+        receivingAgentId: data.receivingAgentId,
+        reason: data.reason,
+        ...(data.suggestedAlternative && {
+          suggestedAlternative: data.suggestedAlternative,
+        }),
       }),
-    }));
+    );
 
     if (!result.success) {
       return sendError(
@@ -574,11 +633,13 @@ handoffs.post("/:handoffId/cancel", async (c) => {
     const body = await c.req.json();
     const data = CancelHandoffSchema.parse(body);
 
-    const result = await cancelHandoff(stripUndefined({
-      handoffId,
-      agentId: data.agentId,
-      ...(data.reason && { reason: data.reason }),
-    }));
+    const result = await cancelHandoff(
+      stripUndefined({
+        handoffId,
+        agentId: data.agentId,
+        ...(data.reason && { reason: data.reason }),
+      }),
+    );
 
     if (!result.success) {
       return sendError(
@@ -615,10 +676,13 @@ handoffs.get("/source/:agentId", async (c) => {
   const limit = parseInt(c.req.query("limit") ?? "50", 10);
   const phase = parsePhaseParam(phaseParam);
 
-  const handoffsList = listHandoffsForSource(agentId, stripUndefined({
-    ...(phase && { phase }),
-    limit: Math.min(limit, 100),
-  }));
+  const handoffsList = listHandoffsForSource(
+    agentId,
+    stripUndefined({
+      ...(phase && { phase }),
+      limit: Math.min(limit, 100),
+    }),
+  );
 
   return sendList(
     c,
@@ -645,10 +709,13 @@ handoffs.get("/target/:agentId", async (c) => {
   const limit = parseInt(c.req.query("limit") ?? "50", 10);
   const phase = parsePhaseParam(phaseParam);
 
-  const handoffsList = listHandoffsForTarget(agentId, stripUndefined({
-    ...(phase && { phase }),
-    limit: Math.min(limit, 100),
-  }));
+  const handoffsList = listHandoffsForTarget(
+    agentId,
+    stripUndefined({
+      ...(phase && { phase }),
+      limit: Math.min(limit, 100),
+    }),
+  );
 
   return sendList(
     c,

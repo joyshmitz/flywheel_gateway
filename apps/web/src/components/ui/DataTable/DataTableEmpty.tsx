@@ -64,7 +64,7 @@ function ErrorState({
       <h3 className="data-table__empty-title">Something went wrong</h3>
       <p className="data-table__empty-message">{errorMessage}</p>
       {onRetry && (
-        <button className="btn btn--secondary" onClick={onRetry}>
+        <button type="button" className="btn btn--secondary" onClick={onRetry}>
           <RefreshCw size={16} />
           Try again
         </button>

@@ -1,8 +1,8 @@
 import type { ServerWebSocket } from "bun";
 import { logger } from "../services/logger";
 import { canSubscribe } from "./authorization";
-import { type Channel, parseChannel } from "./channels";
-import { type AuthContext, type ConnectionData, getHub } from "./hub";
+import { parseChannel } from "./channels";
+import { type ConnectionData, getHub } from "./hub";
 import {
   createWSError,
   parseClientMessage,

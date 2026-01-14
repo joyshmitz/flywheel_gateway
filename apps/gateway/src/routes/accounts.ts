@@ -19,7 +19,6 @@ import {
   updateProfile,
 } from "../caam/account.service";
 import { handleRateLimit, peekNextProfile, rotate } from "../caam/rotation";
-import type { ProviderId } from "../caam/types";
 import { getLogger } from "../middleware/correlation";
 import {
   sendError,

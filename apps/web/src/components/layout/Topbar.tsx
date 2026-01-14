@@ -1,5 +1,5 @@
 import { useRouterState } from "@tanstack/react-router";
-import { Menu, MoonStar, Sun, ToggleLeft } from "lucide-react";
+import { MoonStar, Sun, ToggleLeft } from "lucide-react";
 
 import { useUiStore } from "../../stores/ui";
 import { StatusPill } from "../ui/StatusPill";
@@ -12,6 +12,7 @@ function HamburgerButton() {
 
   return (
     <button
+      type="button"
       className={`hamburger ${drawerOpen ? "hamburger--open" : ""}`}
       onClick={toggleDrawer}
       aria-label={drawerOpen ? "Close menu" : "Open menu"}

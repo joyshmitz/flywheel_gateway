@@ -4,15 +4,7 @@
  * Tests for daemon management, restart policies, and status tracking.
  */
 
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  mock,
-  spyOn,
-  test,
-} from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
   _clearSupervisor,
   DaemonNotFoundError,
@@ -281,7 +273,7 @@ describe("SupervisorService", () => {
     });
 
     test("'always' policy tracks restart count", async () => {
-      const state = await service.startDaemon("test-daemon");
+      const _state = await service.startDaemon("test-daemon");
 
       // Wait for process to exit and possibly restart
       await Bun.sleep(500);

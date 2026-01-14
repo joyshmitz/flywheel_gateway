@@ -3,7 +3,6 @@ import {
   _clearAllSafetyData,
   addRule,
   clearEmergencyStop,
-  createDefaultConfig,
   emergencyStop,
   getConfig,
   getSafetyStats,
@@ -15,7 +14,6 @@ import {
   toggleRule,
   updateConfig,
 } from "../services/safety.service";
-import type { SafetyOperation } from "../services/safety-rules.engine";
 
 describe("Safety Service", () => {
   beforeEach(() => {

@@ -99,7 +99,7 @@ describe("CASS Client", () => {
 
       // Verify --robot-meta flag was included
       const calls = runner.getCallHistory();
-      expect(calls[0]!.args).toContain("--robot-meta");
+      expect(calls[0]?.args).toContain("--robot-meta");
     });
 
     test("throws CassClientError on command failure", async () => {
@@ -180,8 +180,8 @@ describe("CASS Client", () => {
 
       expect(result.count).toBe(2);
       expect(result.hits.length).toBe(2);
-      expect(result.hits[0]!.agent).toBe("claude_code");
-      expect(result.hits[0]!.score).toBe(10.5);
+      expect(result.hits[0]?.agent).toBe("claude_code");
+      expect(result.hits[0]?.score).toBe(10.5);
       expect(result.query).toBe("test query");
     });
 
@@ -210,7 +210,7 @@ describe("CASS Client", () => {
       });
 
       const calls = runner.getCallHistory();
-      const args = calls[0]!.args;
+      const args = calls[0]?.args;
 
       expect(args).toContain("--limit");
       expect(args).toContain("5");
@@ -294,7 +294,7 @@ describe("CASS Client", () => {
       await client.view("/path/to/session.jsonl", { line: 10, context: 10 });
 
       const calls = runner.getCallHistory();
-      const args = calls[0]!.args;
+      const args = calls[0]?.args;
 
       expect(args).toContain("-C");
       expect(args).toContain("10");
@@ -326,7 +326,7 @@ describe("CASS Client", () => {
       expect(result.path).toBe("/path/to/session.jsonl");
       expect(result.target_line).toBe(50);
       expect(result.messages.length).toBe(3);
-      expect(result.messages[1]!.role).toBe("assistant");
+      expect(result.messages[1]?.role).toBe("assistant");
     });
 
     test("includes context parameter", async () => {
@@ -344,7 +344,7 @@ describe("CASS Client", () => {
       await client.expand("/path/to/session.jsonl", { line: 10, context: 5 });
 
       const calls = runner.getCallHistory();
-      const args = calls[0]!.args;
+      const args = calls[0]?.args;
 
       expect(args).toContain("-C");
       expect(args).toContain("5");

@@ -5,7 +5,7 @@
  * Connects to control_plane's SSE stream and republishes events.
  */
 
-import { type GraphEventsService, getGraphEventsService } from "./graph-events";
+import type { GraphEventsService } from "./graph-events";
 import { logger } from "./logger";
 
 /**
@@ -317,7 +317,12 @@ export class GraphBridgeService {
             id: string;
             source: string;
             target: string;
-            type: "reservation" | "handoff" | "message" | "dependency" | "conflict";
+            type:
+              | "reservation"
+              | "handoff"
+              | "message"
+              | "dependency"
+              | "conflict";
             animated?: boolean;
             label?: string;
             metadata?: Record<string, unknown>;
@@ -327,9 +332,11 @@ export class GraphBridgeService {
             target: event.edge.target,
             type: event.edge.type,
           };
-          if (event.edge.animated !== undefined) edgeAddedPayload.animated = event.edge.animated;
+          if (event.edge.animated !== undefined)
+            edgeAddedPayload.animated = event.edge.animated;
           if (event.edge.label) edgeAddedPayload.label = event.edge.label;
-          if (event.edge.metadata) edgeAddedPayload.metadata = event.edge.metadata;
+          if (event.edge.metadata)
+            edgeAddedPayload.metadata = event.edge.metadata;
           this.graphEvents.publishEdgeAdded(workspaceId, edgeAddedPayload);
         }
         break;
@@ -350,7 +357,12 @@ export class GraphBridgeService {
             id: string;
             source: string;
             target: string;
-            type: "reservation" | "handoff" | "message" | "dependency" | "conflict";
+            type:
+              | "reservation"
+              | "handoff"
+              | "message"
+              | "dependency"
+              | "conflict";
             animated?: boolean;
             label?: string;
             metadata?: Record<string, unknown>;
@@ -360,9 +372,11 @@ export class GraphBridgeService {
             target: event.edge.target,
             type: event.edge.type,
           };
-          if (event.edge.animated !== undefined) edgeUpdatedPayload.animated = event.edge.animated;
+          if (event.edge.animated !== undefined)
+            edgeUpdatedPayload.animated = event.edge.animated;
           if (event.edge.label) edgeUpdatedPayload.label = event.edge.label;
-          if (event.edge.metadata) edgeUpdatedPayload.metadata = event.edge.metadata;
+          if (event.edge.metadata)
+            edgeUpdatedPayload.metadata = event.edge.metadata;
           this.graphEvents.publishEdgeUpdated(workspaceId, edgeUpdatedPayload);
         }
         break;

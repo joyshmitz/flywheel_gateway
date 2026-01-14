@@ -165,7 +165,7 @@ export function useLogParser(
               `parse-${requestId}`,
               resolve as (v: unknown) => void,
             );
-            workerRef.current!.postMessage({
+            workerRef.current?.postMessage({
               type: "parse",
               logs: rawLogs,
               requestId,
@@ -208,7 +208,7 @@ export function useLogParser(
             `search-${requestId}`,
             resolve as (v: unknown) => void,
           );
-          workerRef.current!.postMessage({
+          workerRef.current?.postMessage({
             type: "search",
             query,
             logs,
@@ -234,7 +234,7 @@ export function useLogParser(
             `filter-${requestId}`,
             resolve as (v: unknown) => void,
           );
-          workerRef.current!.postMessage({
+          workerRef.current?.postMessage({
             type: "filter",
             filter: filterOptions,
             logs,

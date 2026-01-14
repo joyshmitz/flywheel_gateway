@@ -5,11 +5,9 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { db, sqlite } from "../db/connection";
-import { jobLogs, jobs } from "../db/schema";
+import { sqlite } from "../db/connection";
 import {
   _clearJobService,
-  getJobService,
   initializeJobService,
   JobNotFoundError,
   type JobService,
@@ -246,7 +244,7 @@ describe("JobService", () => {
 
       const result = await service.listJobs({ type: "codebase_scan" });
       expect(result.jobs).toHaveLength(1);
-      expect(result.jobs[0]!.type).toBe("codebase_scan");
+      expect(result.jobs[0]?.type).toBe("codebase_scan");
     });
 
     test("filters by status", async () => {
@@ -259,7 +257,7 @@ describe("JobService", () => {
       service.start();
       await waitForJobStatus(service, job1.id, "completed");
 
-      const job2 = await service.createJob({
+      const _job2 = await service.createJob({
         type: "codebase_scan",
         input: { value: 2 },
       });

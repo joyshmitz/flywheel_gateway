@@ -8,8 +8,8 @@
  * - Audit trail linking blocks to sweep sessions
  */
 
+import { createHash } from "node:crypto";
 import { spawn } from "bun";
-import { createHash } from "crypto";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { agentSweepPlans } from "../db/schema";

@@ -8,15 +8,12 @@ import {
 } from "../monitor";
 
 // Mock PerformanceObserver for Node/Bun environment
-const mockPerformanceObserver = {
+const _mockPerformanceObserver = {
   observe: mock(() => {}),
   disconnect: mock(() => {}),
 };
 
 globalThis.PerformanceObserver = class {
-  constructor(callback: PerformanceObserverCallback) {
-    // Store callback if needed
-  }
   observe() {}
   disconnect() {}
 } as unknown as typeof PerformanceObserver;

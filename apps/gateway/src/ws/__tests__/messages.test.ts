@@ -22,8 +22,10 @@ describe("WebSocket messages", () => {
         }),
       );
       expect(msg).toBeDefined();
-      expect(msg!.type).toBe("subscribe");
-      expect((msg as { channel: string }).channel).toBe("agent:output:agent-123");
+      expect(msg?.type).toBe("subscribe");
+      expect((msg as { channel: string }).channel).toBe(
+        "agent:output:agent-123",
+      );
       expect((msg as { cursor?: string }).cursor).toBeUndefined();
     });
 

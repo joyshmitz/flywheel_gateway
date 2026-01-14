@@ -2,13 +2,9 @@
  * Tests for RingBuffer implementation.
  */
 
-import { beforeEach, describe, expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { decodeCursor } from "../cursor";
-import {
-  getBufferConfig,
-  RingBuffer,
-  type RingBufferConfig,
-} from "../ring-buffer";
+import { getBufferConfig, RingBuffer } from "../ring-buffer";
 
 describe("RingBuffer", () => {
   describe("constructor", () => {

@@ -4,7 +4,7 @@
  * Provides responsive breakpoint detection for React components.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BREAKPOINTS,
   type Breakpoint,

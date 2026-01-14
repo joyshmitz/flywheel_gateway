@@ -49,7 +49,7 @@ const ErrorResponseSchema = z.object({
   }),
 });
 
-const PaginatedResponseSchema = z.object({
+const _PaginatedResponseSchema = z.object({
   data: z.array(z.any()),
   pagination: z
     .object({
@@ -61,7 +61,7 @@ const PaginatedResponseSchema = z.object({
     .optional(),
 });
 
-const SessionSchema = z.object({
+const _SessionSchema = z.object({
   id: z.string(),
   agentId: z.string().optional(),
   status: z.string().optional(),
@@ -92,7 +92,7 @@ async function apiRequest(path: string, options?: RequestInit) {
       },
     });
     return response;
-  } catch (error) {
+  } catch (_error) {
     // Server might not be running - skip test
     return null;
   }

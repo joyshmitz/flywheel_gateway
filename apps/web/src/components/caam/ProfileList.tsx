@@ -209,10 +209,11 @@ function ProfileCard({
         {/* Menu button */}
         <div className="relative">
           <button
+            type="button"
             onClick={() => setShowMenu(!showMenu)}
             className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded"
           >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <svg aria-hidden="true" className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
               <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
             </svg>
           </button>
@@ -226,6 +227,7 @@ function ProfileCard({
               <div className="absolute right-0 mt-1 w-36 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20">
                 {profile.status === "verified" && !isActive && (
                   <button
+                    type="button"
                     onClick={() => {
                       setShowMenu(false);
                       onActivate();
@@ -239,6 +241,7 @@ function ProfileCard({
                   profile.status === "expired" ||
                   profile.status === "error") && (
                   <button
+                    type="button"
                     onClick={() => {
                       setShowMenu(false);
                       onReauth();
@@ -251,6 +254,7 @@ function ProfileCard({
                   </button>
                 )}
                 <button
+                  type="button"
                   onClick={() => {
                     setShowMenu(false);
                     onDelete();
@@ -269,8 +273,12 @@ function ProfileCard({
       <div className="mt-3 flex items-center justify-between">
         <StatusIndicator
           status={profile.status}
-          {...(profile.healthStatus !== undefined && { healthStatus: profile.healthStatus })}
-          {...(profile.cooldownUntil !== undefined && { cooldownUntil: profile.cooldownUntil })}
+          {...(profile.healthStatus !== undefined && {
+            healthStatus: profile.healthStatus,
+          })}
+          {...(profile.cooldownUntil !== undefined && {
+            cooldownUntil: profile.cooldownUntil,
+          })}
         />
         {profile.healthScore !== undefined && (
           <HealthBar score={profile.healthScore} />
@@ -442,6 +450,7 @@ export function ProfileList({
               <div className="flex items-center gap-2">
                 {providerProfiles.length > 1 && (
                   <button
+                    type="button"
                     onClick={() => handleRotate(p)}
                     disabled={rotating}
                     className="text-xs px-2 py-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors disabled:opacity-50"
@@ -451,6 +460,7 @@ export function ProfileList({
                 )}
                 {onAddProfile && (
                   <button
+                    type="button"
                     onClick={() => onAddProfile(p)}
                     className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                   >
@@ -490,6 +500,7 @@ export function ProfileList({
                 </p>
                 {onAddProfile && (
                   <button
+                    type="button"
                     onClick={() => onAddProfile(p)}
                     className="text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
@@ -523,12 +534,14 @@ export function ProfileList({
             </p>
             <div className="flex gap-3 justify-end pt-2">
               <button
+                type="button"
                 onClick={() => setDeleteConfirm(null)}
                 className="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleDelete}
                 disabled={deleting}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"

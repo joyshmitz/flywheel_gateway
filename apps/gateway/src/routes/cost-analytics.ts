@@ -59,7 +59,7 @@ import {
   sendResource,
   sendValidationError,
 } from "../utils/response";
-import { stripUndefined, transformZodError } from "../utils/validation";
+import { transformZodError } from "../utils/validation";
 
 const costAnalytics = new Hono();
 
@@ -440,7 +440,9 @@ costAnalytics.post("/budgets", async (c) => {
     const budget = await createBudget({
       ...validated,
       period: validated.period as BudgetPeriod,
-      ...(validated.effectiveDate && { effectiveDate: new Date(validated.effectiveDate) }),
+      ...(validated.effectiveDate && {
+        effectiveDate: new Date(validated.effectiveDate),
+      }),
       ...(validated.expiresAt && { expiresAt: new Date(validated.expiresAt) }),
     } as BudgetInput);
 
@@ -532,7 +534,9 @@ costAnalytics.put("/budgets/:budgetId", async (c) => {
 
     const updated = await updateBudget(budgetId, {
       ...validated,
-      ...(validated.effectiveDate && { effectiveDate: new Date(validated.effectiveDate) }),
+      ...(validated.effectiveDate && {
+        effectiveDate: new Date(validated.effectiveDate),
+      }),
       ...(validated.expiresAt && { expiresAt: new Date(validated.expiresAt) }),
     } as Partial<BudgetInput>);
 
@@ -656,7 +660,9 @@ costAnalytics.get("/budget-alerts", async (c) => {
 
     const filter = {
       ...(budgetId && { budgetId }),
-      ...(acknowledgedParam !== undefined && { acknowledged: acknowledgedParam === "true" }),
+      ...(acknowledgedParam !== undefined && {
+        acknowledged: acknowledgedParam === "true",
+      }),
       ...(since && { since: new Date(since) }),
       ...(limitParam && { limit: parseInt(limitParam, 10) }),
     };
@@ -711,10 +717,14 @@ costAnalytics.post("/forecasts", async (c) => {
     const validated = ForecastOptionsSchema.parse(body);
 
     const forecast = await generateForecast({
-      ...(validated.organizationId && { organizationId: validated.organizationId }),
+      ...(validated.organizationId && {
+        organizationId: validated.organizationId,
+      }),
       ...(validated.projectId && { projectId: validated.projectId }),
       ...(validated.horizonDays && { horizonDays: validated.horizonDays }),
-      ...(validated.historicalDays && { historicalDays: validated.historicalDays }),
+      ...(validated.historicalDays && {
+        historicalDays: validated.historicalDays,
+      }),
       ...(validated.methodology && { methodology: validated.methodology }),
     });
 
@@ -847,7 +857,7 @@ costAnalytics.get("/forecasts/:forecastId/accuracy", async (c) => {
  */
 costAnalytics.post("/recommendations/generate", async (c) => {
   try {
-    const body = await c.req.json().catch(() => ({})) as {
+    const body = (await c.req.json().catch(() => ({}))) as {
       organizationId?: string;
       projectId?: string;
       daysBack?: number;
@@ -860,16 +870,21 @@ costAnalytics.post("/recommendations/generate", async (c) => {
 
     const recommendations = await generateRecommendations(options);
 
-    return sendCreated(c, "recommendations", {
-      count: recommendations.length,
-      totalPotentialSavingsUnits: recommendations.reduce(
-        (sum, r) => sum + r.estimatedSavingsUnits,
-        0,
-      ),
-      formattedSavings: formatCostUnits(
-        recommendations.reduce((sum, r) => sum + r.estimatedSavingsUnits, 0),
-      ),
-    }, "/cost-analytics/recommendations");
+    return sendCreated(
+      c,
+      "recommendations",
+      {
+        count: recommendations.length,
+        totalPotentialSavingsUnits: recommendations.reduce(
+          (sum, r) => sum + r.estimatedSavingsUnits,
+          0,
+        ),
+        formattedSavings: formatCostUnits(
+          recommendations.reduce((sum, r) => sum + r.estimatedSavingsUnits, 0),
+        ),
+      },
+      "/cost-analytics/recommendations",
+    );
   } catch (error) {
     return handleError(error, c);
   }
@@ -985,9 +1000,15 @@ costAnalytics.put("/recommendations/:recommendationId/status", async (c) => {
       recommendationId,
       validated.status,
       {
-        ...(validated.implementedBy && { implementedBy: validated.implementedBy }),
-        ...(validated.rejectedReason && { rejectedReason: validated.rejectedReason }),
-        ...(validated.actualSavingsUnits !== undefined && { actualSavingsUnits: validated.actualSavingsUnits }),
+        ...(validated.implementedBy && {
+          implementedBy: validated.implementedBy,
+        }),
+        ...(validated.rejectedReason && {
+          rejectedReason: validated.rejectedReason,
+        }),
+        ...(validated.actualSavingsUnits !== undefined && {
+          actualSavingsUnits: validated.actualSavingsUnits,
+        }),
       },
     );
 
@@ -1044,17 +1065,24 @@ costAnalytics.post("/rate-cards", async (c) => {
     const rateCard = await upsertRateCard({
       ...validated,
       provider: validated.provider as ProviderId,
-      ...(validated.effectiveDate && { effectiveDate: new Date(validated.effectiveDate) }),
+      ...(validated.effectiveDate && {
+        effectiveDate: new Date(validated.effectiveDate),
+      }),
       ...(validated.expiresAt && { expiresAt: new Date(validated.expiresAt) }),
     } as Omit<ModelRateCard, "effectiveDate"> & { effectiveDate?: Date });
 
-    return sendCreated(c, "rateCard", {
-      model: rateCard.model,
-      provider: rateCard.provider,
-      promptCostPer1kTokens: rateCard.promptCostPer1kTokens,
-      completionCostPer1kTokens: rateCard.completionCostPer1kTokens,
-      effectiveDate: rateCard.effectiveDate.toISOString(),
-    }, `/cost-analytics/rate-cards/${rateCard.model}`);
+    return sendCreated(
+      c,
+      "rateCard",
+      {
+        model: rateCard.model,
+        provider: rateCard.provider,
+        promptCostPer1kTokens: rateCard.promptCostPer1kTokens,
+        completionCostPer1kTokens: rateCard.completionCostPer1kTokens,
+        effectiveDate: rateCard.effectiveDate.toISOString(),
+      },
+      `/cost-analytics/rate-cards/${rateCard.model}`,
+    );
   } catch (error) {
     return handleError(error, c);
   }

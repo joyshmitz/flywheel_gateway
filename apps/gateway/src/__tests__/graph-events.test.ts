@@ -108,12 +108,12 @@ describe("Graph Events Service", () => {
       service.publishNodeAdded("workspace-1", node);
 
       expect(publishCalls).toHaveLength(1);
-      expect(publishCalls[0]!.channel).toEqual({
+      expect(publishCalls[0]?.channel).toEqual({
         type: "workspace:graph",
         workspaceId: "workspace-1",
       });
-      expect(publishCalls[0]!.type).toBe("graph.node_added");
-      const payload = publishCalls[0]!.payload as Record<string, unknown>;
+      expect(publishCalls[0]?.type).toBe("graph.node_added");
+      const payload = publishCalls[0]?.payload as Record<string, unknown>;
       expect(payload["updateType"]).toBe("node_added");
       expect(payload["node"]).toEqual(node);
       expect(payload["version"]).toBe(2); // Incremented from 1
@@ -147,7 +147,7 @@ describe("Graph Events Service", () => {
 
       service.publishNodeAdded("workspace-1", node, stats);
 
-      const payload = publishCalls[0]!.payload as Record<string, unknown>;
+      const payload = publishCalls[0]?.payload as Record<string, unknown>;
       expect(payload["stats"]).toEqual(stats);
     });
   });
@@ -159,8 +159,8 @@ describe("Graph Events Service", () => {
       service.publishNodeRemoved("workspace-1", "file:/src/test.ts", "file");
 
       expect(publishCalls).toHaveLength(1);
-      expect(publishCalls[0]!.type).toBe("graph.node_removed");
-      const payload = publishCalls[0]!.payload as Record<string, unknown>;
+      expect(publishCalls[0]?.type).toBe("graph.node_removed");
+      const payload = publishCalls[0]?.payload as Record<string, unknown>;
       expect(payload["updateType"]).toBe("node_removed");
       const node = payload["node"] as GraphNodePayload;
       expect(node.id).toBe("file:/src/test.ts");
@@ -181,8 +181,8 @@ describe("Graph Events Service", () => {
 
       service.publishNodeUpdated("workspace-1", node);
 
-      expect(publishCalls[0]!.type).toBe("graph.node_updated");
-      const payload = publishCalls[0]!.payload as Record<string, unknown>;
+      expect(publishCalls[0]?.type).toBe("graph.node_updated");
+      const payload = publishCalls[0]?.payload as Record<string, unknown>;
       expect(payload["updateType"]).toBe("node_updated");
       expect(payload["node"]).toEqual(node);
     });
@@ -201,8 +201,8 @@ describe("Graph Events Service", () => {
 
       service.publishEdgeAdded("workspace-1", edge);
 
-      expect(publishCalls[0]!.type).toBe("graph.edge_added");
-      const payload = publishCalls[0]!.payload as Record<string, unknown>;
+      expect(publishCalls[0]?.type).toBe("graph.edge_added");
+      const payload = publishCalls[0]?.payload as Record<string, unknown>;
       expect(payload["updateType"]).toBe("edge_added");
       expect(payload["edge"]).toEqual(edge);
     });
@@ -218,8 +218,8 @@ describe("Graph Events Service", () => {
         "handoff",
       );
 
-      expect(publishCalls[0]!.type).toBe("graph.edge_removed");
-      const payload = publishCalls[0]!.payload as Record<string, unknown>;
+      expect(publishCalls[0]?.type).toBe("graph.edge_removed");
+      const payload = publishCalls[0]?.payload as Record<string, unknown>;
       expect(payload["updateType"]).toBe("edge_removed");
       const edge = payload["edge"] as GraphEdgePayload;
       expect(edge.id).toBe("handoff:handoff-123");
@@ -241,8 +241,8 @@ describe("Graph Events Service", () => {
 
       service.publishEdgeUpdated("workspace-1", edge);
 
-      expect(publishCalls[0]!.type).toBe("graph.edge_updated");
-      const payload = publishCalls[0]!.payload as Record<string, unknown>;
+      expect(publishCalls[0]?.type).toBe("graph.edge_updated");
+      const payload = publishCalls[0]?.payload as Record<string, unknown>;
       expect(payload["edge"]).toEqual(edge);
     });
   });
@@ -253,8 +253,8 @@ describe("Graph Events Service", () => {
 
       service.publishFullRefresh("workspace-1");
 
-      expect(publishCalls[0]!.type).toBe("graph.full_refresh");
-      const payload = publishCalls[0]!.payload as Record<string, unknown>;
+      expect(publishCalls[0]?.type).toBe("graph.full_refresh");
+      const payload = publishCalls[0]?.payload as Record<string, unknown>;
       expect(payload["updateType"]).toBe("full_refresh");
     });
   });
@@ -282,8 +282,8 @@ describe("Graph Events Service", () => {
       const initialVersion = service.getVersion();
       service.publishStatsUpdate("workspace-1", stats);
 
-      expect(publishCalls[0]!.type).toBe("graph.stats");
-      const payload = publishCalls[0]!.payload as Record<string, unknown>;
+      expect(publishCalls[0]?.type).toBe("graph.stats");
+      const payload = publishCalls[0]?.payload as Record<string, unknown>;
       expect(payload["stats"]).toEqual(stats);
       expect(payload["version"]).toBe(initialVersion); // Not incremented
       expect(service.getVersion()).toBe(initialVersion);
@@ -303,7 +303,7 @@ describe("Graph Events Service", () => {
         );
 
         expect(publishCalls).toHaveLength(1);
-        const payload = publishCalls[0]!.payload as Record<string, unknown>;
+        const payload = publishCalls[0]?.payload as Record<string, unknown>;
         const node = payload["node"] as GraphNodePayload;
         expect(node.id).toBe("agent:agent-123");
         expect(node.type).toBe("agent");
@@ -319,8 +319,8 @@ describe("Graph Events Service", () => {
 
         service.publishAgentTerminated("workspace-1", "agent-123");
 
-        expect(publishCalls[0]!.type).toBe("graph.node_removed");
-        const payload = publishCalls[0]!.payload as Record<string, unknown>;
+        expect(publishCalls[0]?.type).toBe("graph.node_removed");
+        const payload = publishCalls[0]?.payload as Record<string, unknown>;
         const node = payload["node"] as GraphNodePayload;
         expect(node.id).toBe("agent:agent-123");
         expect(node.type).toBe("agent");
@@ -341,14 +341,14 @@ describe("Graph Events Service", () => {
         expect(publishCalls).toHaveLength(2);
 
         // First call: node added
-        const nodePayload = publishCalls[0]!.payload as Record<string, unknown>;
+        const nodePayload = publishCalls[0]?.payload as Record<string, unknown>;
         const node = nodePayload["node"] as GraphNodePayload;
         expect(node.id).toBe("file:/src/app.ts");
         expect(node.type).toBe("file");
         expect(node.data["reservedBy"]).toBe("agent-123");
 
         // Second call: edge added
-        const edgePayload = publishCalls[1]!.payload as Record<string, unknown>;
+        const edgePayload = publishCalls[1]?.payload as Record<string, unknown>;
         const edge = edgePayload["edge"] as GraphEdgePayload;
         expect(edge.id).toBe("reservation:/src/app.ts");
         expect(edge.source).toBe("agent:agent-123");
@@ -366,10 +366,10 @@ describe("Graph Events Service", () => {
         expect(publishCalls).toHaveLength(2);
 
         // First: edge removed
-        expect(publishCalls[0]!.type).toBe("graph.edge_removed");
+        expect(publishCalls[0]?.type).toBe("graph.edge_removed");
 
         // Second: node removed
-        expect(publishCalls[1]!.type).toBe("graph.node_removed");
+        expect(publishCalls[1]?.type).toBe("graph.node_removed");
       });
     });
 
@@ -385,7 +385,7 @@ describe("Graph Events Service", () => {
           "Review the code changes",
         );
 
-        const payload = publishCalls[0]!.payload as Record<string, unknown>;
+        const payload = publishCalls[0]?.payload as Record<string, unknown>;
         const edge = payload["edge"] as GraphEdgePayload;
         expect(edge.id).toBe("handoff:handoff-123");
         expect(edge.source).toBe("agent:agent-1");
@@ -406,7 +406,7 @@ describe("Graph Events Service", () => {
           "Help needed",
         );
 
-        const payload = publishCalls[0]!.payload as Record<string, unknown>;
+        const payload = publishCalls[0]?.payload as Record<string, unknown>;
         const edge = payload["edge"] as GraphEdgePayload;
         expect(edge.target).toBe("pool:any");
       });
@@ -418,8 +418,8 @@ describe("Graph Events Service", () => {
 
         service.publishHandoffCompleted("workspace-1", "handoff-123");
 
-        expect(publishCalls[0]!.type).toBe("graph.edge_removed");
-        const payload = publishCalls[0]!.payload as Record<string, unknown>;
+        expect(publishCalls[0]?.type).toBe("graph.edge_removed");
+        const payload = publishCalls[0]?.payload as Record<string, unknown>;
         const edge = payload["edge"] as GraphEdgePayload;
         expect(edge.id).toBe("handoff:handoff-123");
         expect(edge.type).toBe("handoff");
@@ -440,14 +440,14 @@ describe("Graph Events Service", () => {
         expect(publishCalls).toHaveLength(3);
 
         // First: node updated to conflict status
-        const nodePayload = publishCalls[0]!.payload as Record<string, unknown>;
+        const nodePayload = publishCalls[0]?.payload as Record<string, unknown>;
         const node = nodePayload["node"] as GraphNodePayload;
         expect(node.status).toBe("conflict");
         expect(node.data["conflicting"]).toBe(true);
 
         // Then: conflict edges for each agent
         for (let i = 1; i <= 2; i++) {
-          const edgePayload = publishCalls[i]!.payload as Record<
+          const edgePayload = publishCalls[i]?.payload as Record<
             string,
             unknown
           >;
@@ -471,11 +471,11 @@ describe("Graph Events Service", () => {
         expect(publishCalls).toHaveLength(3);
 
         // First two: edge removals
-        expect(publishCalls[0]!.type).toBe("graph.edge_removed");
-        expect(publishCalls[1]!.type).toBe("graph.edge_removed");
+        expect(publishCalls[0]?.type).toBe("graph.edge_removed");
+        expect(publishCalls[1]?.type).toBe("graph.edge_removed");
 
         // Last: node updated back to active
-        const nodePayload = publishCalls[2]!.payload as Record<string, unknown>;
+        const nodePayload = publishCalls[2]?.payload as Record<string, unknown>;
         const node = nodePayload["node"] as GraphNodePayload;
         expect(node.status).toBe("active");
         expect(node.data["conflicting"]).toBe(false);

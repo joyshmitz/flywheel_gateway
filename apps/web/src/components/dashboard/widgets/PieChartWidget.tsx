@@ -13,8 +13,8 @@
  * }
  */
 
-import { useEffect, useRef } from "react";
 import type { Widget, WidgetData } from "@flywheel/shared";
+import { useEffect, useRef } from "react";
 import "./ChartWidget.css";
 
 interface PieItem {
@@ -51,7 +51,11 @@ export function PieChartWidget({ widget, data }: PieChartWidgetProps) {
   const chartData = data.data as PieChartData | null;
 
   useEffect(() => {
-    if (!chartData?.items?.length || !canvasRef.current || !containerRef.current)
+    if (
+      !chartData?.items?.length ||
+      !canvasRef.current ||
+      !containerRef.current
+    )
       return;
 
     const canvas = canvasRef.current;
@@ -95,7 +99,13 @@ export function PieChartWidget({ widget, data }: PieChartWidgetProps) {
       ctx.fillStyle = color;
       ctx.beginPath();
       ctx.moveTo(centerX, centerY);
-      ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+      ctx.arc(
+        centerX,
+        centerY,
+        radius,
+        currentAngle,
+        currentAngle + sliceAngle,
+      );
       ctx.closePath();
       ctx.fill();
 
@@ -113,7 +123,8 @@ export function PieChartWidget({ widget, data }: PieChartWidgetProps) {
 
         ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
         ctx.font = "11px system-ui";
-        ctx.textAlign = midAngle > -Math.PI / 2 && midAngle < Math.PI / 2 ? "left" : "right";
+        ctx.textAlign =
+          midAngle > -Math.PI / 2 && midAngle < Math.PI / 2 ? "left" : "right";
         ctx.fillText(
           `${item.label} (${((item.value / total) * 100).toFixed(1)}%)`,
           labelX,
@@ -126,9 +137,10 @@ export function PieChartWidget({ widget, data }: PieChartWidgetProps) {
 
     // Draw donut hole
     if (isDonut) {
-      ctx.fillStyle = getComputedStyle(document.documentElement)
-        .getPropertyValue("--color-bg-secondary")
-        .trim() || "#1a1a2e";
+      ctx.fillStyle =
+        getComputedStyle(document.documentElement)
+          .getPropertyValue("--color-bg-secondary")
+          .trim() || "#1a1a2e";
       ctx.beginPath();
       ctx.arc(centerX, centerY, innerRadius, 0, Math.PI * 2);
       ctx.fill();
@@ -146,9 +158,7 @@ export function PieChartWidget({ widget, data }: PieChartWidgetProps) {
 
   if (!chartData?.items?.length) {
     return (
-      <div className="chart-widget chart-widget--empty">
-        No data available
-      </div>
+      <div className="chart-widget chart-widget--empty">No data available</div>
     );
   }
 

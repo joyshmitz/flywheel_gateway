@@ -9,7 +9,6 @@ import {
   clearAlertRules,
   clearAlerts,
   dismissAlert,
-  evaluateAlertRules,
   fireAlert,
   getActiveAlerts,
   getAlert,
@@ -319,7 +318,7 @@ describe("Alert Service", () => {
 
       const errorAlerts = getActiveAlerts({ severity: ["error"] });
       expect(errorAlerts.alerts.length).toBe(1);
-      expect(errorAlerts.alerts[0]!.severity).toBe("error");
+      expect(errorAlerts.alerts[0]?.severity).toBe("error");
     });
 
     test("getActiveAlerts sorts by severity then time", () => {
@@ -372,9 +371,9 @@ describe("Alert Service", () => {
       }
 
       const alerts = getActiveAlerts().alerts;
-      expect(alerts[0]!.severity).toBe("critical");
-      expect(alerts[1]!.severity).toBe("warning");
-      expect(alerts[2]!.severity).toBe("info");
+      expect(alerts[0]?.severity).toBe("critical");
+      expect(alerts[1]?.severity).toBe("warning");
+      expect(alerts[2]?.severity).toBe("info");
     });
   });
 

@@ -35,7 +35,9 @@
   background: transparent;
   color: var(--color-text-muted, #6b7280);
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .widget-gallery__close:hover {
@@ -63,7 +65,9 @@
   color: var(--color-text-primary, #f3f4f6);
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .widget-gallery__item:hover {

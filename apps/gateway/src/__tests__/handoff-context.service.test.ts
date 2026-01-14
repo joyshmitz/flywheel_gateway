@@ -109,12 +109,16 @@ describe("Handoff Context Service", () => {
         },
       });
 
-      expect(context.environmentSnapshot.envVars["NODE_ENV"]).toBe("development");
+      expect(context.environmentSnapshot.envVars["NODE_ENV"]).toBe(
+        "development",
+      );
       expect(context.environmentSnapshot.envVars["API_KEY"]).toBe("[REDACTED]");
       expect(context.environmentSnapshot.envVars["DATABASE_PASSWORD"]).toBe(
         "[REDACTED]",
       );
-      expect(context.environmentSnapshot.envVars["AUTH_TOKEN"]).toBe("[REDACTED]");
+      expect(context.environmentSnapshot.envVars["AUTH_TOKEN"]).toBe(
+        "[REDACTED]",
+      );
       expect(context.environmentSnapshot.envVars["NORMAL_VAR"]).toBe(
         "normal-value",
       );
@@ -297,7 +301,7 @@ describe("Handoff Context Service", () => {
       expect(deserialized.currentPhase).toBe("implementing");
       expect(deserialized.progressPercentage).toBe(50);
       expect(deserialized.startedAt).toBeInstanceOf(Date);
-      expect(deserialized.decisionsMade[0]!.timestamp).toBeInstanceOf(Date);
+      expect(deserialized.decisionsMade[0]?.timestamp).toBeInstanceOf(Date);
     });
 
     test("should produce valid JSON", () => {
@@ -335,8 +339,8 @@ index 111222..333444 100644
 
       const modifications = extractFileModifications(gitDiff);
       expect(modifications.length).toBe(2);
-      expect(modifications[0]!.path).toBe("src/index.ts");
-      expect(modifications[1]!.path).toBe("src/utils.ts");
+      expect(modifications[0]?.path).toBe("src/index.ts");
+      expect(modifications[1]?.path).toBe("src/utils.ts");
     });
 
     test("should return empty array for empty diff", () => {
@@ -363,13 +367,13 @@ index 111222..333444 100644
     test("should mark new files correctly", () => {
       const gitStatus = "?? src/new-file.ts";
       const changes = extractUncommittedChanges(gitStatus);
-      expect(changes[0]!.reason).toBe("New file");
+      expect(changes[0]?.reason).toBe("New file");
     });
 
     test("should mark modified files correctly", () => {
       const gitStatus = " M src/modified.ts";
       const changes = extractUncommittedChanges(gitStatus);
-      expect(changes[0]!.reason).toBe("Modified");
+      expect(changes[0]?.reason).toBe("Modified");
     });
   });
 

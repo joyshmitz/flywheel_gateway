@@ -20,12 +20,9 @@ import type { DriverOptions } from "../interface";
 import type {
   Agent,
   AgentConfig,
-  AgentEvent,
   Checkpoint,
   CheckpointMetadata,
-  OutputLine,
   SendResult,
-  SpawnResult,
   TokenUsage,
 } from "../types";
 

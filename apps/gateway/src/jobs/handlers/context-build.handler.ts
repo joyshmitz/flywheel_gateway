@@ -201,7 +201,7 @@ export class ContextBuildHandler
 
     for (const file of files) {
       parts.push(`## ${file.path}\n\n`);
-      parts.push("```" + file.extension + "\n");
+      parts.push(`\`\`\`${file.extension}\n`);
       parts.push(file.content);
       if (!file.content.endsWith("\n")) {
         parts.push("\n");

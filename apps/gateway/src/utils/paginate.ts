@@ -6,7 +6,6 @@
  */
 
 import {
-  buildPaginationMeta,
   createCursor,
   decodeCursor,
   type NormalizedPaginationParams,

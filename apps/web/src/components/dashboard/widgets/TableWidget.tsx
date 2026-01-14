@@ -14,8 +14,8 @@
  * }
  */
 
-import { useState } from "react";
 import type { Widget, WidgetData } from "@flywheel/shared";
+import { useState } from "react";
 import "./TableWidget.css";
 
 interface Column {
@@ -43,9 +43,7 @@ export function TableWidget({ widget, data }: TableWidgetProps) {
 
   if (!tableData?.columns?.length) {
     return (
-      <div className="table-widget table-widget--empty">
-        No data available
-      </div>
+      <div className="table-widget table-widget--empty">No data available</div>
     );
   }
 
@@ -140,9 +138,7 @@ function formatValue(
 
   switch (format) {
     case "number":
-      return typeof value === "number"
-        ? value.toLocaleString()
-        : String(value);
+      return typeof value === "number" ? value.toLocaleString() : String(value);
 
     case "currency":
       return typeof value === "number"
@@ -157,7 +153,7 @@ function formatValue(
     case "date":
       if (typeof value === "string" || typeof value === "number") {
         const date = new Date(value);
-        if (!isNaN(date.getTime())) {
+        if (!Number.isNaN(date.getTime())) {
           return date.toLocaleDateString();
         }
       }

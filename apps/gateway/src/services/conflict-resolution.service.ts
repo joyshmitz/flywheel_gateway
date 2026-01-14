@@ -180,9 +180,15 @@ export async function requestResolution(
       contestedResources: request.contestedResources,
       hasDeadlinePressure: hasDeadlinePressure(inputData.requestingPriority),
       strategySpecificScore: recommendedStrategy.score,
-      ...(inputData.requestingPriority && { requestingAgentPriority: inputData.requestingPriority }),
-      ...(inputData.holdingPriority && { holdingAgentPriority: inputData.holdingPriority }),
-      ...(inputData.holdingProgress && { holdingAgentProgress: inputData.holdingProgress }),
+      ...(inputData.requestingPriority && {
+        requestingAgentPriority: inputData.requestingPriority,
+      }),
+      ...(inputData.holdingPriority && {
+        holdingAgentPriority: inputData.holdingPriority,
+      }),
+      ...(inputData.holdingProgress && {
+        holdingAgentProgress: inputData.holdingProgress,
+      }),
       ...(inputData.cassHistory && { cassHistory: inputData.cassHistory }),
     };
 
@@ -217,9 +223,15 @@ export async function requestResolution(
       risks,
       autoResolutionEligible: autoCheck.eligible,
       ...(request.holdingAgentId && { holdingAgentId: request.holdingAgentId }),
-      ...(inputData.requestingPriority && { requestingPriority: inputData.requestingPriority }),
-      ...(inputData.holdingPriority && { holdingPriority: inputData.holdingPriority }),
-      ...(inputData.holdingProgress && { holdingProgress: inputData.holdingProgress }),
+      ...(inputData.requestingPriority && {
+        requestingPriority: inputData.requestingPriority,
+      }),
+      ...(inputData.holdingPriority && {
+        holdingPriority: inputData.holdingPriority,
+      }),
+      ...(inputData.holdingProgress && {
+        holdingProgress: inputData.holdingProgress,
+      }),
       ...(historicalSuccessRate !== undefined && { historicalSuccessRate }),
       ...(historicalSampleSize !== undefined && { historicalSampleSize }),
     };
@@ -383,9 +395,15 @@ async function fetchBvPriority(
     const triage = await getBvTriage();
 
     // Helper to extract BV items from triage section
-    const extractItems = (section: unknown): Array<{ id: string; priority?: string; urgency?: number }> => {
+    const extractItems = (
+      section: unknown,
+    ): Array<{ id: string; priority?: string; urgency?: number }> => {
       if (Array.isArray(section)) {
-        return section as Array<{ id: string; priority?: string; urgency?: number }>;
+        return section as Array<{
+          id: string;
+          priority?: string;
+          urgency?: number;
+        }>;
       }
       return [];
     };
@@ -788,7 +806,9 @@ function scoreTransferStrategy(
       {
         description: "Priority difference justifies transfer",
         satisfied: priorityDiff > 0,
-        ...(priorityDiff <= 0 && { satisfactionHint: "Requester priority is not higher than holder" }),
+        ...(priorityDiff <= 0 && {
+          satisfactionHint: "Requester priority is not higher than holder",
+        }),
       },
     ],
     expectedOutcome: {

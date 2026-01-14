@@ -24,7 +24,6 @@ import {
 } from "../services/agent-state-machine";
 import { agentLinks, agentListLinks, getLinkContext } from "../utils/links";
 import {
-  sendCreated,
   sendError,
   sendInternalError,
   sendList,

@@ -1,4 +1,4 @@
-import type { CommandRegistry, RegisteredCommand } from "../types";
+import type { CommandRegistry } from "../types";
 
 /**
  * Generated WebSocket event type.
@@ -71,7 +71,7 @@ export function generateWsTypeDefinitions(registry: CommandRegistry): string {
     const event = events[i];
     const suffix = i === events.length - 1 ? ";" : "";
     if (event) {
-      lines.push("  | '" + event.name + "'" + suffix);
+      lines.push(`  | '${event.name}'${suffix}`);
     }
   }
 
@@ -86,9 +86,9 @@ export function generateWsTypeDefinitions(registry: CommandRegistry): string {
   for (const event of events) {
     const typeName = eventNameToTypeName(event.name);
     lines.push("");
-    lines.push("/** Event from " + event.sourceCommand + " */");
-    lines.push("export interface " + typeName + "Event extends WsEventBase {");
-    lines.push("  type: '" + event.name + "';");
+    lines.push(`/** Event from ${event.sourceCommand} */`);
+    lines.push(`export interface ${typeName}Event extends WsEventBase {`);
+    lines.push(`  type: '${event.name}';`);
     lines.push("  payload: unknown; // Schema to be defined per event");
     lines.push("}");
   }
@@ -101,7 +101,7 @@ export function generateWsTypeDefinitions(registry: CommandRegistry): string {
     if (event) {
       const typeName = eventNameToTypeName(event.name);
       const suffix = i === events.length - 1 ? ";" : "";
-      lines.push("  | " + typeName + "Event" + suffix);
+      lines.push(`  | ${typeName}Event${suffix}`);
     }
   }
 

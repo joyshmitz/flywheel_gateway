@@ -172,7 +172,7 @@ describe("DCG Pending Exceptions Service", () => {
 
       const found = await getPendingException(created.shortCode);
       expect(found).not.toBeNull();
-      expect(found!.id).toBe(created.id);
+      expect(found?.id).toBe(created.id);
     });
 
     test("returns null for unknown short code", async () => {
@@ -356,8 +356,8 @@ describe("DCG Pending Exceptions Service", () => {
       const valid = await validateExceptionForExecution(exc.commandHash);
 
       expect(valid).not.toBeNull();
-      expect(valid!.shortCode).toBe(exc.shortCode);
-      expect(valid!.status).toBe("approved");
+      expect(valid?.shortCode).toBe(exc.shortCode);
+      expect(valid?.status).toBe("approved");
     });
 
     test("returns null for unapproved exception", async () => {

@@ -466,7 +466,7 @@ export function createTransition(
 // REDUCED MOTION HOOK HELPER
 // ============================================
 
-export function getReducedMotionVariants(variants: Variants): Variants {
+export function getReducedMotionVariants(_variants: Variants): Variants {
   return {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { duration: 0 } },

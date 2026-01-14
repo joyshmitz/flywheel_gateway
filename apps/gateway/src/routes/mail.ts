@@ -18,7 +18,7 @@ import { serializeGatewayError } from "@flywheel/shared/errors";
 import { type Context, Hono } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
-import { getCorrelationId, getLogger } from "../middleware/correlation";
+import { getLogger } from "../middleware/correlation";
 import {
   type AgentMailService,
   createAgentMailServiceFromEnv,
@@ -230,10 +230,15 @@ function createMailRoutes(
 
       const ctx = getLinkContext(c);
       const msgId = message.messageId || "unknown";
-      return sendCreated(c, "message", {
-        ...message,
-        links: messageLinks({ id: msgId }, ctx),
-      }, `/mail/messages/${msgId}`);
+      return sendCreated(
+        c,
+        "message",
+        {
+          ...message,
+          links: messageLinks({ id: msgId }, ctx),
+        },
+        `/mail/messages/${msgId}`,
+      );
     } catch (error) {
       return handleError(error, c);
     }

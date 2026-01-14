@@ -16,7 +16,6 @@ import {
 import { daemonLinks, getLinkContext } from "../utils/links";
 import {
   sendEmptyList,
-  sendError,
   sendInternalError,
   sendList,
   sendNotFound,

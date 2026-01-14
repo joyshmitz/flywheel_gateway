@@ -12,8 +12,8 @@
  * }
  */
 
-import { useEffect, useRef } from "react";
 import type { Widget, WidgetData } from "@flywheel/shared";
+import { useEffect, useRef } from "react";
 import "./GaugeWidget.css";
 
 interface Segment {
@@ -48,7 +48,8 @@ export function GaugeWidget({ widget, data }: GaugeWidgetProps) {
   const gaugeData = data.data as GaugeData | null;
 
   useEffect(() => {
-    if (gaugeData == null || !canvasRef.current || !containerRef.current) return;
+    if (gaugeData == null || !canvasRef.current || !containerRef.current)
+      return;
 
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -100,7 +101,7 @@ export function GaugeWidget({ widget, data }: GaugeWidgetProps) {
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, segmentStart, segmentEnd);
       ctx.lineWidth = lineWidth;
-      ctx.strokeStyle = segment.color + "40"; // 25% opacity
+      ctx.strokeStyle = `${segment.color}40`; // 25% opacity
       ctx.lineCap = "butt";
       ctx.stroke();
     });
@@ -160,9 +161,7 @@ export function GaugeWidget({ widget, data }: GaugeWidgetProps) {
 
   if (gaugeData == null) {
     return (
-      <div className="gauge-widget gauge-widget--empty">
-        No data available
-      </div>
+      <div className="gauge-widget gauge-widget--empty">No data available</div>
     );
   }
 

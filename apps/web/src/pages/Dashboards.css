@@ -56,7 +56,9 @@
   background: transparent;
   color: var(--color-text-muted, #6b7280);
   cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .dashboards-page__back:hover {
@@ -71,8 +73,13 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .dashboards-page__actions {
@@ -168,7 +175,9 @@
   border-radius: 8px;
   background: var(--color-bg-secondary, #1a1a2e);
   cursor: pointer;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
 }
 
 .dashboards-page__card:hover {

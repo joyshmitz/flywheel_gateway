@@ -35,7 +35,9 @@
   background: transparent;
   color: var(--color-text-muted, #6b7280);
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .widget-config-panel__close:hover {
@@ -133,7 +135,9 @@
   color: var(--color-text-secondary, #d1d5db);
   font-size: 13px;
   cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .widget-config-panel__preset:hover {

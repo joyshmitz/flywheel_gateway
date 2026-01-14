@@ -104,7 +104,7 @@ export interface SortState {
 /**
  * Selection state.
  */
-export interface SelectionState<T> {
+export interface SelectionState<_T> {
   /** Set of selected row IDs */
   selected: Set<string>;
   /** Last selected row index (for shift-click) */

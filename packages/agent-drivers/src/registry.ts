@@ -12,7 +12,6 @@ import type {
   AgentDriver,
   AgentDriverType,
   DriverCapabilities,
-  DriverFactory,
   DriverOptions,
   DriverRegistryEntry,
 } from "./interface";

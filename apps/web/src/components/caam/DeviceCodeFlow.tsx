@@ -47,6 +47,7 @@ function StepIndicator({ currentStep, steps }: StepIndicatorProps) {
           >
             {index < currentStep ? (
               <svg
+                aria-hidden="true"
                 className="w-4 h-4"
                 fill="none"
                 viewBox="0 0 24 24"
@@ -109,6 +110,7 @@ function CopyButton({ text, label = "Copy" }: CopyButtonProps) {
 
   return (
     <button
+      type="button"
       onClick={handleCopy}
       className={`
         px-3 py-1.5 text-sm font-medium rounded-md transition-colors
@@ -138,7 +140,7 @@ function CountdownTimer({ seconds, total }: CountdownTimerProps) {
   return (
     <div className="flex items-center gap-3">
       <div className="relative w-12 h-12">
-        <svg className="w-12 h-12 transform -rotate-90">
+        <svg aria-hidden="true" className="w-12 h-12 transform -rotate-90">
           <circle
             className="text-gray-200 dark:text-gray-700"
             strokeWidth="3"
@@ -389,6 +391,7 @@ export function DeviceCodeFlow({
                   />
                 </div>
                 <button
+                  type="button"
                   onClick={handleOpenUrl}
                   className="w-full text-left text-blue-600 dark:text-blue-400 hover:underline text-sm break-all"
                 >
@@ -404,6 +407,7 @@ export function DeviceCodeFlow({
                 total={challenge.expiresInSeconds}
               />
               <button
+                type="button"
                 onClick={handleOpenUrl}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
               >
@@ -428,6 +432,7 @@ export function DeviceCodeFlow({
           <div className="flex flex-col items-center py-8">
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
               <svg
+                aria-hidden="true"
                 className="w-8 h-8 text-green-500"
                 fill="none"
                 viewBox="0 0 24 24"
@@ -456,6 +461,7 @@ export function DeviceCodeFlow({
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center flex-shrink-0">
                 <svg
+                  aria-hidden="true"
                   className="w-4 h-4 text-red-500"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -496,6 +502,7 @@ export function DeviceCodeFlow({
           <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4 text-center">
             <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
               <svg
+                aria-hidden="true"
                 className="w-6 h-6 text-orange-500"
                 fill="none"
                 viewBox="0 0 24 24"
@@ -531,12 +538,14 @@ export function DeviceCodeFlow({
         {(status === "awaiting_user" || status === "polling") && (
           <>
             <button
+              type="button"
               onClick={handleCancel}
               className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-medium"
             >
               Cancel
             </button>
             <button
+              type="button"
               onClick={complete}
               className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
             >
@@ -550,12 +559,14 @@ export function DeviceCodeFlow({
           status === "cancelled") && (
           <>
             <button
+              type="button"
               onClick={handleCancel}
               className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-medium"
             >
               Close
             </button>
             <button
+              type="button"
               onClick={retry}
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
             >
@@ -566,6 +577,7 @@ export function DeviceCodeFlow({
 
         {status === "success" && (
           <button
+            type="button"
             onClick={onSuccess}
             className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
           >

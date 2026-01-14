@@ -2,7 +2,7 @@
  * Unit tests for the Utilities Service.
  */
 
-import { beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import {
   getUtilityStatus,
   listUtilities,
@@ -34,7 +34,7 @@ describe("Utilities Service", () => {
       const giil = result.find((u) => u.name === "giil");
 
       expect(giil).toBeDefined();
-      expect(giil!.description).toContain("cloud photos");
+      expect(giil?.description).toContain("cloud photos");
     });
 
     test("csctf has correct description", async () => {
@@ -42,7 +42,7 @@ describe("Utilities Service", () => {
       const csctf = result.find((u) => u.name === "csctf");
 
       expect(csctf).toBeDefined();
-      expect(csctf!.description).toContain("chat share links");
+      expect(csctf?.description).toContain("chat share links");
     });
   });
 
@@ -57,23 +57,23 @@ describe("Utilities Service", () => {
       const result = await getUtilityStatus("giil");
 
       expect(result).toBeDefined();
-      expect(result!.name).toBe("giil");
-      expect(typeof result!.installed).toBe("boolean");
+      expect(result?.name).toBe("giil");
+      expect(typeof result?.installed).toBe("boolean");
     });
 
     test("returns status for csctf", async () => {
       const result = await getUtilityStatus("csctf");
 
       expect(result).toBeDefined();
-      expect(result!.name).toBe("csctf");
-      expect(typeof result!.installed).toBe("boolean");
+      expect(result?.name).toBe("csctf");
+      expect(typeof result?.installed).toBe("boolean");
     });
 
     test("includes install command in status", async () => {
       const result = await getUtilityStatus("giil");
 
-      expect(result!.installCommand).toContain("curl");
-      expect(result!.installCommand).toContain("install.sh");
+      expect(result?.installCommand).toContain("curl");
+      expect(result?.installCommand).toContain("install.sh");
     });
   });
 

@@ -18,12 +18,10 @@ import {
   getActiveAlerts,
   getAlert,
   getAlertHistory,
-  getAlertRule,
   getAlertRules,
   updateAlertRule,
 } from "../services/alerts";
 import {
-  sendError,
   sendInternalError,
   sendList,
   sendNotFound,

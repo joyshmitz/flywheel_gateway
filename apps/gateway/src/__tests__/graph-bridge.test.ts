@@ -7,7 +7,7 @@ import type { GraphEventsService } from "../services/graph-events";
 
 describe("GraphBridgeService", () => {
   let mockGraphEvents: GraphEventsService;
-  let mockFetch: typeof fetch;
+  let _mockFetch: typeof fetch;
   let originalFetch: typeof fetch;
 
   beforeEach(() => {

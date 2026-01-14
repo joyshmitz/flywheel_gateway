@@ -660,11 +660,11 @@ export function useGraphSubscription(
           payload = {
             id: `mock-msg-${Date.now()}`,
             fromAgentId:
-              mockAgentNodes[Math.floor(Math.random() * mockAgentNodes.length)]!
-                .agentId,
+              mockAgentNodes[Math.floor(Math.random() * mockAgentNodes.length)]
+                ?.agentId,
             toAgentId:
-              mockAgentNodes[Math.floor(Math.random() * mockAgentNodes.length)]!
-                .agentId,
+              mockAgentNodes[Math.floor(Math.random() * mockAgentNodes.length)]
+                ?.agentId,
             subject: "Mock message",
             timestamp: new Date().toISOString(),
           };

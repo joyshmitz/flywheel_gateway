@@ -5,7 +5,7 @@
  */
 
 import { RefreshCw } from "lucide-react";
-import { memo, type ReactNode, useCallback } from "react";
+import { memo, type ReactNode } from "react";
 import { useMobileGestures } from "../../hooks/useMobileGestures";
 
 export interface PullToRefreshProps {

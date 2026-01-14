@@ -16,7 +16,6 @@ import type {
   CreateNotificationRequest,
   Notification,
   NotificationCategory,
-  NotificationChannel,
   NotificationFilter,
   NotificationPriority,
   NotificationStatus,
@@ -337,7 +336,10 @@ notifications.put("/preferences", async (c) => {
       return sendValidationError(c, transformZodError(parsed.error));
     }
 
-    const prefs = updatePreferences(userId, parsed.data as PreferencesUpdateRequest);
+    const prefs = updatePreferences(
+      userId,
+      parsed.data as PreferencesUpdateRequest,
+    );
 
     return sendResource(c, "notification_preferences", {
       ...prefs,
@@ -495,7 +497,9 @@ notifications.post("/", async (c) => {
       return sendValidationError(c, transformZodError(parsed.error));
     }
 
-    const notification = await createNotification(parsed.data as CreateNotificationRequest);
+    const notification = await createNotification(
+      parsed.data as CreateNotificationRequest,
+    );
 
     return sendResource(
       c,

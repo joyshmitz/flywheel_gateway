@@ -5,14 +5,14 @@
 import type { Widget, WidgetData } from "@flywheel/shared";
 import { WidgetWrapper } from "./WidgetWrapper";
 import {
-  MetricCardWidget,
-  LineChartWidget,
+  ActivityFeedWidget,
+  AgentListWidget,
   BarChartWidget,
+  GaugeWidget,
+  LineChartWidget,
+  MetricCardWidget,
   PieChartWidget,
   TableWidget,
-  AgentListWidget,
-  ActivityFeedWidget,
-  GaugeWidget,
   TextWidget,
 } from "./widgets";
 
@@ -76,9 +76,7 @@ export function WidgetRenderer({
       case "heatmap":
         // TODO: Implement heatmap widget
         return (
-          <div className="widget-placeholder">
-            Heatmap widget coming soon
-          </div>
+          <div className="widget-placeholder">Heatmap widget coming soon</div>
         );
 
       case "iframe":
@@ -109,13 +107,7 @@ export function WidgetRenderer({
 }
 
 // Simple iframe widget
-function IframeWidget({
-  widget,
-  data,
-}: {
-  widget: Widget;
-  data: WidgetData;
-}) {
+function IframeWidget({ widget, data }: { widget: Widget; data: WidgetData }) {
   const iframeData = data.data as { url?: string } | null;
   const url = iframeData?.url || widget.config.customOptions?.["url"];
 

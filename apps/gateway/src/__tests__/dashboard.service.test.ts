@@ -2,23 +2,27 @@
  * Dashboard Service Tests
  */
 
-import { describe, expect, it, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
+import type {
+  CreateDashboardInput,
+  Widget,
+  WidgetType,
+} from "@flywheel/shared";
 import {
-  createDashboard,
-  getDashboard,
-  updateDashboard,
-  deleteDashboard,
-  listDashboards,
-  duplicateDashboard,
   addWidget,
-  updateWidget,
-  removeWidget,
+  clearDashboardStore,
+  createDashboard,
+  deleteDashboard,
+  duplicateDashboard,
+  getDashboard,
   grantPermission,
+  listDashboards,
+  removeWidget,
   revokePermission,
   toggleFavorite,
-  clearDashboardStore,
+  updateDashboard,
+  updateWidget,
 } from "../services/dashboard.service";
-import type { CreateDashboardInput, Widget, WidgetType } from "@flywheel/shared";
 
 describe("Dashboard Service", () => {
   beforeEach(() => {
@@ -76,7 +80,7 @@ describe("Dashboard Service", () => {
       const dashboard = createDashboard(input, "user-1");
 
       expect(dashboard.widgets).toHaveLength(1);
-      expect(dashboard.widgets[0]!.title).toBe("Test Widget");
+      expect(dashboard.widgets[0]?.title).toBe("Test Widget");
     });
 
     it("should create a dashboard with custom sharing settings", () => {
@@ -188,7 +192,7 @@ describe("Dashboard Service", () => {
 
       const { items, total } = listDashboards({ visibility: "public" });
       expect(items).toHaveLength(1);
-      expect(items[0]!.name).toBe("Public");
+      expect(items[0]?.name).toBe("Public");
       expect(total).toBe(1);
     });
   });
@@ -251,7 +255,7 @@ describe("Dashboard Service", () => {
 
       expect(updated).toBeDefined();
       expect(updated?.widgets).toHaveLength(1);
-      expect(updated?.widgets[0]!.title).toBe("New Widget");
+      expect(updated?.widgets[0]?.title).toBe("New Widget");
     });
 
     it("should generate widget id if not provided", () => {
@@ -266,8 +270,8 @@ describe("Dashboard Service", () => {
 
       const updated = addWidget(dashboard.id, widget);
 
-      expect(updated?.widgets[0]!.id).toBeTruthy();
-      expect(updated?.widgets[0]!.id).not.toBe("");
+      expect(updated?.widgets[0]?.id).toBeTruthy();
+      expect(updated?.widgets[0]?.id).not.toBe("");
     });
 
     it("should update a widget", () => {
@@ -292,7 +296,7 @@ describe("Dashboard Service", () => {
       });
 
       expect(updated).toBeDefined();
-      expect(updated?.widgets[0]!.title).toBe("Updated Title");
+      expect(updated?.widgets[0]?.title).toBe("Updated Title");
     });
 
     it("should return undefined when updating non-existent widget", () => {

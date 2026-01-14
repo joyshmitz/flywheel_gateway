@@ -197,7 +197,7 @@ export function registerAgentMailToolCallerFromEnv(): boolean {
 }
 
 export function registerGlobalToolCaller(
-  key: "agentMailCallTool",
+  _key: "agentMailCallTool",
   caller: AgentMailToolCaller,
 ): void {
   const globalAny = globalThis as {

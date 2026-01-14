@@ -30,7 +30,6 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import {
-  type StageMetrics as StageMetricsType,
   type TrendRecommendation,
   useLearningMetrics,
   useStageMetrics,
@@ -149,6 +148,7 @@ function VelocityGauge({
         <div style={{ display: "flex", gap: "8px" }}>
           {(["24h", "7d", "30d"] as VelocityPeriod[]).map((p) => (
             <button
+              type="button"
               key={p}
               className={`btn btn--sm ${period === p ? "btn--primary" : "btn--secondary"}`}
               onClick={() => onPeriodChange(p)}
@@ -1088,6 +1088,7 @@ function HistoryTab() {
           <div style={{ display: "flex", gap: "8px" }}>
             {(["30d", "60d", "90d"] as const).map((p) => (
               <button
+                type="button"
                 key={p}
                 className={`btn btn--sm ${period === p ? "btn--primary" : "btn--secondary"}`}
                 onClick={() => setPeriod(p)}
@@ -1135,12 +1136,16 @@ function HistoryTab() {
         </div>
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <span className="muted">
-            {history.points[0]?.timestamp ? formatDate(history.points[0].timestamp) : ""}
+            {history.points[0]?.timestamp
+              ? formatDate(history.points[0].timestamp)
+              : ""}
           </span>
           <span className="muted">
             {(() => {
               const lastPoint = history.points[history.points.length - 1];
-              return lastPoint?.timestamp ? formatDate(lastPoint.timestamp) : "";
+              return lastPoint?.timestamp
+                ? formatDate(lastPoint.timestamp)
+                : "";
             })()}
           </span>
         </div>
@@ -1199,6 +1204,7 @@ export function VelocityPage() {
       <nav className="tabs" style={{ marginBottom: "24px" }}>
         {tabs.map((tab) => (
           <button
+            type="button"
             key={tab.id}
             className={`tabs__tab ${activeTab === tab.id ? "tabs__tab--active" : ""}`}
             onClick={() => setActiveTab(tab.id)}

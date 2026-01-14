@@ -15,8 +15,6 @@ import type {
   AgentDriverType,
   AgentEvent,
   AgentState,
-  Checkpoint,
-  CheckpointMetadata,
   DriverCapabilities,
   OutputLine,
   SendResult,

@@ -213,7 +213,10 @@ describe("Rate Limit Middleware", () => {
     test("byWorkspace extracts from context", async () => {
       const app = new Hono<TestEnv>();
       app.use("*", (c, next) => {
-        (c.set as (key: string, value: unknown) => void)("workspaceId", "ws_456");
+        (c.set as (key: string, value: unknown) => void)(
+          "workspaceId",
+          "ws_456",
+        );
         return next();
       });
       app.get("/test", (c) => c.text(byWorkspace(c as unknown as Context)));
@@ -469,7 +472,10 @@ describe("Rate Limit Middleware", () => {
     test("per-user-per-endpoint rate limiting", async () => {
       const app = new Hono<TestEnv>();
       app.use("*", (c, next) => {
-        (c.set as (key: string, value: unknown) => void)("userId", c.req.header("X-User-Id") ?? "anon");
+        (c.set as (key: string, value: unknown) => void)(
+          "userId",
+          c.req.header("X-User-Id") ?? "anon",
+        );
         return next();
       });
       app.use(

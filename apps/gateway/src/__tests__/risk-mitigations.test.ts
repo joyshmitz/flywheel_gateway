@@ -8,7 +8,7 @@
  * @see flywheel_gateway-kue (Risk Mitigations and Resilience)
  */
 
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 
 // ============================================================================
 // Mock Setup
@@ -163,7 +163,7 @@ describe("Risk 2: Account Quota Exhaustion Mitigation", () => {
         .sort((a, b) => a.priority - b.priority);
 
       expect(available.length).toBe(2);
-      expect(available[0]!.id).toBe("p2");
+      expect(available[0]?.id).toBe("p2");
     });
 
     test("all profiles on cooldown returns empty", () => {
@@ -420,7 +420,7 @@ describe("Risk 6: Checkpoint Storage Explosion Mitigation", () => {
       const toDelete = checkpoints.filter((c) => c.createdAt < retentionCutoff);
 
       expect(toDelete.length).toBe(1);
-      expect(toDelete[0]!.id).toBe(1);
+      expect(toDelete[0]?.id).toBe(1);
     });
   });
 });
@@ -445,7 +445,7 @@ describe("Risk 7: Network Interruption Mitigation", () => {
       }
 
       expect(buffer.length).toBe(capacity);
-      expect(buffer[0]!.id).toBe(100); // Oldest retained
+      expect(buffer[0]?.id).toBe(100); // Oldest retained
     });
   });
 
@@ -462,7 +462,7 @@ describe("Risk 7: Network Interruption Mitigation", () => {
       const missed = messages.filter((m) => m.cursor > lastCursor);
 
       expect(missed.length).toBe(2);
-      expect(missed[0]!.cursor).toBe(3);
+      expect(missed[0]?.cursor).toBe(3);
     });
   });
 

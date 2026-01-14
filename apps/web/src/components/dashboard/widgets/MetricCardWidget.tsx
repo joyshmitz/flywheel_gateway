@@ -38,7 +38,11 @@ export function MetricCardWidget({ widget, data }: MetricCardWidgetProps) {
   const metricData = data.data as MetricData | null;
 
   if (!metricData) {
-    return <div className="metric-card-widget metric-card-widget--empty">No data</div>;
+    return (
+      <div className="metric-card-widget metric-card-widget--empty">
+        No data
+      </div>
+    );
   }
 
   const { value, label, unit, trend, comparison } = metricData;
@@ -83,7 +87,9 @@ export function MetricCardWidget({ widget, data }: MetricCardWidgetProps) {
             )}
             {trend.direction === "stable" && "No change"}
           </span>
-          <span className="metric-card-widget__trend-period">{trend.period}</span>
+          <span className="metric-card-widget__trend-period">
+            {trend.period}
+          </span>
         </div>
       )}
 

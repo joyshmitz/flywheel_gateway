@@ -590,7 +590,7 @@ export async function installUtility(name: string): Promise<InstallResult> {
     return {
       success: false,
       utility: name,
-      output: result.stdout + "\n" + result.stderr,
+      output: `${result.stdout}\n${result.stderr}`,
       error: `Installation failed with exit code ${result.exitCode}`,
     };
   }
@@ -601,7 +601,7 @@ export async function installUtility(name: string): Promise<InstallResult> {
     return {
       success: false,
       utility: name,
-      output: result.stdout + "\n" + result.stderr,
+      output: `${result.stdout}\n${result.stderr}`,
       error: "Installation completed but utility not found in PATH",
     };
   }

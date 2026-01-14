@@ -18,9 +18,7 @@ import { getCorrelationId, getLogger } from "../middleware/correlation";
 import type { Channel } from "../ws/channels";
 import { getHub } from "../ws/hub";
 import {
-  type ConflictCheckResult,
   type Reservation,
-  type ReservationConflict,
   ReservationConflictEngine,
 } from "./reservation-conflicts";
 
@@ -548,7 +546,7 @@ export function detectResourceContention(
   const recent = recentAccesses.filter(
     (a) =>
       a.timestamp.getTime() >= cutoff &&
-      a.resourceId.startsWith(projectId + ":"),
+      a.resourceId.startsWith(`${projectId}:`),
   );
 
   // Group by resource
@@ -658,10 +656,10 @@ export function getActiveConflicts(
   let conflicts = Array.from(activeConflicts.values());
 
   if (params.type?.length) {
-    conflicts = conflicts.filter((c) => params.type!.includes(c.type));
+    conflicts = conflicts.filter((c) => params.type?.includes(c.type));
   }
   if (params.severity?.length) {
-    conflicts = conflicts.filter((c) => params.severity!.includes(c.severity));
+    conflicts = conflicts.filter((c) => params.severity?.includes(c.severity));
   }
   if (params.projectId) {
     conflicts = conflicts.filter((c) => c.projectId === params.projectId);

@@ -37,6 +37,7 @@ export function DataTableToolbar({
           />
           {searchValue && (
             <button
+              type="button"
               className="btn btn--ghost btn--icon"
               onClick={() => onSearchChange("")}
               aria-label="Clear search"
@@ -61,6 +62,7 @@ export function DataTableToolbar({
           </span>
           {filters.map((filter) => (
             <button
+              type="button"
               key={filter.id}
               className="data-table__filter-chip data-table__filter-chip--active"
               onClick={() => onFilterRemove?.(filter.id)}
@@ -73,6 +75,7 @@ export function DataTableToolbar({
           ))}
           {filters.length > 1 && (
             <button
+              type="button"
               className="data-table__filter-chip"
               onClick={onClearFilters}
             >

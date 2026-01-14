@@ -2,7 +2,7 @@
  * Unit tests for the DCG Service.
  */
 
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 
 // Mock the logger with child method
 const mockLogger = {

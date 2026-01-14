@@ -3,10 +3,10 @@
  */
 
 export { DashboardGrid } from "./DashboardGrid";
-export { WidgetWrapper } from "./WidgetWrapper";
-export { WidgetRenderer } from "./WidgetRenderer";
-export { WidgetGallery, WIDGET_DEFINITIONS } from "./WidgetGallery";
 export { WidgetConfigPanel } from "./WidgetConfigPanel";
+export { WIDGET_DEFINITIONS, WidgetGallery } from "./WidgetGallery";
+export { WidgetRenderer } from "./WidgetRenderer";
+export { WidgetWrapper } from "./WidgetWrapper";
 
 // Re-export individual widgets
 export * from "./widgets";

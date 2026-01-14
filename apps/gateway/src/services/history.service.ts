@@ -9,9 +9,9 @@
  * - Export capabilities
  */
 
-import { and, count, desc, eq, gte, like, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { db } from "../db";
-import { agents as agentsTable, history as historyTable } from "../db/schema";
+import { history as historyTable } from "../db/schema";
 import { getCorrelationId } from "../middleware/correlation";
 import { logger } from "./logger";
 
@@ -90,8 +90,8 @@ function generateHistoryId(): string {
   const randomBytes = new Uint8Array(8);
   crypto.getRandomValues(randomBytes);
   let random = "";
-  for (let i = 0; i < 8; i++) {
-    random += chars.charAt(randomBytes[i]! % chars.length);
+  for (const byte of randomBytes) {
+    random += chars.charAt(byte % chars.length);
   }
   return `hist_${timestamp}_${random}`;
 }
@@ -173,11 +173,10 @@ export async function completeHistoryEntry(
     .where(eq(historyTable.id, entryId))
     .limit(1);
 
-  if (rows.length === 0) {
+  const row = rows[0];
+  if (!row) {
     return null;
   }
-
-  const row = rows[0]!;
   const inputData = row.input as Record<string, unknown> | null;
 
   // Update with output
@@ -243,11 +242,12 @@ export async function getHistoryEntry(
     .where(eq(historyTable.id, entryId))
     .limit(1);
 
-  if (rows.length === 0) {
+  const row = rows[0];
+  if (!row) {
     return null;
   }
 
-  return rowToEntry(rows[0]!);
+  return rowToEntry(row);
 }
 
 /**
@@ -290,7 +290,7 @@ export async function queryHistory(options: HistoryQueryOptions = {}): Promise<{
   let filtered = rows.map(rowToEntry);
 
   if (options.outcome?.length) {
-    filtered = filtered.filter((e) => options.outcome!.includes(e.outcome));
+    filtered = filtered.filter((e) => options.outcome?.includes(e.outcome));
   }
 
   if (options.starred !== undefined) {
@@ -308,7 +308,7 @@ export async function queryHistory(options: HistoryQueryOptions = {}): Promise<{
 
   if (options.tags?.length) {
     filtered = filtered.filter((e) =>
-      options.tags!.some((tag) => e.tags.includes(tag)),
+      options.tags?.some((tag) => e.tags.includes(tag)),
     );
   }
 
@@ -389,11 +389,10 @@ export async function toggleStar(
     .where(eq(historyTable.id, entryId))
     .limit(1);
 
-  if (rows.length === 0) {
+  const row = rows[0];
+  if (!row) {
     return null;
   }
-
-  const row = rows[0]!;
   const inputData = (row.input as Record<string, unknown>) ?? {};
   const currentStarred = (inputData["starred"] as boolean) ?? false;
 
@@ -428,11 +427,10 @@ export async function incrementReplayCount(entryId: string): Promise<void> {
     .where(eq(historyTable.id, entryId))
     .limit(1);
 
-  if (rows.length === 0) {
+  const row = rows[0];
+  if (!row) {
     return;
   }
-
-  const row = rows[0]!;
   const inputData = (row.input as Record<string, unknown>) ?? {};
   const currentCount = (inputData["replayCount"] as number) ?? 0;
 
@@ -518,7 +516,7 @@ export async function getHistoryStats(
     totalDuration += entry.durationMs;
     outcomeDistribution[entry.outcome]++;
 
-    const dateKey = entry.timestamp.toISOString().split("T")[0]!;
+    const dateKey = entry.timestamp.toISOString().split("T")[0] ?? "";
     entriesByDayMap.set(dateKey, (entriesByDayMap.get(dateKey) ?? 0) + 1);
   }
 
@@ -639,8 +637,7 @@ export function extractFromOutput(
       let blockContent: string[] = [];
       let blockLang = "";
 
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i]!;
+      for (const [i, line] of lines.entries()) {
         if (line.startsWith("```")) {
           if (!inBlock) {
             inBlock = true;
@@ -671,14 +668,16 @@ export function extractFromOutput(
       const jsonPattern = /(\{[\s\S]*?\}|\[[\s\S]*?\])/g;
       let match;
       while ((match = jsonPattern.exec(output)) !== null) {
+        const captured = match[1];
+        if (!captured) continue;
         try {
-          JSON.parse(match[1]!);
+          JSON.parse(captured);
           const startLine = output.slice(0, match.index).split("\n").length - 1;
           const endLine =
-            output.slice(0, match.index + match[1]!.length).split("\n").length -
+            output.slice(0, match.index + captured.length).split("\n").length -
             1;
           matches.push({
-            content: match[1]!,
+            content: captured,
             lineStart: startLine,
             lineEnd: endLine,
           });
@@ -695,9 +694,11 @@ export function extractFromOutput(
         /(?:^|\s)((?:\/[\w.-]+)+\/?|(?:[A-Za-z]:)?\\(?:[\w.-]+\\)*[\w.-]+)/gm;
       let match;
       while ((match = pathPattern.exec(output)) !== null) {
+        const captured = match[1];
+        if (!captured) continue;
         const lineNum = output.slice(0, match.index).split("\n").length - 1;
         matches.push({
-          content: match[1]!.trim(),
+          content: captured.trim(),
           lineStart: lineNum,
           lineEnd: lineNum,
         });

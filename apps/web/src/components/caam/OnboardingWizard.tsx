@@ -57,6 +57,7 @@ function ChecklistItem({ label, completed, description }: ChecklistItemProps) {
       >
         {completed && (
           <svg
+            aria-hidden="true"
             className="w-3 h-3"
             fill="none"
             viewBox="0 0 24 24"
@@ -102,6 +103,7 @@ function InfoCard({ title, items, variant }: InfoCardProps) {
       text: "text-blue-700 dark:text-blue-300",
       icon: (
         <svg
+          aria-hidden="true"
           className="w-5 h-5"
           fill="none"
           viewBox="0 0 24 24"
@@ -123,6 +125,7 @@ function InfoCard({ title, items, variant }: InfoCardProps) {
       text: "text-yellow-700 dark:text-yellow-300",
       icon: (
         <svg
+          aria-hidden="true"
           className="w-5 h-5"
           fill="none"
           viewBox="0 0 24 24"
@@ -144,6 +147,7 @@ function InfoCard({ title, items, variant }: InfoCardProps) {
       text: "text-green-700 dark:text-green-300",
       icon: (
         <svg
+          aria-hidden="true"
           className="w-5 h-5"
           fill="none"
           viewBox="0 0 24 24"
@@ -210,6 +214,7 @@ function AuthModeCard({
 
   return (
     <button
+      type="button"
       onClick={onSelect}
       className={`
         w-full text-left p-4 rounded-lg border-2 transition-all
@@ -244,6 +249,7 @@ function AuthModeCard({
         >
           {selected && (
             <svg
+              aria-hidden="true"
               className="w-3 h-3 text-white"
               fill="none"
               viewBox="0 0 24 24"
@@ -340,7 +346,7 @@ export function OnboardingWizard({
     } catch {
       // Error handled by hook
     }
-  }, [state, workspaceId, create]);
+  }, [state, workspaceId, create, setStep]);
 
   const providerInfo = state.provider ? PROVIDER_INFO[state.provider] : null;
   const onboarding = state.provider
@@ -381,6 +387,7 @@ export function OnboardingWizard({
 
                 return (
                   <button
+                    type="button"
                     key={p}
                     onClick={() => {
                       setProvider(p);
@@ -416,6 +423,7 @@ export function OnboardingWizard({
                       </p>
                     </div>
                     <svg
+                      aria-hidden="true"
                       className="w-5 h-5 text-gray-400"
                       fill="none"
                       viewBox="0 0 24 24"
@@ -581,6 +589,7 @@ export function OnboardingWizard({
           <div className="text-center py-8">
             <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg
+                aria-hidden="true"
                 className="w-10 h-10 text-green-500"
                 fill="none"
                 viewBox="0 0 24 24"
@@ -602,6 +611,7 @@ export function OnboardingWizard({
               ready to use.
             </p>
             <button
+              type="button"
               onClick={onComplete}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
             >
@@ -615,6 +625,7 @@ export function OnboardingWizard({
       {state.step !== "authenticate" && state.step !== "complete" && (
         <div className="flex justify-between gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
           <button
+            type="button"
             onClick={() => {
               if (state.step === "select-provider") {
                 onCancel?.();
@@ -631,6 +642,7 @@ export function OnboardingWizard({
 
           {state.step === "select-auth" && (
             <button
+              type="button"
               onClick={() => setStep("review")}
               disabled={!state.authMode}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
@@ -641,6 +653,7 @@ export function OnboardingWizard({
 
           {state.step === "review" && (
             <button
+              type="button"
               onClick={handleCreateAndAuthenticate}
               disabled={creating}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"

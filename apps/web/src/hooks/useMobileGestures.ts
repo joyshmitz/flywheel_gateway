@@ -173,7 +173,7 @@ export function useMobileGestures(config: GestureConfig = {}) {
   );
 
   const handleTouchEnd = useCallback(
-    async (e: TouchEvent) => {
+    async (_e: TouchEvent) => {
       if (
         !mergedConfig.enabled ||
         !touchStartRef.current ||

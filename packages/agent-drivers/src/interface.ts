@@ -11,7 +11,6 @@
  */
 
 import type {
-  Agent,
   AgentConfig,
   AgentDriverType,
   AgentEvent,

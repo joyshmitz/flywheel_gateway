@@ -155,7 +155,9 @@ jobs.post("/", async (c) => {
       type: parsed.data.type as JobType,
       input: parsed.data.input,
       ...(parsed.data.name && { name: parsed.data.name }),
-      ...(parsed.data.priority !== undefined && { priority: parsed.data.priority as JobPriority }),
+      ...(parsed.data.priority !== undefined && {
+        priority: parsed.data.priority as JobPriority,
+      }),
       ...(parsed.data.sessionId && { sessionId: parsed.data.sessionId }),
       ...(parsed.data.agentId && { agentId: parsed.data.agentId }),
       ...(parsed.data.metadata && { metadata: parsed.data.metadata }),
@@ -164,10 +166,15 @@ jobs.post("/", async (c) => {
     log.info({ jobId: job.id, type: job.type }, "Job created");
 
     const ctx = getLinkContext(c);
-    return sendCreated(c, "job", {
-      ...jobToResponse(job),
-      links: jobLinks({ id: job.id }, ctx),
-    }, `/jobs/${job.id}`);
+    return sendCreated(
+      c,
+      "job",
+      {
+        ...jobToResponse(job),
+        links: jobLinks({ id: job.id }, ctx),
+      },
+      `/jobs/${job.id}`,
+    );
   } catch (error) {
     if (error instanceof JobValidationError) {
       return sendValidationError(

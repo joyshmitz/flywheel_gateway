@@ -2,7 +2,7 @@
  * Context Pack Builder Tests
  */
 
-import { beforeEach, describe, expect, it } from "bun:test";
+import { describe, expect, it } from "bun:test";
 import {
   buildContextPack,
   getContextPackSummary,

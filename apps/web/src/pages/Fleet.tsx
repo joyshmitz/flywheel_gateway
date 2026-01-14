@@ -30,7 +30,6 @@ import { StatusPill } from "../components/ui/StatusPill";
 import {
   type FleetRepo,
   type RepoStatus,
-  type SweepPlan,
   type SweepSession,
   useAddRepo,
   useApprovePlan,
@@ -213,6 +212,7 @@ function RepoList({ repos, groups, onRemove, isRemoving }: RepoListProps) {
           {(["healthy", "dirty", "behind", "ahead"] as RepoStatus[]).map(
             (status) => (
               <button
+                type="button"
                 key={status}
                 className={`btn btn--sm ${filterStatus === status ? "btn--primary" : "btn--secondary"}`}
                 onClick={() =>
@@ -350,6 +350,7 @@ function RepoList({ repos, groups, onRemove, isRemoving }: RepoListProps) {
                     View on GitHub
                   </a>
                   <button
+                    type="button"
                     className="btn btn--danger btn--sm"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -416,6 +417,7 @@ function SweepsTab({
       <div className="card__header">
         <h3>Sweep Sessions</h3>
         <button
+          type="button"
           className="btn btn--primary btn--sm"
           onClick={onStartSweep}
           disabled={isStarting || !!activeSession}
@@ -458,6 +460,7 @@ function SweepsTab({
               <StatusPill tone="warning">{activeSession.status}</StatusPill>
             </div>
             <button
+              type="button"
               className="btn btn--danger btn--sm"
               onClick={() => onCancelSweep(activeSession.id)}
               disabled={isCancelling}
@@ -527,6 +530,7 @@ function SweepsTab({
                     <span>Waiting for approval to proceed</span>
                   </div>
                   <button
+                    type="button"
                     className="btn btn--primary btn--sm"
                     onClick={() => onApproveSweep(activeSession.id)}
                     disabled={isApproving}
@@ -802,6 +806,7 @@ function PlanApproval({ sessionId }: PlanApprovalProps) {
               style={{ flex: 1 }}
             />
             <button
+              type="button"
               className="btn btn--danger btn--sm"
               onClick={() => handleReject(plan.id)}
               disabled={isRejecting || !rejectReasons[plan.id]}
@@ -810,6 +815,7 @@ function PlanApproval({ sessionId }: PlanApprovalProps) {
               Reject
             </button>
             <button
+              type="button"
               className="btn btn--primary btn--sm"
               onClick={() => handleApprove(plan.id)}
               disabled={isApproving}
@@ -940,6 +946,7 @@ function AddRepoTab({ onAdd, isAdding, groups }: AddRepoTabProps) {
         </div>
 
         <button
+          type="button"
           className="btn btn--primary"
           onClick={handleSubmit}
           disabled={isAdding || !owner || !name || !url}
@@ -1014,7 +1021,11 @@ export function FleetPage() {
       .length ?? 0;
   const reposCount = repos?.length;
   const tabs: Tab[] = [
-    { id: "repos", label: "Repositories", ...(reposCount != null && { badge: reposCount }) },
+    {
+      id: "repos",
+      label: "Repositories",
+      ...(reposCount != null && { badge: reposCount }),
+    },
     {
       id: "sweeps",
       label: "Sweeps",
@@ -1088,6 +1099,7 @@ export function FleetPage() {
       >
         {tabs.map((tab) => (
           <button
+            type="button"
             key={tab.id}
             className={`btn btn--sm ${activeTab === tab.id ? "btn--primary" : "btn--ghost"}`}
             onClick={() => setActiveTab(tab.id)}

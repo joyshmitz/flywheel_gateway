@@ -64,15 +64,13 @@ export function generateClientSDK(
   ];
 
   // Generate the client class
-  lines.push("export class " + className + " {");
-  lines.push("  private readonly " + baseUrlVar + ": string;");
+  lines.push(`export class ${className} {`);
+  lines.push(`  private readonly ${baseUrlVar}: string;`);
   lines.push("  private readonly token?: string;");
   lines.push("  private readonly fetchFn: typeof fetch;");
   lines.push("");
   lines.push("  constructor(config: ClientConfig) {");
-  lines.push(
-    "    this." + baseUrlVar + " = config.baseUrl.replace(/\\/$/, '');",
-  );
+  lines.push(`    this.${baseUrlVar} = config.baseUrl.replace(/\\/$/, '');`);
   lines.push("    this.token = config.token;");
   lines.push("    this.fetchFn = config.fetch ?? globalThis.fetch;");
   lines.push("  }");
@@ -95,7 +93,7 @@ export function generateClientSDK(
   lines.push("    }");
   lines.push("");
   lines.push(
-    "    const response = await this.fetchFn(this." + baseUrlVar + " + path, {",
+    `    const response = await this.fetchFn(this.${baseUrlVar} + path, {`,
   );
   lines.push("      method,");
   lines.push("      headers,");
@@ -150,7 +148,7 @@ function generateMethodCode(
   // Build parameter list
   const params: string[] = [];
   for (const param of pathParams) {
-    params.push(param + ": string");
+    params.push(`${param}: string`);
   }
 
   const needsBody =
@@ -165,11 +163,11 @@ function generateMethodCode(
   params.push("options?: RequestOptions");
 
   // Build path with parameter substitution
-  let pathExpr = "'" + path + "'";
+  let pathExpr = `'${path}'`;
   for (const param of pathParams) {
     pathExpr = pathExpr.replace(
-      ":" + param,
-      "' + encodeURIComponent(" + param + ") + '",
+      `:${param}`,
+      `' + encodeURIComponent(${param}) + '`,
     );
   }
   // Clean up empty string concatenations
@@ -179,7 +177,7 @@ function generateMethodCode(
     "params ? new URLSearchParams(Object.entries(params).filter(([, value]) => value !== undefined && value !== null).map(([key, value]) => [key, String(value)] as [string, string])).toString() : ''";
 
   const lines: string[] = [];
-  lines.push("  /** " + method.commandName + " */");
+  lines.push(`  /** ${method.commandName} */`);
 
   if (streaming) {
     lines.push(
@@ -190,10 +188,8 @@ function generateMethodCode(
         "): AsyncGenerator<unknown> {",
     );
     if (!needsBody) {
-      lines.push("    const query = " + queryExpr + ";");
-      lines.push(
-        "    const url = " + pathExpr + " + (query ? '?' + query : '');",
-      );
+      lines.push(`    const query = ${queryExpr};`);
+      lines.push(`    const url = ${pathExpr} + (query ? '?' + query : '');`);
     }
     const streamingUrlExpr = needsBody ? pathExpr : "url";
     lines.push(
@@ -203,7 +199,7 @@ function generateMethodCode(
         streamingUrlExpr +
         ", {",
     );
-    lines.push("      method: '" + httpMethod + "',");
+    lines.push(`      method: '${httpMethod}',`);
     lines.push("      headers: {");
     if (needsBody) {
       lines.push("        'Content-Type': 'application/json',");
@@ -270,10 +266,8 @@ function generateMethodCode(
           ", body, options);",
       );
     } else {
-      lines.push("    const query = " + queryExpr + ";");
-      lines.push(
-        "    const url = " + pathExpr + " + (query ? '?' + query : '');",
-      );
+      lines.push(`    const query = ${queryExpr};`);
+      lines.push(`    const url = ${pathExpr} + (query ? '?' + query : '');`);
       lines.push(
         "    return this.request('" +
           httpMethod +
@@ -304,21 +298,21 @@ export function generateClientTypes(registry: CommandRegistry): string {
   for (const [category, cmds] of byCategory) {
     const capitalizedCategory =
       category.charAt(0).toUpperCase() + category.slice(1);
-    lines.push("export namespace " + capitalizedCategory + " {");
+    lines.push(`export namespace ${capitalizedCategory} {`);
 
     for (const cmd of cmds) {
       const actionName = cmd.name.split(".")[1] ?? cmd.name;
       const capitalizedAction =
         actionName.charAt(0).toUpperCase() + actionName.slice(1);
 
-      lines.push("  /** Input for " + cmd.name + " */");
+      lines.push(`  /** Input for ${cmd.name} */`);
       lines.push(
         "  export type " +
           capitalizedAction +
           "Input = unknown; // Infer from Zod schema",
       );
       lines.push("");
-      lines.push("  /** Output for " + cmd.name + " */");
+      lines.push(`  /** Output for ${cmd.name} */`);
       lines.push(
         "  export type " +
           capitalizedAction +

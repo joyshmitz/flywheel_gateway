@@ -7,9 +7,8 @@ import type {
   AgentDriver,
   AgentDriverType,
   DriverCapabilities,
-  DriverOptions,
 } from "../interface";
-import { DriverRegistry, type DriverRequirements } from "../registry";
+import { DriverRegistry } from "../registry";
 import type {
   AgentConfig,
   AgentEvent,

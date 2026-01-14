@@ -53,8 +53,12 @@ describe("links utilities", () => {
       expect(links["status"]).toBe(
         "https://api.example.com/agents/agent_123/status",
       );
-      expect(links["terminate"]).toBe("https://api.example.com/agents/agent_123");
-      expect(links["send"]).toBe("https://api.example.com/agents/agent_123/send");
+      expect(links["terminate"]).toBe(
+        "https://api.example.com/agents/agent_123",
+      );
+      expect(links["send"]).toBe(
+        "https://api.example.com/agents/agent_123/send",
+      );
       expect(links["interrupt"]).toBe(
         "https://api.example.com/agents/agent_123/interrupt",
       );
@@ -134,7 +138,9 @@ describe("links utilities", () => {
 
       expect(links.self).toBe("https://api.example.com/beads/bead_123");
       expect(links["update"]).toBe("https://api.example.com/beads/bead_123");
-      expect(links["close"]).toBe("https://api.example.com/beads/bead_123/close");
+      expect(links["close"]).toBe(
+        "https://api.example.com/beads/bead_123/close",
+      );
     });
   });
 

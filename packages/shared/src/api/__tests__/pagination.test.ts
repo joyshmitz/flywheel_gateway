@@ -2,7 +2,7 @@
  * Unit tests for pagination utilities.
  */
 
-import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
+import { describe, expect, it } from "bun:test";
 import {
   buildPaginationMeta,
   CURSOR_EXPIRATION_MS,
@@ -12,7 +12,6 @@ import {
   decodeCursor,
   encodeCursor,
   normalizePaginationParams,
-  type PaginationParams,
   parsePaginationQuery,
 } from "../pagination";
 

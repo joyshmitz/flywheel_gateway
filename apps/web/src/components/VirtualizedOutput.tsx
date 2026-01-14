@@ -321,6 +321,7 @@ export const VirtualizedOutput = forwardRef<
       {/* Scroll to bottom button */}
       {!isAtBottom && lines.length > 0 && (
         <button
+          type="button"
           className="absolute bottom-4 right-4 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-full shadow-lg transition-colors"
           onClick={() => {
             containerRef.current?.scrollTo({

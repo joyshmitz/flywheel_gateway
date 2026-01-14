@@ -194,6 +194,7 @@ export function CostForecastChart({
 
       <div className="cost-forecast__chart">
         <svg viewBox="0 0 100 150" preserveAspectRatio="none">
+          <title>Cost forecast chart</title>
           {/* Confidence interval area */}
           <path
             d={paths.confidence}
@@ -241,14 +242,14 @@ export function CostForecastChart({
           >
             <span className="cost-forecast__tooltip-date">
               {new Date(
-                dailyForecasts[hoveredIndex]!.date,
+                dailyForecasts[hoveredIndex]?.date,
               ).toLocaleDateString()}
             </span>
             <span className="cost-forecast__tooltip-predicted">
-              {dailyForecasts[hoveredIndex]!.formattedPredicted}
+              {dailyForecasts[hoveredIndex]?.formattedPredicted}
             </span>
             <span className="cost-forecast__tooltip-confidence">
-              {dailyForecasts[hoveredIndex]!.confidence.toFixed(0)}% confidence
+              {dailyForecasts[hoveredIndex]?.confidence.toFixed(0)}% confidence
             </span>
           </div>
         )}

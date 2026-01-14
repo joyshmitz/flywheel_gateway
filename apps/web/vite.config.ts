@@ -1,5 +1,5 @@
+import { resolve } from "node:path";
 import react from "@vitejs/plugin-react";
-import { resolve } from "path";
 import { defineConfig } from "vite";
 
 export default defineConfig({
@@ -112,7 +112,7 @@ export default defineConfig({
   // Enable experimental features
   experimental: {
     // Render optimization
-    renderBuiltUrl(filename, { hostId, hostType, type }) {
+    renderBuiltUrl(_filename, { hostId, hostType, type }) {
       // Use relative paths for assets
       return { relative: true };
     },

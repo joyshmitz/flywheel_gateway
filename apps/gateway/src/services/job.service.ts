@@ -10,7 +10,7 @@
  * - Checkpointing for resume
  */
 
-import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../db/connection";
 import { jobLogs, jobs } from "../db/schema";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
@@ -28,7 +28,6 @@ import type {
   JobStatus,
   JobType,
   ListJobsQuery,
-  ValidationResult,
 } from "../types/job.types";
 import { DEFAULT_JOB_QUEUE_CONFIG } from "../types/job.types";
 import type { Channel } from "../ws/channels";
@@ -103,7 +102,9 @@ class JobExecutionContext implements JobContext {
       total,
       percentage: Math.round((current / total) * 100),
       message: message ?? this.job.progress.message,
-      ...(this.job.progress.stage != null && { stage: this.job.progress.stage }),
+      ...(this.job.progress.stage != null && {
+        stage: this.job.progress.stage,
+      }),
     };
 
     await this.service.updateJobProgress(this.job.id, this.job.progress);
@@ -156,7 +157,7 @@ class JobExecution {
   constructor(
     public readonly job: Job,
     private readonly handler: JobHandler,
-    private readonly service: JobService,
+    readonly service: JobService,
     private readonly timeoutMs: number,
   ) {
     this.context = new JobExecutionContext(job, job.input, service);
@@ -1045,8 +1046,10 @@ export class JobService {
     if (row.output) job.output = row.output as Record<string, unknown>;
     if (row.startedAt) job.startedAt = row.startedAt;
     if (row.completedAt) job.completedAt = row.completedAt;
-    if (row.estimatedDurationMs !== null) job.estimatedDurationMs = row.estimatedDurationMs;
-    if (row.actualDurationMs !== null) job.actualDurationMs = row.actualDurationMs;
+    if (row.estimatedDurationMs !== null)
+      job.estimatedDurationMs = row.estimatedDurationMs;
+    if (row.actualDurationMs !== null)
+      job.actualDurationMs = row.actualDurationMs;
     if (error) job.error = error;
     if (cancellation) job.cancellation = cancellation;
     if (row.correlationId) job.correlationId = row.correlationId;
@@ -1063,7 +1066,9 @@ export class JobService {
   ): void {
     try {
       const channel: Channel = { type: "system:jobs" };
-      const metadata = job.correlationId ? { correlationId: job.correlationId } : {};
+      const metadata = job.correlationId
+        ? { correlationId: job.correlationId }
+        : {};
       getHub().publish(
         channel,
         type,

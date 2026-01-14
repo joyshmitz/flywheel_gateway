@@ -36,7 +36,7 @@ describe("OpenAPI Specification", () => {
 
       expect(spec.servers).toBeDefined();
       expect(spec.servers?.length).toBeGreaterThan(0);
-      expect(spec.servers?.[0]!.url).toBe("http://localhost:3000");
+      expect(spec.servers?.[0]?.url).toBe("http://localhost:3000");
     });
 
     it("should include tags", () => {

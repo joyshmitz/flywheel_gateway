@@ -42,7 +42,10 @@ const STATUS_CONFIG = {
   active: { label: "Active", className: "agent-list-widget__status--active" },
   idle: { label: "Idle", className: "agent-list-widget__status--idle" },
   error: { label: "Error", className: "agent-list-widget__status--error" },
-  offline: { label: "Offline", className: "agent-list-widget__status--offline" },
+  offline: {
+    label: "Offline",
+    className: "agent-list-widget__status--offline",
+  },
 };
 
 export function AgentListWidget({ widget, data }: AgentListWidgetProps) {
@@ -60,7 +63,8 @@ export function AgentListWidget({ widget, data }: AgentListWidgetProps) {
     <div className="agent-list-widget">
       <ul className="agent-list-widget__list">
         {listData.agents.map((agent) => {
-          const statusConfig = STATUS_CONFIG[agent.status] || STATUS_CONFIG.offline;
+          const statusConfig =
+            STATUS_CONFIG[agent.status] || STATUS_CONFIG.offline;
 
           return (
             <li key={agent.id} className="agent-list-widget__item">

@@ -427,7 +427,9 @@ async function transferReservation(
       mode: reservation.mode,
       ttl: reservation.ttl,
       reason: "Restored after failed transfer",
-      ...(reservation.metadata.taskId && { taskId: reservation.metadata.taskId }),
+      ...(reservation.metadata.taskId && {
+        taskId: reservation.metadata.taskId,
+      }),
     });
 
     return {
