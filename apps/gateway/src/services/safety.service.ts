@@ -681,7 +681,11 @@ function checkBudget(
     budgetUsage.set(key, usage);
   }
 
-  const percentage = (usage.dollars / config.budget.limits.totalDollars) * 100;
+  // Guard against division by zero - if no budget limit, percentage is 0 (never exceeded)
+  const percentage =
+    config.budget.limits.totalDollars > 0
+      ? (usage.dollars / config.budget.limits.totalDollars) * 100
+      : 0;
   // Handle empty alertThresholds array - default to 100% (never exceeded)
   const maxThreshold =
     config.budget.alertThresholds.length > 0
@@ -729,6 +733,10 @@ export async function recordUsage(
   budgetUsage.set(key, usage);
 
   // Check for threshold alerts
+  // Guard against division by zero - if no budget limit, skip threshold alerts
+  if (config.budget.limits.totalDollars <= 0) {
+    return;
+  }
   const percentage = (usage.dollars / config.budget.limits.totalDollars) * 100;
   for (const threshold of config.budget.alertThresholds) {
     const thresholdPct = threshold * 100;

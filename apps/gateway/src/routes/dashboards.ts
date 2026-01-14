@@ -144,6 +144,8 @@ const WidgetSchema = z.object({
 });
 
 // Partial schema for widget updates - all fields optional
+// Note: position and config require full objects if provided (no partial updates)
+// because the service does shallow replacement, not deep merge
 const WidgetUpdateSchema = z.object({
   id: z.string().optional(),
   type: z
@@ -164,8 +166,8 @@ const WidgetUpdateSchema = z.object({
     .optional(),
   title: z.string().min(1).max(100).optional(),
   description: z.string().max(500).optional(),
-  position: PositionSchema.partial().optional(),
-  config: WidgetConfigSchema.partial().optional(),
+  position: PositionSchema.optional(),
+  config: WidgetConfigSchema.optional(),
   refreshInterval: z.number().int().min(0).optional(),
 });
 

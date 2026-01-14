@@ -41,6 +41,9 @@ const MAX_TIMEOUT_MS = 1_800_000;
 /** Cleanup interval for expired handoffs (1 minute) */
 const CLEANUP_INTERVAL_MS = 60_000;
 
+/** Retention period for completed handoffs before removal (1 hour) */
+const COMPLETED_RETENTION_MS = 3_600_000;
+
 /** Maximum pending handoffs per agent */
 const MAX_PENDING_PER_AGENT = 5;
 
@@ -952,14 +955,18 @@ export function getHandoffStats(): HandoffStats {
 // ============================================================================
 
 /**
- * Clean up expired handoffs.
+ * Clean up expired handoffs and remove old terminal handoffs.
  */
 async function cleanupExpiredHandoffs(): Promise<number> {
   const now = new Date();
-  let cleanedCount = 0;
+  let expiredCount = 0;
+  let removedCount = 0;
+
+  // Collect IDs to avoid modifying map during iteration
+  const toRemove: string[] = [];
 
   for (const [id, record] of handoffStore) {
-    // Only clean up non-terminal handoffs that have expired
+    // Clean up non-terminal handoffs that have expired
     // Note: rejected is excluded because fallback was already triggered
     if (
       record.phase !== "complete" &&
@@ -974,7 +981,7 @@ async function cleanupExpiredHandoffs(): Promise<number> {
       });
 
       await transitionPhase(id, "failed", { reason: "timeout" });
-      cleanedCount++;
+      expiredCount++;
 
       logger.debug(
         {
@@ -985,13 +992,30 @@ async function cleanupExpiredHandoffs(): Promise<number> {
         "Expired handoff cleaned up",
       );
     }
+
+    // Remove old terminal handoffs to prevent memory leak
+    if (
+      record.completedAt &&
+      (record.phase === "complete" ||
+        record.phase === "cancelled" ||
+        record.phase === "failed") &&
+      now.getTime() - record.completedAt.getTime() > COMPLETED_RETENTION_MS
+    ) {
+      toRemove.push(id);
+    }
   }
 
-  if (cleanedCount > 0) {
-    logger.info({ cleanedCount }, "Handoff cleanup completed");
+  // Remove old terminal handoffs
+  for (const id of toRemove) {
+    handoffStore.delete(id);
+    removedCount++;
   }
 
-  return cleanedCount;
+  if (expiredCount > 0 || removedCount > 0) {
+    logger.info({ expiredCount, removedCount }, "Handoff cleanup completed");
+  }
+
+  return expiredCount + removedCount;
 }
 
 /**

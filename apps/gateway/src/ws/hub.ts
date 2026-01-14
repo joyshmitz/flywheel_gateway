@@ -630,15 +630,14 @@ export class WebSocketHub {
 
   /**
    * Get hub statistics.
+   *
+   * Note: This is a pure read operation with no side effects.
+   * Use resetMessageStats() to reset the message counter if needed.
    */
   getStats(): HubStats {
     const now = Date.now();
     const elapsed = (now - this.lastStatsReset) / 1000; // seconds
     const messagesPerSecond = elapsed > 0 ? this.messageCount / elapsed : 0;
-
-    // Reset stats
-    this.messageCount = 0;
-    this.lastStatsReset = now;
 
     // Count subscriptions by channel type
     const subscriptionsByChannel: Record<string, number> = {};
@@ -677,6 +676,23 @@ export class WebSocketHub {
       messagesPerSecond,
       bufferUtilization,
     };
+  }
+
+  /**
+   * Reset message statistics counter.
+   *
+   * Call this after getStats() if you want to start a new measurement period.
+   * Returns the stats from the period that was just reset.
+   */
+  resetMessageStats(): { messageCount: number; elapsedMs: number } {
+    const now = Date.now();
+    const elapsedMs = now - this.lastStatsReset;
+    const messageCount = this.messageCount;
+
+    this.messageCount = 0;
+    this.lastStatsReset = now;
+
+    return { messageCount, elapsedMs };
   }
 
   /**
