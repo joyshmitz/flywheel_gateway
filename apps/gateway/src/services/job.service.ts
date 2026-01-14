@@ -97,10 +97,12 @@ class JobExecutionContext implements JobContext {
     total: number,
     message?: string,
   ): Promise<void> {
+    // Guard against division by zero - if total is 0, percentage is 0
+    const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
     this.job.progress = {
       current,
       total,
-      percentage: Math.round((current / total) * 100),
+      percentage,
       message: message ?? this.job.progress.message,
       ...(this.job.progress.stage != null && {
         stage: this.job.progress.stage,
@@ -996,10 +998,15 @@ export class JobService {
    * Convert database row to Job object.
    */
   private rowToJob(row: typeof jobs.$inferSelect): Job {
+    // Guard against division by zero - if progressTotal is 0, percentage is 0
+    const percentage =
+      row.progressTotal > 0
+        ? Math.round((row.progressCurrent / row.progressTotal) * 100)
+        : 0;
     const progress: Job["progress"] = {
       current: row.progressCurrent,
       total: row.progressTotal,
-      percentage: Math.round((row.progressCurrent / row.progressTotal) * 100),
+      percentage,
       message: row.progressMessage ?? "Unknown",
       ...(row.progressStage && { stage: row.progressStage }),
     };

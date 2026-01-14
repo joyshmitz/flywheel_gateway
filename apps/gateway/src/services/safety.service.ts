@@ -192,6 +192,102 @@ interface BudgetUsage {
 }
 const budgetUsage = new Map<string, BudgetUsage>();
 
+/** Cleanup job handle */
+let cleanupIntervalHandle: ReturnType<typeof setInterval> | null = null;
+
+/** Cleanup interval in milliseconds (default: 5 minutes) */
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+
+/** How long to keep inactive budget entries (24 hours) */
+const BUDGET_INACTIVE_TTL_MS = 24 * 60 * 60 * 1000;
+
+// ============================================================================
+// Cleanup Job
+// ============================================================================
+
+/**
+ * Clean up expired rate limit entries and stale budget entries.
+ * This prevents unbounded memory growth from accumulated entries.
+ */
+function cleanupExpiredEntries(): void {
+  const now = Date.now();
+  let rateLimitCleaned = 0;
+  let budgetCleaned = 0;
+
+  // Clean up expired rate limit entries
+  for (const [key, entry] of rateLimitCounters) {
+    if (entry.resetAt <= now) {
+      rateLimitCounters.delete(key);
+      rateLimitCleaned++;
+    }
+  }
+
+  // Clean up stale budget entries (inactive for BUDGET_INACTIVE_TTL_MS)
+  const inactiveThreshold = new Date(now - BUDGET_INACTIVE_TTL_MS);
+  for (const [key, usage] of budgetUsage) {
+    if (usage.lastReset < inactiveThreshold) {
+      budgetUsage.delete(key);
+      budgetCleaned++;
+    }
+  }
+
+  if (rateLimitCleaned > 0 || budgetCleaned > 0) {
+    logger.debug(
+      {
+        rateLimitCleaned,
+        budgetCleaned,
+        rateLimitRemaining: rateLimitCounters.size,
+        budgetRemaining: budgetUsage.size,
+      },
+      "Safety service cleanup completed",
+    );
+  }
+}
+
+/**
+ * Start the background cleanup job.
+ * Safe to call multiple times - will not create duplicate intervals.
+ */
+export function startCleanupJob(): void {
+  if (cleanupIntervalHandle !== null) {
+    return; // Already running
+  }
+  cleanupIntervalHandle = setInterval(cleanupExpiredEntries, CLEANUP_INTERVAL_MS);
+  // Ensure the interval doesn't prevent process exit
+  if (cleanupIntervalHandle.unref) {
+    cleanupIntervalHandle.unref();
+  }
+  logger.info("Safety service cleanup job started");
+}
+
+/**
+ * Stop the background cleanup job.
+ */
+export function stopCleanupJob(): void {
+  if (cleanupIntervalHandle !== null) {
+    clearInterval(cleanupIntervalHandle);
+    cleanupIntervalHandle = null;
+    logger.info("Safety service cleanup job stopped");
+  }
+}
+
+/**
+ * Get current memory usage stats for monitoring.
+ */
+export function getMemoryStats(): {
+  rateLimitEntries: number;
+  budgetEntries: number;
+  configEntries: number;
+  violationsCount: number;
+} {
+  return {
+    rateLimitEntries: rateLimitCounters.size,
+    budgetEntries: budgetUsage.size,
+    configEntries: configs.size,
+    violationsCount: violations.length,
+  };
+}
+
 // ============================================================================
 // Configuration Management
 // ============================================================================
@@ -730,6 +826,8 @@ export async function recordUsage(
 
   usage.tokens += tokens;
   usage.dollars += dollars;
+  // Update lastReset to track when this entry was last active (for cleanup)
+  usage.lastReset = new Date();
   budgetUsage.set(key, usage);
 
   // Check for threshold alerts
@@ -995,6 +1093,7 @@ export async function clearEmergencyStop(
  * Clear all safety data (for testing).
  */
 export function _clearAllSafetyData(): void {
+  stopCleanupJob();
   configs.clear();
   violations.length = 0;
   rateLimitCounters.clear();

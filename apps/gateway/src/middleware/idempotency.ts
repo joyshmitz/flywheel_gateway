@@ -9,6 +9,7 @@
  */
 
 import type { Context, Next } from "hono";
+import type { StatusCode } from "hono/utils/http-status";
 import { getCorrelationId, getLogger } from "./correlation";
 
 // ============================================================================
@@ -52,6 +53,9 @@ type PendingRequest = {
 
 const idempotencyStore = new Map<string, IdempotencyRecord>();
 const pendingRequests = new Map<string, PendingRequest>();
+
+/** Singleton cleanup interval handle */
+let cleanupIntervalHandle: ReturnType<typeof setInterval> | null = null;
 
 /**
  * Get a cached idempotency record.
@@ -104,8 +108,19 @@ export function pruneExpiredRecords(): number {
  * Clear all records from the store (for testing).
  */
 export function clearIdempotencyStore(): void {
+  stopIdempotencyCleanup();
   idempotencyStore.clear();
   pendingRequests.clear();
+}
+
+/**
+ * Stop the cleanup interval (for graceful shutdown or testing).
+ */
+export function stopIdempotencyCleanup(): void {
+  if (cleanupIntervalHandle !== null) {
+    clearInterval(cleanupIntervalHandle);
+    cleanupIntervalHandle = null;
+  }
 }
 
 /**
@@ -183,27 +198,29 @@ const DEFAULT_CONFIG: Required<IdempotencyConfig> = {
 export function idempotencyMiddleware(config: IdempotencyConfig = {}) {
   const settings = { ...DEFAULT_CONFIG, ...config };
 
-  // Start periodic cleanup
-  const cleanupInterval = setInterval(() => {
-    pruneExpiredRecords();
-    // Enforce max records if needed
-    if (idempotencyStore.size > settings.maxRecords) {
-      const records = Array.from(idempotencyStore.entries()).sort(
-        (a, b) => a[1].createdAt.getTime() - b[1].createdAt.getTime(),
-      );
-      const toDelete = records.slice(
-        0,
-        idempotencyStore.size - settings.maxRecords,
-      );
-      for (const [key] of toDelete) {
-        idempotencyStore.delete(key);
+  // Start periodic cleanup (singleton - only creates one interval regardless of how many times middleware is mounted)
+  if (cleanupIntervalHandle === null) {
+    cleanupIntervalHandle = setInterval(() => {
+      pruneExpiredRecords();
+      // Enforce max records if needed
+      if (idempotencyStore.size > settings.maxRecords) {
+        const records = Array.from(idempotencyStore.entries()).sort(
+          (a, b) => a[1].createdAt.getTime() - b[1].createdAt.getTime(),
+        );
+        const toDelete = records.slice(
+          0,
+          idempotencyStore.size - settings.maxRecords,
+        );
+        for (const [key] of toDelete) {
+          idempotencyStore.delete(key);
+        }
       }
-    }
-  }, 60000); // Every minute
+    }, 60000); // Every minute
 
-  // Don't keep the process alive just for cleanup
-  if (cleanupInterval.unref) {
-    cleanupInterval.unref();
+    // Don't keep the process alive just for cleanup
+    if (cleanupIntervalHandle.unref) {
+      cleanupIntervalHandle.unref();
+    }
   }
 
   return async (c: Context, next: Next) => {
@@ -302,7 +319,7 @@ export function idempotencyMiddleware(config: IdempotencyConfig = {}) {
         }
       }
 
-      return c.body(existingRecord.body, existingRecord.status as any);
+      return c.body(existingRecord.body, existingRecord.status as StatusCode);
     }
 
     // Check for pending request with same key
@@ -320,7 +337,7 @@ export function idempotencyMiddleware(config: IdempotencyConfig = {}) {
             c.header(key, value);
           }
         }
-        return c.body(record.body, record.status as any);
+        return c.body(record.body, record.status as StatusCode);
       } catch (_error) {
         // Original request failed, let this one try
         log.debug(
