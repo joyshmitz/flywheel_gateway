@@ -37,15 +37,35 @@ const ID_CHARSET =
 
 /**
  * Generate a cryptographically secure random ID with the given prefix.
- * Uses crypto.getRandomValues() for secure randomness.
+ * Uses crypto.getRandomValues() with rejection sampling to ensure uniform distribution.
  */
 export function generateSecureId(prefix: string, length = 6): string {
-  const randomBytes = new Uint8Array(length);
-  crypto.getRandomValues(randomBytes);
+  const charsetLength = ID_CHARSET.length;
+  // Calculate max valid byte value to avoid modulo bias
+  // We want the largest multiple of charsetLength <= 256
+  const maxValid = 256 - (256 % charsetLength);
+
   let suffix = "";
-  for (let i = 0; i < length; i++) {
-    suffix += ID_CHARSET[randomBytes[i]! % ID_CHARSET.length];
+  // Generate a buffer slightly larger than needed to minimize refills
+  const randomBytes = new Uint8Array(length * 2);
+  crypto.getRandomValues(randomBytes);
+
+  let byteIndex = 0;
+  while (suffix.length < length) {
+    if (byteIndex >= randomBytes.length) {
+      // Refill buffer if exhausted (rare for short IDs)
+      crypto.getRandomValues(randomBytes);
+      byteIndex = 0;
+    }
+
+    const byte = randomBytes[byteIndex]!;
+    byteIndex++;
+
+    if (byte < maxValid) {
+      suffix += ID_CHARSET[byte % charsetLength];
+    }
   }
+
   return `${prefix}_${Date.now()}_${suffix}`;
 }
 

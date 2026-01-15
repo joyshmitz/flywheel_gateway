@@ -215,6 +215,8 @@ export class DriverRegistry {
             warnings: warnings.length > 0 ? warnings : undefined,
           };
         }
+        // Evict unhealthy driver from cache to force recreation next time
+        this.instances.delete(driver.driverId);
         warnings.push(`Driver ${type} is unhealthy`);
       } catch (err) {
         warnings.push(`Failed to initialize ${type} driver: ${err}`);
