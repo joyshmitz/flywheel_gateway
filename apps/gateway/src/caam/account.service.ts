@@ -33,16 +33,10 @@ import { DEFAULT_COOLDOWN_MINUTES } from "./types";
 // ============================================================================
 
 function generateId(prefix: string): string {
-  const timestamp = Date.now().toString(36);
-  // Use cryptographically secure random instead of Math.random()
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-  const randomBytes = new Uint8Array(8);
-  crypto.getRandomValues(randomBytes);
-  let random = "";
-  for (let i = 0; i < 8; i++) {
-    random += chars.charAt(randomBytes[i]! % chars.length);
-  }
-  return `${prefix}_${timestamp}${random}`;
+  // Use crypto.randomUUID for standard, collision-resistant IDs
+  // Remove dashes to keep it compact and URL-safe
+  const uuid = crypto.randomUUID().replace(/-/g, "");
+  return `${prefix}_${uuid}`;
 }
 
 // ============================================================================
