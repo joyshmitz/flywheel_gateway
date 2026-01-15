@@ -474,10 +474,10 @@ export function useUnreadCount(recipientId: string) {
     }
 
     try {
-      const result = await fetchApi<{ data: { count: number } }>(
+      const result = await fetchApi<NotificationListResponse>(
         `/notifications?recipient_id=${recipientId}&limit=1`,
       );
-      setCount(result.data?.count ?? 0);
+      setCount(result.unreadCount ?? 0);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Unknown error"));
     } finally {

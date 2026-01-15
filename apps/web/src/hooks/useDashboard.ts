@@ -73,6 +73,12 @@ export function useDashboard(
     new Map(),
   );
 
+  // Keep a ref to current dashboard to avoid resetting timers on state changes
+  const dashboardRef = useRef<Dashboard | null>(null);
+  useEffect(() => {
+    dashboardRef.current = state.currentDashboard;
+  }, [state.currentDashboard]);
+
   // List all dashboards
   const listDashboards = useCallback(async () => {
     setState((s) => ({ ...s, loading: true, error: null }));
@@ -442,53 +448,50 @@ export function useDashboard(
   );
 
   // Fetch widget data
-  const fetchWidgetData = useCallback(
-    async (widgetId: string) => {
-      if (!state.currentDashboard) return null;
+  const fetchWidgetData = useCallback(async (widgetId: string) => {
+    const dashboard = dashboardRef.current;
+    if (!dashboard) return null;
 
-      try {
-        const data = await fetchJSON<WidgetData>(
-          `${API_BASE}/${state.currentDashboard.id}/widgets/${widgetId}/data`,
-        );
+    try {
+      const data = await fetchJSON<WidgetData>(
+        `${API_BASE}/${dashboard.id}/widgets/${widgetId}/data`,
+      );
 
-        setState((s) => {
-          const newWidgetData = new Map(s.widgetData);
-          newWidgetData.set(widgetId, data);
-          return { ...s, widgetData: newWidgetData };
-        });
+      setState((s) => {
+        const newWidgetData = new Map(s.widgetData);
+        newWidgetData.set(widgetId, data);
+        return { ...s, widgetData: newWidgetData };
+      });
 
-        return data;
-      } catch (err) {
-        const errorData: WidgetData = {
-          widgetId,
-          data: null,
-          fetchedAt: new Date().toISOString(),
-          error:
-            err instanceof Error ? err.message : "Failed to fetch widget data",
-        };
+      return data;
+    } catch (err) {
+      const errorData: WidgetData = {
+        widgetId,
+        data: null,
+        fetchedAt: new Date().toISOString(),
+        error:
+          err instanceof Error ? err.message : "Failed to fetch widget data",
+      };
 
-        setState((s) => {
-          const newWidgetData = new Map(s.widgetData);
-          newWidgetData.set(widgetId, errorData);
-          return { ...s, widgetData: newWidgetData };
-        });
+      setState((s) => {
+        const newWidgetData = new Map(s.widgetData);
+        newWidgetData.set(widgetId, errorData);
+        return { ...s, widgetData: newWidgetData };
+      });
 
-        return errorData;
-      }
-    },
-    [state.currentDashboard],
-  );
+      return errorData;
+    }
+  }, []);
 
   // Refresh all widgets
   const refreshAllWidgets = useCallback(async () => {
-    if (!state.currentDashboard) return;
+    const dashboard = dashboardRef.current;
+    if (!dashboard) return;
 
     await Promise.all(
-      state.currentDashboard.widgets.map((widget) =>
-        fetchWidgetData(widget.id),
-      ),
+      dashboard.widgets.map((widget) => fetchWidgetData(widget.id)),
     );
-  }, [state.currentDashboard, fetchWidgetData]);
+  }, [fetchWidgetData]);
 
   // Toggle favorite
   const toggleFavorite = useCallback(
@@ -564,7 +567,7 @@ export function useDashboard(
 
   // Set up auto-refresh for dashboard
   useEffect(() => {
-    if (!autoRefresh || !state.currentDashboard || refreshInterval === 0) {
+    if (!autoRefresh || !state.currentDashboard?.id || refreshInterval === 0) {
       return;
     }
 
@@ -577,18 +580,33 @@ export function useDashboard(
         clearInterval(refreshTimerRef.current);
       }
     };
-  }, [autoRefresh, state.currentDashboard, refreshInterval, refreshAllWidgets]);
+  }, [
+    autoRefresh,
+    state.currentDashboard?.id,
+    refreshInterval,
+    refreshAllWidgets,
+  ]);
 
   // Set up individual widget refresh timers
+  const widgetConfigStr = JSON.stringify(
+    state.currentDashboard?.widgets.map((w) => ({
+      id: w.id,
+      interval: w.refreshInterval,
+    })),
+  );
+
   useEffect(() => {
-    if (!state.currentDashboard) return;
+    const dashboard = dashboardRef.current;
+    if (!dashboard) return;
 
     // Clear existing timers
-    widgetTimersRef.current.forEach((timer) => clearInterval(timer));
+    widgetTimersRef.current.forEach((timer) => {
+      clearInterval(timer);
+    });
     widgetTimersRef.current.clear();
 
     // Set up per-widget timers for widgets with custom intervals
-    state.currentDashboard.widgets.forEach((widget) => {
+    dashboard.widgets.forEach((widget) => {
       if (widget.refreshInterval && widget.refreshInterval > 0) {
         const timer = setInterval(() => {
           fetchWidgetData(widget.id);
@@ -599,9 +617,12 @@ export function useDashboard(
     });
 
     return () => {
-      widgetTimersRef.current.forEach((timer) => clearInterval(timer));
+      widgetTimersRef.current.forEach((timer) => {
+        clearInterval(timer);
+      });
     };
-  }, [state.currentDashboard, fetchWidgetData]);
+    // biome-ignore lint/correctness/useExhaustiveDependencies: widgetConfigStr is used as a trigger
+  }, [widgetConfigStr, fetchWidgetData]);
 
   // Load dashboard on mount if ID provided
   // Note: We only depend on dashboardId to avoid re-fetching when callbacks change
@@ -610,7 +631,7 @@ export function useDashboard(
       getDashboard(dashboardId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dashboardId]);
+  }, [dashboardId, getDashboard]);
 
   // Fetch initial widget data when dashboard is loaded
   const prevDashboardIdRef = useRef<string | null>(null);
