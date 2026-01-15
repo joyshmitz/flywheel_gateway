@@ -11,6 +11,9 @@ import {
   decodeCursor,
 } from "@flywheel/shared/api/pagination";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
+import type { Channel } from "../ws/channels";
+import { getHub } from "../ws/hub";
+import type { MessageType } from "../ws/messages";
 import {
   type CreateNotificationRequest,
   DEFAULT_PREFERENCES,
@@ -135,6 +138,37 @@ function resolveChannels(
   return categoryPref.channels.length > 0
     ? categoryPref.channels
     : prefs.defaultChannels;
+}
+
+function serializeNotification(
+  notification: Notification,
+): Record<string, unknown> {
+  return {
+    ...notification,
+    createdAt: notification.createdAt.toISOString(),
+    ...(notification.sentAt && { sentAt: notification.sentAt.toISOString() }),
+    ...(notification.deliveredAt && {
+      deliveredAt: notification.deliveredAt.toISOString(),
+    }),
+    ...(notification.readAt && { readAt: notification.readAt.toISOString() }),
+    ...(notification.actionedAt && {
+      actionedAt: notification.actionedAt.toISOString(),
+    }),
+  };
+}
+
+function publishNotificationEvent(notification: Notification): void {
+  const hub = getHub();
+  const channel: Channel = {
+    type: "user:notifications",
+    userId: notification.recipientId,
+  };
+  hub.publish(
+    channel,
+    "notification.created" as MessageType,
+    serializeNotification(notification),
+    { userId: notification.recipientId },
+  );
 }
 
 // ============================================================================
@@ -331,6 +365,8 @@ export async function createNotification(
   if (userNotifications.length > MAX_NOTIFICATIONS_PER_USER) {
     userNotifications.pop();
   }
+
+  publishNotificationEvent(notification);
 
   log.info(
     {

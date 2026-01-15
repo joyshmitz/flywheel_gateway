@@ -49,6 +49,8 @@ export type MessageType =
   | "checkpoint.imported"
   // Agent mail
   | "mail.received"
+  // Notifications
+  | "notification.created"
   // Handoffs
   | "handoff.initiated"
   | "handoff.phase_changed"

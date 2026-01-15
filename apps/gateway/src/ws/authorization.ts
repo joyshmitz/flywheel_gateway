@@ -101,7 +101,7 @@ export function canSubscribe(
       return { allowed: true };
     }
 
-    // System channels: just need authentication
+    // System channels: require admin access
     case "system:health":
     case "system:metrics":
     case "system:dcg":
@@ -109,6 +109,12 @@ export function canSubscribe(
     case "system:supervisor":
     case "system:jobs":
     case "system:context": {
+      if (!auth.isAdmin) {
+        return {
+          allowed: false,
+          reason: "Admin access required",
+        };
+      }
       return { allowed: true };
     }
 

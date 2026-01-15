@@ -938,7 +938,7 @@ export function useNotificationSubscription(
         ws.send(
           JSON.stringify({
             type: "subscribe",
-            channel: `notifications:${recipientId}`,
+            channel: `user:notifications:${recipientId}`,
           }),
         );
       };
@@ -946,9 +946,22 @@ export function useNotificationSubscription(
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          if (message.type === "notification:new" && message.notification) {
-            setLastNotification(message.notification);
-            onNotification?.(message.notification);
+          if (message.type === "message" && message.message) {
+            const hubMessage = message.message;
+            if (hubMessage.type === "notification.created") {
+              const notification = hubMessage.payload as Notification;
+              setLastNotification(notification);
+              onNotification?.(notification);
+            }
+
+            if (message.ackRequired && hubMessage.id) {
+              ws.send(
+                JSON.stringify({
+                  type: "ack",
+                  messageIds: [hubMessage.id],
+                }),
+              );
+            }
           }
         } catch {
           // Ignore invalid messages
