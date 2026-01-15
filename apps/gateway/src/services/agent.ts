@@ -15,7 +15,9 @@ import {
 import { eq } from "drizzle-orm";
 import { agents as agentsTable, db } from "../db";
 import { getLogger } from "../middleware/correlation";
+import { isTerminalState } from "../models/agent-state";
 import {
+  getAgentState,
   initializeAgentState,
   markAgentExecuting,
   markAgentFailed,
@@ -198,8 +200,12 @@ export async function spawnAgent(config: {
   const log = getLogger();
   const agentId = config.agentId ?? generateAgentId();
 
-  // Check if agent already exists
-  if (agents.has(agentId)) {
+  // Check if agent already exists (runtime or lifecycle state)
+  const existingState = getAgentState(agentId);
+  if (
+    agents.has(agentId) ||
+    (existingState && !isTerminalState(existingState.currentState))
+  ) {
     throw new AgentError(
       "AGENT_ALREADY_EXISTS",
       `Agent ${agentId} already exists`,

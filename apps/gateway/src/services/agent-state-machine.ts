@@ -284,6 +284,47 @@ function emitStateChange(event: StateChangeEvent): void {
   }
 }
 
+/** Cleanup interval handle */
+let cleanupIntervalHandle: ReturnType<typeof setInterval> | null = null;
+
+/** Cleanup interval in milliseconds (default: 5 minutes) */
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+
+/**
+ * Start the periodic state cleanup job.
+ */
+export function startStateCleanupJob(): void {
+  if (cleanupIntervalHandle !== null) {
+    return;
+  }
+
+  const log = getLogger();
+
+  cleanupIntervalHandle = setInterval(() => {
+    // Cleanup states older than 1 hour
+    cleanupStaleStates(3600000);
+  }, CLEANUP_INTERVAL_MS);
+
+  // Ensure the interval doesn't prevent process exit
+  if (cleanupIntervalHandle.unref) {
+    cleanupIntervalHandle.unref();
+  }
+
+  log.info("Agent state cleanup job started");
+}
+
+/**
+ * Stop the periodic state cleanup job.
+ */
+export function stopStateCleanupJob(): void {
+  if (cleanupIntervalHandle !== null) {
+    clearInterval(cleanupIntervalHandle);
+    cleanupIntervalHandle = null;
+    const log = getLogger();
+    log.info("Agent state cleanup job stopped");
+  }
+}
+
 /**
  * Helper: Transition agent to READY state after initialization.
  */

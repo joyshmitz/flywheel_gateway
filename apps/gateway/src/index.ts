@@ -6,6 +6,7 @@ import { loggingMiddleware } from "./middleware/logging";
 import { apiSecurityHeaders } from "./middleware/security-headers";
 import { routes } from "./routes";
 import { startAgentEvents } from "./services/agent-events";
+import { startStateCleanupJob } from "./services/agent-state-machine";
 import { initCassService } from "./services/cass.service";
 import { startDCGCleanupJob } from "./services/dcg-pending.service";
 import { logger } from "./services/logger";
@@ -43,6 +44,7 @@ if (import.meta.main) {
   // Start background jobs
   startCleanupJob();
   startDCGCleanupJob();
+  startStateCleanupJob();
   startHeartbeat();
   startAgentEvents(getHub());
 
