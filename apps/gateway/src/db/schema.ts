@@ -124,6 +124,12 @@ export const dcgBlocks = sqliteTable(
       .notNull()
       .default(false),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+
+    // Enhanced details
+    pack: text("pack"),
+    severity: text("severity"),
+    ruleId: text("rule_id"),
+    contextClassification: text("context_classification"),
   },
   (table) => [index("dcg_blocks_created_at_idx").on(table.createdAt)],
 );

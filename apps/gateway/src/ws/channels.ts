@@ -199,6 +199,12 @@ export function parseChannel(str: string): Channel | undefined {
   if (str === "system:supervisor") {
     return { type: "system:supervisor" };
   }
+  if (str === "system:jobs") {
+    return { type: "system:jobs" };
+  }
+  if (str === "system:context") {
+    return { type: "system:context" };
+  }
 
   // Fleet channels (some with IDs)
   if (str === "fleet:repos") {
@@ -256,6 +262,10 @@ export function parseChannel(str: string): Channel | undefined {
       return { type: "agent:tools", agentId: id };
     case "agent:checkpoints":
       return { type: "agent:checkpoints", agentId: id };
+    case "session:job":
+      return { type: "session:job", id };
+    case "session:health":
+      return { type: "session:health", id };
     case "workspace:agents":
       return { type: "workspace:agents", workspaceId: id };
     case "workspace:reservations":

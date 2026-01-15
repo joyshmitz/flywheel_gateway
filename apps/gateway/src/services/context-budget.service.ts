@@ -220,6 +220,11 @@ export function validateStrategy(strategy: BudgetStrategy): string[] {
     }
   }
 
+  // Check for duplicates in priority list
+  if (new Set(strategy.priority).size !== strategy.priority.length) {
+    errors.push("Priority list must not contain duplicates");
+  }
+
   return errors;
 }
 

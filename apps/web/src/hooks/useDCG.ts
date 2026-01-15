@@ -29,9 +29,24 @@ export interface DCGOverviewStats {
 
 export interface DCGStats {
   overview: DCGOverviewStats;
-  bySeverity: Record<string, number>;
-  byPack: Record<string, number>;
-  timeSeries?: Array<{ date: string; count: number }>;
+  distributions: {
+    bySeverity: Record<string, number>;
+    byPack: Record<string, number>;
+  };
+  trends?: {
+    trendVs24h: number;
+    trendVs7d: number;
+    trendVs30d: number;
+    trendDirection: "increasing" | "decreasing" | "stable";
+  };
+  patterns?: {
+    topPatterns: Array<{ pattern: string; count: number }>;
+    topAgents: Array<{ agentId: string; count: number }>;
+  };
+  timeSeries?: {
+    last7Days: Array<{ date: string; count: number }>;
+    last30Days: Array<{ date: string; count: number }>;
+  };
 }
 
 export interface DCGBlock {
@@ -114,18 +129,20 @@ const mockDCGStats: DCGStats = {
     pendingExceptionsCount: 3,
     trendVsYesterday: -15,
   },
-  bySeverity: {
-    critical: 23,
-    high: 156,
-    medium: 412,
-    low: 256,
-  },
-  byPack: {
-    "git-dangerous": 234,
-    "filesystem-destructive": 189,
-    "cloud-ops": 145,
-    "database-admin": 156,
-    "container-ops": 123,
+  distributions: {
+    bySeverity: {
+      critical: 23,
+      high: 156,
+      medium: 412,
+      low: 256,
+    },
+    byPack: {
+      "git-dangerous": 234,
+      "filesystem-destructive": 189,
+      "cloud-ops": 145,
+      "database-admin": 156,
+      "container-ops": 123,
+    },
   },
 };
 

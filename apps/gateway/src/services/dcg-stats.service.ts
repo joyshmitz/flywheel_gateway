@@ -58,10 +58,16 @@ export interface DCGTimeSeriesPoint {
   count: number;
 }
 
+export interface DCGDistributionStats {
+  byPack: Record<string, number>;
+  bySeverity: Record<string, number>;
+}
+
 export interface DCGFullStats {
   overview: DCGOverviewStats;
   trends: DCGTrendStats;
   patterns: DCGPatternStats;
+  distributions: DCGDistributionStats;
   timeSeries: {
     last7Days: DCGTimeSeriesPoint[];
     last30Days: DCGTimeSeriesPoint[];
@@ -88,6 +94,47 @@ function formatDateKey(date: Date): string {
 // ============================================================================
 // Statistics Functions
 // ============================================================================
+
+/**
+ * Get distribution statistics (pack and severity counts).
+ */
+export async function getDistributionStats(): Promise<DCGDistributionStats> {
+  const [blocksByPackResult, blocksBySeverityResult] = await Promise.all([
+    // Query pack distribution
+    db
+      .select({ pack: dcgBlocks.pack, count: count() })
+      .from(dcgBlocks)
+      .where(sql`${dcgBlocks.pack} IS NOT NULL`)
+      .groupBy(dcgBlocks.pack),
+    // Query severity distribution
+    db
+      .select({ severity: dcgBlocks.severity, count: count() })
+      .from(dcgBlocks)
+      .where(sql`${dcgBlocks.severity} IS NOT NULL`)
+      .groupBy(dcgBlocks.severity),
+  ]);
+
+  const byPack: Record<string, number> = {};
+  for (const row of blocksByPackResult) {
+    if (row.pack) {
+      byPack[row.pack] = row.count;
+    }
+  }
+
+  const bySeverity: Record<string, number> = {
+    critical: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+  };
+  for (const row of blocksBySeverityResult) {
+    if (row.severity) {
+      bySeverity[row.severity] = row.count;
+    }
+  }
+
+  return { byPack, bySeverity };
+}
 
 /**
  * Get overview statistics from the database.
@@ -429,17 +476,20 @@ export async function getTimeSeriesStats(): Promise<{
  * This is the main function to call for full statistics.
  */
 export async function getFullStats(): Promise<DCGFullStats> {
-  const [overview, trends, patterns, timeSeries] = await Promise.all([
-    getOverviewStats(),
-    getTrendStats(),
-    getPatternStats(),
-    getTimeSeriesStats(),
-  ]);
+  const [overview, trends, patterns, distributions, timeSeries] =
+    await Promise.all([
+      getOverviewStats(),
+      getTrendStats(),
+      getPatternStats(),
+      getDistributionStats(),
+      getTimeSeriesStats(),
+    ]);
 
   return {
     overview,
     trends,
     patterns,
+    distributions,
     timeSeries,
     generatedAt: new Date().toISOString(),
   };
@@ -456,23 +506,16 @@ export async function getLegacyStats(): Promise<{
   falsePositiveRate: number;
   topBlockedCommands: Array<{ command: string; count: number }>;
 }> {
-  const [overview, patterns] = await Promise.all([
+  const [overview, patterns, distributions] = await Promise.all([
     getOverviewStats(),
     getPatternStats(),
+    getDistributionStats(),
   ]);
 
-  // Note: The database schema doesn't store pack or severity info,
-  // so we return empty objects for those. This could be enhanced
-  // by extending the dcgBlocks schema in a future update.
   return {
     totalBlocks: overview.totalBlocks,
-    blocksByPack: {}, // Schema doesn't store pack info
-    blocksBySeverity: {
-      critical: 0,
-      high: 0,
-      medium: 0,
-      low: 0,
-    }, // Schema doesn't store severity
+    blocksByPack: distributions.byPack,
+    blocksBySeverity: distributions.bySeverity,
     falsePositiveRate: overview.falsePositiveRate,
     topBlockedCommands: patterns.topPatterns.map((p) => ({
       command: p.pattern,

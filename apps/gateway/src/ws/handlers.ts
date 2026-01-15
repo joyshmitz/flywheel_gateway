@@ -1,15 +1,40 @@
 import type { ServerWebSocket } from "bun";
 import { logger } from "../services/logger";
 import { canSubscribe } from "./authorization";
-import { parseChannel } from "./channels";
+import { channelRequiresAck, parseChannel } from "./channels";
 import { type ConnectionData, getHub } from "./hub";
 import {
   createWSError,
+  type HubMessage,
   parseClientMessage,
   type ServerMessage,
   type SubscribedMessage,
   serializeServerMessage,
 } from "./messages";
+
+function sendMissedMessages(
+  ws: ServerWebSocket<ConnectionData>,
+  channel: ReturnType<typeof parseChannel>,
+  messages: HubMessage[],
+): void {
+  if (!channel) return;
+  const requiresAck = channelRequiresAck(channel);
+  for (const msg of messages) {
+    const serverMsg: ServerMessage = {
+      type: "message",
+      message: msg,
+      ...(requiresAck && { ackRequired: true }),
+    };
+    ws.send(serializeServerMessage(serverMsg));
+    if (requiresAck) {
+      ws.data.pendingAcks.set(msg.id, {
+        message: msg,
+        sentAt: new Date(),
+        replayCount: 1,
+      });
+    }
+  }
+}
 
 /**
  * Handle WebSocket connection open event.
@@ -34,10 +59,7 @@ export function handleWSOpen(ws: ServerWebSocket<ConnectionData>): void {
 
         // Send missed messages immediately
         if (result.missedMessages && result.missedMessages.length > 0) {
-          for (const msg of result.missedMessages) {
-            const serverMsg: ServerMessage = { type: "message", message: msg };
-            ws.send(serializeServerMessage(serverMsg));
-          }
+          sendMissedMessages(channel, result.missedMessages);
         }
       }
     }
@@ -124,13 +146,7 @@ export function handleWSMessage(
 
         // Replay missed messages FIRST (so client state is consistent)
         if (result.missedMessages && result.missedMessages.length > 0) {
-          for (const msg of result.missedMessages) {
-            const serverMsg: ServerMessage = {
-              type: "message",
-              message: msg,
-            };
-            ws.send(serializeServerMessage(serverMsg));
-          }
+          sendMissedMessages(channel, result.missedMessages);
         }
 
         // THEN send acknowledgement with the latest cursor

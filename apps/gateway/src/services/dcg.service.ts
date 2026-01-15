@@ -220,6 +220,10 @@ export async function ingestBlockEvent(
       createdBy: event.agentId,
       falsePositive: event.falsePositive ?? false,
       createdAt: event.timestamp,
+      pack: event.pack,
+      severity: event.severity,
+      ruleId: event.ruleId,
+      contextClassification: event.contextClassification,
     });
   } catch (error) {
     log.error({ error }, "Failed to persist DCG block event");
@@ -645,34 +649,13 @@ export type {
  * pack/severity data (which isn't stored in the database schema).
  */
 export async function getStats(): Promise<DCGStats> {
-  // Get database-backed stats
+  // Get database-backed stats (now includes pack/severity distribution)
   const dbStats = await dcgStatsService.getLegacyStats();
-
-  // Supplement with in-memory data for pack/severity which aren't in the DB
-  const events = recentBlocks;
-
-  // Count by pack from in-memory
-  const blocksByPack: Record<string, number> = {};
-  for (const event of events) {
-    blocksByPack[event.pack] = (blocksByPack[event.pack] ?? 0) + 1;
-  }
-
-  // Count by severity from in-memory
-  const blocksBySeverity: Record<string, number> = {
-    critical: 0,
-    high: 0,
-    medium: 0,
-    low: 0,
-  };
-  for (const event of events) {
-    blocksBySeverity[event.severity] =
-      (blocksBySeverity[event.severity] ?? 0) + 1;
-  }
 
   return {
     totalBlocks: dbStats.totalBlocks,
-    blocksByPack,
-    blocksBySeverity,
+    blocksByPack: dbStats.blocksByPack,
+    blocksBySeverity: dbStats.blocksBySeverity,
     falsePositiveRate: dbStats.falsePositiveRate,
     topBlockedCommands: dbStats.topBlockedCommands,
   };

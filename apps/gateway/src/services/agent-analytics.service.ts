@@ -587,7 +587,10 @@ export async function getModelComparisonReport(
   // Build agent ID to model lookup
   const agentModelMap = new Map<string, string>();
   for (const agent of agents) {
-    agentModelMap.set(agent.id, (agent.model as string | undefined) ?? "unknown");
+    agentModelMap.set(
+      agent.id,
+      (agent.model as string | undefined) ?? "unknown",
+    );
   }
 
   // Single batch query for all history in the period
@@ -595,10 +598,7 @@ export async function getModelComparisonReport(
     .select()
     .from(historyTable)
     .where(
-      and(
-        gte(historyTable.createdAt, start),
-        lte(historyTable.createdAt, end),
-      ),
+      and(gte(historyTable.createdAt, start), lte(historyTable.createdAt, end)),
     );
 
   const modelStats = new Map<
@@ -839,10 +839,7 @@ export async function getFleetAnalytics(
     .select()
     .from(historyTable)
     .where(
-      and(
-        gte(historyTable.createdAt, start),
-        lte(historyTable.createdAt, end),
-      ),
+      and(gte(historyTable.createdAt, start), lte(historyTable.createdAt, end)),
     );
 
   // Aggregate metrics per agent in-memory
@@ -894,8 +891,7 @@ export async function getFleetAnalytics(
     const metrics = agentMetrics.get(agent.id);
     if (metrics && metrics.totalTasks > 0) {
       activeCount++;
-      const successRate =
-        (metrics.successfulTasks / metrics.totalTasks) * 100;
+      const successRate = (metrics.successfulTasks / metrics.totalTasks) * 100;
       const errorRate = (metrics.errorCount / metrics.totalTasks) * 100;
       totalSuccessRate += successRate;
       totalTasks += metrics.totalTasks;

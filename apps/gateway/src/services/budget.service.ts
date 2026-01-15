@@ -4,7 +4,7 @@
  * Manages cost budgets, tracks usage against limits, and triggers alerts.
  */
 
-import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lt, lte, sql } from "drizzle-orm";
 import { db } from "../db/connection";
 import { budgetAlerts, budgets, costRecords } from "../db/schema";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
@@ -293,7 +293,7 @@ export async function getBudgetStatus(
   // Calculate current usage
   const conditions = [
     gte(costRecords.timestamp, periodStart),
-    lte(costRecords.timestamp, periodEnd),
+    lt(costRecords.timestamp, periodEnd),
   ];
 
   if (budget.organizationId) {
@@ -345,7 +345,7 @@ export async function getBudgetStatus(
 
   const prevConditions = [
     gte(costRecords.timestamp, prevPeriodBoundaries.start),
-    lte(costRecords.timestamp, prevPeriodBoundaries.end),
+    lt(costRecords.timestamp, prevPeriodBoundaries.end),
   ];
   if (budget.organizationId) {
     prevConditions.push(eq(costRecords.organizationId, budget.organizationId));

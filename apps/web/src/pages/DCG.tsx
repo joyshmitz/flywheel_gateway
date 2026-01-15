@@ -393,8 +393,10 @@ interface StatsTabProps {
       falsePositiveRate: number;
       pendingExceptionsCount: number;
     };
-    bySeverity: Record<string, number>;
-    byPack: Record<string, number>;
+    distributions: {
+      bySeverity: Record<string, number>;
+      byPack: Record<string, number>;
+    };
   } | null;
 }
 
@@ -413,8 +415,10 @@ function StatsTab({ stats }: StatsTabProps) {
     );
   }
 
-  const severityEntries = Object.entries(stats.bySeverity);
-  const packEntries = Object.entries(stats.byPack).sort((a, b) => b[1] - a[1]);
+  const severityEntries = Object.entries(stats.distributions.bySeverity);
+  const packEntries = Object.entries(stats.distributions.byPack).sort(
+    (a, b) => b[1] - a[1],
+  );
 
   return (
     <>
@@ -422,7 +426,7 @@ function StatsTab({ stats }: StatsTabProps) {
         <h3>Blocks by Severity</h3>
         <div style={{ marginTop: "16px" }}>
           {severityEntries.map(([severity, count]) => {
-            const total = Object.values(stats.bySeverity).reduce(
+            const total = Object.values(stats.distributions.bySeverity).reduce(
               (a, b) => a + b,
               0,
             );
