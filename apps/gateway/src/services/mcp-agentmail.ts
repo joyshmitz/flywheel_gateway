@@ -20,7 +20,13 @@ function parseArgs(value: string): string[] {
     try {
       const parsed = JSON.parse(trimmed);
       return Array.isArray(parsed) ? parsed.map((entry) => String(entry)) : [];
-    } catch {
+    } catch (error) {
+      // Create a temporary logger since we don't have the context logger yet
+      const log = createChildLogger({ component: "agentmail-mcp-config" });
+      log.warn(
+        { error, value },
+        "Failed to parse AGENT_MAIL_MCP_ARGS as JSON, falling back to empty args",
+      );
       return [];
     }
   }
@@ -38,10 +44,19 @@ function getAgentMailConfigFromEnv(): McpAgentMailConfig | undefined {
   const args = parseArgs(process.env["AGENT_MAIL_MCP_ARGS"] ?? "serve");
   const clientName =
     process.env["AGENT_MAIL_MCP_CLIENT_NAME"] ?? "flywheel-gateway";
-  const clientVersion =
+
+  const envVersion =
     process.env["AGENT_MAIL_MCP_CLIENT_VERSION"] ??
-    process.env["GATEWAY_VERSION"] ??
-    "0.1.0";
+    process.env["GATEWAY_VERSION"];
+
+  if (!envVersion) {
+    const log = createChildLogger({ component: "agentmail-mcp-config" });
+    log.debug(
+      "No client version specified in env (AGENT_MAIL_MCP_CLIENT_VERSION or GATEWAY_VERSION), using default 0.1.0",
+    );
+  }
+
+  const clientVersion = envVersion ?? "0.1.0";
 
   return { command, args, clientName, clientVersion };
 }
@@ -87,6 +102,12 @@ function normalizeToolResult(result: unknown): unknown {
 export function createMcpAgentMailToolCaller(
   config: McpAgentMailConfig,
 ): AgentMailToolCaller {
+  if (!config.command || config.command.trim() === "") {
+    throw new Error(
+      "Invalid Agent Mail configuration: command must be a non-empty string",
+    );
+  }
+
   const log = createChildLogger({
     component: "agentmail-mcp",
     command: config.command,
