@@ -29,11 +29,10 @@ import {
 } from "./agent-state-machine";
 import { audit } from "./audit";
 import {
-  createErrorCheckpoint,
-  initializeAutoCheckpoint,
-  onAgentMessage,
-  stopAutoCheckpoint,
-} from "./auto-checkpoint";
+  getAutoCheckpointService,
+  removeAutoCheckpointService,
+} from "./auto-checkpoint.service";
+import { createErrorCheckpoint } from "./checkpoint";
 import {
   cleanupOutputBuffer,
   getOutput as getOutputFromBuffer,
@@ -123,7 +122,7 @@ async function handleAgentEvents(
           // We might have already initiated termination, so check state first?
           // Actually markAgentTerminated is idempotent-ish safe
           markAgentTerminated(agentId);
-          stopAutoCheckpoint(agentId);
+          removeAutoCheckpointService(agentId);
           cleanupOutputBuffer(agentId);
           agents.delete(agentId);
         } catch (err) {
@@ -272,7 +271,12 @@ export async function spawnAgent(config: {
     handleAgentEvents(agentId, eventStream);
 
     // Initialize auto-checkpointing for the agent
-    initializeAutoCheckpoint(agentId);
+    const acs = getAutoCheckpointService(agentId);
+    acs.setStateProvider(async () => {
+      const d = await getDriver();
+      return d.getState(agentId);
+    });
+    acs.start();
 
     audit({
       action: "agent.spawn",
@@ -292,7 +296,7 @@ export async function spawnAgent(config: {
     if (spawned) {
       // Stop monitoring
       activeMonitors.get(agentId)?.abort();
-      stopAutoCheckpoint(agentId);
+      removeAutoCheckpointService(agentId);
       cleanupOutputBuffer(agentId);
       try {
         await drv.terminate(agentId, true);
@@ -544,7 +548,7 @@ export async function terminateAgent(
     }
 
     // Stop auto-checkpointing
-    stopAutoCheckpoint(agentId);
+    removeAutoCheckpointService(agentId);
 
     // Clean up output buffer
     cleanupOutputBuffer(agentId);
@@ -608,7 +612,7 @@ export async function sendMessage(
     record.messagesReceived++;
 
     // Notify auto-checkpoint system of new message
-    await onAgentMessage(agentId);
+    await getAutoCheckpointService(agentId).onMessage();
 
     // Note: Transition back to READY happens when agent finishes processing
     // This is typically detected through output events or polling
