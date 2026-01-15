@@ -65,13 +65,15 @@ const SCROLL_BOTTOM_THRESHOLD = 50;
  */
 const OutputRow = memo(function OutputRow({
   line,
+  index,
   style,
   onHeightChange,
   onClick,
 }: {
   line: OutputLine;
+  index: number;
   style: React.CSSProperties;
-  onHeightChange?: (height: number) => void;
+  onHeightChange?: (index: number, height: number) => void;
   onClick?: () => void;
 }) {
   const rowRef = useRef<HTMLDivElement>(null);
@@ -81,13 +83,13 @@ const OutputRow = memo(function OutputRow({
       const observer = new ResizeObserver((entries) => {
         const entry = entries[0];
         if (entry) {
-          onHeightChange(entry.contentRect.height);
+          onHeightChange(index, entry.contentRect.height);
         }
       });
       observer.observe(rowRef.current);
       return () => observer.disconnect();
     }
-  }, [onHeightChange]);
+  }, [onHeightChange, index]);
 
   const typeStyles: Record<OutputLine["type"], string> = {
     stdout: "text-gray-200",
@@ -285,6 +287,7 @@ export const VirtualizedOutput = forwardRef<
       <OutputRow
         key={line.id}
         line={line}
+        index={i}
         style={{
           position: "absolute",
           top,
@@ -292,7 +295,7 @@ export const VirtualizedOutput = forwardRef<
           right: 0,
           minHeight: estimatedRowHeight,
         }}
-        onHeightChange={(h) => handleRowHeightChange(i, h)}
+        onHeightChange={handleRowHeightChange}
         onClick={() => onLineClick?.(line)}
       />,
     );

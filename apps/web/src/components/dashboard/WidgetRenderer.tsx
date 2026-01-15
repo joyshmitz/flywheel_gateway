@@ -115,6 +115,15 @@ function IframeWidget({ widget, data }: { widget: Widget; data: WidgetData }) {
     return <div className="widget-placeholder">No URL configured</div>;
   }
 
+  // Validate protocol
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    return (
+      <div className="widget-placeholder text-red-400">
+        Invalid URL protocol. Only http:// and https:// are allowed.
+      </div>
+    );
+  }
+
   return (
     <iframe
       src={url}
