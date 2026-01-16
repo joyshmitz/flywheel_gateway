@@ -13,8 +13,7 @@ import type {
 function extractPathParams(path: string): string[] {
   const paramRegex = /:([a-zA-Z][a-zA-Z0-9]*)/g;
   const params: string[] = [];
-  let match: RegExpExecArray | null;
-  while ((match = paramRegex.exec(path)) !== null) {
+  for (const match of path.matchAll(paramRegex)) {
     const param = match[1];
     if (param !== undefined) {
       params.push(param);
