@@ -227,7 +227,15 @@ function ProfileCard({
             <>
               <div
                 className="fixed inset-0 z-10"
+                role="button"
+                tabIndex={0}
+                aria-label="Close menu"
                 onClick={() => setShowMenu(false)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape" || e.key === "Enter") {
+                    setShowMenu(false);
+                  }
+                }}
               />
               <div className="absolute right-0 mt-1 w-36 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20">
                 {profile.status === "verified" && !isActive && (
@@ -342,7 +350,7 @@ export function ProfileList({
     workspaceId,
     ...(provider !== undefined && { provider }),
   });
-  const { activate, isLoading: activating } = useActivateProfile();
+  const { activate, isLoading: _activating } = useActivateProfile();
   const { remove, isLoading: deleting } = useDeleteProfile();
   const { rotate, isLoading: rotating } = useRotatePool();
 

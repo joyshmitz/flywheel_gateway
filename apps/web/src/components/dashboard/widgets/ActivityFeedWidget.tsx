@@ -110,7 +110,10 @@ const SEVERITY_ICONS: Record<string, JSX.Element> = {
   ),
 };
 
-export function ActivityFeedWidget({ widget, data }: ActivityFeedWidgetProps) {
+export function ActivityFeedWidget({
+  widget: _widget,
+  data,
+}: ActivityFeedWidgetProps) {
   const feedData = data.data as ActivityFeedData | null;
 
   if (!feedData?.events?.length) {

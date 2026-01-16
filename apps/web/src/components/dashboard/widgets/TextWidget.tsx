@@ -21,7 +21,7 @@ interface TextWidgetProps {
   data: WidgetData;
 }
 
-export function TextWidget({ widget, data }: TextWidgetProps) {
+export function TextWidget({ widget: _widget, data }: TextWidgetProps) {
   const textData = data.data as TextData | null;
 
   if (!textData?.content) {

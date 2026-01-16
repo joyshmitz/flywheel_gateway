@@ -841,8 +841,6 @@ export class JobService {
       "Recovering stale jobs from previous run",
     );
 
-    const now = new Date();
-    
     // Reset them to pending so they can be picked up again
     // OR mark them failed if we want manual intervention.
     // "pending" is safer for auto-recovery of crashed pod.

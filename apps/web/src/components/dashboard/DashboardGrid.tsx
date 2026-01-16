@@ -148,6 +148,8 @@ export function DashboardGrid({
                   gridColumn: x + 1,
                   gridRow: y + 1,
                 }}
+                role="region"
+                aria-label={`Drop zone at column ${x + 1}, row ${y + 1}`}
                 onDragOver={(e) => handleDragOver(e, x, y)}
                 onDrop={(e) => handleDrop(e, x, y)}
               />
@@ -169,6 +171,8 @@ export function DashboardGrid({
               gridColumn: `${x + 1} / span ${w}`,
               gridRow: `${y + 1} / span ${h}`,
             }}
+            role="article"
+            aria-label={`Widget: ${widget.title || widget.type}`}
             draggable={isEditing}
             onDragStart={(e) => handleDragStart(e, widget.id)}
             onDragEnd={handleDragEnd}

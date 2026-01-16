@@ -178,8 +178,13 @@ export function CostTrendChart({
                 r={hoveredIndex === i ? 4 : 2}
                 fill="var(--accent)"
                 className="cost-trend-chart__point"
+                role="button"
+                tabIndex={0}
+                aria-label={`Data point for ${d.date}`}
                 onMouseEnter={() => setHoveredIndex(i)}
                 onMouseLeave={() => setHoveredIndex(null)}
+                onFocus={() => setHoveredIndex(i)}
+                onBlur={() => setHoveredIndex(null)}
               />
             );
           })}

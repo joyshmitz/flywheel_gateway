@@ -42,7 +42,7 @@ const DEFAULT_SEGMENTS: Segment[] = [
   { from: 80, to: 100, color: "#ef4444" },
 ];
 
-export function GaugeWidget({ widget, data }: GaugeWidgetProps) {
+export function GaugeWidget({ widget: _widget, data }: GaugeWidgetProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const gaugeData = data.data as GaugeData | null;

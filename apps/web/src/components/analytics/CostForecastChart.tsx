@@ -44,8 +44,8 @@ interface CostForecastChartProps {
 export function CostForecastChart({
   dailyForecasts,
   formattedForecast,
-  totalForecastUnits,
-  confidence95,
+  totalForecastUnits: _totalForecastUnits,
+  confidence95: _confidence95,
   trendDirection,
   trendStrength,
   methodology,
@@ -225,8 +225,13 @@ export function CostForecastChart({
                 cy={y}
                 r={hoveredIndex === i ? 4 : 2}
                 className="cost-forecast__point"
+                role="button"
+                tabIndex={0}
+                aria-label={`Forecast point for ${d.date}`}
                 onMouseEnter={() => setHoveredIndex(i)}
                 onMouseLeave={() => setHoveredIndex(null)}
+                onFocus={() => setHoveredIndex(i)}
+                onBlur={() => setHoveredIndex(null)}
               />
             );
           })}

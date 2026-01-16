@@ -11,9 +11,6 @@ import {
   decodeCursor,
 } from "@flywheel/shared/api/pagination";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
-import type { Channel } from "../ws/channels";
-import { getHub } from "../ws/hub";
-import type { MessageType } from "../ws/messages";
 import {
   type CreateNotificationRequest,
   DEFAULT_PREFERENCES,
@@ -27,6 +24,9 @@ import {
   PRIORITY_ORDER,
   type PreferencesUpdateRequest,
 } from "../models/notification";
+import type { Channel } from "../ws/channels";
+import { getHub } from "../ws/hub";
+import type { MessageType } from "../ws/messages";
 import { logger } from "./logger";
 
 // ============================================================================

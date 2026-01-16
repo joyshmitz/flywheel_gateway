@@ -48,7 +48,10 @@ const STATUS_CONFIG = {
   },
 };
 
-export function AgentListWidget({ widget, data }: AgentListWidgetProps) {
+export function AgentListWidget({
+  widget: _widget,
+  data,
+}: AgentListWidgetProps) {
   const listData = data.data as AgentListData | null;
 
   if (!listData?.agents?.length) {

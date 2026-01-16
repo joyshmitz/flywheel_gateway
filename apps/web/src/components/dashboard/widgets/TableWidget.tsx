@@ -36,7 +36,7 @@ interface TableWidgetProps {
   data: WidgetData;
 }
 
-export function TableWidget({ widget, data }: TableWidgetProps) {
+export function TableWidget({ widget: _widget, data }: TableWidgetProps) {
   const tableData = data.data as TableData | null;
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -112,7 +112,10 @@ export function TableWidget({ widget, data }: TableWidgetProps) {
             </tr>
           ) : (
             sortedRows.map((row, i) => (
-              <tr key={i} className="table-widget__tr">
+              <tr
+                key={row.id != null ? String(row.id) : `row-${i}`}
+                className="table-widget__tr"
+              >
                 {columns.map((col) => (
                   <td
                     key={col.key}

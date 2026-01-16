@@ -41,7 +41,7 @@ const DEFAULT_COLORS = [
   "#ec4899",
 ];
 
-export function BarChartWidget({ widget, data }: BarChartWidgetProps) {
+export function BarChartWidget({ widget: _widget, data }: BarChartWidgetProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const chartData = data.data as BarChartData | null;

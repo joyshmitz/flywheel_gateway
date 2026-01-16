@@ -173,8 +173,8 @@ function InfoCard({ title, items, variant }: InfoCardProps) {
         <h4 className="font-medium">{title}</h4>
       </div>
       <ul className={`${c.text} text-sm space-y-1.5`}>
-        {items.map((item, i) => (
-          <li key={i} className="flex gap-2">
+        {items.map((item) => (
+          <li key={item} className="flex gap-2">
             <span className="text-current">•</span>
             <span>{item}</span>
           </li>
@@ -314,11 +314,15 @@ export function OnboardingWizard({
     profileName: "",
   });
 
-  const guidance = state.provider
-    ? useOnboardingGuidance(state.provider)
-    : null;
+  // Always call hook unconditionally with a fallback provider to satisfy Rules of Hooks
+  const guidanceResult = useOnboardingGuidance(state.provider ?? "claude");
+  // Only use guidance when we have an actual provider selected
+  const guidance = state.provider ? guidanceResult : null;
 
-  const setStep = (step: WizardStep) => setState((s) => ({ ...s, step }));
+  const setStep = useCallback(
+    (step: WizardStep) => setState((s) => ({ ...s, step })),
+    [],
+  );
   const setProvider = (provider: ProviderId) =>
     setState((s) => ({
       ...s,
@@ -455,10 +459,14 @@ export function OnboardingWizard({
 
             {/* Profile Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label
+                htmlFor="profile-name-input"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
                 Profile Name
               </label>
               <input
+                id="profile-name-input"
                 type="text"
                 value={state.profileName}
                 onChange={(e) => setProfileName(e.target.value)}
@@ -468,10 +476,10 @@ export function OnboardingWizard({
             </div>
 
             {/* Auth Mode Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <fieldset>
+              <legend className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Authentication Method
-              </label>
+              </legend>
               <div className="space-y-2">
                 {(
                   [
@@ -491,7 +499,7 @@ export function OnboardingWizard({
                   />
                 ))}
               </div>
-            </div>
+            </fieldset>
 
             {/* Warnings */}
             <InfoCard

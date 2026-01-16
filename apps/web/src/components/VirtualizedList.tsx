@@ -200,7 +200,7 @@ export const VirtualizedList = forwardRef(VirtualizedListInner) as <T>(
 export function useInfiniteVirtualizedList<T>({
   fetchMore,
   hasMore,
-  pageSize = 50,
+  pageSize: _pageSize = 50,
 }: {
   fetchMore: () => Promise<T[]>;
   hasMore: boolean;

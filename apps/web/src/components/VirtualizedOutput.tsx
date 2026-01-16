@@ -105,13 +105,13 @@ const OutputRow = memo(function OutputRow({
       style={style}
       className={`flex items-start px-3 py-0.5 hover:bg-gray-800/50 cursor-pointer font-mono text-sm ${typeStyles[line.type]}`}
       onClick={onClick}
-      role="row"
-      tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           onClick?.();
         }
       }}
+      role="button"
+      tabIndex={0}
     >
       <span className="text-gray-500 text-xs w-20 flex-shrink-0 mr-2">
         {formatTimestamp(line.timestamp)}
