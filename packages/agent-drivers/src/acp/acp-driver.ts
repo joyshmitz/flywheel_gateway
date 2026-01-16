@@ -62,7 +62,7 @@ interface JsonRpcError {
   data?: unknown;
 }
 
-type JsonRpcMessage = JsonRpcRequest | JsonRpcResponse | JsonRpcNotification;
+type _JsonRpcMessage = JsonRpcRequest | JsonRpcResponse | JsonRpcNotification;
 
 // ============================================================================
 // ACP-Specific Event Types
@@ -83,7 +83,7 @@ interface AcpToolResult {
 }
 
 /** ACP file operation event */
-interface AcpFileOp {
+interface _AcpFileOp {
   operation: "read" | "write" | "edit";
   path: string;
   content?: string;

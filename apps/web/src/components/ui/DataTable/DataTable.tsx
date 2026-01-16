@@ -56,7 +56,7 @@ export function DataTable<T>({
   expandable = false,
   // Handlers
   onRowClick,
-  onRowDoubleClick,
+  onRowDoubleClick: _onRowDoubleClick,
   onSelectionChange,
   onSortChange,
   onPageChange,

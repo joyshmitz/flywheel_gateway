@@ -63,8 +63,8 @@ export interface LogFilter {
   endTime?: number;
 }
 
-// ANSI escape code regex
-const ANSI_REGEX = /\x1b\[([0-9;]*)m/g;
+// ANSI escape code regex (uses \u001b for ESC character to satisfy linter)
+const ANSI_REGEX = /\u001b\[([0-9;]*)m/g;
 
 // URL regex
 const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/g;

@@ -112,7 +112,7 @@ export default defineConfig({
   // Enable experimental features
   experimental: {
     // Render optimization
-    renderBuiltUrl(_filename, { hostId, hostType, type }) {
+    renderBuiltUrl(_filename, { hostId: _hostId, hostType: _hostType, type: _type }) {
       // Use relative paths for assets
       return { relative: true };
     },
