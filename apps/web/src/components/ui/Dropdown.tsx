@@ -173,6 +173,12 @@ export function Dropdown({
       <div
         className="dropdown__trigger"
         onClick={toggleOpen}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            toggleOpen();
+          }
+        }}
         role="button"
         tabIndex={disabled ? -1 : 0}
         aria-haspopup="menu"

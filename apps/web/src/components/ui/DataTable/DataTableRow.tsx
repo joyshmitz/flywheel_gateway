@@ -34,7 +34,11 @@ function RowCheckbox({
   rowId: string;
 }) {
   return (
-    <label className="checkbox" onClick={(e) => e.stopPropagation()}>
+    <label
+      className="checkbox"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+    >
       <input
         type="checkbox"
         className="checkbox__input"
