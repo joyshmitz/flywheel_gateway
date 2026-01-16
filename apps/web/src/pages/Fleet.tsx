@@ -236,6 +236,14 @@ function RepoList({ repos, groups, onRemove, isRemoving }: RepoListProps) {
               onClick={() =>
                 setExpandedRepo(expandedRepo === repo.id ? null : repo.id)
               }
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setExpandedRepo(expandedRepo === repo.id ? null : repo.id);
+                }
+              }}
+              role="button"
+              tabIndex={0}
             >
               <div
                 style={{ display: "flex", alignItems: "center", gap: "12px" }}
@@ -561,6 +569,16 @@ function SweepsTab({
                   expandedSession === session.id ? null : session.id,
                 )
               }
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setExpandedSession(
+                    expandedSession === session.id ? null : session.id,
+                  );
+                }
+              }}
+              role="button"
+              tabIndex={0}
             >
               <span
                 style={{ display: "flex", alignItems: "center", gap: "8px" }}
@@ -887,8 +905,11 @@ function AddRepoTab({ onAdd, isAdding, groups }: AddRepoTabProps) {
           }}
         >
           <div>
-            <label className="eyebrow">Owner</label>
+            <label htmlFor="fleet-repo-owner" className="eyebrow">
+              Owner
+            </label>
             <input
+              id="fleet-repo-owner"
               type="text"
               className="data-table__search-input"
               style={{ width: "100%", marginTop: "4px" }}
@@ -901,8 +922,11 @@ function AddRepoTab({ onAdd, isAdding, groups }: AddRepoTabProps) {
             />
           </div>
           <div>
-            <label className="eyebrow">Name</label>
+            <label htmlFor="fleet-repo-name" className="eyebrow">
+              Name
+            </label>
             <input
+              id="fleet-repo-name"
               type="text"
               className="data-table__search-input"
               style={{ width: "100%", marginTop: "4px" }}
@@ -917,8 +941,11 @@ function AddRepoTab({ onAdd, isAdding, groups }: AddRepoTabProps) {
         </div>
 
         <div>
-          <label className="eyebrow">URL</label>
+          <label htmlFor="fleet-repo-url" className="eyebrow">
+            URL
+          </label>
           <input
+            id="fleet-repo-url"
             type="text"
             className="data-table__search-input"
             style={{ width: "100%", marginTop: "4px" }}
@@ -929,8 +956,11 @@ function AddRepoTab({ onAdd, isAdding, groups }: AddRepoTabProps) {
         </div>
 
         <div>
-          <label className="eyebrow">Group (optional)</label>
+          <label htmlFor="fleet-repo-group" className="eyebrow">
+            Group (optional)
+          </label>
           <select
+            id="fleet-repo-group"
             className="data-table__page-size"
             style={{ width: "100%", marginTop: "4px", padding: "10px" }}
             value={group}
