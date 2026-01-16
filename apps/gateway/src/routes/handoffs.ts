@@ -75,7 +75,7 @@ handoffs.post("/validate-context", async (c) => {
     const body = await c.req.json();
     const contextData = HandoffContextSchema.parse(body);
 
-    const { context, validation } = buildContext({
+    const { context: _context, validation } = buildContext({
       agentId: "validation-check",
       taskDescription: contextData.taskDescription,
       ...(contextData.currentPhase && {

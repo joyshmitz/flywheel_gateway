@@ -32,6 +32,7 @@ import {
   DCGCommandError,
   DCGNotAvailableError,
   DCGPackNotFoundError,
+  type DCGScanResult,
   explainCommand,
   getPackInfo,
   getPacksCached,
@@ -777,7 +778,7 @@ dcg.post("/scan", async (c) => {
     const body = await c.req.json();
     const validated = ScanRequestSchema.parse(body);
 
-    let result;
+    let result: DCGScanResult;
     if (validated.filePath) {
       result = await scanFile(validated.filePath);
     } else if (validated.content) {

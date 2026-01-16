@@ -666,15 +666,14 @@ export function extractFromOutput(
     case "json": {
       // Extract JSON objects/arrays
       const jsonPattern = /(\{[\s\S]*?\}|\[[\s\S]*?\])/g;
-      let match;
-      while ((match = jsonPattern.exec(output)) !== null) {
+      for (const match of output.matchAll(jsonPattern)) {
         const captured = match[1];
         if (!captured) continue;
         try {
           JSON.parse(captured);
           const startLine = output.slice(0, match.index).split("\n").length - 1;
           const endLine =
-            output.slice(0, match.index + captured.length).split("\n").length -
+            output.slice(0, match.index! + captured.length).split("\n").length -
             1;
           matches.push({
             content: captured,
@@ -692,8 +691,7 @@ export function extractFromOutput(
       // Extract file paths
       const pathPattern =
         /(?:^|\s)((?:\/[\w.-]+)+\/?|(?:[A-Za-z]:)?\\(?:[\w.-]+\\)*[\w.-]+)/gm;
-      let match;
-      while ((match = pathPattern.exec(output)) !== null) {
+      for (const match of output.matchAll(pathPattern)) {
         const captured = match[1];
         if (!captured) continue;
         const lineNum = output.slice(0, match.index).split("\n").length - 1;
@@ -709,8 +707,7 @@ export function extractFromOutput(
     case "urls": {
       // Extract URLs
       const urlPattern = /https?:\/\/[^\s<>"{}|\\^`[\]]+/gi;
-      let match;
-      while ((match = urlPattern.exec(output)) !== null) {
+      for (const match of output.matchAll(urlPattern)) {
         const lineNum = output.slice(0, match.index).split("\n").length - 1;
         matches.push({
           content: match[0],
@@ -734,8 +731,7 @@ export function extractFromOutput(
       ];
 
       for (const pattern of errorPatterns) {
-        let match;
-        while ((match = pattern.exec(output)) !== null) {
+        for (const match of output.matchAll(pattern)) {
           const lineNum = output.slice(0, match.index).split("\n").length - 1;
           matches.push({
             content: match[0],
@@ -751,8 +747,7 @@ export function extractFromOutput(
       if (options.customPattern) {
         try {
           const pattern = new RegExp(options.customPattern, "gi");
-          let match;
-          while ((match = pattern.exec(output)) !== null) {
+          for (const match of output.matchAll(pattern)) {
             const lineNum = output.slice(0, match.index).split("\n").length - 1;
             matches.push({
               content: match[0],
