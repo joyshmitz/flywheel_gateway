@@ -74,7 +74,10 @@ export class QueryCache<T = unknown> {
    * Get a value from cache, or compute and store it if missing/expired.
    * The generic U parameter allows type-safe caching of different value types.
    */
-  async getOrCompute<U extends T>(key: string, compute: () => Promise<U>): Promise<U> {
+  async getOrCompute<U extends T>(
+    key: string,
+    compute: () => Promise<U>,
+  ): Promise<U> {
     // Check for valid cached entry
     const entry = this.cache.get(key);
     const now = Date.now();
@@ -84,7 +87,10 @@ export class QueryCache<T = unknown> {
       entry.lastAccessed = now;
       this.hits++;
       this.emitMetric("hit", key);
-      this.log("debug", "Cache hit", { key, ttlRemaining: entry.expiresAt - now });
+      this.log("debug", "Cache hit", {
+        key,
+        ttlRemaining: entry.expiresAt - now,
+      });
       return entry.value as U;
     }
 
@@ -100,14 +106,16 @@ export class QueryCache<T = unknown> {
     this.emitMetric("miss", key);
     this.log("debug", "Cache miss, computing", { key });
 
-    const computePromise = compute().then((value) => {
-      this.set(key, value);
-      this.pending.delete(key);
-      return value;
-    }).catch((error) => {
-      this.pending.delete(key);
-      throw error;
-    });
+    const computePromise = compute()
+      .then((value) => {
+        this.set(key, value);
+        this.pending.delete(key);
+        return value;
+      })
+      .catch((error) => {
+        this.pending.delete(key);
+        throw error;
+      });
 
     this.pending.set(key, computePromise as Promise<T>);
     return computePromise;
@@ -157,7 +165,11 @@ export class QueryCache<T = unknown> {
     };
 
     this.cache.set(key, entry);
-    this.log("debug", "Cache set", { key, ttlMs: effectiveTtl, size: this.cache.size });
+    this.log("debug", "Cache set", {
+      key,
+      ttlMs: effectiveTtl,
+      size: this.cache.size,
+    });
   }
 
   /**
@@ -190,7 +202,10 @@ export class QueryCache<T = unknown> {
     if (count > 0) {
       this.invalidations += count;
       this.emitMetric("invalidate_pattern", pattern.toString(), count);
-      this.log("info", "Cache pattern invalidated", { pattern: pattern.toString(), count });
+      this.log("info", "Cache pattern invalidated", {
+        pattern: pattern.toString(),
+        count,
+      });
     }
 
     return count;
@@ -292,7 +307,7 @@ export class QueryCache<T = unknown> {
   /**
    * Emit cache metrics.
    */
-  private emitMetric(operation: string, key: string, count = 1): void {
+  private emitMetric(operation: string, _key: string, count = 1): void {
     incrementCounter("cache_operations_total", count, {
       cache: this.name,
       operation,

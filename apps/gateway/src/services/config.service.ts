@@ -1,0 +1,423 @@
+/**
+ * Configuration Service
+ *
+ * Supports flywheel.config.ts with multi-layer precedence and validation.
+ *
+ * Precedence (highest to lowest):
+ * 1. Environment variables (override everything)
+ * 2. Project config (CWD/flywheel.config.ts)
+ * 3. User config (~/.config/flywheel/config.ts)
+ * 4. Default values
+ */
+
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { z } from "zod";
+import { getCorrelationId, getLogger } from "../middleware/correlation";
+import { logger as rootLogger } from "./logger";
+
+// ============================================================================
+// Configuration Schema
+// ============================================================================
+
+/**
+ * Server configuration schema.
+ */
+const serverConfigSchema = z.object({
+  port: z.number().min(1).max(65535).default(3000),
+  host: z.string().default("0.0.0.0"),
+  logLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
+});
+
+/**
+ * Database configuration schema.
+ */
+const databaseConfigSchema = z.object({
+  path: z.string().default("./flywheel.db"),
+  slowQueryMs: z.number().min(0).default(100),
+  enableWal: z.boolean().default(true),
+});
+
+/**
+ * Agent configuration schema.
+ */
+const agentConfigSchema = z.object({
+  defaultModel: z.string().default("claude-sonnet-4-20250514"),
+  maxConcurrent: z.number().min(1).max(100).default(10),
+  timeoutMs: z.number().min(1000).default(300_000), // 5 minutes
+  checkpointEnabled: z.boolean().default(true),
+});
+
+/**
+ * Security configuration schema.
+ */
+const securityConfigSchema = z.object({
+  dcgEnabled: z.boolean().default(true),
+  dcgStrictMode: z.boolean().default(false),
+  allowedOrigins: z.array(z.string()).default(["*"]),
+  rateLimitEnabled: z.boolean().default(true),
+  rateLimitPerMinute: z.number().min(1).default(60),
+});
+
+/**
+ * WebSocket configuration schema.
+ */
+const websocketConfigSchema = z.object({
+  heartbeatIntervalMs: z.number().min(1000).default(30_000),
+  maxConnections: z.number().min(1).default(1000),
+  messageBufferSize: z.number().min(1).default(100),
+});
+
+/**
+ * Analytics configuration schema.
+ */
+const analyticsConfigSchema = z.object({
+  cacheTtlMs: z.number().min(0).default(30_000),
+  cacheMaxSize: z.number().min(1).default(500),
+  metricsEnabled: z.boolean().default(true),
+});
+
+/**
+ * Complete Flywheel configuration schema.
+ */
+export const flywheelConfigSchema = z.object({
+  server: serverConfigSchema.default({}),
+  database: databaseConfigSchema.default({}),
+  agent: agentConfigSchema.default({}),
+  security: securityConfigSchema.default({}),
+  websocket: websocketConfigSchema.default({}),
+  analytics: analyticsConfigSchema.default({}),
+});
+
+export type FlywheelConfig = z.infer<typeof flywheelConfigSchema>;
+export type ServerConfig = z.infer<typeof serverConfigSchema>;
+export type DatabaseConfig = z.infer<typeof databaseConfigSchema>;
+export type AgentConfig = z.infer<typeof agentConfigSchema>;
+export type SecurityConfig = z.infer<typeof securityConfigSchema>;
+export type WebsocketConfig = z.infer<typeof websocketConfigSchema>;
+export type AnalyticsConfig = z.infer<typeof analyticsConfigSchema>;
+
+// ============================================================================
+// Configuration Loading
+// ============================================================================
+
+/** Cached configuration */
+let cachedConfig: FlywheelConfig | null = null;
+
+/** Configuration sources for logging */
+interface ConfigSource {
+  path: string;
+  loaded: boolean;
+  error?: string;
+}
+
+/**
+ * Get user config directory path.
+ */
+function getUserConfigDir(): string {
+  return join(homedir(), ".config", "flywheel");
+}
+
+/**
+ * Get user config file path.
+ */
+function getUserConfigPath(): string {
+  return join(getUserConfigDir(), "config.ts");
+}
+
+/**
+ * Get project config file path.
+ */
+function getProjectConfigPath(cwd?: string): string {
+  return join(cwd ?? process.cwd(), "flywheel.config.ts");
+}
+
+/**
+ * Load config from a TypeScript file using Bun's dynamic import.
+ */
+async function loadConfigFile(
+  path: string,
+): Promise<{ config: Partial<FlywheelConfig>; loaded: boolean; error?: string }> {
+  if (!existsSync(path)) {
+    return { config: {}, loaded: false };
+  }
+
+  try {
+    // Bun can import TypeScript directly
+    const module = await import(path);
+    const config = module.default ?? module.config ?? module;
+
+    // Basic validation that it's an object
+    if (typeof config !== "object" || config === null) {
+      return {
+        config: {},
+        loaded: false,
+        error: `Config file ${path} does not export an object`,
+      };
+    }
+
+    return { config: config as Partial<FlywheelConfig>, loaded: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { config: {}, loaded: false, error: message };
+  }
+}
+
+/**
+ * Deep merge two config objects.
+ * Later values override earlier values.
+ */
+function deepMerge<T extends Record<string, unknown>>(
+  base: T,
+  override: Partial<T>,
+): T {
+  const result = { ...base };
+
+  for (const key of Object.keys(override) as Array<keyof T>) {
+    const overrideValue = override[key];
+    const baseValue = result[key];
+
+    if (
+      overrideValue !== undefined &&
+      typeof overrideValue === "object" &&
+      overrideValue !== null &&
+      !Array.isArray(overrideValue) &&
+      typeof baseValue === "object" &&
+      baseValue !== null &&
+      !Array.isArray(baseValue)
+    ) {
+      // Recursively merge nested objects
+      result[key] = deepMerge(
+        baseValue as Record<string, unknown>,
+        overrideValue as Record<string, unknown>,
+      ) as T[keyof T];
+    } else if (overrideValue !== undefined) {
+      result[key] = overrideValue as T[keyof T];
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Apply environment variable overrides.
+ */
+function applyEnvOverrides(
+  config: Partial<FlywheelConfig>,
+): Partial<FlywheelConfig> {
+  const result = { ...config };
+
+  // Server overrides
+  if (process.env["PORT"]) {
+    result.server = { ...result.server, port: Number(process.env["PORT"]) };
+  }
+  if (process.env["HOST"]) {
+    result.server = { ...result.server, host: process.env["HOST"] };
+  }
+  if (process.env["LOG_LEVEL"]) {
+    const level = process.env["LOG_LEVEL"] as "debug" | "info" | "warn" | "error";
+    result.server = { ...result.server, logLevel: level };
+  }
+
+  // Database overrides
+  if (process.env["DB_PATH"]) {
+    result.database = { ...result.database, path: process.env["DB_PATH"] };
+  }
+  if (process.env["DB_SLOW_QUERY_MS"]) {
+    result.database = {
+      ...result.database,
+      slowQueryMs: Number(process.env["DB_SLOW_QUERY_MS"]),
+    };
+  }
+
+  // Agent overrides
+  if (process.env["DEFAULT_MODEL"]) {
+    result.agent = { ...result.agent, defaultModel: process.env["DEFAULT_MODEL"] };
+  }
+  if (process.env["MAX_CONCURRENT_AGENTS"]) {
+    result.agent = {
+      ...result.agent,
+      maxConcurrent: Number(process.env["MAX_CONCURRENT_AGENTS"]),
+    };
+  }
+  if (process.env["AGENT_TIMEOUT_MS"]) {
+    result.agent = {
+      ...result.agent,
+      timeoutMs: Number(process.env["AGENT_TIMEOUT_MS"]),
+    };
+  }
+
+  // Security overrides
+  if (process.env["DCG_ENABLED"]) {
+    result.security = {
+      ...result.security,
+      dcgEnabled: process.env["DCG_ENABLED"] === "true",
+    };
+  }
+  if (process.env["DCG_STRICT_MODE"]) {
+    result.security = {
+      ...result.security,
+      dcgStrictMode: process.env["DCG_STRICT_MODE"] === "true",
+    };
+  }
+  if (process.env["ALLOWED_ORIGINS"]) {
+    result.security = {
+      ...result.security,
+      allowedOrigins: process.env["ALLOWED_ORIGINS"].split(","),
+    };
+  }
+
+  // Analytics overrides
+  if (process.env["CACHE_TTL_MS"]) {
+    result.analytics = {
+      ...result.analytics,
+      cacheTtlMs: Number(process.env["CACHE_TTL_MS"]),
+    };
+  }
+
+  return result;
+}
+
+/**
+ * Load and validate the complete configuration.
+ *
+ * Loads from multiple sources with the following precedence:
+ * 1. Environment variables (highest)
+ * 2. Project config (CWD/flywheel.config.ts)
+ * 3. User config (~/.config/flywheel/config.ts)
+ * 4. Defaults (lowest)
+ */
+export async function loadConfig(options: {
+  cwd?: string;
+  forceReload?: boolean;
+}= {}): Promise<FlywheelConfig> {
+  const { cwd, forceReload = false } = options;
+  const log = getLogger();
+
+  // Return cached config if available and not forcing reload
+  if (cachedConfig && !forceReload) {
+    return cachedConfig;
+  }
+
+  const sources: ConfigSource[] = [];
+
+  // Start with empty config
+  let mergedConfig: Partial<FlywheelConfig> = {};
+
+  // 1. Load user config (lowest precedence after defaults)
+  const userConfigPath = getUserConfigPath();
+  const userResult = await loadConfigFile(userConfigPath);
+  sources.push({
+    path: userConfigPath,
+    loaded: userResult.loaded,
+    error: userResult.error,
+  });
+  if (userResult.loaded) {
+    mergedConfig = deepMerge(mergedConfig, userResult.config);
+  }
+
+  // 2. Load project config (higher precedence)
+  const projectConfigPath = getProjectConfigPath(cwd);
+  const projectResult = await loadConfigFile(projectConfigPath);
+  sources.push({
+    path: projectConfigPath,
+    loaded: projectResult.loaded,
+    error: projectResult.error,
+  });
+  if (projectResult.loaded) {
+    mergedConfig = deepMerge(mergedConfig, projectResult.config);
+  }
+
+  // 3. Apply environment variable overrides (highest precedence)
+  mergedConfig = applyEnvOverrides(mergedConfig);
+
+  // 4. Validate and apply defaults
+  const parseResult = flywheelConfigSchema.safeParse(mergedConfig);
+
+  if (!parseResult.success) {
+    const errors = parseResult.error.errors
+      .map((e) => `${e.path.join(".")}: ${e.message}`)
+      .join(", ");
+
+    log.error(
+      {
+        type: "config:validation_error",
+        correlationId: getCorrelationId(),
+        errors: parseResult.error.errors,
+        sources,
+      },
+      `Configuration validation failed: ${errors}`,
+    );
+
+    throw new Error(`Configuration validation failed: ${errors}`);
+  }
+
+  // Log which sources were loaded
+  log.info(
+    {
+      type: "config:loaded",
+      correlationId: getCorrelationId(),
+      sources: sources.map((s) => ({
+        path: s.path,
+        loaded: s.loaded,
+        error: s.error,
+      })),
+      overriddenKeys: getOverriddenKeys(mergedConfig),
+    },
+    "Configuration loaded",
+  );
+
+  // Cache the validated config
+  cachedConfig = parseResult.data;
+  return cachedConfig;
+}
+
+/**
+ * Get the current configuration (synchronous, must be loaded first).
+ */
+export function getConfig(): FlywheelConfig {
+  if (!cachedConfig) {
+    // Return defaults if not loaded yet
+    return flywheelConfigSchema.parse({});
+  }
+  return cachedConfig;
+}
+
+/**
+ * Clear the cached configuration.
+ */
+export function clearConfigCache(): void {
+  cachedConfig = null;
+}
+
+/**
+ * Get keys that were explicitly set (not defaults).
+ */
+function getOverriddenKeys(config: Partial<FlywheelConfig>): string[] {
+  const keys: string[] = [];
+
+  function traverse(obj: Record<string, unknown>, prefix: string) {
+    for (const [key, value] of Object.entries(obj)) {
+      const path = prefix ? `${prefix}.${key}` : key;
+      if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+        traverse(value as Record<string, unknown>, path);
+      } else if (value !== undefined) {
+        keys.push(path);
+      }
+    }
+  }
+
+  traverse(config as Record<string, unknown>, "");
+  return keys;
+}
+
+// ============================================================================
+// Exports
+// ============================================================================
+
+export {
+  getUserConfigDir,
+  getUserConfigPath,
+  getProjectConfigPath,
+};
