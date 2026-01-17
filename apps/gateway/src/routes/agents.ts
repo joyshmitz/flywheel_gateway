@@ -22,6 +22,7 @@ import {
   getAgentState,
   getAgentStateHistory,
 } from "../services/agent-state-machine";
+import { getAgentDetectionService } from "../services/agent-detection.service";
 import { agentLinks, agentListLinks, getLinkContext } from "../utils/links";
 import {
   sendError,
@@ -171,6 +172,32 @@ agents.get("/", async (c) => {
     }
 
     return sendList(c, agentsWithLinks, listOptions);
+  } catch (error) {
+    return handleAgentError(error, c);
+  }
+});
+
+/**
+ * GET /agents/detected - Detect available agent CLIs and tools
+ *
+ * Returns detected agent CLIs (claude, codex, gemini, aider, gh-copilot)
+ * and setup tools (dcg, ubs, cass, cm, bd, bv, ru) with version,
+ * authentication status, and capabilities.
+ */
+agents.get("/detected", async (c) => {
+  try {
+    const bypassCache = c.req.query("refresh") === "true";
+    const service = getAgentDetectionService();
+    const result = await service.detectAll(bypassCache);
+
+    return sendResource(c, "detected_clis", {
+      agents: result.agents,
+      tools: result.tools,
+      summary: result.summary,
+      cached: !bypassCache && service.getCacheStatus().cached,
+      detectedAt: result.detectedAt.toISOString(),
+      durationMs: result.durationMs,
+    });
   } catch (error) {
     return handleAgentError(error, c);
   }
