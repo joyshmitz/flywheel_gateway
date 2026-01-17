@@ -108,6 +108,14 @@ const KNOWN_UTILITIES: Array<
       "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/jeffreysprompts/main/install.sh | bash",
     checkCommand: "jfp --version",
   },
+  {
+    name: "apr",
+    description: "Automated iterative specification refinement with AI",
+    version: "1.2.0",
+    installCommand:
+      "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/automated_plan_reviser/main/install.sh | bash",
+    checkCommand: "apr --version",
+  },
 ];
 
 // Cache for utility status (invalidated after 5 minutes)
