@@ -24,7 +24,8 @@
     "parity-check": "bun scripts/parity-check.ts",
     "db:generate": "bun run --filter @flywheel/gateway db:generate",
     "db:migrate": "bun run --filter @flywheel/gateway db:migrate",
-    "db:studio": "bun run --filter @flywheel/gateway db:studio"
+    "db:studio": "bun run --filter @flywheel/gateway db:studio",
+    "flywheel": "bun scripts/flywheel.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
