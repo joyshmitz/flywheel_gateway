@@ -24,3 +24,22 @@ export {
   type QueueConfig,
   type QueueStats,
 } from "./MessageQueue";
+
+export {
+  type BackoffConfig,
+  type ConnectionState,
+  type ConnectionStatus,
+  calculateBackoff,
+  createInitialStatus,
+  DEFAULT_BACKOFF_CONFIG,
+  getStatusHint,
+  shouldRetry,
+} from "./reconnect";
+
+export {
+  createWebSocketClient,
+  WebSocketClient,
+  type WebSocketClientConfig,
+  type WebSocketClientEvent,
+  type WebSocketClientListener,
+} from "./WebSocketClient";
