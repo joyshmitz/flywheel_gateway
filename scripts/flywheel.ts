@@ -129,7 +129,7 @@ async function runDoctorChecks(): Promise<DoctorReport> {
   // Check 1: Bun version
   try {
     const bunVersion = Bun.version;
-    const major = parseInt(bunVersion.split(".")[0], 10);
+    const major = parseInt(bunVersion.split(".")[0] ?? "0", 10);
     if (major >= 1) {
       checks.push({
         name: "Bun runtime",

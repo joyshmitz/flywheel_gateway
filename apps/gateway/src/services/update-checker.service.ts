@@ -291,7 +291,7 @@ export function createUpdateCheckerService(
 
         // Skip prereleases unless configured
         if (release.prerelease && !includePrereleases) {
-          log.debug("Skipping prerelease:", release.version);
+          log.debug({ version: release.version }, "Skipping prerelease");
           // Would need to fetch all releases and find latest non-prerelease
           // For simplicity, treat as no update available
         }
@@ -302,7 +302,7 @@ export function createUpdateCheckerService(
           currentVersion,
           latestVersion: release.version,
           updateAvailable,
-          release: updateAvailable ? release : undefined,
+          ...(updateAvailable && { release }),
           checkedAt: new Date().toISOString(),
           fromCache: false,
         };
@@ -509,7 +509,3 @@ export function getUpdateCheckerService(): UpdateCheckerService {
   return serviceInstance;
 }
 
-/**
- * Create a new update checker service with custom config.
- */
-export { createUpdateCheckerService };

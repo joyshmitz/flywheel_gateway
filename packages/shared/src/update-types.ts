@@ -236,12 +236,11 @@ export enum UpdateErrorCode {
  * Error thrown by update operations.
  */
 export class UpdateError extends Error {
-  constructor(
-    message: string,
-    public readonly code: UpdateErrorCode,
-    public readonly cause?: Error,
-  ) {
-    super(message);
+  public readonly code: UpdateErrorCode;
+
+  constructor(message: string, code: UpdateErrorCode, cause?: Error) {
+    super(message, { cause });
     this.name = "UpdateError";
+    this.code = code;
   }
 }

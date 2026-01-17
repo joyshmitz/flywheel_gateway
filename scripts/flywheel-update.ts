@@ -313,7 +313,7 @@ async function checkCommand(
       currentVersion,
       latestVersion: release.version,
       updateAvailable,
-      release: updateAvailable ? release : undefined,
+      ...(updateAvailable && { release }),
       checkedAt: new Date().toISOString(),
       fromCache: false,
     };
@@ -400,7 +400,7 @@ async function downloadCommand(jsonOutput: boolean): Promise<void> {
         currentVersion,
         latestVersion: release.version,
         updateAvailable,
-        release: updateAvailable ? release : undefined,
+        ...(updateAvailable && { release }),
         checkedAt: new Date().toISOString(),
         fromCache: false,
       };
@@ -417,7 +417,7 @@ async function downloadCommand(jsonOutput: boolean): Promise<void> {
     }
   }
 
-  if (!result.updateAvailable || !result.release) {
+  if (!result || !result.updateAvailable || !result.release) {
     if (jsonOutput) {
       console.log(JSON.stringify({ message: "No updates available" }));
     } else {
@@ -428,20 +428,21 @@ async function downloadCommand(jsonOutput: boolean): Promise<void> {
 
   // Find asset for current platform
   const platform = getPlatformIdentifier();
-  const asset = result.release.assets.find((a) => a.name.includes(platform));
+  const release = result.release;
+  const asset = release.assets.find((a) => a.name.includes(platform));
 
   if (!asset) {
     if (jsonOutput) {
       console.log(
         JSON.stringify({
           error: `No release asset found for ${platform}`,
-          available: result.release.assets.map((a) => a.name),
+          available: release.assets.map((a) => a.name),
         }),
       );
     } else {
       console.error(colorize(`\nNo release asset found for ${platform}`, "red"));
       console.log("\nAvailable assets:");
-      for (const a of result.release.assets) {
+      for (const a of release.assets) {
         console.log(`  - ${a.name}`);
       }
     }

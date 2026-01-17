@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
-import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 
 type CompilerStats = {
@@ -38,7 +38,11 @@ const createCompilerLogger = (stats: CompilerStats) => ({
       const reason = filename?.includes("node_modules")
         ? "node_modules"
         : "unknown";
-      console.debug("[Compiler] Skipped", { filename, reason, event: normalized });
+      console.debug("[Compiler] Skipped", {
+        filename,
+        reason,
+        event: normalized,
+      });
     }
 
     if (kind === "CompileDiagnostic") {
@@ -84,9 +88,9 @@ const compilerStatsPlugin = (
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const nodeEnv = env.NODE_ENV ?? process.env.NODE_ENV ?? mode;
+  const nodeEnv = env["NODE_ENV"] ?? process.env["NODE_ENV"] ?? mode;
   const isProd = nodeEnv === "production";
-  const disableCompiler = env.VITE_DISABLE_COMPILER === "true";
+  const disableCompiler = env["VITE_DISABLE_COMPILER"] === "true";
   const compilerEnabled = !disableCompiler;
 
   if (!isProd) {
@@ -149,25 +153,25 @@ export default defineConfig(({ mode }) => {
 
       rollupOptions: {
         output: {
-        // Manual chunk splitting for optimal caching
+          // Manual chunk splitting for optimal caching
           manualChunks: {
-          // Core React - rarely changes, cache well
+            // Core React - rarely changes, cache well
             "vendor-react": ["react", "react-dom"],
 
-          // Router - separate chunk for route-based splitting
+            // Router - separate chunk for route-based splitting
             "vendor-router": ["@tanstack/react-router"],
 
-          // Query - data fetching layer
+            // Query - data fetching layer
             "vendor-query": ["@tanstack/react-query"],
 
-          // UI libraries
+            // UI libraries
             "vendor-ui": ["framer-motion", "lucide-react"],
 
-          // State management
+            // State management
             "vendor-state": ["zustand"],
           },
 
-        // Consistent chunk naming for caching
+          // Consistent chunk naming for caching
           chunkFileNames: (chunkInfo) => {
             const facadeModuleId = chunkInfo.facadeModuleId
               ? chunkInfo.facadeModuleId
@@ -179,7 +183,7 @@ export default defineConfig(({ mode }) => {
             return `assets/${facadeModuleId}-[hash].js`;
           },
 
-        // Asset file naming
+          // Asset file naming
           assetFileNames: (assetInfo) => {
             const ext = assetInfo.name?.split(".").pop() || "asset";
             if (ext === "css") {
@@ -188,7 +192,7 @@ export default defineConfig(({ mode }) => {
             return `assets/${ext}/[name]-[hash].[ext]`;
           },
 
-        // Entry naming
+          // Entry naming
           entryFileNames: "assets/[name]-[hash].js",
         },
       },
@@ -204,9 +208,9 @@ export default defineConfig(({ mode }) => {
       reportCompressedSize: true,
     },
 
-  // Optimize dependencies
+    // Optimize dependencies
     optimizeDeps: {
-    // Pre-bundle these for faster dev startup
+      // Pre-bundle these for faster dev startup
       include: [
         "react",
         "react-dom",
@@ -216,24 +220,24 @@ export default defineConfig(({ mode }) => {
         "framer-motion",
         "lucide-react",
       ],
-    // Exclude from pre-bundling (handled by other means)
+      // Exclude from pre-bundling (handled by other means)
       exclude: [],
     },
 
-  // CSS optimization
+    // CSS optimization
     css: {
       devSourcemap: true,
     },
 
-  // Worker configuration for web workers
+    // Worker configuration for web workers
     worker: {
       format: "es",
       plugins: () => [react(reactCompilerBabelConfig)],
     },
 
-  // Enable experimental features
+    // Enable experimental features
     experimental: {
-    // Render optimization
+      // Render optimization
       renderBuiltUrl(
         _filename,
         { hostId: _hostId, hostType: _hostType, type: _type },
@@ -243,13 +247,13 @@ export default defineConfig(({ mode }) => {
       },
     },
 
-  // Define global constants
+    // Define global constants
     define: {
       __DEV__: JSON.stringify(!isProd),
       __PERF_MONITORING__: JSON.stringify(nodeEnv === "development"),
     },
 
-  // esbuild options
+    // esbuild options
     esbuild: {
       // Drop console.log in production
       drop: isProd ? ["console", "debugger"] : [],
