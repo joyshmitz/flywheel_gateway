@@ -276,6 +276,66 @@ export async function listBudgets(filter?: {
 // ============================================================================
 
 /**
+ * Calculate burn rate and projection.
+ *
+ * @param usedUnits - Units used so far in the period
+ * @param amountUnits - Total budget amount in units
+ * @param periodStart - Start date of the period
+ * @param periodEnd - End date of the period
+ * @param now - Current date (defaults to new Date())
+ * @param period - The budget period type (daily, weekly, etc.) - needed for legacy calculation compatibility
+ */
+export function calculateBurnRateAndProjection(
+  usedUnits: number,
+  amountUnits: number,
+  periodStart: Date,
+  periodEnd: Date,
+  period: BudgetPeriod,
+  now: Date = new Date(),
+): {
+  burnRateUnitsPerDay: number;
+  projectedEndOfPeriodUnits: number;
+  projectedExceed: boolean;
+  daysRemaining: number;
+  daysUntilExhausted: number | undefined;
+} {
+  const periodDurationMs = periodEnd.getTime() - periodStart.getTime();
+  // Ensure we don't divide by zero and have at least 1ms elapsed
+  const elapsedMs = Math.max(1, now.getTime() - periodStart.getTime());
+
+  // Calculate usage projection based on time fraction
+  const fractionElapsed = Math.min(1, elapsedMs / periodDurationMs);
+  const projectedEndOfPeriodUnits =
+    fractionElapsed > 0 ? usedUnits / fractionElapsed : 0;
+
+  const projectedExceed = projectedEndOfPeriodUnits > amountUnits;
+
+  // Calculate burn rate (units per day)
+  const durationDays = periodDurationMs / (24 * 60 * 60 * 1000);
+  const burnRateUnitsPerDay =
+    durationDays > 0 ? projectedEndOfPeriodUnits / durationDays : 0;
+
+  // Days remaining (float for precision)
+  const msRemaining = Math.max(0, periodEnd.getTime() - now.getTime());
+  const daysRemaining = msRemaining / (24 * 60 * 60 * 1000);
+
+  // Remaining units
+  const remainingUnits = Math.max(0, amountUnits - usedUnits);
+
+  // Days until exhausted (if burn rate continues)
+  const daysUntilExhausted =
+    burnRateUnitsPerDay > 0 ? remainingUnits / burnRateUnitsPerDay : undefined;
+
+  return {
+    burnRateUnitsPerDay,
+    projectedEndOfPeriodUnits,
+    projectedExceed,
+    daysRemaining, // Return float for better precision
+    daysUntilExhausted: daysUntilExhausted,
+  };
+}
+
+/**
  * Get the current status of a budget.
  */
 export async function getBudgetStatus(
@@ -315,27 +375,20 @@ export async function getBudgetStatus(
     budget.amountUnits > 0 ? (usedUnits / budget.amountUnits) * 100 : 0;
   const remainingUnits = Math.max(0, budget.amountUnits - usedUnits);
 
-  // Calculate burn rate (units per day based on period so far)
   const now = new Date();
-  const daysElapsed = Math.max(
-    1,
-    (now.getTime() - periodStart.getTime()) / (24 * 60 * 60 * 1000),
+  const {
+    burnRateUnitsPerDay,
+    projectedEndOfPeriodUnits,
+    projectedExceed,
+    daysUntilExhausted,
+  } = calculateBurnRateAndProjection(
+    usedUnits,
+    budget.amountUnits,
+    periodStart,
+    periodEnd,
+    budget.period,
+    now,
   );
-  const burnRateUnitsPerDay = usedUnits / daysElapsed;
-
-  // Days remaining in period
-  const daysRemaining = getDaysRemainingInPeriod(budget.period);
-
-  // Project end of period usage
-  const projectedEndOfPeriodUnits =
-    usedUnits + burnRateUnitsPerDay * daysRemaining;
-  const projectedExceed = projectedEndOfPeriodUnits > budget.amountUnits;
-
-  // Days until exhausted (if burn rate continues)
-  const daysUntilExhausted =
-    burnRateUnitsPerDay > 0
-      ? Math.ceil(remainingUnits / burnRateUnitsPerDay)
-      : undefined;
 
   // Get previous period usage for comparison
   const prevPeriodBoundaries = getBudgetPeriodBoundaries(
