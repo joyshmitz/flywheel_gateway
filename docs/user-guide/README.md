@@ -5,12 +5,13 @@ Welcome to the Flywheel Gateway User Guide. This documentation covers how to use
 ## Table of Contents
 
 1. [Getting Started](./getting-started.md) - Quick setup and first steps
-2. [Dashboard Overview](./dashboard.md) - Understanding the main interface
-3. [Managing Agents](./agents.md) - Creating and configuring agents
-4. [Working with Sessions](./sessions.md) - Session lifecycle and outputs
-5. [Account Management](./accounts.md) - BYOA setup and provider accounts
-6. [Configuration](./configuration.md) - System settings and preferences
-7. [Troubleshooting](./troubleshooting.md) - Common issues and solutions
+2. [Agent Integration Quick Start](./agent-integration-quickstart.md) - API integration guide for developers
+3. [Dashboard Overview](./dashboard.md) - Understanding the main interface
+4. [Managing Agents](./agents.md) - Creating and configuring agents
+5. [Working with Sessions](./sessions.md) - Session lifecycle and outputs
+6. [Account Management](./accounts.md) - BYOA setup and provider accounts
+7. [Configuration](./configuration.md) - System settings and preferences
+8. [Troubleshooting](./troubleshooting.md) - Common issues and solutions
 
 ## Quick Links
 
