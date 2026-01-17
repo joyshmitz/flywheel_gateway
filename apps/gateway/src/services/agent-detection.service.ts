@@ -15,12 +15,7 @@ import { getLogger } from "../middleware/correlation";
 // Types
 // ============================================================================
 
-export type AgentType =
-  | "claude"
-  | "codex"
-  | "gemini"
-  | "aider"
-  | "gh-copilot";
+export type AgentType = "claude" | "codex" | "gemini" | "aider" | "gh-copilot";
 
 export type ToolType = "dcg" | "ubs" | "cass" | "cm" | "bd" | "bv" | "ru";
 
@@ -260,7 +255,7 @@ async function findExecutable(command: string): Promise<string | null> {
  */
 async function getVersion(
   commands: string[],
-  versionFlag: string
+  versionFlag: string,
 ): Promise<string | null> {
   try {
     const args = [...commands, versionFlag];
@@ -292,7 +287,7 @@ async function getVersion(
  * Check authentication status
  */
 async function checkAuth(
-  authCmd: string[]
+  authCmd: string[],
 ): Promise<{ authenticated: boolean; error?: string }> {
   try {
     const proc = Bun.spawn(authCmd, {
@@ -325,7 +320,10 @@ async function checkAuth(
       };
     }
 
-    return { authenticated: false, error: stderr.trim() || "Auth check failed" };
+    return {
+      authenticated: false,
+      error: stderr.trim() || "Auth check failed",
+    };
   } catch (error) {
     return {
       authenticated: false,
@@ -379,16 +377,16 @@ async function detectCLI(def: CLIDefinition): Promise<DetectedCLI> {
       authenticated,
       durationMs,
     },
-    "CLI detected"
+    "CLI detected",
   );
 
   return {
     name: def.name,
     available: true,
     path,
-    version: version ?? undefined,
-    authenticated,
-    authError,
+    ...(version !== undefined && { version }),
+    ...(authenticated !== undefined && { authenticated }),
+    ...(authError !== undefined && { authError }),
     capabilities: def.capabilities,
     detectedAt: new Date(),
     durationMs,
@@ -438,7 +436,7 @@ export async function detectToolCLIs(): Promise<DetectedCLI[]> {
  * Detect all CLIs with caching
  */
 export async function detectAllCLIs(
-  bypassCache = false
+  bypassCache = false,
 ): Promise<DetectionResult> {
   const log = getLogger();
 
@@ -492,7 +490,7 @@ export async function detectAllCLIs(
       authIssues: authIssues.length,
       durationMs: result.durationMs,
     },
-    "CLI detection complete"
+    "CLI detection complete",
   );
 
   return result;
@@ -502,7 +500,7 @@ export async function detectAllCLIs(
  * Detect a specific CLI by name
  */
 export async function detectCLIByName(
-  name: DetectedType
+  name: DetectedType,
 ): Promise<DetectedCLI | null> {
   const def =
     AGENT_CLIS.find((d) => d.name === name) ||

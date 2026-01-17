@@ -82,12 +82,24 @@ const analyticsConfigSchema = z.object({
  * Complete Flywheel configuration schema.
  */
 export const flywheelConfigSchema = z.object({
-  server: serverConfigSchema.default({}),
-  database: databaseConfigSchema.default({}),
-  agent: agentConfigSchema.default({}),
-  security: securityConfigSchema.default({}),
-  websocket: websocketConfigSchema.default({}),
-  analytics: analyticsConfigSchema.default({}),
+  server: serverConfigSchema.optional().transform((v) =>
+    serverConfigSchema.parse(v ?? {}),
+  ),
+  database: databaseConfigSchema.optional().transform((v) =>
+    databaseConfigSchema.parse(v ?? {}),
+  ),
+  agent: agentConfigSchema.optional().transform((v) =>
+    agentConfigSchema.parse(v ?? {}),
+  ),
+  security: securityConfigSchema.optional().transform((v) =>
+    securityConfigSchema.parse(v ?? {}),
+  ),
+  websocket: websocketConfigSchema.optional().transform((v) =>
+    websocketConfigSchema.parse(v ?? {}),
+  ),
+  analytics: analyticsConfigSchema.optional().transform((v) =>
+    analyticsConfigSchema.parse(v ?? {}),
+  ),
 });
 
 export type FlywheelConfig = z.infer<typeof flywheelConfigSchema>;
@@ -136,9 +148,11 @@ function getProjectConfigPath(cwd?: string): string {
 /**
  * Load config from a TypeScript file using Bun's dynamic import.
  */
-async function loadConfigFile(
-  path: string,
-): Promise<{ config: Partial<FlywheelConfig>; loaded: boolean; error?: string }> {
+async function loadConfigFile(path: string): Promise<{
+  config: Partial<FlywheelConfig>;
+  loaded: boolean;
+  error?: string;
+}> {
   if (!existsSync(path)) {
     return { config: {}, loaded: false };
   }
@@ -216,7 +230,11 @@ function applyEnvOverrides(
     result.server = { ...result.server, host: process.env["HOST"] };
   }
   if (process.env["LOG_LEVEL"]) {
-    const level = process.env["LOG_LEVEL"] as "debug" | "info" | "warn" | "error";
+    const level = process.env["LOG_LEVEL"] as
+      | "debug"
+      | "info"
+      | "warn"
+      | "error";
     result.server = { ...result.server, logLevel: level };
   }
 
@@ -233,7 +251,10 @@ function applyEnvOverrides(
 
   // Agent overrides
   if (process.env["DEFAULT_MODEL"]) {
-    result.agent = { ...result.agent, defaultModel: process.env["DEFAULT_MODEL"] };
+    result.agent = {
+      ...result.agent,
+      defaultModel: process.env["DEFAULT_MODEL"],
+    };
   }
   if (process.env["MAX_CONCURRENT_AGENTS"]) {
     result.agent = {
@@ -288,10 +309,9 @@ function applyEnvOverrides(
  * 3. User config (~/.config/flywheel/config.ts)
  * 4. Defaults (lowest)
  */
-export async function loadConfig(options: {
-  cwd?: string;
-  forceReload?: boolean;
-}= {}): Promise<FlywheelConfig> {
+export async function loadConfig(
+  options: { cwd?: string; forceReload?: boolean } = {},
+): Promise<FlywheelConfig> {
   const { cwd, forceReload = false } = options;
   const log = getLogger();
 
@@ -400,7 +420,11 @@ function getOverriddenKeys(config: Partial<FlywheelConfig>): string[] {
   function traverse(obj: Record<string, unknown>, prefix: string) {
     for (const [key, value] of Object.entries(obj)) {
       const path = prefix ? `${prefix}.${key}` : key;
-      if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+      if (
+        typeof value === "object" &&
+        value !== null &&
+        !Array.isArray(value)
+      ) {
         traverse(value as Record<string, unknown>, path);
       } else if (value !== undefined) {
         keys.push(path);
@@ -416,8 +440,4 @@ function getOverriddenKeys(config: Partial<FlywheelConfig>): string[] {
 // Exports
 // ============================================================================
 
-export {
-  getUserConfigDir,
-  getUserConfigPath,
-  getProjectConfigPath,
-};
+export { getUserConfigDir, getUserConfigPath, getProjectConfigPath };
