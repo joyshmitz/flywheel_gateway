@@ -120,6 +120,12 @@ export type MessageType =
   // System
   | "health.ping"
   | "error"
+  // Processes (pt integration)
+  | "processes.scan_result"
+  | "processes.terminate_result"
+  | "processes.bulk_terminate_result"
+  | "processes.agent_scan_result"
+  | "processes.agent_cleanup_result"
   // Context Health
   | "context.warning"
   | "context.compacted"

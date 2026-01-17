@@ -123,6 +123,22 @@ const KNOWN_UTILITIES: Array<
     installCommand: "go install github.com/Dicklesworthstone/slb@latest",
     checkCommand: "slb --version",
   },
+  {
+    name: "ms",
+    description: "Local-first knowledge management with semantic search",
+    version: "1.0.0",
+    installCommand:
+      "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/meta_skill/main/install.sh | bash",
+    checkCommand: "ms --version",
+  },
+  {
+    name: "pt",
+    description: "Find and terminate stuck/zombie processes",
+    version: "1.0.0",
+    installCommand:
+      "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/process_triage/main/install.sh | bash",
+    checkCommand: "pt --version",
+  },
 ];
 
 // Cache for utility status (invalidated after 5 minutes)

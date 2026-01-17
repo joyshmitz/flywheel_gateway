@@ -42,7 +42,8 @@ export type SystemChannel =
   | { type: "system:fleet" }
   | { type: "system:supervisor" }
   | { type: "system:jobs" }
-  | { type: "system:context" };
+  | { type: "system:context" }
+  | { type: "system:processes" };
 
 /**
  * Session-scoped channels for per-session subscriptions.
@@ -103,6 +104,7 @@ export type ChannelTypePrefix =
   | "system:supervisor"
   | "system:jobs"
   | "system:context"
+  | "system:processes"
   | "session:job"
   | "session:health"
   | "fleet:repos"
@@ -147,6 +149,7 @@ export function channelToString(channel: Channel): string {
     case "system:supervisor":
     case "system:jobs":
     case "system:context":
+    case "system:processes":
       return channel.type;
 
     case "session:job":
@@ -204,6 +207,9 @@ export function parseChannel(str: string): Channel | undefined {
   }
   if (str === "system:context") {
     return { type: "system:context" };
+  }
+  if (str === "system:processes") {
+    return { type: "system:processes" };
   }
 
   // Fleet channels (some with IDs)
@@ -341,6 +347,7 @@ export function getChannelResourceId(channel: Channel): string | undefined {
     case "system:supervisor":
     case "system:jobs":
     case "system:context":
+    case "system:processes":
       return undefined;
     case "session:job":
     case "session:health":
