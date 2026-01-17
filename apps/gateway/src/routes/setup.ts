@@ -118,7 +118,7 @@ setup.get("/tools/:name", async (c) => {
     const info = getToolInfo(name);
 
     if (!info) {
-      return sendNotFound(c, "Tool not found");
+      return sendNotFound(c, "tool", name);
     }
 
     // Also get current detection status
@@ -311,7 +311,7 @@ setup.post("/verify/:name", async (c) => {
     const detection = await service.detect(name);
 
     if (!detection) {
-      return sendNotFound(c, "Unknown tool");
+      return sendNotFound(c, "tool", name);
     }
 
     return sendResource(c, "verification_result", {

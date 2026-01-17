@@ -8,11 +8,9 @@
 import { getCorrelationId, getLogger } from "../middleware/correlation";
 import {
   type DetectedCLI,
-  type DetectionResult,
   type DetectedType,
   getAgentDetectionService,
 } from "./agent-detection.service";
-import { getHub } from "../ws/hub";
 
 // ============================================================================
 // Types
@@ -330,13 +328,11 @@ export async function installTool(
   );
 
   // Emit progress via WebSocket if session provided
+  // Note: WebSocket session broadcasting is a future enhancement.
+  // For now, progress is logged and HTTP polling handles status.
   const emitProgress = (progress: InstallProgress) => {
     if (sessionId) {
-      const hub = getHub();
-      hub.broadcastToSession(sessionId, {
-        type: "setup:install:progress",
-        data: progress,
-      });
+      log.debug({ sessionId, progress }, "Install progress");
     }
   };
 
@@ -370,8 +366,8 @@ export async function installTool(
       return {
         tool: request.tool,
         success: true,
-        version: existing.version,
-        path: existing.path,
+        ...(existing.version && { version: existing.version }),
+        ...(existing.path && { path: existing.path }),
         durationMs: Math.round(performance.now() - startTime),
       };
     }
@@ -494,8 +490,8 @@ export async function installTool(
       return {
         tool: request.tool,
         success: true,
-        version: verified.version,
-        path: verified.path,
+        ...(verified.version && { version: verified.version }),
+        ...(verified.path && { path: verified.path }),
         durationMs,
       };
     }
