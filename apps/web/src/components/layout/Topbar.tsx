@@ -1,8 +1,77 @@
 import { useRouterState } from "@tanstack/react-router";
-import { MoonStar, Sun, ToggleLeft } from "lucide-react";
+import {
+  MoonStar,
+  RefreshCw,
+  Sun,
+  ToggleLeft,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
 
+import { useWebSocket, useWebSocketState } from "../../lib/websocket-context";
 import { useUiStore } from "../../stores/ui";
 import { StatusPill } from "../ui/StatusPill";
+
+/**
+ * WebSocket connection status indicator.
+ * Shows connection state with visual feedback and manual reconnect option.
+ */
+function ConnectionStatusIndicator() {
+  const { connected, state, connectionHint } = useWebSocketState();
+  const { reconnect } = useWebSocket();
+
+  const tone = (() => {
+    switch (state) {
+      case "connected":
+        return "positive" as const;
+      case "connecting":
+      case "reconnecting":
+        return "warning" as const;
+      case "failed":
+        return "critical" as const;
+      default:
+        return "muted" as const;
+    }
+  })();
+
+  const icon = (() => {
+    switch (state) {
+      case "connected":
+        return <Wifi size={14} />;
+      case "connecting":
+      case "reconnecting":
+        return <RefreshCw size={14} className="animate-spin" />;
+      default:
+        return <WifiOff size={14} />;
+    }
+  })();
+
+  const canReconnect = state === "failed" || state === "disconnected";
+  const statusPill = (
+    <StatusPill tone={tone} title={connectionHint}>
+      {icon}
+      <span className="hidden sm:inline">
+        {connected ? "Live" : connectionHint}
+      </span>
+    </StatusPill>
+  );
+
+  // Wrap in button when clickable for manual reconnect
+  if (canReconnect) {
+    return (
+      <button
+        type="button"
+        onClick={reconnect}
+        className="appearance-none bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity"
+        title="Click to reconnect"
+      >
+        {statusPill}
+      </button>
+    );
+  }
+
+  return statusPill;
+}
 
 /**
  * Hamburger menu button for mobile.
@@ -50,6 +119,7 @@ export function Topbar() {
         </div>
       </div>
       <div className="topbar__actions">
+        <ConnectionStatusIndicator />
         <StatusPill tone={mockMode ? "positive" : "muted"}>
           <ToggleLeft size={16} />
           {mockMode ? "Mock mode on" : "Mock mode off"}
