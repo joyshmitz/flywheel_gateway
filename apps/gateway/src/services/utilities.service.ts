@@ -100,6 +100,14 @@ const KNOWN_UTILITIES: Array<
       "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/chat_shared_conversation_to_file/main/install.sh | bash",
     checkCommand: "csctf --version",
   },
+  {
+    name: "jfp",
+    description: "Battle-tested prompt library for AI agents",
+    version: "1.0.0",
+    installCommand:
+      "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/jeffreysprompts/main/install.sh | bash",
+    checkCommand: "jfp --version",
+  },
 ];
 
 // Cache for utility status (invalidated after 5 minutes)
