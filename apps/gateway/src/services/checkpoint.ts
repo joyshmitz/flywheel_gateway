@@ -949,6 +949,9 @@ export async function importCheckpoint(
 async function computeCheckpointHash(checkpoint: Checkpoint): Promise<string> {
   // Use a stable stringify function (sort keys)
   const stableStringify = (obj: unknown): string => {
+    if (obj instanceof Date) {
+      return JSON.stringify(obj.toISOString());
+    }
     if (typeof obj !== "object" || obj === null) {
       return JSON.stringify(obj);
     }
@@ -956,10 +959,13 @@ async function computeCheckpointHash(checkpoint: Checkpoint): Promise<string> {
       return `[${obj.map(stableStringify).join(",")}]`;
     }
     const keys = Object.keys(obj as Record<string, unknown>).sort();
-    const parts = keys.map((key) => {
+    const parts: string[] = [];
+    for (const key of keys) {
       const val = (obj as Record<string, unknown>)[key];
-      return `${JSON.stringify(key)}:${stableStringify(val)}`;
-    });
+      if (val !== undefined) {
+        parts.push(`${JSON.stringify(key)}:${stableStringify(val)}`);
+      }
+    }
     return `{${parts.join(",")}}`;
   };
 
