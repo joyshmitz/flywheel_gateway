@@ -17,11 +17,22 @@ import type { SafetyCategory, SafetyRule } from "./safety-rules.engine";
  */
 function generateId(prefix: string, length = 12): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-  const randomBytes = new Uint8Array(length);
-  crypto.getRandomValues(randomBytes);
+  const charLen = chars.length;
+  const maxByte = 256 - (256 % charLen);
   let result = "";
-  for (let i = 0; i < length; i++) {
-    result += chars[randomBytes[i]! % chars.length];
+  
+  while (result.length < length) {
+    // Generate a buffer with some overhead to account for rejected bytes
+    const bufSize = Math.ceil((length - result.length) * 1.2); 
+    const randomBytes = new Uint8Array(bufSize);
+    crypto.getRandomValues(randomBytes);
+    
+    for (let i = 0; i < bufSize && result.length < length; i++) {
+      const byte = randomBytes[i]!;
+      if (byte < maxByte) {
+        result += chars[byte % charLen];
+      }
+    }
   }
   return `${prefix}_${result}`;
 }
