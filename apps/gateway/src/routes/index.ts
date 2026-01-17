@@ -31,6 +31,7 @@ import { prompts } from "./prompts";
 import { reservations } from "./reservations";
 import { ru } from "./ru";
 import { scanner } from "./scanner";
+import { setup } from "./setup";
 import { supervisor } from "./supervisor";
 import { utilities } from "./utilities";
 
@@ -64,6 +65,7 @@ routes.route("/sessions", checkpoints);
 routes.route("/sessions", context);
 routes.route("/ru", ru);
 routes.route("/scanner", scanner);
+routes.route("/setup", setup);
 routes.route("/supervisor", supervisor);
 routes.route("/utilities", utilities);
 
