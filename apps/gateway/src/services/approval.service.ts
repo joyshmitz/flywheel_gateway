@@ -484,7 +484,7 @@ export async function listApprovals(
     );
   }
 
-  const query = db
+  let query = db
     .select()
     .from(approvalRequests)
     .where(and(...conditions))
@@ -500,7 +500,7 @@ export async function listApprovals(
     );
 
   if (options?.limit) {
-    query.limit(options.limit);
+    query = query.limit(options.limit) as typeof query;
   }
 
   const rows = await query;
