@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 
 type CompilerStats = {
@@ -121,6 +122,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [
+      tailwindcss(),
       react(reactCompilerBabelConfig),
       compilerStatsPlugin(compilerStats, compilerEnabled),
     ],
