@@ -15,6 +15,97 @@
 import type { AIHintSeverity } from "../errors/types";
 
 // ============================================================================
+// Error Category Type
+// ============================================================================
+
+/**
+ * Semantic categories for error classification.
+ * Used to help clients understand the domain of the error and route to
+ * appropriate handling logic.
+ *
+ * Categories are derived from the error code prefix (e.g., AGENT_NOT_FOUND → "agent")
+ * but can also be explicitly specified.
+ */
+export type ErrorCategory =
+  | "agent" // Agent lifecycle and operation errors
+  | "spawn" // Agent spawn failures
+  | "driver" // Driver initialization and communication errors
+  | "websocket" // WebSocket connection errors
+  | "auth" // Authentication and authorization errors
+  | "rate_limit" // Rate limiting and quota errors
+  | "account" // Account management errors (BYOA)
+  | "provisioning" // Provisioning workflow errors
+  | "reservation" // File reservation conflicts
+  | "checkpoint" // Checkpoint and restore errors
+  | "mail" // Agent mail/messaging errors
+  | "bead" // Beads issue tracking errors
+  | "scanner" // Code scanner errors
+  | "daemon" // Background daemon errors
+  | "validation" // Request validation errors
+  | "safety" // Safety and approval errors (DCG)
+  | "fleet" // Fleet management errors
+  | "system"; // Internal system errors
+
+/**
+ * Derive error category from error code prefix.
+ * Falls back to "system" for unknown patterns.
+ */
+export function deriveErrorCategory(code: string): ErrorCategory {
+  const upperCode = code.toUpperCase();
+
+  if (upperCode.startsWith("AGENT_")) return "agent";
+  if (upperCode.startsWith("SPAWN_")) return "spawn";
+  if (upperCode.startsWith("DRIVER_")) return "driver";
+  if (upperCode.startsWith("WS_")) return "websocket";
+  if (upperCode.startsWith("AUTH_")) return "auth";
+  if (
+    upperCode.startsWith("RATE_") ||
+    upperCode.includes("QUOTA") ||
+    upperCode.includes("LIMIT")
+  )
+    return "rate_limit";
+  if (upperCode.startsWith("ACCOUNT_") || upperCode.includes("BYOA"))
+    return "account";
+  if (upperCode.startsWith("PROVISIONING_")) return "provisioning";
+  if (upperCode.startsWith("RESERVATION_")) return "reservation";
+  if (upperCode.startsWith("CHECKPOINT_") || upperCode.includes("RESTORE"))
+    return "checkpoint";
+  if (
+    upperCode.includes("RECIPIENT") ||
+    upperCode.includes("CONTACT") ||
+    upperCode.includes("MESSAGE")
+  )
+    return "mail";
+  if (upperCode.startsWith("BEAD_") || upperCode.includes("DEPENDENCY"))
+    return "bead";
+  if (upperCode.includes("SCAN")) return "scanner";
+  if (upperCode.includes("DAEMON")) return "daemon";
+  if (
+    upperCode.includes("INVALID") ||
+    upperCode.includes("MISSING") ||
+    upperCode.includes("VALIDATION")
+  )
+    return "validation";
+  if (
+    upperCode.includes("APPROVAL") ||
+    upperCode.includes("SAFETY") ||
+    upperCode.includes("DCG")
+  )
+    return "safety";
+  if (upperCode.includes("FLEET") || upperCode.includes("SWEEP"))
+    return "fleet";
+  if (
+    upperCode.includes("SYSTEM") ||
+    upperCode.includes("INTERNAL") ||
+    upperCode.includes("NOT_IMPLEMENTED")
+  )
+    return "system";
+
+  // Default fallback
+  return "system";
+}
+
+// ============================================================================
 // Object Type Constants
 // ============================================================================
 
@@ -216,13 +307,35 @@ export interface ApiListResponse<T> {
 // ============================================================================
 
 /**
- * Error details within an error response.
- * Provides structured information for both humans and AI agents.
+ * StructuredError: Error details within an error response.
+ *
+ * This interface defines the canonical structure for API errors in Flywheel Gateway.
+ * It provides structured information for both humans and AI agents, enabling:
+ * - Programmatic error handling via `code` and `category`
+ * - Recovery guidance via `recoverable`, `hint`, and `alternative`
+ * - Debugging via `requestId` (in the parent ApiErrorResponse)
+ *
+ * @example
+ * ```typescript
+ * // Example structured error for an agent not found
+ * const error: ApiError = {
+ *   code: "AGENT_NOT_FOUND",
+ *   message: "Agent 'agent_abc123' not found",
+ *   category: "agent",
+ *   recoverable: false,
+ *   severity: "terminal",
+ *   hint: "List active agents and use a valid agent ID.",
+ *   alternative: "Spawn a new agent if the intended one was terminated."
+ * };
+ * ```
  */
 export interface ApiError {
   /**
    * Error code from the error taxonomy.
    * Format: CATEGORY_SPECIFIC (e.g., AGENT_NOT_FOUND, VALIDATION_FAILED)
+   *
+   * Codes follow a consistent pattern where the prefix indicates the domain
+   * (AGENT_, SPAWN_, AUTH_, etc.) and the suffix describes the specific error.
    */
   code: string;
 
@@ -231,6 +344,28 @@ export interface ApiError {
    * Should be suitable for display to end users.
    */
   message: string;
+
+  /**
+   * Semantic error category for client-side routing.
+   * Derived from the error code prefix (e.g., AGENT_NOT_FOUND → "agent").
+   *
+   * Categories help clients implement domain-specific error handling
+   * (e.g., auth errors trigger re-authentication, validation errors highlight form fields).
+   */
+  category?: ErrorCategory;
+
+  /**
+   * Whether this error can be recovered from by the client.
+   *
+   * - `true`: The client can fix the request and retry (e.g., fix validation errors, re-authenticate)
+   * - `false`: The error is terminal and requires a different approach (e.g., resource doesn't exist)
+   *
+   * This is derived from severity but provided as a convenience boolean:
+   * - `severity: "terminal"` → `recoverable: false`
+   * - `severity: "recoverable"` → `recoverable: true`
+   * - `severity: "retry"` → `recoverable: true` (transient, same request may succeed)
+   */
+  recoverable?: boolean;
 
   /**
    * Error severity for AI agents.
@@ -243,12 +378,17 @@ export interface ApiError {
   /**
    * Suggested action to resolve the error.
    * Written for AI agents to understand next steps.
+   *
+   * This should be actionable and specific to the error.
+   * Example: "Verify the agent ID exists or create a new agent."
    */
   hint?: string;
 
   /**
    * Alternative approach if the current request cannot succeed.
    * Provides guidance on different paths to achieve the goal.
+   *
+   * Example: "List available agents with GET /agents"
    */
   alternative?: string;
 
@@ -260,13 +400,19 @@ export interface ApiError {
 
   /**
    * Specific field/parameter that caused the error.
-   * Useful for validation errors.
+   * Useful for validation errors to highlight the problematic field.
    */
   param?: string;
 
   /**
    * Additional error details.
    * Structure varies by error type.
+   *
+   * Common details include:
+   * - `validation.fields`: Array of field-level validation errors
+   * - `resourceType`: Type of resource that caused the error
+   * - `resourceId`: ID of the resource that caused the error
+   * - `retryAfterMs`: Milliseconds to wait before retrying (for rate limits)
    */
   details?: Record<string, unknown>;
 }

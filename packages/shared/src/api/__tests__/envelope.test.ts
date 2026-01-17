@@ -7,6 +7,8 @@ import {
   type ApiErrorResponse,
   type ApiListResponse,
   type ApiResponse,
+  deriveErrorCategory,
+  type ErrorCategory,
   isApiErrorResponse,
   isApiListResponse,
   isApiResponse,
@@ -402,5 +404,120 @@ describe("Type Compatibility", () => {
     expect(terminalError.error.severity).toBe("terminal");
     expect(recoverableError.error.severity).toBe("recoverable");
     expect(retryError.error.severity).toBe("retry");
+  });
+
+  it("should allow category and recoverable fields in ApiError", () => {
+    const error: ApiErrorResponse = {
+      object: "error",
+      error: {
+        code: "AGENT_NOT_FOUND",
+        message: "Agent not found",
+        category: "agent",
+        recoverable: false,
+        severity: "terminal",
+        hint: "Check the agent ID",
+      },
+      requestId: "req_abc123",
+      timestamp: "2024-01-15T10:30:00.000Z",
+    };
+
+    expect(error.error.category).toBe("agent");
+    expect(error.error.recoverable).toBe(false);
+  });
+});
+
+describe("deriveErrorCategory", () => {
+  it("should derive 'agent' category from AGENT_ codes", () => {
+    expect(deriveErrorCategory("AGENT_NOT_FOUND")).toBe("agent");
+    expect(deriveErrorCategory("AGENT_ALREADY_EXISTS")).toBe("agent");
+    expect(deriveErrorCategory("AGENT_TERMINATED")).toBe("agent");
+  });
+
+  it("should derive 'spawn' category from SPAWN_ codes", () => {
+    expect(deriveErrorCategory("SPAWN_FAILED")).toBe("spawn");
+    expect(deriveErrorCategory("SPAWN_QUOTA_EXCEEDED")).toBe("spawn");
+  });
+
+  it("should derive 'driver' category from DRIVER_ codes", () => {
+    expect(deriveErrorCategory("DRIVER_NOT_FOUND")).toBe("driver");
+    expect(deriveErrorCategory("DRIVER_INIT_FAILED")).toBe("driver");
+  });
+
+  it("should derive 'websocket' category from WS_ codes", () => {
+    expect(deriveErrorCategory("WS_CONNECTION_FAILED")).toBe("websocket");
+    expect(deriveErrorCategory("WS_RATE_LIMITED")).toBe("websocket");
+  });
+
+  it("should derive 'auth' category from AUTH_ codes", () => {
+    expect(deriveErrorCategory("AUTH_TOKEN_INVALID")).toBe("auth");
+    expect(deriveErrorCategory("AUTH_TOKEN_EXPIRED")).toBe("auth");
+  });
+
+  it("should derive 'rate_limit' category from rate/quota codes", () => {
+    expect(deriveErrorCategory("RATE_LIMIT_EXCEEDED")).toBe("rate_limit");
+    expect(deriveErrorCategory("RATE_LIMITED")).toBe("rate_limit");
+    expect(deriveErrorCategory("QUOTA_EXCEEDED")).toBe("rate_limit");
+  });
+
+  it("should derive 'account' category from ACCOUNT_ and BYOA codes", () => {
+    expect(deriveErrorCategory("ACCOUNT_NOT_FOUND")).toBe("account");
+    expect(deriveErrorCategory("BYOA_REQUIRED")).toBe("account");
+  });
+
+  it("should derive 'validation' category from validation-related codes", () => {
+    expect(deriveErrorCategory("VALIDATION_FAILED")).toBe("validation");
+    expect(deriveErrorCategory("INVALID_REQUEST")).toBe("validation");
+    expect(deriveErrorCategory("MISSING_REQUIRED_FIELD")).toBe("validation");
+  });
+
+  it("should derive 'safety' category from DCG/approval codes", () => {
+    expect(deriveErrorCategory("DCG_BLOCKED")).toBe("safety");
+    expect(deriveErrorCategory("APPROVAL_REQUIRED")).toBe("safety");
+    expect(deriveErrorCategory("SAFETY_VIOLATION")).toBe("safety");
+  });
+
+  it("should derive 'system' category from internal/system codes", () => {
+    expect(deriveErrorCategory("SYSTEM_UNAVAILABLE")).toBe("system");
+    expect(deriveErrorCategory("INTERNAL_ERROR")).toBe("system");
+    expect(deriveErrorCategory("NOT_IMPLEMENTED")).toBe("system");
+  });
+
+  it("should default to 'system' for unknown codes", () => {
+    expect(deriveErrorCategory("UNKNOWN_ERROR")).toBe("system");
+    expect(deriveErrorCategory("CUSTOM_ERROR")).toBe("system");
+  });
+
+  it("should be case-insensitive", () => {
+    expect(deriveErrorCategory("agent_not_found")).toBe("agent");
+    expect(deriveErrorCategory("Agent_Not_Found")).toBe("agent");
+  });
+});
+
+describe("ErrorCategory type", () => {
+  it("should include all expected categories", () => {
+    // Verify that all documented categories exist by assigning them
+    const categories: ErrorCategory[] = [
+      "agent",
+      "spawn",
+      "driver",
+      "websocket",
+      "auth",
+      "rate_limit",
+      "account",
+      "provisioning",
+      "reservation",
+      "checkpoint",
+      "mail",
+      "bead",
+      "scanner",
+      "daemon",
+      "validation",
+      "safety",
+      "fleet",
+      "system",
+    ];
+
+    // If any category doesn't exist, TypeScript would error
+    expect(categories.length).toBe(18);
   });
 });

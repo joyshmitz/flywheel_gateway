@@ -12,6 +12,9 @@ export {
   // Response envelope types
   type ApiResponse,
   type ApiResponseUnion,
+  // Error category types and utilities
+  deriveErrorCategory,
+  type ErrorCategory,
   isApiErrorResponse,
   isApiListResponse,
   // Type guards

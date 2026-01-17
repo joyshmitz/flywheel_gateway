@@ -8,11 +8,13 @@
 
 import { AI_HINTS } from "../errors/ai-hints";
 import type { ErrorCode } from "../errors/codes";
-import type {
-  ApiError,
-  ApiErrorResponse,
-  ApiListResponse,
-  ApiResponse,
+import {
+  deriveErrorCategory,
+  type ApiError,
+  type ApiErrorResponse,
+  type ApiListResponse,
+  type ApiResponse,
+  type ErrorCategory,
 } from "./envelope";
 
 // ============================================================================
@@ -189,6 +191,10 @@ export interface WrapErrorOptions {
   alternative?: string;
   /** Example of valid input/usage that would succeed */
   example?: unknown;
+  /** Override category (auto-derived from code if not provided) */
+  category?: ErrorCategory;
+  /** Override recoverable flag (auto-derived from severity if not provided) */
+  recoverable?: boolean;
 }
 
 /**
@@ -220,14 +226,26 @@ export function wrapError(options: WrapErrorOptions): ApiErrorResponse {
   // Look up AI hints for known error codes
   const aiHint = AI_HINTS[options.code as ErrorCode];
 
-  // Build error object
+  // Determine severity (from options, AI hint, or default)
+  const severity = options.severity ?? aiHint?.severity;
+
+  // Build error object with required fields
   const error: ApiError = {
     code: options.code,
     message: options.message,
   };
 
-  // Add severity (from options, AI hint, or default)
-  const severity = options.severity ?? aiHint?.severity;
+  // Add category (from options or derived from code)
+  const category = options.category ?? deriveErrorCategory(options.code);
+  error.category = category;
+
+  // Add recoverable flag (from options or derived from severity)
+  // terminal → not recoverable, recoverable/retry → recoverable
+  const recoverable =
+    options.recoverable ?? (severity ? severity !== "terminal" : true);
+  error.recoverable = recoverable;
+
+  // Add severity
   if (severity) {
     error.severity = severity;
   }

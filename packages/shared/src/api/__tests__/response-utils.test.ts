@@ -219,6 +219,100 @@ describe("wrapError", () => {
 
     expect(response.error.alternative).toBe("Try a different approach");
   });
+
+  it("should auto-derive category from error code", () => {
+    const agentError = wrapError({
+      code: "AGENT_NOT_FOUND",
+      message: "Agent not found",
+    });
+    expect(agentError.error.category).toBe("agent");
+
+    const authError = wrapError({
+      code: "AUTH_TOKEN_EXPIRED",
+      message: "Token expired",
+    });
+    expect(authError.error.category).toBe("auth");
+
+    const validationError = wrapError({
+      code: "VALIDATION_FAILED",
+      message: "Validation failed",
+    });
+    expect(validationError.error.category).toBe("validation");
+  });
+
+  it("should allow overriding category", () => {
+    const response = wrapError({
+      code: "CUSTOM_ERROR",
+      message: "Custom error",
+      category: "fleet",
+    });
+
+    expect(response.error.category).toBe("fleet");
+  });
+
+  it("should default category to 'system' for unknown codes", () => {
+    const response = wrapError({
+      code: "UNKNOWN_ERROR",
+      message: "Unknown error",
+    });
+
+    expect(response.error.category).toBe("system");
+  });
+
+  it("should auto-derive recoverable=false from terminal severity", () => {
+    const response = wrapError({
+      code: "AGENT_NOT_FOUND",
+      message: "Agent not found",
+    });
+
+    expect(response.error.severity).toBe("terminal");
+    expect(response.error.recoverable).toBe(false);
+  });
+
+  it("should auto-derive recoverable=true from recoverable severity", () => {
+    const response = wrapError({
+      code: "AGENT_ALREADY_EXISTS",
+      message: "Agent already exists",
+    });
+
+    expect(response.error.severity).toBe("recoverable");
+    expect(response.error.recoverable).toBe(true);
+  });
+
+  it("should auto-derive recoverable=true from retry severity", () => {
+    const response = wrapError({
+      code: "RATE_LIMIT_EXCEEDED",
+      message: "Rate limit exceeded",
+    });
+
+    expect(response.error.severity).toBe("retry");
+    expect(response.error.recoverable).toBe(true);
+  });
+
+  it("should allow overriding recoverable", () => {
+    // Override to false even though severity would suggest recoverable
+    const response = wrapError({
+      code: "CUSTOM_ERROR",
+      message: "Custom error",
+      severity: "recoverable",
+      recoverable: false,
+    });
+
+    expect(response.error.severity).toBe("recoverable");
+    expect(response.error.recoverable).toBe(false);
+  });
+
+  it("should default recoverable to true when no severity", () => {
+    const response = wrapError({
+      code: "UNKNOWN_ERROR",
+      message: "Unknown error",
+    });
+
+    // Unknown codes don't have AI hints, so no severity
+    expect(response.error.severity).toBeUndefined();
+    // Default to recoverable when no severity info
+    expect(response.error.recoverable).toBe(true);
+  });
 });
 
 describe("wrapCreated", () => {
