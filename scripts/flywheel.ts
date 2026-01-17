@@ -572,6 +572,119 @@ async function openTarget(target: string): Promise<void> {
 }
 
 // ============================================================================
+// Update
+// ============================================================================
+
+interface UpdateResult {
+  success: boolean;
+  version?: string;
+  error?: string;
+}
+
+async function runUpdate(options: { check: boolean }): Promise<UpdateResult> {
+  const installerUrl =
+    "https://raw.githubusercontent.com/Dicklesworthstone/flywheel_gateway/main/scripts/install.sh";
+
+  if (options.check) {
+    // Just check for updates, don't install
+    console.log(colorize("  Checking for updates...", "cyan"));
+
+    try {
+      // Get current version
+      const currentVersion = await getCurrentVersion();
+
+      // Get latest version from GitHub
+      const response = await fetch(
+        "https://api.github.com/repos/Dicklesworthstone/flywheel_gateway/releases/latest",
+      );
+      if (!response.ok) {
+        return { success: false, error: "Could not fetch latest version" };
+      }
+      const data = (await response.json()) as { tag_name: string };
+      const latestVersion = data.tag_name;
+
+      if (currentVersion === latestVersion) {
+        console.log(
+          colorize(`  ✓ Already up to date (${currentVersion})`, "green"),
+        );
+        return { success: true, version: currentVersion };
+      }
+
+      console.log(`  Current version: ${currentVersion}`);
+      console.log(`  Latest version:  ${latestVersion}`);
+      console.log("");
+      console.log(
+        `  Run ${colorize("flywheel update", "cyan")} to install the latest version.`,
+      );
+      return { success: true, version: latestVersion };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  // Run the installer with --easy-mode for idempotent update
+  console.log(colorize("  Flywheel Gateway - Update", "cyan"));
+  console.log(colorize("  ──────────────────────────────", "gray"));
+  console.log("");
+  console.log("  Re-running installer to update to the latest version...");
+  console.log("");
+
+  try {
+    // Download and execute the installer
+    const proc = Bun.spawn(
+      ["bash", "-c", `curl -fsSL "${installerUrl}" | bash -s -- --easy-mode`],
+      {
+        stdout: "inherit",
+        stderr: "inherit",
+      },
+    );
+
+    const exitCode = await proc.exited;
+
+    if (exitCode === 0) {
+      return { success: true };
+    }
+
+    return { success: false, error: `Installer exited with code ${exitCode}` };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+async function getCurrentVersion(): Promise<string> {
+  // Try to get version from package.json
+  try {
+    const pkgPath = join(process.cwd(), "package.json");
+    if (existsSync(pkgPath)) {
+      const pkg = await Bun.file(pkgPath).json();
+      if (pkg.version) {
+        return `v${pkg.version}`;
+      }
+    }
+  } catch {
+    // Ignore
+  }
+
+  // Try git tag
+  try {
+    const result = await $`git describe --tags --abbrev=0 2>/dev/null`.text();
+    if (result.trim()) {
+      return result.trim();
+    }
+  } catch {
+    // Ignore
+  }
+
+  return "unknown";
+}
+
+// ============================================================================
 // Help
 // ============================================================================
 
@@ -585,11 +698,13 @@ ${colorize("Usage:", "yellow")}
 ${colorize("Commands:", "yellow")}
   doctor         Run readiness checks
   status         Show service status
+  update         Update to the latest version
   open [target]  Open dashboard/docs in browser
 
 ${colorize("Options:", "yellow")}
   --json         Output as JSON for automation
   --verbose, -v  Show detailed output
+  --check        Check for updates without installing (for update command)
   --help, -h     Show this help
 
 ${colorize("Open Targets:", "yellow")}
@@ -602,6 +717,8 @@ ${colorize("Open Targets:", "yellow")}
 ${colorize("Examples:", "yellow")}
   flywheel doctor              # Check gateway readiness
   flywheel status --json       # Get status as JSON
+  flywheel update              # Update to latest version
+  flywheel update --check      # Check for updates
   flywheel open dashboard      # Open web dashboard
   flywheel open docs           # Open API docs
 
@@ -622,6 +739,7 @@ async function main() {
   const jsonOutput = args.includes("--json") || args.includes("--robot");
   const verbose = args.includes("--verbose") || args.includes("-v");
   const help = args.includes("--help") || args.includes("-h");
+  const checkOnly = args.includes("--check");
 
   if (help || !command) {
     showHelp();
@@ -649,6 +767,15 @@ async function main() {
       }
       const anyRunning = report.services.some((s) => s.running);
       process.exit(anyRunning ? 0 : 1);
+      break;
+    }
+
+    case "update": {
+      const result = await runUpdate({ check: checkOnly });
+      if (jsonOutput) {
+        console.log(JSON.stringify(result, null, 2));
+      }
+      process.exit(result.success ? 0 : 1);
       break;
     }
 

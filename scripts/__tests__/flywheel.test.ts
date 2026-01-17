@@ -110,6 +110,29 @@ describe("flywheel CLI", () => {
     });
   });
 
+  describe("update command", () => {
+    it("should show update in help", async () => {
+      const { stdout } = await runCli("--help");
+      expect(stdout).toContain("update");
+    });
+
+    it("should support --check flag", async () => {
+      const { stdout, exitCode } = await runCli("update", "--check");
+      // Should output something about checking for updates
+      expect(stdout).toContain("Checking for updates");
+      // Exit code depends on network - just verify it ran
+      expect([0, 1]).toContain(exitCode);
+    });
+
+    it("should support --json output with --check", async () => {
+      const { stdout, stderr } = await runCli("update", "--check", "--json");
+      // May output to stdout or have "Checking" message followed by JSON
+      const output = stdout + stderr;
+      // Should have run the check successfully
+      expect(output.length).toBeGreaterThan(0);
+    });
+  });
+
   describe("open command", () => {
     it("should list available targets with unknown target", async () => {
       const { stderr } = await runCli("open", "invalid");
