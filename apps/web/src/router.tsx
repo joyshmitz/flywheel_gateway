@@ -1,3 +1,11 @@
+/**
+ * Application Router with lazy-loaded routes.
+ *
+ * Uses React.lazy for code splitting and TanStack Router's pendingComponent
+ * for skeleton loading states during route transitions.
+ */
+
+import { lazy, Suspense } from "react";
 import {
   createRootRoute,
   createRoute,
@@ -5,100 +13,168 @@ import {
 } from "@tanstack/react-router";
 
 import { Shell } from "./components/layout/Shell";
-import { AccountsPage } from "./pages/Accounts";
-import { AgentsPage } from "./pages/Agents";
-import { BeadsPage } from "./pages/Beads";
-import { CollaborationGraphPage } from "./pages/CollaborationGraph";
-import { CostAnalyticsPage } from "./pages/CostAnalytics";
-import { DashboardPage } from "./pages/Dashboard";
-import { DashboardsPage } from "./pages/Dashboards";
-import { DCGPage } from "./pages/DCG";
-import { FleetPage } from "./pages/Fleet";
+import {
+  AccountsSkeleton,
+  AgentsSkeleton,
+  BeadsSkeleton,
+  CollaborationGraphSkeleton,
+  CostAnalyticsSkeleton,
+  DashboardsSkeleton,
+  DashboardSkeleton,
+  DCGSkeleton,
+  FleetSkeleton,
+  PageSkeleton,
+  PipelinesSkeleton,
+  SettingsSkeleton,
+  VelocitySkeleton,
+} from "./components/skeletons";
+
+// ============================================================================
+// Lazy-loaded Page Components
+// ============================================================================
+
+const DashboardPage = lazy(() =>
+  import("./pages/Dashboard").then((m) => ({ default: m.DashboardPage }))
+);
+const AgentsPage = lazy(() =>
+  import("./pages/Agents").then((m) => ({ default: m.AgentsPage }))
+);
+const BeadsPage = lazy(() =>
+  import("./pages/Beads").then((m) => ({ default: m.BeadsPage }))
+);
+const AccountsPage = lazy(() =>
+  import("./pages/Accounts").then((m) => ({ default: m.AccountsPage }))
+);
+const SettingsPage = lazy(() =>
+  import("./pages/Settings").then((m) => ({ default: m.SettingsPage }))
+);
+const DashboardsPage = lazy(() =>
+  import("./pages/Dashboards").then((m) => ({ default: m.DashboardsPage }))
+);
+const DCGPage = lazy(() =>
+  import("./pages/DCG").then((m) => ({ default: m.DCGPage }))
+);
+const FleetPage = lazy(() =>
+  import("./pages/Fleet").then((m) => ({ default: m.FleetPage }))
+);
+const PipelinesPage = lazy(() =>
+  import("./pages/Pipelines").then((m) => ({ default: m.PipelinesPage }))
+);
+const VelocityPage = lazy(() =>
+  import("./pages/Velocity").then((m) => ({ default: m.VelocityPage }))
+);
+const CollaborationGraphPage = lazy(() =>
+  import("./pages/CollaborationGraph").then((m) => ({
+    default: m.CollaborationGraphPage,
+  }))
+);
+const CostAnalyticsPage = lazy(() =>
+  import("./pages/CostAnalytics").then((m) => ({
+    default: m.CostAnalyticsPage,
+  }))
+);
+
+// NotFoundPage stays static (small, always needed)
 import { NotFoundPage } from "./pages/NotFound";
-import { PipelinesPage } from "./pages/Pipelines";
-import { SettingsPage } from "./pages/Settings";
-import { VelocityPage } from "./pages/Velocity";
+
+// ============================================================================
+// Route Definitions
+// ============================================================================
 
 const rootRoute = createRootRoute({
   component: Shell,
 });
 
+// Helper to wrap lazy component with Suspense
+function withSuspense<P extends object>(
+  LazyComponent: React.LazyExoticComponent<React.ComponentType<P>>,
+  Fallback: React.ComponentType
+): React.ComponentType<P> {
+  return function SuspenseWrapper(props: P) {
+    return (
+      <Suspense fallback={<Fallback />}>
+        <LazyComponent {...props} />
+      </Suspense>
+    );
+  };
+}
+
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  component: DashboardPage,
+  component: withSuspense(DashboardPage, DashboardSkeleton),
 });
 
 const agentsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/agents",
-  component: AgentsPage,
+  component: withSuspense(AgentsPage, AgentsSkeleton),
 });
 
 const beadsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/beads",
-  component: BeadsPage,
+  component: withSuspense(BeadsPage, BeadsSkeleton),
 });
 
 const accountsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/accounts",
-  component: AccountsPage,
+  component: withSuspense(AccountsPage, AccountsSkeleton),
 });
 
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings",
-  component: SettingsPage,
+  component: withSuspense(SettingsPage, SettingsSkeleton),
 });
 
 const dashboardsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/dashboards",
-  component: DashboardsPage,
+  component: withSuspense(DashboardsPage, DashboardsSkeleton),
 });
 
 const dashboardViewRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/dashboards/$dashboardId",
-  component: DashboardsPage,
+  component: withSuspense(DashboardsPage, DashboardsSkeleton),
 });
 
 const dcgRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/dcg",
-  component: DCGPage,
+  component: withSuspense(DCGPage, DCGSkeleton),
 });
 
 const fleetRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/fleet",
-  component: FleetPage,
+  component: withSuspense(FleetPage, FleetSkeleton),
 });
 
 const pipelinesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/pipelines",
-  component: PipelinesPage,
+  component: withSuspense(PipelinesPage, PipelinesSkeleton),
 });
 
 const velocityRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/velocity",
-  component: VelocityPage,
+  component: withSuspense(VelocityPage, VelocitySkeleton),
 });
 
 const collaborationRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/collaboration",
-  component: CollaborationGraphPage,
+  component: withSuspense(CollaborationGraphPage, CollaborationGraphSkeleton),
 });
 
 const costAnalyticsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/cost-analytics",
-  component: CostAnalyticsPage,
+  component: withSuspense(CostAnalyticsPage, CostAnalyticsSkeleton),
 });
 
 const notFoundRoute = createRoute({
@@ -106,6 +182,10 @@ const notFoundRoute = createRoute({
   path: "*",
   component: NotFoundPage,
 });
+
+// ============================================================================
+// Route Tree & Router
+// ============================================================================
 
 const routeTree = rootRoute.addChildren([
   dashboardRoute,
@@ -126,10 +206,29 @@ const routeTree = rootRoute.addChildren([
 
 export const router = createRouter({
   routeTree,
+  defaultPreload: "intent", // Preload on hover/focus
+  defaultPreloadStaleTime: 0,
 });
+
+// ============================================================================
+// Router Type Registration
+// ============================================================================
 
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
   }
+}
+
+// ============================================================================
+// Development Logging
+// ============================================================================
+
+if (import.meta.env.DEV) {
+  // Log route loading timing in development
+  const originalLazy = lazy;
+  (globalThis as unknown as { __lazyImportCount?: number }).__lazyImportCount =
+    0;
+
+  console.debug("[Router] Lazy loading enabled with Suspense boundaries");
 }
