@@ -3,8 +3,12 @@
  *
  * Manages approval workflows for operations that require human oversight.
  * Handles approval requests, decisions, timeouts, and escalation.
+ * Persists state to SQLite database.
  */
 
+import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { db } from "../db";
+import { approvalRequests } from "../db/schema";
 import { logger } from "./logger";
 import type { SafetyCategory, SafetyRule } from "./safety-rules.engine";
 
@@ -20,13 +24,12 @@ function generateId(prefix: string, length = 12): string {
   const charLen = chars.length;
   const maxByte = 256 - (256 % charLen);
   let result = "";
-  
+
   while (result.length < length) {
-    // Generate a buffer with some overhead to account for rejected bytes
-    const bufSize = Math.ceil((length - result.length) * 1.2); 
+    const bufSize = Math.ceil((length - result.length) * 1.2);
     const randomBytes = new Uint8Array(bufSize);
     crypto.getRandomValues(randomBytes);
-    
+
     for (let i = 0; i < bufSize && result.length < length; i++) {
       const byte = randomBytes[i]!;
       if (byte < maxByte) {
@@ -151,16 +154,73 @@ export interface ApprovalStats {
   byCategory: Record<SafetyCategory, number>;
 }
 
-// ============================================================================
-// In-Memory State
-// ============================================================================
-
-/** All approval requests */
-const approvals: ApprovalRequest[] = [];
-const MAX_APPROVALS = 10000;
-
 /** Expiration check interval */
 let expirationTimer: ReturnType<typeof setInterval> | null = null;
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+/**
+ * Map DB row to ApprovalRequest interface.
+ * Reconstructs a partial SafetyRule since we only store minimal rule info.
+ */
+function mapToApprovalRequest(
+  row: typeof approvalRequests.$inferSelect,
+): ApprovalRequest {
+  // Parse JSON fields
+  // Handle case where json mode text might be returned as string if not properly typed by drizzle-orm/sqlite-core depending on version
+  const operationDetails =
+    typeof row.operationDetails === "string"
+      ? JSON.parse(row.operationDetails)
+      : (row.operationDetails as Record<string, unknown>);
+
+  const recentActions =
+    typeof row.recentActions === "string"
+      ? JSON.parse(row.recentActions)
+      : ((row.recentActions as unknown as string[]) ?? []);
+
+  // Reconstruct a minimal rule object
+  const rule: SafetyRule = {
+    id: row.ruleId ?? "unknown",
+    name: row.ruleName,
+    category: row.operationType as SafetyCategory,
+    severity: "high", // Default, as we don't store severity
+    action: "approve",
+    message: "Requires approval",
+    conditions: [],
+    conditionLogic: "and",
+    enabled: true,
+    description: "Reconstructed from approval request",
+  };
+
+  return {
+    id: row.id,
+    agentId: row.agentId ?? "unknown",
+    sessionId: row.sessionId ?? "unknown",
+    workspaceId: row.workspaceId,
+    operation: {
+      type: row.operationType as SafetyCategory,
+      command: row.operationCommand ?? undefined,
+      path: row.operationPath ?? undefined,
+      description: row.operationDescription,
+      details: operationDetails,
+    },
+    rule,
+    context: {
+      recentActions,
+      taskDescription: row.taskDescription ?? undefined,
+    },
+    status: row.status as ApprovalStatus,
+    requestedAt: row.requestedAt,
+    expiresAt: row.expiresAt,
+    decidedBy: row.decidedBy ?? undefined,
+    decidedAt: row.decidedAt ?? undefined,
+    decisionReason: row.decisionReason ?? undefined,
+    correlationId: row.correlationId ?? undefined,
+    priority: (row.priority as ApprovalRequest["priority"]) ?? "normal",
+  };
+}
 
 // ============================================================================
 // Approval Creation
@@ -174,53 +234,62 @@ export async function createApprovalRequest(
 ): Promise<ApprovalRequest> {
   const now = new Date();
   const timeoutMinutes = request.timeoutMinutes ?? 30;
+  const id = generateId("appr");
+  const expiresAt = new Date(now.getTime() + timeoutMinutes * 60 * 1000);
 
-  const approval: ApprovalRequest = {
-    id: generateId("appr"),
+  const newRequest = {
+    id,
+    workspaceId: request.workspaceId,
     agentId: request.agentId,
     sessionId: request.sessionId,
-    workspaceId: request.workspaceId,
-    operation: {
-      type: request.operation.type,
-      ...(request.operation.command && { command: request.operation.command }),
-      ...(request.operation.path && { path: request.operation.path }),
-      description: request.operation.description,
-      details: request.operation.details ?? {},
-    },
-    rule: request.rule,
-    context: {
-      recentActions: request.context?.recentActions ?? [],
-      ...(request.context?.taskDescription && {
-        taskDescription: request.context.taskDescription,
-      }),
-    },
+    ruleId: request.rule.id,
+    ruleName: request.rule.name,
+    operationType: request.operation.type,
+    operationCommand: request.operation.command,
+    operationPath: request.operation.path,
+    operationDescription: request.operation.description,
+    operationDetails: request.operation.details ?? {},
+    taskDescription: request.context?.taskDescription,
+    recentActions: JSON.stringify(request.context?.recentActions ?? []),
     status: "pending",
-    requestedAt: now,
-    expiresAt: new Date(now.getTime() + timeoutMinutes * 60 * 1000),
     priority: request.priority ?? "normal",
-    ...(request.correlationId && { correlationId: request.correlationId }),
+    requestedAt: now,
+    expiresAt,
+    correlationId: request.correlationId,
   };
 
-  approvals.push(approval);
-
-  // Trim old approvals if needed
-  while (approvals.length > MAX_APPROVALS) {
-    approvals.shift();
-  }
+  await db.insert(approvalRequests).values(newRequest);
 
   logger.info(
     {
-      correlationId: approval.correlationId,
-      approvalId: approval.id,
-      agentId: approval.agentId,
-      operation: approval.operation.type,
-      priority: approval.priority,
-      expiresAt: approval.expiresAt,
+      correlationId: request.correlationId,
+      approvalId: id,
+      agentId: request.agentId,
+      operation: request.operation.type,
+      priority: request.priority,
+      expiresAt,
     },
     "Approval request created",
   );
 
-  return approval;
+  // Return the full object
+  return {
+    id,
+    agentId: request.agentId,
+    sessionId: request.sessionId,
+    workspaceId: request.workspaceId,
+    operation: request.operation,
+    rule: request.rule,
+    context: {
+      recentActions: request.context?.recentActions ?? [],
+      taskDescription: request.context?.taskDescription,
+    },
+    status: "pending",
+    requestedAt: now,
+    expiresAt,
+    priority: request.priority ?? "normal",
+    correlationId: request.correlationId,
+  };
 }
 
 // ============================================================================
@@ -233,25 +302,29 @@ export async function createApprovalRequest(
 export async function decideApproval(
   decision: ApprovalDecision,
 ): Promise<ApprovalDecisionResult> {
-  const approval = approvals.find((a) => a.id === decision.requestId);
+  const request = await getApproval(decision.requestId);
 
-  if (!approval) {
+  if (!request) {
     return {
       success: false,
       error: "Approval request not found",
     };
   }
 
-  if (approval.status !== "pending") {
+  if (request.status !== "pending") {
     return {
       success: false,
-      error: `Cannot decide on request with status: ${approval.status}`,
+      error: `Cannot decide on request with status: ${request.status}`,
     };
   }
 
   // Check if expired
-  if (approval.expiresAt < new Date()) {
-    approval.status = "expired";
+  if (request.expiresAt < new Date()) {
+    await db
+      .update(approvalRequests)
+      .set({ status: "expired" })
+      .where(eq(approvalRequests.id, decision.requestId));
+
     return {
       success: false,
       error: "Approval request has expired",
@@ -259,17 +332,23 @@ export async function decideApproval(
   }
 
   // Apply decision
-  approval.status = decision.decision === "approved" ? "approved" : "denied";
-  approval.decidedBy = decision.decidedBy;
-  approval.decidedAt = new Date();
-  if (decision.reason) {
-    approval.decisionReason = decision.reason;
-  }
+  const status = decision.decision === "approved" ? "approved" : "denied";
+  const decidedAt = new Date();
+
+  await db
+    .update(approvalRequests)
+    .set({
+      status,
+      decidedBy: decision.decidedBy,
+      decidedAt,
+      decisionReason: decision.reason,
+    })
+    .where(eq(approvalRequests.id, decision.requestId));
 
   logger.info(
     {
-      correlationId: approval.correlationId,
-      approvalId: approval.id,
+      correlationId: request.correlationId,
+      approvalId: request.id,
       decision: decision.decision,
       decidedBy: decision.decidedBy,
       reason: decision.reason,
@@ -277,9 +356,16 @@ export async function decideApproval(
     "Approval decision made",
   );
 
+  // Return updated request
   return {
     success: true,
-    request: approval,
+    request: {
+      ...request,
+      status,
+      decidedBy: decision.decidedBy,
+      decidedAt,
+      decisionReason: decision.reason,
+    },
   };
 }
 
@@ -291,31 +377,39 @@ export async function cancelApproval(
   cancelledBy: string,
   reason?: string,
 ): Promise<ApprovalDecisionResult> {
-  const approval = approvals.find((a) => a.id === requestId);
+  const request = await getApproval(requestId);
 
-  if (!approval) {
+  if (!request) {
     return {
       success: false,
       error: "Approval request not found",
     };
   }
 
-  if (approval.status !== "pending") {
+  if (request.status !== "pending") {
     return {
       success: false,
-      error: `Cannot cancel request with status: ${approval.status}`,
+      error: `Cannot cancel request with status: ${request.status}`,
     };
   }
 
-  approval.status = "cancelled";
-  approval.decidedBy = cancelledBy;
-  approval.decidedAt = new Date();
-  approval.decisionReason = reason ?? "Cancelled by requestor";
+  const decidedAt = new Date();
+  const decisionReason = reason ?? "Cancelled by requestor";
+
+  await db
+    .update(approvalRequests)
+    .set({
+      status: "cancelled",
+      decidedBy: cancelledBy,
+      decidedAt,
+      decisionReason,
+    })
+    .where(eq(approvalRequests.id, requestId));
 
   logger.info(
     {
-      correlationId: approval.correlationId,
-      approvalId: approval.id,
+      correlationId: request.correlationId,
+      approvalId: request.id,
       cancelledBy,
       reason,
     },
@@ -324,7 +418,13 @@ export async function cancelApproval(
 
   return {
     success: true,
-    request: approval,
+    request: {
+      ...request,
+      status: "cancelled",
+      decidedBy: cancelledBy,
+      decidedAt,
+      decisionReason,
+    },
   };
 }
 
@@ -338,7 +438,16 @@ export async function cancelApproval(
 export async function getApproval(
   requestId: string,
 ): Promise<ApprovalRequest | undefined> {
-  return approvals.find((a) => a.id === requestId);
+  const result = await db
+    .select()
+    .from(approvalRequests)
+    .where(eq(approvalRequests.id, requestId))
+    .limit(1);
+
+  const row = result[0];
+  if (!row) return undefined;
+
+  return mapToApprovalRequest(row);
 }
 
 /**
@@ -347,43 +456,41 @@ export async function getApproval(
 export async function listApprovals(
   options?: ListApprovalsOptions,
 ): Promise<ApprovalRequest[]> {
-  let filtered = [...approvals];
+  const conditions = [];
 
   if (options?.workspaceId) {
-    filtered = filtered.filter((a) => a.workspaceId === options.workspaceId);
+    conditions.push(eq(approvalRequests.workspaceId, options.workspaceId));
   }
   if (options?.agentId) {
-    filtered = filtered.filter((a) => a.agentId === options.agentId);
+    conditions.push(eq(approvalRequests.agentId, options.agentId));
   }
   if (options?.sessionId) {
-    filtered = filtered.filter((a) => a.sessionId === options.sessionId);
+    conditions.push(eq(approvalRequests.sessionId, options.sessionId));
   }
   if (options?.status) {
-    filtered = filtered.filter((a) => a.status === options.status);
+    conditions.push(eq(approvalRequests.status, options.status));
   }
   if (options?.since) {
-    const since = options.since;
-    filtered = filtered.filter((a) => a.requestedAt >= since);
+    conditions.push(gte(approvalRequests.requestedAt, options.since));
   }
   if (!options?.includeExpired) {
-    filtered = filtered.filter(
-      (a) => a.status !== "expired" || a.expiresAt > new Date(),
+    conditions.push(
+      sql`(${approvalRequests.status} != 'expired' AND ${approvalRequests.expiresAt} > ${new Date()})`,
     );
   }
 
-  // Sort by priority then by request time
-  const priorityOrder = { urgent: 0, high: 1, normal: 2, low: 3 };
-  filtered.sort((a, b) => {
-    const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
-    if (priorityDiff !== 0) return priorityDiff;
-    return b.requestedAt.getTime() - a.requestedAt.getTime();
-  });
+  const query = db
+    .select()
+    .from(approvalRequests)
+    .where(and(...conditions))
+    .orderBy(desc(approvalRequests.requestedAt));
 
   if (options?.limit) {
-    filtered = filtered.slice(0, options.limit);
+    query.limit(options.limit);
   }
 
-  return filtered;
+  const rows = await query;
+  return rows.map(mapToApprovalRequest);
 }
 
 /**
@@ -421,9 +528,15 @@ export async function getQueueDepth(workspaceId?: string): Promise<number> {
 export async function getApprovalStats(
   workspaceId?: string,
 ): Promise<ApprovalStats> {
-  const filtered = workspaceId
-    ? approvals.filter((a) => a.workspaceId === workspaceId)
-    : approvals;
+  const conditions = [];
+  if (workspaceId) {
+    conditions.push(eq(approvalRequests.workspaceId, workspaceId));
+  }
+
+  const rows = await db
+    .select()
+    .from(approvalRequests)
+    .where(and(...conditions));
 
   const stats: ApprovalStats = {
     pending: 0,
@@ -432,12 +545,7 @@ export async function getApprovalStats(
     expired: 0,
     cancelled: 0,
     averageDecisionTimeMs: 0,
-    byPriority: {
-      low: 0,
-      normal: 0,
-      high: 0,
-      urgent: 0,
-    },
+    byPriority: { low: 0, normal: 0, high: 0, urgent: 0 },
     byCategory: {
       filesystem: 0,
       git: 0,
@@ -451,17 +559,22 @@ export async function getApprovalStats(
   let totalDecisionTimeMs = 0;
   let decidedCount = 0;
 
-  for (const approval of filtered) {
-    stats[approval.status]++;
-    const priorityCount = stats.byPriority[approval.priority];
-    if (priorityCount !== undefined) {
-      stats.byPriority[approval.priority] = priorityCount + 1;
-    }
-    stats.byCategory[approval.operation.type]++;
+  for (const row of rows) {
+    const status = row.status as keyof Pick<
+      ApprovalStats,
+      "pending" | "approved" | "denied" | "expired" | "cancelled"
+    >;
+    if (stats[status] !== undefined) stats[status]++;
 
-    if (approval.decidedAt) {
+    const priority = row.priority as keyof ApprovalStats["byPriority"];
+    if (stats.byPriority[priority] !== undefined) stats.byPriority[priority]++;
+
+    const category = row.operationType as keyof ApprovalStats["byCategory"];
+    if (stats.byCategory[category] !== undefined) stats.byCategory[category]++;
+
+    if (row.decidedAt && row.requestedAt) {
       totalDecisionTimeMs +=
-        approval.decidedAt.getTime() - approval.requestedAt.getTime();
+        row.decidedAt.getTime() - row.requestedAt.getTime();
       decidedCount++;
     }
   }
@@ -482,26 +595,35 @@ export async function getApprovalStats(
  */
 export async function processExpiredApprovals(): Promise<number> {
   const now = new Date();
-  let expiredCount = 0;
 
-  for (const approval of approvals) {
-    if (approval.status === "pending" && approval.expiresAt <= now) {
-      approval.status = "expired";
-      expiredCount++;
+  // Find pending requests that have expired
+  const expired = await db
+    .select({ id: approvalRequests.id })
+    .from(approvalRequests)
+    .where(
+      and(
+        eq(approvalRequests.status, "pending"),
+        lt(approvalRequests.expiresAt, now),
+      ),
+    );
 
-      logger.warn(
-        {
-          correlationId: approval.correlationId,
-          approvalId: approval.id,
-          agentId: approval.agentId,
-          operation: approval.operation.type,
-        },
-        "Approval request expired",
-      );
-    }
+  if (expired.length === 0) return 0;
+
+  const _result = await db
+    .update(approvalRequests)
+    .set({ status: "expired" })
+    .where(
+      and(
+        eq(approvalRequests.status, "pending"),
+        lt(approvalRequests.expiresAt, now),
+      ),
+    );
+
+  if (expired.length > 0) {
+    logger.warn({ count: expired.length }, "Expired pending approval requests");
   }
 
-  return expiredCount;
+  return expired.length;
 }
 
 /**
@@ -559,7 +681,7 @@ export async function waitForApproval(
 
     // Check if expired
     if (approval.expiresAt <= new Date()) {
-      approval.status = "expired";
+      // It might not be updated in DB yet if cron hasn't run
       return approval;
     }
 
@@ -638,29 +760,28 @@ export async function checkEscalation(
 /**
  * Clear all approval data (for testing).
  */
-export function _clearAllApprovalData(): void {
-  approvals.length = 0;
+export async function _clearAllApprovalData(): Promise<void> {
+  await db.delete(approvalRequests);
   stopExpirationTimer();
 }
 
 /**
  * Get raw approvals array (for testing).
  */
-export function _getApprovals(): ApprovalRequest[] {
-  return approvals;
+export async function _getApprovals(): Promise<ApprovalRequest[]> {
+  return listApprovals();
 }
 
 /**
  * Set approval expiration directly (for testing).
  */
-export function _setApprovalExpiration(
+export async function _setApprovalExpiration(
   requestId: string,
   expiresAt: Date,
-): boolean {
-  const approval = approvals.find((a) => a.id === requestId);
-  if (approval) {
-    approval.expiresAt = expiresAt;
-    return true;
-  }
-  return false;
+): Promise<boolean> {
+  const result = await db
+    .update(approvalRequests)
+    .set({ expiresAt })
+    .where(eq(approvalRequests.id, requestId));
+  return result.rowsAffected > 0;
 }

@@ -354,15 +354,21 @@ async function detectCLI(def: CLIDefinition): Promise<DetectedCLI> {
     };
   }
 
-  // Get version
-  const version = await getVersion(def.commands, def.versionFlag);
+  // Get version using the found path
+  const versionArgs = [path, ...def.commands.slice(1)];
+  const version = await getVersion(versionArgs, def.versionFlag);
 
   // Check authentication if applicable
   let authenticated: boolean | undefined;
   let authError: string | undefined;
 
   if (def.authCheckCmd) {
-    const authResult = await checkAuth(def.authCheckCmd);
+    // Use full path for auth check to ensure we test the same binary
+    const authCmd = [...def.authCheckCmd];
+    if (authCmd[0] === primaryCmd) {
+      authCmd[0] = path;
+    }
+    const authResult = await checkAuth(authCmd);
     authenticated = authResult.authenticated;
     authError = authResult.error;
   }

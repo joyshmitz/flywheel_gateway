@@ -45,6 +45,9 @@ const CLEANUP_INTERVAL_MS = 10_000;
 /** Warning threshold before expiration (30 seconds) */
 const EXPIRATION_WARNING_MS = 30_000;
 
+/** Retention period for resolved conflicts (24 hours) */
+const RESOLVED_CONFLICT_RETENTION_MS = 24 * 60 * 60 * 1000;
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -978,6 +981,30 @@ async function cleanupExpiredReservations(): Promise<number> {
 }
 
 /**
+ * Clean up resolved conflicts that are older than the retention period.
+ */
+async function cleanupResolvedConflicts(): Promise<number> {
+  const now = new Date();
+  let cleanedCount = 0;
+
+  for (const [id, conflict] of conflictStore) {
+    if (conflict.status === "resolved" && conflict.resolvedAt) {
+      const timeSinceResolved = now.getTime() - conflict.resolvedAt.getTime();
+      if (timeSinceResolved > RESOLVED_CONFLICT_RETENTION_MS) {
+        conflictStore.delete(id);
+        cleanedCount++;
+      }
+    }
+  }
+
+  if (cleanedCount > 0) {
+    logger.debug({ cleanedCount }, "Resolved conflict cleanup completed");
+  }
+
+  return cleanedCount;
+}
+
+/**
  * Start the background cleanup job.
  */
 export function startCleanupJob(): void {
@@ -988,6 +1015,9 @@ export function startCleanupJob(): void {
   cleanupInterval = setInterval(() => {
     cleanupExpiredReservations().catch((err) => {
       logger.error({ error: err }, "Error in reservation cleanup job");
+    });
+    cleanupResolvedConflicts().catch((err) => {
+      logger.error({ error: err }, "Error in resolved conflict cleanup job");
     });
   }, CLEANUP_INTERVAL_MS);
 

@@ -128,7 +128,7 @@ function globToRegex(pattern: string): RegExp {
     .replace(/\*\*/g, "\0DOUBLESTAR\0") // Preserve **
     .replace(/\*/g, "[^/]*") // * matches anything except /
     .replace(/\0DOUBLESTAR\0/g, ".*") // ** matches anything
-    .replace(/\?/g, "."); // ? matches single char
+    .replace(/\?/g, "[^/]"); // ? matches single char except /
 
   return new RegExp(`^${regex}$`);
 }

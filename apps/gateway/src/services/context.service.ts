@@ -598,8 +598,15 @@ export function renderContextPack(pack: ContextPack): string {
     sections.push(pack.sections.system.content);
   }
 
-  // Relevant context header
-  sections.push("\n## Relevant Context\n");
+  // Check if we have any relevant context to show
+  const hasRelevantContext =
+    pack.sections.triage.beads.length > 0 ||
+    pack.sections.memory.rules.length > 0 ||
+    pack.sections.search.results.length > 0;
+
+  if (hasRelevantContext) {
+    sections.push("\n## Relevant Context\n");
+  }
 
   // Triage section
   if (pack.sections.triage.beads.length > 0) {

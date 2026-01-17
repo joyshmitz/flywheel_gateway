@@ -182,11 +182,27 @@ function segmentsOverlap(s1: string, s2: string): boolean {
     return globToRegex(s1).test(s2);
   }
 
-  // Both have wildcards. Conservative approach: assume overlap.
-  // e.g. a*.txt and *b.txt -> overlap (ab.txt)
-  // Refinement: check suffixes/prefixes?
-  // For now, returning true avoids false negatives (safety over precision).
-  return true;
+  // Both have wildcards. Check prefix/suffix compatibility.
+  // This filters out impossible overlaps like *.ts vs *.js
+  const p1 = getPrefix(s1);
+  const suff1 = getSuffix(s1);
+  const p2 = getPrefix(s2);
+  const suff2 = getSuffix(s2);
+
+  const prefixMatch = p1.startsWith(p2) || p2.startsWith(p1);
+  const suffixMatch = suff1.endsWith(suff2) || suff2.endsWith(suff1);
+
+  return prefixMatch && suffixMatch;
+}
+
+function getPrefix(s: string): string {
+  const match = s.match(/^([^*?]*)/);
+  return match ? match[1] : "";
+}
+
+function getSuffix(s: string): string {
+  const match = s.match(/([^*?]*)$/);
+  return match ? match[1] : "";
 }
 
 /**

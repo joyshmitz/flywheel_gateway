@@ -90,11 +90,23 @@ const SENSITIVE_KEYS = new Set([
 export function redactSensitive<T>(obj: T, depth = 0): T {
   if (depth > 10) return REDACTED as T; // Prevent infinite recursion and avoid leaking data
   if (obj === null || obj === undefined) return obj;
+
+  // Handle Buffer/Uint8Array explicitly to avoid iterating over bytes or infinite recursion
+  if (obj instanceof Buffer || obj instanceof Uint8Array) {
+    return "[Buffer]" as unknown as T;
+  }
+
   if (typeof obj !== "object") return obj;
 
   if (Array.isArray(obj)) {
     return obj.map((item) => redactSensitive(item, depth + 1)) as T;
   }
+
+  // Only process plain objects to avoid messing with class instances (like Date, etc)
+  // Date objects are objects but not plain objects usually
+  if (obj instanceof Date) return obj;
+  if (obj instanceof Error) return obj; // Errors are special
+
   if (!isPlainObject(obj)) {
     return obj;
   }

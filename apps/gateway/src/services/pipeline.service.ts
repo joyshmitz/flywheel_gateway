@@ -509,10 +509,13 @@ async function executeScript(
   _signal?: AbortSignal,
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   const log = getLogger();
-  // Only substitute variables in inline scripts, not file paths
+  
+  // SECURITY: Do not substitute variables in inline scripts to prevent command injection.
+  // Users should use environment variables (e.g., $PIPELINE_VAR) instead.
+  // We only substitute for file paths to resolve locations.
   const script = config.isPath
-    ? config.script
-    : substituteVariables(config.script, context);
+    ? substituteVariables(config.script, context)
+    : config.script;
 
   log.info(
     { isPath: config.isPath, workingDirectory: config.workingDirectory },
@@ -907,15 +910,12 @@ async function executeTransform(
         const sourceArray = getValueByPath(context, operation.source);
         if (Array.isArray(sourceArray)) {
           const mapped = sourceArray.map((item, index) => {
-            // Expression evaluation using Function constructor
-            // WARNING: This uses new Function() which is essentially eval().
-            // Only use trusted expressions. For production, consider using
-            // a proper expression parser like expr-eval or mathjs.
-            const expr = operation.expression
-              .replace(/\$item/g, JSON.stringify(item))
-              .replace(/\$index/g, String(index));
+            // SECURITY: Use Function constructor with arguments to prevent injection from data values.
+            // The expression itself must be trusted (from pipeline config).
             try {
-              return new Function(`return ${expr}`)();
+              // Create function(item, index) { return expression; }
+              const fn = new Function("$item", "$index", `return ${operation.expression}`);
+              return fn(item, index);
             } catch {
               return item;
             }
@@ -930,12 +930,10 @@ async function executeTransform(
         const filterSource = getValueByPath(context, operation.source);
         if (Array.isArray(filterSource)) {
           const filtered = filterSource.filter((item, index) => {
-            // WARNING: Uses new Function() - see map case for security notes
-            const cond = operation.condition
-              .replace(/\$item/g, JSON.stringify(item))
-              .replace(/\$index/g, String(index));
+            // SECURITY: Use Function constructor with arguments
             try {
-              return new Function(`return ${cond}`)();
+              const fn = new Function("$item", "$index", `return ${operation.condition}`);
+              return fn(item, index);
             } catch {
               return true;
             }
@@ -950,13 +948,10 @@ async function executeTransform(
         const reduceSource = getValueByPath(context, operation.source);
         if (Array.isArray(reduceSource)) {
           const reduced = reduceSource.reduce((acc, item, index) => {
-            // WARNING: Uses new Function() - see map case for security notes
-            const expr = operation.expression
-              .replace(/\$acc/g, JSON.stringify(acc))
-              .replace(/\$item/g, JSON.stringify(item))
-              .replace(/\$index/g, String(index));
+            // SECURITY: Use Function constructor with arguments
             try {
-              return new Function(`return ${expr}`)();
+              const fn = new Function("$acc", "$item", "$index", `return ${operation.expression}`);
+              return fn(acc, item, index);
             } catch {
               return acc;
             }
