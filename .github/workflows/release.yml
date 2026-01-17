@@ -1,0 +1,132 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Type check
+        run: bun run typecheck
+
+      - name: Run tests
+        run: bun test
+
+      - name: Build all packages
+        run: bun run build
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Create release artifacts
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          DIST_DIR=release-artifacts
+          mkdir -p $DIST_DIR
+
+          # Create tarballs for gateway
+          tar -czvf $DIST_DIR/flywheel-gateway-$VERSION-linux-x64.tar.gz \
+            -C apps/gateway/dist .
+
+          # Create source distribution
+          tar --exclude='./node_modules' \
+              --exclude='./.git' \
+              --exclude='./release-artifacts' \
+              -czvf $DIST_DIR/flywheel-gateway-$VERSION-source.tar.gz .
+
+      - name: Generate checksums
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          bun scripts/generate-checksums.ts release-artifacts
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-artifacts/*.tar.gz
+            release-artifacts/*.sha256
+            release-artifacts/*.sha512
+            release-artifacts/checksums.txt
+            release-artifacts/checksums.json
+          generate_release_notes: true
+          body: |
+            ## Flywheel Gateway ${{ steps.version.outputs.VERSION }}
+
+            ### Installation
+
+            Download the appropriate archive for your platform and extract:
+
+            ```bash
+            # Linux x64
+            curl -LO https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/flywheel-gateway-${{ steps.version.outputs.VERSION }}-linux-x64.tar.gz
+
+            # Verify checksum
+            curl -LO https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/checksums.txt
+            sha256sum -c checksums.txt --ignore-missing
+
+            # Extract
+            tar -xzf flywheel-gateway-${{ steps.version.outputs.VERSION }}-linux-x64.tar.gz
+            ```
+
+            ### Verify Downloads
+
+            All release assets include SHA256 and SHA512 checksums.
+
+            **Quick verification:**
+            ```bash
+            sha256sum -c checksums.txt --ignore-missing
+            ```
+
+            **Individual file verification:**
+            ```bash
+            sha256sum -c flywheel-gateway-${{ steps.version.outputs.VERSION }}-linux-x64.tar.gz.sha256
+            ```
+
+            **Programmatic verification:**
+            The `checksums.json` file contains all checksums in JSON format for automated verification.
+
+            ### Auto-Update
+
+            If you have an existing installation, you can check for updates:
+
+            ```bash
+            bun scripts/flywheel-update.ts check
+            ```
+
+  notify-failure:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: build-and-release
+    if: failure()
+    steps:
+      - name: Create failure issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Release ${context.ref} failed`,
+              body: `The release workflow for ${context.ref} failed.\n\nSee: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              labels: ['bug', 'release']
+            })
