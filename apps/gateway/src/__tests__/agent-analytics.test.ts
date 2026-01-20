@@ -15,6 +15,7 @@ import {
   getTaskDurationMetrics,
   getTokenEfficiencyMetrics,
 } from "../services/agent-analytics.service";
+import { invalidateAllAnalytics } from "../services/query-cache";
 
 // ============================================================================
 // Test Helpers
@@ -71,6 +72,7 @@ async function createTestHistoryEntry(
 async function cleanup() {
   await db.delete(historyTable);
   await db.delete(agentsTable);
+  invalidateAllAnalytics();
 }
 
 // ============================================================================
