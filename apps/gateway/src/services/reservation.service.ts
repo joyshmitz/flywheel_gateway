@@ -734,6 +734,8 @@ export async function listReservations(
 
   // Handle cursor-based pagination
   let startIndex = 0;
+  let endIndex = reservations.length;
+  let isBackward = false;
   if (params.startingAfter) {
     const cursor = decodeCursor(params.startingAfter);
     if (cursor) {
@@ -747,16 +749,19 @@ export async function listReservations(
     if (cursor) {
       const cursorIndex = reservations.findIndex((r) => r.id === cursor.id);
       if (cursorIndex !== -1) {
-        // Get items before the cursor
-        startIndex = Math.max(0, cursorIndex - limit);
+        // Get items strictly before the cursor
+        endIndex = cursorIndex;
+        startIndex = Math.max(0, endIndex - limit);
+        isBackward = true;
       }
     }
   }
 
   // Get limit+1 to check if there are more
-  const sliced = reservations.slice(startIndex, startIndex + limit + 1);
-  const hasMore = sliced.length > limit;
-  const pageItems = hasMore ? sliced.slice(0, limit) : sliced;
+  const sliceEnd = isBackward ? endIndex : startIndex + limit + 1;
+  const sliced = reservations.slice(startIndex, sliceEnd);
+  const hasMore = isBackward ? endIndex < reservations.length : sliced.length > limit;
+  const pageItems = isBackward ? sliced : hasMore ? sliced.slice(0, limit) : sliced;
 
   // Build cursors
   const result: ListReservationsResult = {
@@ -802,6 +807,8 @@ export async function listConflicts(
 
   // Handle cursor-based pagination
   let startIndex = 0;
+  let endIndex = conflicts.length;
+  let isBackward = false;
   if (params.startingAfter) {
     const cursor = decodeCursor(params.startingAfter);
     if (cursor) {
@@ -819,15 +826,18 @@ export async function listConflicts(
         (c) => c.conflictId === cursor.id,
       );
       if (cursorIndex !== -1) {
-        startIndex = Math.max(0, cursorIndex - limit);
+        endIndex = cursorIndex;
+        startIndex = Math.max(0, endIndex - limit);
+        isBackward = true;
       }
     }
   }
 
   // Get limit+1 to check if there are more
-  const sliced = conflicts.slice(startIndex, startIndex + limit + 1);
-  const hasMore = sliced.length > limit;
-  const pageItems = hasMore ? sliced.slice(0, limit) : sliced;
+  const sliceEnd = isBackward ? endIndex : startIndex + limit + 1;
+  const sliced = conflicts.slice(startIndex, sliceEnd);
+  const hasMore = isBackward ? endIndex < conflicts.length : sliced.length > limit;
+  const pageItems = isBackward ? sliced : hasMore ? sliced.slice(0, limit) : sliced;
 
   // Build result with cursors
   const result: ListConflictsResult = {
