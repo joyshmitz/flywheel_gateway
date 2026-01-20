@@ -113,6 +113,28 @@ export function clearIdempotencyStore(): void {
 }
 
 /**
+ * Enforce maximum number of records in the store.
+ * Removes oldest records (based on insertion order) until size <= max.
+ */
+export function enforceMaxRecords(max: number): number {
+  if (idempotencyStore.size <= max) {
+    return 0;
+  }
+
+  let count = 0;
+  // Map iterates in insertion order. Since we only append new records,
+  // the first items are the oldest.
+  const iterator = idempotencyStore.keys();
+  while (idempotencyStore.size > max) {
+    const result = iterator.next();
+    if (result.done) break;
+    idempotencyStore.delete(result.value);
+    count++;
+  }
+  return count;
+}
+
+/**
  * Stop the cleanup interval (for graceful shutdown or testing).
  */
 export function stopIdempotencyCleanup(): void {
@@ -201,19 +223,7 @@ export function idempotencyMiddleware(config: IdempotencyConfig = {}) {
   if (cleanupIntervalHandle === null) {
     cleanupIntervalHandle = setInterval(() => {
       pruneExpiredRecords();
-      // Enforce max records if needed
-      if (idempotencyStore.size > settings.maxRecords) {
-        const records = Array.from(idempotencyStore.entries()).sort(
-          (a, b) => a[1].createdAt.getTime() - b[1].createdAt.getTime(),
-        );
-        const toDelete = records.slice(
-          0,
-          idempotencyStore.size - settings.maxRecords,
-        );
-        for (const [key] of toDelete) {
-          idempotencyStore.delete(key);
-        }
-      }
+      enforceMaxRecords(settings.maxRecords);
     }, 60000); // Every minute
 
     // Don't keep the process alive just for cleanup
