@@ -435,7 +435,7 @@ export abstract class BaseDriver implements AgentDriver {
   }
 
   /**
-   * Update token usage for an agent.
+   * Update token usage for an agent by accumulating (adding) new usage.
    */
   protected updateTokenUsage(
     agentId: string,
@@ -444,11 +444,21 @@ export abstract class BaseDriver implements AgentDriver {
     const state = this.agents.get(agentId);
     if (!state) return;
 
-    const nextUsage: TokenUsage = { ...state.tokenUsage, ...usage };
-    if (usage.totalTokens === undefined) {
-      const promptTokens = nextUsage.promptTokens ?? 0;
-      const completionTokens = nextUsage.completionTokens ?? 0;
-      nextUsage.totalTokens = promptTokens + completionTokens;
+    // Accumulate token usage (add new values to existing)
+    const nextUsage: TokenUsage = {
+      promptTokens:
+        (state.tokenUsage.promptTokens ?? 0) + (usage.promptTokens ?? 0),
+      completionTokens:
+        (state.tokenUsage.completionTokens ?? 0) + (usage.completionTokens ?? 0),
+      totalTokens: 0, // Will be calculated below
+    };
+    // Calculate total (use provided total if given, otherwise sum prompt + completion)
+    if (usage.totalTokens !== undefined) {
+      nextUsage.totalTokens =
+        (state.tokenUsage.totalTokens ?? 0) + usage.totalTokens;
+    } else {
+      nextUsage.totalTokens =
+        nextUsage.promptTokens + nextUsage.completionTokens;
     }
     state.tokenUsage = nextUsage;
 
