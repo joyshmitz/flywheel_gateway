@@ -49,12 +49,18 @@ describe("PerformanceMonitor", () => {
 
   describe("updateRuntimeMetrics", () => {
     it("should handle non-browser environment gracefully", () => {
-      // In test environment (no window/document), should not throw
+      // In test environment, should not throw
       monitor.updateRuntimeMetrics();
       const metrics = monitor.getMetrics();
 
-      // domNodes should remain null in non-browser environment
-      expect(metrics.domNodes).toBeNull();
+      // In Bun test env (with happy-dom), document is defined so domNodes will be a number
+      // In pure Node/non-browser env, domNodes would be null
+      if (typeof document !== "undefined") {
+        expect(typeof metrics.domNodes).toBe("number");
+        expect(metrics.domNodes).toBeGreaterThanOrEqual(0);
+      } else {
+        expect(metrics.domNodes).toBeNull();
+      }
     });
   });
 
@@ -65,9 +71,14 @@ describe("PerformanceMonitor", () => {
       expect(report.metrics).toBeDefined();
       expect(report.longTasks).toBeInstanceOf(Array);
       expect(typeof report.timestamp).toBe("number");
-      // url is empty string in non-browser environment
+      // In Bun test env (with happy-dom), window.location.href is 'about:blank'
+      // In pure non-browser env, url would be empty string
       expect(typeof report.url).toBe("string");
-      expect(report.url).toBe("");
+      if (typeof window !== "undefined") {
+        expect(report.url).toBe(window.location.href);
+      } else {
+        expect(report.url).toBe("");
+      }
     });
   });
 
