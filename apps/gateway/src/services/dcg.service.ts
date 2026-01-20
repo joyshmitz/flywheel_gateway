@@ -15,7 +15,7 @@ import {
   DEFAULT_PAGINATION,
   decodeCursor,
 } from "@flywheel/shared/api/pagination";
-import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, lt, or } from "drizzle-orm";
 import { db } from "../db";
 import { dcgAllowlist, dcgBlocks } from "../db/schema";
 import { getCorrelationId } from "../middleware/correlation";
@@ -263,9 +263,25 @@ export async function getBlockEvents(options: {
   // Resolve cursor if present
   let cursorCreatedAt: Date | undefined;
   let cursorId: string | undefined;
+  let direction: "forward" | "backward" = "forward";
 
   if (options.startingAfter) {
     const decoded = decodeCursor(options.startingAfter);
+    if (decoded) {
+      const cursorBlock = await db
+        .select({ id: dcgBlocks.id, createdAt: dcgBlocks.createdAt })
+        .from(dcgBlocks)
+        .where(eq(dcgBlocks.id, decoded.id))
+        .get();
+
+      if (cursorBlock) {
+        cursorCreatedAt = cursorBlock.createdAt;
+        cursorId = cursorBlock.id;
+      }
+    }
+  } else if (options.endingBefore) {
+    direction = "backward";
+    const decoded = decodeCursor(options.endingBefore);
     if (decoded) {
       const cursorBlock = await db
         .select({ id: dcgBlocks.id, createdAt: dcgBlocks.createdAt })
@@ -294,15 +310,27 @@ export async function getBlockEvents(options: {
 
   // Apply cursor pagination (keyset: createdAt DESC, id DESC)
   if (cursorCreatedAt && cursorId) {
-    filters.push(
-      or(
-        lt(dcgBlocks.createdAt, cursorCreatedAt),
-        and(
-          eq(dcgBlocks.createdAt, cursorCreatedAt),
-          lt(dcgBlocks.id, cursorId),
+    if (direction === "forward") {
+      filters.push(
+        or(
+          lt(dcgBlocks.createdAt, cursorCreatedAt),
+          and(
+            eq(dcgBlocks.createdAt, cursorCreatedAt),
+            lt(dcgBlocks.id, cursorId),
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      filters.push(
+        or(
+          gt(dcgBlocks.createdAt, cursorCreatedAt),
+          and(
+            eq(dcgBlocks.createdAt, cursorCreatedAt),
+            gt(dcgBlocks.id, cursorId),
+          ),
+        ),
+      );
+    }
   }
 
   const query = db
@@ -346,14 +374,19 @@ export async function getBlockEvents(options: {
 
   // Add cursors
   if (events.length > 0) {
+    const firstItem = events[0]!;
     const lastItem = events[events.length - 1]!;
-    // const firstItem = events[0]!;
 
-    if (hasMore) {
-      result.nextCursor = createCursor(lastItem.id);
+    if (direction === "forward") {
+      if (hasMore) {
+        result.nextCursor = createCursor(lastItem.id);
+      }
+      if (options.startingAfter) {
+        result.prevCursor = createCursor(firstItem.id);
+      }
+    } else if (hasMore) {
+      result.prevCursor = createCursor(firstItem.id);
     }
-    // Note: prevCursor implementation for keyset pagination is complex and usually requires reversing direction.
-    // We omit it for now as standard infinite scroll usually relies on nextCursor.
   }
 
   return result;

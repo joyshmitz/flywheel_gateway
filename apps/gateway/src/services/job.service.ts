@@ -217,7 +217,8 @@ class JobExecution {
 export class JobService {
   private handlers = new Map<JobType, JobHandler>();
   private running = new Map<string, JobExecution>();
-  private starting = new Set<string>();
+  /** Track jobs that are starting but not yet in `running` with their type/session for concurrency checks */
+  private starting = new Map<string, { type: JobType; sessionId?: string }>();
   private started = false;
   private pollInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -761,7 +762,7 @@ export class JobService {
       if (this.starting.has(job.id)) continue;
 
       if (this.canRunJob(job)) {
-        this.starting.add(job.id);
+        this.starting.set(job.id, { type: job.type, sessionId: job.sessionId });
         this.startJob(job)
           .catch((err) => {
             baseLogger.error(
@@ -793,20 +794,15 @@ export class JobService {
       this.config.concurrency.perType[job.type] ??
       this.config.concurrency.global;
 
-    // Count running AND starting jobs of this type
+    // Count running jobs of this type
     let typeCount = 0;
     for (const execution of this.running.values()) {
       if (execution.job.type === job.type) typeCount++;
     }
-    // We can't easily check type of jobs in 'starting' set without fetching them again
-    // but processQueue iterates pending jobs, so we know their type.
-    // Optimization: We could store type in 'starting' map, but for now we rely on global limit
-    // and the fact that per-type limit is usually high.
-    // To be precise, we should track starting types.
-
-    // For now, let's just count running. The global limit + single threaded loop
-    // prevents massive over-scheduling. The 'starting' set mainly protects against
-    // the 'await validate' gap for global limit.
+    // Count starting jobs of this type
+    for (const startingJob of this.starting.values()) {
+      if (startingJob.type === job.type) typeCount++;
+    }
 
     if (typeCount >= typeLimit) {
       return false;
@@ -814,9 +810,14 @@ export class JobService {
 
     // Check per-session limit
     if (job.sessionId) {
-      const sessionCount = Array.from(this.running.values()).filter(
+      // Count running jobs for this session
+      let sessionCount = Array.from(this.running.values()).filter(
         (e) => e.job.sessionId === job.sessionId,
       ).length;
+      // Count starting jobs for this session
+      for (const startingJob of this.starting.values()) {
+        if (startingJob.sessionId === job.sessionId) sessionCount++;
+      }
       if (sessionCount >= this.config.concurrency.perSession) {
         return false;
       }

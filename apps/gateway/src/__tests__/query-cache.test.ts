@@ -529,6 +529,20 @@ describe("analyticsCache singleton", () => {
     );
   });
 
+  test("invalidateAgentAnalytics escapes regex special characters", () => {
+    analyticsCache.set("productivity:agentId=agent.123&period=24h", {});
+    analyticsCache.set("productivity:agentId=agentx123&period=24h", {});
+
+    invalidateAgentAnalytics("agent.123");
+
+    expect(analyticsCache.has("productivity:agentId=agent.123&period=24h")).toBe(
+      false,
+    );
+    expect(analyticsCache.has("productivity:agentId=agentx123&period=24h")).toBe(
+      true,
+    );
+  });
+
   test("invalidateAllAnalytics clears entire cache", () => {
     analyticsCache.set("key1", {});
     analyticsCache.set("key2", {});

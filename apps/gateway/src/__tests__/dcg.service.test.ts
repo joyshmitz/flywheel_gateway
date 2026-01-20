@@ -192,6 +192,47 @@ describe("DCG Service", () => {
 
       expect(result.events.length).toBeLessThanOrEqual(3);
     });
+
+    test("getBlockEvents supports ending_before pagination", async () => {
+      const agentId = `pagination-agent-${Date.now()}`;
+      const base = Date.now();
+      const timestamps = [3000, 2000, 1000, 0].map(
+        (offset) => new Date(base + offset),
+      );
+
+      for (const [index, timestamp] of timestamps.entries()) {
+        await ingestBlockEvent({
+          ...testEvent,
+          agentId,
+          command: `pagination-command-${index}`,
+          timestamp,
+        });
+      }
+
+      const page1 = await getBlockEvents({ agentId, limit: 2 });
+      expect(page1.events).toHaveLength(2);
+      expect(page1.hasMore).toBe(true);
+      expect(page1.nextCursor).toBeDefined();
+
+      const page2 = await getBlockEvents({
+        agentId,
+        limit: 2,
+        startingAfter: page1.nextCursor!,
+      });
+      expect(page2.events).toHaveLength(2);
+      expect(page2.prevCursor).toBeDefined();
+
+      const back = await getBlockEvents({
+        agentId,
+        limit: 2,
+        endingBefore: page2.prevCursor!,
+      });
+
+      expect(back.events.map((e) => e.id)).toEqual(
+        page1.events.map((e) => e.id),
+      );
+      expect(back.hasMore).toBe(false);
+    });
   });
 
   describe("False Positives", () => {

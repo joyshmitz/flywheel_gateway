@@ -360,6 +360,10 @@ export function generateCacheKey(
   return paramStr ? `${prefix}:${paramStr}` : prefix;
 }
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 // ============================================================================
 // Singleton Analytics Cache Instance
 // ============================================================================
@@ -376,7 +380,9 @@ export const analyticsCache = new QueryCache({
  * Call this when agent history is updated.
  */
 export function invalidateAgentAnalytics(agentId: string): void {
-  analyticsCache.invalidatePattern(new RegExp(`agentId=${agentId}`));
+  analyticsCache.invalidatePattern(
+    new RegExp(`agentId=${escapeRegex(agentId)}`),
+  );
 }
 
 /**
