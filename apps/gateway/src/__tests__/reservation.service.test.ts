@@ -651,6 +651,62 @@ describe("Reservation Service", () => {
 
       expect(result.reservations[0]!.agentId).toBe("agent-2"); // Newer one first
     });
+
+    test("supports ending_before pagination with forward hasMore", async () => {
+      await createReservation({
+        projectId: "project-1",
+        agentId: "agent-1",
+        patterns: ["src/**/*.ts"],
+        mode: "exclusive",
+      });
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      await createReservation({
+        projectId: "project-1",
+        agentId: "agent-2",
+        patterns: ["docs/**/*.md"],
+        mode: "shared",
+      });
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      await createReservation({
+        projectId: "project-1",
+        agentId: "agent-3",
+        patterns: ["lib/**/*.ts"],
+        mode: "shared",
+      });
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      await createReservation({
+        projectId: "project-1",
+        agentId: "agent-4",
+        patterns: ["tests/**/*.ts"],
+        mode: "shared",
+      });
+
+      const page1 = await listReservations({ projectId: "project-1", limit: 2 });
+      expect(page1.reservations).toHaveLength(2);
+      expect(page1.hasMore).toBe(true);
+      expect(page1.nextCursor).toBeDefined();
+
+      const page2 = await listReservations({
+        projectId: "project-1",
+        limit: 2,
+        startingAfter: page1.nextCursor!,
+      });
+      expect(page2.reservations).toHaveLength(2);
+      expect(page2.prevCursor).toBeDefined();
+
+      const back = await listReservations({
+        projectId: "project-1",
+        limit: 2,
+        endingBefore: page2.prevCursor!,
+      });
+
+      expect(back.reservations.map((r) => r.id)).toEqual(
+        page1.reservations.map((r) => r.id),
+      );
+      expect(back.hasMore).toBe(true);
+      expect(back.nextCursor).toBeDefined();
+      expect(back.prevCursor).toBeUndefined();
+    });
   });
 
   describe("getReservation", () => {
@@ -865,6 +921,51 @@ describe("Reservation Service", () => {
         status: "resolved",
       });
       expect(resolvedResult.conflicts).toHaveLength(1);
+    });
+
+    test("supports ending_before pagination with forward hasMore", async () => {
+      await createReservation({
+        projectId: "project-1",
+        agentId: "agent-1",
+        patterns: ["src/**"],
+        mode: "exclusive",
+      });
+
+      for (const agentId of ["agent-2", "agent-3", "agent-4", "agent-5"]) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        await createReservation({
+          projectId: "project-1",
+          agentId,
+          patterns: ["src/index.ts"],
+          mode: "exclusive",
+        });
+      }
+
+      const page1 = await listConflicts({ projectId: "project-1", limit: 2 });
+      expect(page1.conflicts).toHaveLength(2);
+      expect(page1.hasMore).toBe(true);
+      expect(page1.nextCursor).toBeDefined();
+
+      const page2 = await listConflicts({
+        projectId: "project-1",
+        limit: 2,
+        startingAfter: page1.nextCursor!,
+      });
+      expect(page2.conflicts).toHaveLength(2);
+      expect(page2.prevCursor).toBeDefined();
+
+      const back = await listConflicts({
+        projectId: "project-1",
+        limit: 2,
+        endingBefore: page2.prevCursor!,
+      });
+
+      expect(back.conflicts.map((c) => c.conflictId)).toEqual(
+        page1.conflicts.map((c) => c.conflictId),
+      );
+      expect(back.hasMore).toBe(true);
+      expect(back.nextCursor).toBeDefined();
+      expect(back.prevCursor).toBeUndefined();
     });
   });
 });

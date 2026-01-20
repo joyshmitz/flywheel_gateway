@@ -324,8 +324,8 @@ export class ClaudeSDKDriver extends BaseDriver {
       ...(checkpoint.conversationHistory as ConversationMessage[]),
     ];
 
-    // Update token usage
-    this.updateTokenUsage(agentId, checkpoint.tokenUsage);
+    // Set token usage (replace, not accumulate for checkpoint restore)
+    this.setTokenUsage(agentId, checkpoint.tokenUsage);
 
     logDriver("info", this.driverType, "action=checkpoint_restore", {
       agentId,

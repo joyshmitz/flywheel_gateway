@@ -462,6 +462,32 @@ export abstract class BaseDriver implements AgentDriver {
     }
     state.tokenUsage = nextUsage;
 
+    this.updateContextHealth(agentId, state);
+  }
+
+  /**
+   * Set token usage for an agent by replacing (not accumulating) current values.
+   * Use this for checkpoint restore operations where we want to reset to a known state.
+   */
+  protected setTokenUsage(agentId: string, usage: TokenUsage): void {
+    const state = this.agents.get(agentId);
+    if (!state) return;
+
+    state.tokenUsage = {
+      promptTokens: usage.promptTokens ?? 0,
+      completionTokens: usage.completionTokens ?? 0,
+      totalTokens:
+        usage.totalTokens ??
+        (usage.promptTokens ?? 0) + (usage.completionTokens ?? 0),
+    };
+
+    this.updateContextHealth(agentId, state);
+  }
+
+  /**
+   * Update context health based on current token usage.
+   */
+  private updateContextHealth(agentId: string, state: InternalAgentState): void {
     // Calculate context health
     const maxTokens = state.config.maxTokens ?? 100000;
     const usagePercent = (state.tokenUsage.totalTokens / maxTokens) * 100;

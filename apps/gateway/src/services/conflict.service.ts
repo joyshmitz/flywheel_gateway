@@ -681,6 +681,8 @@ export function getActiveConflicts(
   // Apply cursor-based pagination
   const limit = params.limit ?? DEFAULT_PAGINATION.limit;
   let startIndex = 0;
+  let endIndex: number | undefined;
+  let isBackward = false;
 
   if (params.startingAfter) {
     const decoded = decodeCursor(params.startingAfter);
@@ -691,19 +693,31 @@ export function getActiveConflicts(
       }
     }
   } else if (params.endingBefore) {
+    isBackward = true;
     const decoded = decodeCursor(params.endingBefore);
     if (decoded) {
       const cursorIndex = conflicts.findIndex((c) => c.id === decoded.id);
       if (cursorIndex >= 0) {
         startIndex = Math.max(0, cursorIndex - limit);
+        endIndex = cursorIndex; // End before the cursor item
       }
     }
   }
 
-  // Get page items (fetch limit + 1 to determine hasMore)
-  const pageItems = conflicts.slice(startIndex, startIndex + limit + 1);
-  const hasMore = pageItems.length > limit;
-  const resultItems = hasMore ? pageItems.slice(0, limit) : pageItems;
+  // For forward pagination, fetch limit+1 to determine hasMore
+  // For backward pagination, fetch exactly from startIndex to cursorIndex
+  const sliceEnd =
+    isBackward && endIndex !== undefined ? endIndex : startIndex + limit + 1;
+  const pageItems = conflicts.slice(startIndex, sliceEnd);
+  // For backward pagination, hasMore indicates items exist at earlier indices
+  const hasMore = isBackward ? startIndex > 0 : pageItems.length > limit;
+  // For forward pagination, trim to limit if we got limit+1
+  // For backward pagination, we already have the exact items
+  const resultItems = isBackward
+    ? pageItems
+    : hasMore
+      ? pageItems.slice(0, limit)
+      : pageItems;
 
   const result: ListActiveConflictsResult = {
     conflicts: resultItems,
@@ -767,6 +781,8 @@ export function getConflictHistory(
   const total = conflictHistory.length;
   const limit = params.limit ?? DEFAULT_PAGINATION.limit;
   let startIndex = 0;
+  let endIndex: number | undefined;
+  let isBackward = false;
 
   if (params.startingAfter) {
     const decoded = decodeCursor(params.startingAfter);
@@ -777,19 +793,31 @@ export function getConflictHistory(
       }
     }
   } else if (params.endingBefore) {
+    isBackward = true;
     const decoded = decodeCursor(params.endingBefore);
     if (decoded) {
       const cursorIndex = conflictHistory.findIndex((c) => c.id === decoded.id);
       if (cursorIndex >= 0) {
         startIndex = Math.max(0, cursorIndex - limit);
+        endIndex = cursorIndex; // End before the cursor item
       }
     }
   }
 
-  // Get page items (fetch limit + 1 to determine hasMore)
-  const pageItems = conflictHistory.slice(startIndex, startIndex + limit + 1);
-  const hasMore = pageItems.length > limit;
-  const resultItems = hasMore ? pageItems.slice(0, limit) : pageItems;
+  // For forward pagination, fetch limit+1 to determine hasMore
+  // For backward pagination, fetch exactly from startIndex to cursorIndex
+  const sliceEnd =
+    isBackward && endIndex !== undefined ? endIndex : startIndex + limit + 1;
+  const pageItems = conflictHistory.slice(startIndex, sliceEnd);
+  // For backward pagination, hasMore indicates items exist at earlier indices
+  const hasMore = isBackward ? startIndex > 0 : pageItems.length > limit;
+  // For forward pagination, trim to limit if we got limit+1
+  // For backward pagination, we already have the exact items
+  const resultItems = isBackward
+    ? pageItems
+    : hasMore
+      ? pageItems.slice(0, limit)
+      : pageItems;
 
   const result: ListConflictHistoryResult = {
     conflicts: resultItems,

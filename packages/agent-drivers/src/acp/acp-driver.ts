@@ -480,8 +480,8 @@ export class AcpDriver extends BaseDriver {
     ] as typeof session.conversationHistory;
     session.tokenUsage = { ...checkpoint.tokenUsage };
 
-    // Update token usage in base driver
-    this.updateTokenUsage(agentId, checkpoint.tokenUsage);
+    // Set token usage in base driver (replace, not accumulate)
+    this.setTokenUsage(agentId, checkpoint.tokenUsage);
 
     logDriver("info", this.driverType, "action=checkpoint_restore", {
       agentId,

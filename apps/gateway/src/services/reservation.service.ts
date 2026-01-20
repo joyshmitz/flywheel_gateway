@@ -734,8 +734,6 @@ export async function listReservations(
 
   // Handle cursor-based pagination
   let startIndex = 0;
-  let endIndex = reservations.length;
-  let isBackward = false;
   if (params.startingAfter) {
     const cursor = decodeCursor(params.startingAfter);
     if (cursor) {
@@ -749,33 +747,30 @@ export async function listReservations(
     if (cursor) {
       const cursorIndex = reservations.findIndex((r) => r.id === cursor.id);
       if (cursorIndex !== -1) {
-        // Get items strictly before the cursor
-        endIndex = cursorIndex;
-        startIndex = Math.max(0, endIndex - limit);
-        isBackward = true;
+        // Move backward by one page from the cursor
+        startIndex = Math.max(0, cursorIndex - limit);
       }
     }
   }
 
   // Get limit+1 to check if there are more
-  const sliceEnd = isBackward ? endIndex : startIndex + limit + 1;
-  const sliced = reservations.slice(startIndex, sliceEnd);
-  const hasMore = isBackward ? endIndex < reservations.length : sliced.length > limit;
-  const pageItems = isBackward ? sliced : hasMore ? sliced.slice(0, limit) : sliced;
+  const pageItems = reservations.slice(startIndex, startIndex + limit + 1);
+  const hasMore = pageItems.length > limit;
+  const resultItems = hasMore ? pageItems.slice(0, limit) : pageItems;
 
   // Build cursors
   const result: ListReservationsResult = {
-    reservations: pageItems,
+    reservations: resultItems,
     hasMore,
   };
 
-  if (hasMore && pageItems.length > 0) {
-    const lastItem = pageItems[pageItems.length - 1]!;
+  if (hasMore && resultItems.length > 0) {
+    const lastItem = resultItems[resultItems.length - 1]!;
     result.nextCursor = createCursor(lastItem.id, lastItem.createdAt.getTime());
   }
 
-  if (pageItems.length > 0 && startIndex > 0) {
-    const firstItem = pageItems[0]!;
+  if (resultItems.length > 0 && startIndex > 0) {
+    const firstItem = resultItems[0]!;
     result.prevCursor = createCursor(
       firstItem.id,
       firstItem.createdAt.getTime(),
@@ -807,8 +802,6 @@ export async function listConflicts(
 
   // Handle cursor-based pagination
   let startIndex = 0;
-  let endIndex = conflicts.length;
-  let isBackward = false;
   if (params.startingAfter) {
     const cursor = decodeCursor(params.startingAfter);
     if (cursor) {
@@ -826,35 +819,33 @@ export async function listConflicts(
         (c) => c.conflictId === cursor.id,
       );
       if (cursorIndex !== -1) {
-        endIndex = cursorIndex;
-        startIndex = Math.max(0, endIndex - limit);
-        isBackward = true;
+        // Move backward by one page from the cursor
+        startIndex = Math.max(0, cursorIndex - limit);
       }
     }
   }
 
   // Get limit+1 to check if there are more
-  const sliceEnd = isBackward ? endIndex : startIndex + limit + 1;
-  const sliced = conflicts.slice(startIndex, sliceEnd);
-  const hasMore = isBackward ? endIndex < conflicts.length : sliced.length > limit;
-  const pageItems = isBackward ? sliced : hasMore ? sliced.slice(0, limit) : sliced;
+  const pageItems = conflicts.slice(startIndex, startIndex + limit + 1);
+  const hasMore = pageItems.length > limit;
+  const resultItems = hasMore ? pageItems.slice(0, limit) : pageItems;
 
   // Build result with cursors
   const result: ListConflictsResult = {
-    conflicts: pageItems,
+    conflicts: resultItems,
     hasMore,
   };
 
-  if (hasMore && pageItems.length > 0) {
-    const lastItem = pageItems[pageItems.length - 1]!;
+  if (hasMore && resultItems.length > 0) {
+    const lastItem = resultItems[resultItems.length - 1]!;
     result.nextCursor = createCursor(
       lastItem.conflictId,
       lastItem.detectedAt.getTime(),
     );
   }
 
-  if (pageItems.length > 0 && startIndex > 0) {
-    const firstItem = pageItems[0]!;
+  if (resultItems.length > 0 && startIndex > 0) {
+    const firstItem = resultItems[0]!;
     result.prevCursor = createCursor(
       firstItem.conflictId,
       firstItem.detectedAt.getTime(),
