@@ -134,9 +134,16 @@ export class AuditRedactionService {
   /**
    * Redact sensitive data from any value.
    */
-  redact<T>(data: T): T {
+  redact<T>(data: T, visited: WeakSet<object> = new WeakSet()): T {
     if (data === null || data === undefined) {
       return data;
+    }
+
+    if (typeof data === "object") {
+      if (visited.has(data as unknown as object)) {
+        return "[CIRCULAR]" as unknown as T;
+      }
+      visited.add(data as unknown as object);
     }
 
     if (typeof data === "string") {
@@ -144,11 +151,14 @@ export class AuditRedactionService {
     }
 
     if (Array.isArray(data)) {
-      return data.map((item) => this.redact(item)) as T;
+      return data.map((item) => this.redact(item, visited)) as T;
     }
 
     if (typeof data === "object") {
-      return this.redactObject(data as Record<string, unknown>) as T;
+      return this.redactObject(
+        data as Record<string, unknown>,
+        visited,
+      ) as T;
     }
 
     return data;
@@ -172,7 +182,10 @@ export class AuditRedactionService {
   /**
    * Redact sensitive fields from an object.
    */
-  private redactObject(obj: Record<string, unknown>): Record<string, unknown> {
+  private redactObject(
+    obj: Record<string, unknown>,
+    visited: WeakSet<object>,
+  ): Record<string, unknown> {
     const result: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(obj)) {
@@ -213,7 +226,7 @@ export class AuditRedactionService {
         value !== null &&
         typeof value === "object"
       ) {
-        result[key] = this.redact(value);
+        result[key] = this.redact(value, visited);
         continue;
       }
 
@@ -342,7 +355,10 @@ export class AuditRedactionService {
   /**
    * Check if a value contains any sensitive patterns.
    */
-  containsSensitiveData(value: unknown): boolean {
+  containsSensitiveData(
+    value: unknown,
+    visited: WeakSet<object> = new WeakSet(),
+  ): boolean {
     if (typeof value === "string") {
       for (const pattern of this.config.redactPatterns) {
         pattern.lastIndex = 0;
@@ -353,8 +369,15 @@ export class AuditRedactionService {
       return false;
     }
 
+    if (typeof value === "object" && value !== null) {
+      if (visited.has(value)) {
+        return false;
+      }
+      visited.add(value);
+    }
+
     if (Array.isArray(value)) {
-      return value.some((item) => this.containsSensitiveData(item));
+      return value.some((item) => this.containsSensitiveData(item, visited));
     }
 
     if (value !== null && typeof value === "object") {
@@ -365,7 +388,7 @@ export class AuditRedactionService {
         if (
           this.shouldRemoveField(lowerKey) ||
           this.getMaskConfig(lowerKey) ||
-          this.containsSensitiveData(val)
+          this.containsSensitiveData(val, visited)
         ) {
           return true;
         }
