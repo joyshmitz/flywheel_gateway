@@ -67,6 +67,16 @@ interface CLIDefinition {
   capabilities: DetectedCapabilities;
 }
 
+/**
+ * ACFS manifest mapping note (bd-2k5b)
+ * Source: acfs.manifest.yaml modules[] in agentic_coding_flywheel_setup.
+ *
+ * Mapping → DetectedCLI (auto-detection):
+ * - module.installed_check.command hints the canonical binary (e.g. command -v <bin>)
+ * - module.verify usually includes "<bin> --version" or "<bin> --help" → versionFlag
+ * - module.dependencies / tags do not affect detection but inform readiness/UI
+ * - authCheckCmd + capabilities remain curated here until ACFS adds explicit fields
+ */
 const AGENT_CLIS: CLIDefinition[] = [
   {
     name: "claude",
