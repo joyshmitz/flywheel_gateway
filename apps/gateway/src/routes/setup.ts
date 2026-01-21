@@ -20,6 +20,10 @@ import {
   installTool,
 } from "../services/setup.service";
 import {
+  clearToolRegistryCache,
+  loadToolRegistry,
+} from "../services/tool-registry.service";
+import {
   sendError,
   sendInternalError,
   sendList,
@@ -344,6 +348,41 @@ setup.delete("/cache", async (c) => {
     return sendResource(c, "cache_cleared", {
       message: "Detection cache cleared",
       timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    return handleError(error, c);
+  }
+});
+
+/**
+ * DELETE /setup/registry/cache - Clear tool registry cache
+ */
+setup.delete("/registry/cache", async (c) => {
+  try {
+    clearToolRegistryCache();
+    return sendResource(c, "registry_cache_cleared", {
+      message: "Tool registry cache cleared",
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    return handleError(error, c);
+  }
+});
+
+/**
+ * POST /setup/registry/refresh - Force reload tool registry manifest
+ */
+setup.post("/registry/refresh", async (c) => {
+  try {
+    const registry = await loadToolRegistry({ bypassCache: true });
+    return sendResource(c, "registry_refresh", {
+      manifest: {
+        schemaVersion: registry.schemaVersion,
+        source: registry.source ?? null,
+        generatedAt: registry.generatedAt ?? null,
+      },
+      toolCount: registry.tools.length,
+      refreshedAt: new Date().toISOString(),
     });
   } catch (error) {
     return handleError(error, c);
