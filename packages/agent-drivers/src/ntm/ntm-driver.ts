@@ -16,6 +16,11 @@ import {
   logDriver,
 } from "../base-driver";
 import type { DriverOptions } from "../interface";
+import {
+  createAgentNtmMapping,
+  generateNtmPaneId,
+  generateNtmSessionName,
+} from "../naming";
 import type {
   Agent,
   AgentConfig,
@@ -116,15 +121,18 @@ export class NtmDriver extends BaseDriver {
   }
 
   protected async doSpawn(config: AgentConfig): Promise<Agent> {
-    // Generate session name from agent ID
-    const sessionName = `flywheel-${config.id}`;
+    // Generate deterministic session name using naming utility
+    // Format: fw-<project>-<agent>-<hash6>
+    // See naming.ts for full documentation on end-to-end tracing
+    const sessionName = generateNtmSessionName({ config });
+    const mapping = createAgentNtmMapping(config);
 
     // For NTM driver, we expect the session to already exist or be created
     // via NTM spawn commands. The driver maps to existing NTM sessions.
     // In a full implementation, this would call ntm spawn to create the session.
 
-    // For now, we'll check if a session exists and map to it
-    let paneId = `${sessionName}:0.0`;
+    // Generate default pane ID using naming utility
+    let paneId = generateNtmPaneId(sessionName);
 
     try {
       const spawnStatusOpts = this.cwd !== undefined ? { cwd: this.cwd } : undefined;
@@ -169,13 +177,20 @@ export class NtmDriver extends BaseDriver {
     // Start output polling
     this.startOutputPolling(config.id);
 
-    // Log spawn
+    // Log spawn with full mapping info for end-to-end tracing
+    // Operators can correlate Gateway agentId with NTM sessionName/paneId
     logDriver("info", this.driverType, "action=spawn", {
       agentId: config.id,
       sessionName,
       paneId,
       model: config.model,
       workingDirectory: config.workingDirectory,
+      // Include mapping details for tracing documentation
+      ntmMapping: {
+        project: mapping.project,
+        agentLabel: mapping.agentLabel,
+        suffix: mapping.suffix,
+      },
     });
 
     // Return agent state

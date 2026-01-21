@@ -1,11 +1,10 @@
 /**
- * MS (Meta Skill) Client
+ * PT (Process Triage) Client
  *
- * Provides typed access to the ms CLI for local-first knowledge management
- * with hybrid semantic search. Useful for agents to query skill repositories
- * and documentation.
+ * Provides typed access to the pt CLI for finding and triaging stuck/zombie
+ * processes that may be consuming resources or blocking agent work.
  *
- * CLI: https://github.com/Dicklesworthstone/meta_skill
+ * CLI: https://github.com/Dicklesworthstone/process_triage
  */
 
 import {
@@ -23,22 +22,22 @@ import {
 // Command Runner Interface
 // ============================================================================
 
-export interface MsCommandResult {
+export interface PtCommandResult {
   stdout: string;
   stderr: string;
   exitCode: number;
 }
 
-export interface MsCommandRunner {
+export interface PtCommandRunner {
   run: (
     command: string,
     args: string[],
     options?: { cwd?: string; timeout?: number },
-  ) => Promise<MsCommandResult>;
+  ) => Promise<PtCommandResult>;
 }
 
-export interface MsClientOptions {
-  runner: MsCommandRunner;
+export interface PtClientOptions {
+  runner: PtCommandRunner;
   cwd?: string;
   /** Default timeout in milliseconds (default: 60000) */
   timeout?: number;
@@ -48,10 +47,10 @@ export interface MsClientOptions {
 // Error Types
 // ============================================================================
 
-export class MsClientError extends CliClientError {
+export class PtClientError extends CliClientError {
   constructor(kind: CliErrorKind, message: string, details?: CliErrorDetails) {
     super(kind, message, details);
-    this.name = "MsClientError";
+    this.name = "PtClientError";
   }
 }
 
@@ -59,24 +58,24 @@ export class MsClientError extends CliClientError {
 // Zod Schemas
 // ============================================================================
 
-const MsResponseMetaSchema = z
+const PtResponseMetaSchema = z
   .object({
     v: z.string(),
     ts: z.string(),
   })
   .passthrough();
 
-const MsResponseSchema = z
+const PtResponseSchema = z
   .object({
     ok: z.boolean(),
     code: z.string(),
     data: z.unknown(),
     hint: z.string().optional(),
-    meta: MsResponseMetaSchema,
+    meta: PtResponseMetaSchema,
   })
   .passthrough();
 
-const MsDoctorCheckSchema = z
+const PtDoctorCheckSchema = z
   .object({
     name: z.string(),
     status: z.enum(["ok", "warning", "error"]),
@@ -84,66 +83,66 @@ const MsDoctorCheckSchema = z
   })
   .passthrough();
 
-const MsDoctorEmbeddingSchema = z
+const PtDoctorPermissionsSchema = z
   .object({
-    available: z.boolean(),
-    model: z.string().optional(),
-    latency_ms: z.number().optional(),
+    can_list_processes: z.boolean(),
+    can_kill_processes: z.boolean(),
   })
   .passthrough();
 
-const MsDoctorStorageSchema = z
-  .object({
-    data_dir: z.string(),
-    size_bytes: z.number(),
-    index_count: z.number(),
-  })
-  .passthrough();
-
-const MsDoctorSchema = z
+const PtDoctorSchema = z
   .object({
     status: z.enum(["healthy", "degraded", "error"]),
-    checks: z.array(MsDoctorCheckSchema),
-    embedding_service: MsDoctorEmbeddingSchema,
-    storage: MsDoctorStorageSchema,
+    checks: z.array(PtDoctorCheckSchema),
+    permissions: PtDoctorPermissionsSchema,
   })
   .passthrough();
 
-const MsSearchResultSchema = z
+const PtScoreBreakdownSchema = z
   .object({
-    id: z.string(),
-    title: z.string(),
-    snippet: z.string(),
-    score: z.number(),
-    knowledge_base: z.string(),
-    source: z.string(),
-    metadata: z.record(z.string(), z.unknown()).optional(),
+    cpu_score: z.number(),
+    memory_score: z.number(),
+    runtime_score: z.number(),
+    state_score: z.number(),
   })
   .passthrough();
 
-const MsSearchResponseSchema = z
+const PtProcessSchema = z
   .object({
-    query: z.string(),
-    results: z.array(MsSearchResultSchema),
-    total: z.number(),
-    took_ms: z.number(),
-    semantic_enabled: z.boolean(),
-  })
-  .passthrough();
-
-const MsKnowledgeBaseSchema = z
-  .object({
+    pid: z.number(),
+    ppid: z.number(),
     name: z.string(),
-    description: z.string().optional(),
-    entry_count: z.number(),
-    created_at: z.string().optional(),
-    updated_at: z.string().optional(),
+    cmdline: z.string(),
+    user: z.string(),
+    state: z.string(),
+    cpu_percent: z.number(),
+    memory_percent: z.number(),
+    memory_rss_mb: z.number(),
+    started_at: z.string().optional(),
+    runtime_seconds: z.number().optional(),
+    score: z.number(),
+    score_breakdown: PtScoreBreakdownSchema.optional(),
+    flags: z.array(z.string()),
   })
   .passthrough();
 
-const MsListResponseSchema = z
+const PtScanThresholdsSchema = z
   .object({
-    knowledge_bases: z.array(MsKnowledgeBaseSchema).optional(),
+    min_score: z.number(),
+    min_runtime_seconds: z.number().optional(),
+    min_memory_mb: z.number().optional(),
+    min_cpu_percent: z.number().optional(),
+  })
+  .passthrough();
+
+const PtScanResultSchema = z
+  .object({
+    processes: z.array(PtProcessSchema),
+    total_scanned: z.number(),
+    suspicious_count: z.number(),
+    scan_time_ms: z.number(),
+    timestamp: z.string(),
+    thresholds: PtScanThresholdsSchema,
   })
   .passthrough();
 
@@ -151,55 +150,57 @@ const MsListResponseSchema = z
 // Exported Types
 // ============================================================================
 
-export type MsDoctor = z.infer<typeof MsDoctorSchema>;
-export type MsDoctorCheck = z.infer<typeof MsDoctorCheckSchema>;
-export type MsSearchResult = z.infer<typeof MsSearchResultSchema>;
-export type MsSearchResponse = z.infer<typeof MsSearchResponseSchema>;
-export type MsKnowledgeBase = z.infer<typeof MsKnowledgeBaseSchema>;
+export type PtDoctor = z.infer<typeof PtDoctorSchema>;
+export type PtDoctorCheck = z.infer<typeof PtDoctorCheckSchema>;
+export type PtProcess = z.infer<typeof PtProcessSchema>;
+export type PtScanResult = z.infer<typeof PtScanResultSchema>;
 
-export interface MsStatus {
+export interface PtStatus {
   available: boolean;
   version?: string;
-  configured: boolean;
-  knowledge_bases: string[];
-  embedding_service_available: boolean;
-  embedding_model?: string;
-  index_count: number;
-  data_dir: string;
+  canListProcesses: boolean;
+  canKillProcesses: boolean;
 }
 
 // ============================================================================
 // Options Types
 // ============================================================================
 
-export interface MsCommandOptions {
+export interface PtCommandOptions {
   cwd?: string;
   timeout?: number;
 }
 
-export interface MsSearchOptions extends MsCommandOptions {
-  knowledgeBase?: string;
+export interface PtScanOptions extends PtCommandOptions {
+  /** Minimum suspicion score threshold (0-100). Default: 50 */
+  minScore?: number;
+  /** Minimum runtime in seconds to consider. Default: 0 */
+  minRuntimeSeconds?: number;
+  /** Minimum memory usage in MB. Default: 0 */
+  minMemoryMb?: number;
+  /** Minimum CPU percentage. Default: 0 */
+  minCpuPercent?: number;
+  /** Only include processes matching these names (regex) */
+  namePattern?: string;
+  /** Exclude processes matching these names (regex) */
+  excludePattern?: string;
+  /** Limit results to top N by score */
   limit?: number;
-  threshold?: number;
-  semantic?: boolean;
 }
 
 // ============================================================================
 // Client Interface
 // ============================================================================
 
-export interface MsClient {
-  /** Run doctor check to get system health and configuration status */
-  doctor: (options?: MsCommandOptions) => Promise<MsDoctor>;
+export interface PtClient {
+  /** Run doctor check to get system health and permissions */
+  doctor: (options?: PtCommandOptions) => Promise<PtDoctor>;
 
-  /** Get overall status including version and configuration */
-  status: (options?: MsCommandOptions) => Promise<MsStatus>;
+  /** Get overall status including version and permissions */
+  status: (options?: PtCommandOptions) => Promise<PtStatus>;
 
-  /** List all knowledge bases */
-  listKnowledgeBases: (options?: MsCommandOptions) => Promise<MsKnowledgeBase[]>;
-
-  /** Semantic search across knowledge bases */
-  search: (query: string, options?: MsSearchOptions) => Promise<MsSearchResponse>;
+  /** Scan for suspicious/stuck processes */
+  scan: (options?: PtScanOptions) => Promise<PtScanResult>;
 
   /** Fast availability check */
   isAvailable: () => Promise<boolean>;
@@ -209,14 +210,14 @@ export interface MsClient {
 // Implementation
 // ============================================================================
 
-async function runMsCommand(
-  runner: MsCommandRunner,
+async function runPtCommand(
+  runner: PtCommandRunner,
   args: string[],
   options?: { cwd?: string; timeout?: number },
 ): Promise<string> {
-  const result = await runner.run("ms", [...args, "--json"], options);
+  const result = await runner.run("pt", [...args, "--json"], options);
   if (result.exitCode !== 0) {
-    throw new MsClientError("command_failed", "MS command failed", {
+    throw new PtClientError("command_failed", "PT command failed", {
       exitCode: result.exitCode,
       stderr: result.stderr,
       args,
@@ -231,12 +232,12 @@ function parseResponse<T>(
   context: string,
 ): T {
   // First parse the envelope
-  let envelope: z.infer<typeof MsResponseSchema>;
+  let envelope: z.infer<typeof PtResponseSchema>;
   try {
     const parsed = JSON.parse(stdout);
-    envelope = MsResponseSchema.parse(parsed);
+    envelope = PtResponseSchema.parse(parsed);
   } catch (error) {
-    throw new MsClientError("parse_error", `Failed to parse MS ${context}`, {
+    throw new PtClientError("parse_error", `Failed to parse PT ${context}`, {
       cause: error instanceof Error ? error.message : String(error),
       stdout: stdout.slice(0, 500),
     });
@@ -244,7 +245,7 @@ function parseResponse<T>(
 
   // Check if response is OK
   if (!envelope.ok) {
-    throw new MsClientError("command_failed", `MS ${context} failed: ${envelope.code}`, {
+    throw new PtClientError("command_failed", `PT ${context} failed: ${envelope.code}`, {
       code: envelope.code,
       hint: envelope.hint,
     });
@@ -253,7 +254,7 @@ function parseResponse<T>(
   // Parse the data with the specific schema
   const result = schema.safeParse(envelope.data);
   if (!result.success) {
-    throw new MsClientError("validation_error", `Invalid MS ${context} response`, {
+    throw new PtClientError("validation_error", `Invalid PT ${context} response`, {
       issues: result.error.issues,
     });
   }
@@ -262,8 +263,8 @@ function parseResponse<T>(
 }
 
 function buildRunOptions(
-  options: MsClientOptions,
-  override?: MsCommandOptions,
+  options: PtClientOptions,
+  override?: PtCommandOptions,
 ): { cwd?: string; timeout?: number } {
   const result: { cwd?: string; timeout?: number } = {};
   const cwd = override?.cwd ?? options.cwd;
@@ -273,13 +274,13 @@ function buildRunOptions(
   return result;
 }
 
-async function getVersion(runner: MsCommandRunner, cwd?: string): Promise<string | null> {
+async function getVersion(runner: PtCommandRunner, cwd?: string): Promise<string | null> {
   try {
     const opts: { cwd?: string; timeout: number } = { timeout: 5000 };
     if (cwd !== undefined) opts.cwd = cwd;
-    const result = await runner.run("ms", ["--version"], opts);
+    const result = await runner.run("pt", ["--version"], opts);
     if (result.exitCode !== 0) return null;
-    // Extract version from output (e.g., "ms v1.2.3" -> "1.2.3")
+    // Extract version from output (e.g., "pt v1.2.3" -> "1.2.3")
     const versionMatch = result.stdout.match(/v?(\d+\.\d+\.\d+)/);
     return versionMatch?.[1] ?? null;
   } catch {
@@ -287,96 +288,80 @@ async function getVersion(runner: MsCommandRunner, cwd?: string): Promise<string
   }
 }
 
-export function createMsClient(options: MsClientOptions): MsClient {
+export function createPtClient(options: PtClientOptions): PtClient {
   return {
     doctor: async (opts) => {
-      const stdout = await runMsCommand(
+      const stdout = await runPtCommand(
         options.runner,
         ["doctor"],
         buildRunOptions(options, opts),
       );
-      return parseResponse(stdout, MsDoctorSchema, "doctor");
+      return parseResponse(stdout, PtDoctorSchema, "doctor");
     },
 
-    status: async (opts): Promise<MsStatus> => {
+    status: async (opts): Promise<PtStatus> => {
       try {
-        const doctor = await createMsClient(options).doctor(opts);
+        const doctor = await createPtClient(options).doctor(opts);
         const version = await getVersion(options.runner, opts?.cwd ?? options.cwd);
 
-        // Try to get knowledge base list
-        let knowledgeBaseNames: string[] = [];
-        try {
-          const kbs = await createMsClient(options).listKnowledgeBases(opts);
-          knowledgeBaseNames = kbs.map((kb) => kb.name);
-        } catch {
-          // Ignore - list might not be available
-        }
-
-        const status: MsStatus = {
+        const status: PtStatus = {
           available: true,
-          configured: doctor.status !== "error",
-          knowledge_bases: knowledgeBaseNames,
-          embedding_service_available: doctor.embedding_service.available,
-          index_count: doctor.storage.index_count,
-          data_dir: doctor.storage.data_dir,
+          canListProcesses: doctor.permissions.can_list_processes,
+          canKillProcesses: doctor.permissions.can_kill_processes,
         };
         if (version !== null) status.version = version;
-        if (doctor.embedding_service.model !== undefined) {
-          status.embedding_model = doctor.embedding_service.model;
-        }
         return status;
       } catch {
         return {
           available: false,
-          configured: false,
-          knowledge_bases: [],
-          embedding_service_available: false,
-          index_count: 0,
-          data_dir: "",
+          canListProcesses: false,
+          canKillProcesses: false,
         };
       }
     },
 
-    listKnowledgeBases: async (opts) => {
-      const stdout = await runMsCommand(
-        options.runner,
-        ["list"],
-        buildRunOptions(options, opts),
-      );
-      const response = parseResponse(stdout, MsListResponseSchema, "list");
-      return response.knowledge_bases ?? [];
-    },
+    scan: async (opts) => {
+      const args = ["scan"];
 
-    search: async (query, opts) => {
-      const args = ["search", query];
+      if (opts?.minScore !== undefined) {
+        args.push("--min-score", String(opts.minScore));
+      }
 
-      if (opts?.knowledgeBase) {
-        args.push("-kb", opts.knowledgeBase);
+      if (opts?.minRuntimeSeconds !== undefined) {
+        args.push("--min-runtime", String(opts.minRuntimeSeconds));
+      }
+
+      if (opts?.minMemoryMb !== undefined) {
+        args.push("--min-memory", String(opts.minMemoryMb));
+      }
+
+      if (opts?.minCpuPercent !== undefined) {
+        args.push("--min-cpu", String(opts.minCpuPercent));
+      }
+
+      if (opts?.namePattern) {
+        args.push("--name", opts.namePattern);
+      }
+
+      if (opts?.excludePattern) {
+        args.push("--exclude", opts.excludePattern);
       }
 
       if (opts?.limit !== undefined) {
-        args.push("-n", String(opts.limit));
+        args.push("--limit", String(opts.limit));
       }
 
-      if (opts?.threshold !== undefined) {
-        args.push("-t", String(opts.threshold));
-      }
-
-      if (opts?.semantic === false) {
-        args.push("--no-semantic");
-      }
-
-      const stdout = await runMsCommand(
+      const stdout = await runPtCommand(
         options.runner,
         args,
         buildRunOptions(options, opts),
       );
-      return parseResponse(stdout, MsSearchResponseSchema, "search");
+      return parseResponse(stdout, PtScanResultSchema, "scan");
     },
 
     isAvailable: async () => {
       try {
-        await createMsClient(options).doctor({ timeout: 5000 });
+        await createPtClient(options).doctor({ timeout: 5000 });
         return true;
       } catch {
         return false;
@@ -392,7 +377,7 @@ export function createMsClient(options: MsClientOptions): MsClient {
 /**
  * Create a command runner that uses Bun.spawn for subprocess execution.
  */
-export function createBunMsCommandRunner(): MsCommandRunner {
+export function createBunPtCommandRunner(): PtCommandRunner {
   const runner = createSharedBunCliRunner({ timeoutMs: 60000 });
   return {
     run: async (command, args, options) => {
@@ -409,14 +394,14 @@ export function createBunMsCommandRunner(): MsCommandRunner {
       } catch (error) {
         if (error instanceof CliCommandError) {
           if (error.kind === "timeout") {
-            throw new MsClientError("timeout", "Command timed out", {
+            throw new PtClientError("timeout", "Command timed out", {
               timeout: options?.timeout ?? 60000,
             });
           }
           if (error.kind === "spawn_failed") {
-            throw new MsClientError(
+            throw new PtClientError(
               "unavailable",
-              "MS command failed to start",
+              "PT command failed to start",
               {
                 command,
                 args,

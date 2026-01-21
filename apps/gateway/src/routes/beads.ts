@@ -1,8 +1,13 @@
 /**
- * Beads Routes - REST API endpoints for BV-backed triage.
+ * Beads Routes - REST API endpoints for BV-backed triage and BR CRUD.
  */
 
-import { BvClientError } from "@flywheel/flywheel-clients";
+import {
+  BrClientError,
+  BvClientError,
+  type BrCreateInput,
+  type BrUpdateInput,
+} from "@flywheel/flywheel-clients";
 import type { GatewayError } from "@flywheel/shared/errors";
 import {
   createGatewayError,
@@ -24,7 +29,69 @@ import {
 } from "../utils/response";
 import { transformZodError } from "../utils/validation";
 
+// ============================================================================
+// Request Body Schemas
+// ============================================================================
+
+const CreateBeadSchema = z.object({
+  title: z.string().optional(),
+  type: z.string().optional(),
+  priority: z.union([z.number(), z.string()]).optional(),
+  description: z.string().optional(),
+  assignee: z.string().optional(),
+  owner: z.string().optional(),
+  labels: z.array(z.string()).optional(),
+  parent: z.string().optional(),
+  deps: z.union([z.array(z.string()), z.string()]).optional(),
+  estimateMinutes: z.number().optional(),
+  due: z.string().optional(),
+  defer: z.string().optional(),
+  externalRef: z.string().optional(),
+});
+
+const UpdateBeadSchema = z.object({
+  title: z.string().optional(),
+  description: z.string().optional(),
+  design: z.string().optional(),
+  acceptanceCriteria: z.string().optional(),
+  notes: z.string().optional(),
+  status: z.string().optional(),
+  priority: z.union([z.number(), z.string()]).optional(),
+  type: z.string().optional(),
+  assignee: z.string().optional(),
+  owner: z.string().optional(),
+  claim: z.boolean().optional(),
+  due: z.string().optional(),
+  defer: z.string().optional(),
+  estimateMinutes: z.number().optional(),
+  addLabels: z.array(z.string()).optional(),
+  removeLabels: z.array(z.string()).optional(),
+  setLabels: z.array(z.string()).optional(),
+  parent: z.string().optional(),
+  externalRef: z.string().optional(),
+});
+
+const CloseBeadSchema = z.object({
+  reason: z.string().optional(),
+  force: z.boolean().optional(),
+});
+
 const _beads = new Hono<{ Variables: { beadsService: BeadsService } }>();
+
+/**
+ * Strip undefined values from an object.
+ * Required for exactOptionalPropertyTypes compliance when passing
+ * Zod-parsed objects to functions expecting optional (but not undefined) properties.
+ */
+function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
+  const result = {} as T;
+  for (const key of Object.keys(obj) as (keyof T)[]) {
+    if (obj[key] !== undefined) {
+      result[key] = obj[key];
+    }
+  }
+  return result;
+}
 
 function respondWithGatewayError(c: Context, error: GatewayError) {
   const timestamp = new Date().toISOString();
@@ -52,6 +119,18 @@ function handleError(error: unknown, c: Context) {
     const mapped = createGatewayError(
       "SYSTEM_UNAVAILABLE",
       "BV command failed",
+      {
+        details: { kind: error.kind, ...error.details },
+        cause: error,
+      },
+    );
+    return respondWithGatewayError(c, mapped);
+  }
+
+  if (error instanceof BrClientError) {
+    const mapped = createGatewayError(
+      "SYSTEM_UNAVAILABLE",
+      "BR command failed",
       {
         details: { kind: error.kind, ...error.details },
         cause: error,
@@ -216,25 +295,277 @@ function createBeadsRoutes(service?: BeadsService) {
   router.post("/sync", async (c) => {
     try {
       const serviceInstance = c.get("beadsService");
-      const result = await serviceInstance.syncBeads();
-      if (result.exitCode !== 0) {
+      const result = await serviceInstance.sync({ mode: "flush-only" });
+      return sendResource(c, "sync_result", {
+        status: "ok",
+        ...result,
+      });
+    } catch (error) {
+      return handleError(error, c);
+    }
+  });
+
+  /**
+   * GET /beads/sync/status - Get br sync status
+   */
+  router.get("/sync/status", async (c) => {
+    try {
+      const serviceInstance = c.get("beadsService");
+      const status = await serviceInstance.syncStatus();
+      return sendResource(c, "sync_status", status);
+    } catch (error) {
+      return handleError(error, c);
+    }
+  });
+
+  // ==========================================================================
+  // BR CRUD Endpoints
+  // ==========================================================================
+
+  /**
+   * GET /beads - List beads with optional filtering
+   * Query params:
+   *   status: filter by status (can be repeated)
+   *   type: filter by type (can be repeated)
+   *   assignee: filter by assignee
+   *   unassigned: only show unassigned (boolean)
+   *   label: filter by label (can be repeated)
+   *   priority: filter by priority
+   *   limit: max results
+   *   sort: sort by (priority|created_at|updated_at|title)
+   */
+  router.get("/", async (c) => {
+    try {
+      const serviceInstance = c.get("beadsService");
+      const log = getLogger();
+
+      // Parse query parameters
+      const statuses = c.req.queries("status");
+      const types = c.req.queries("type");
+      const assignee = c.req.query("assignee");
+      const unassigned = c.req.query("unassigned") === "true";
+      const labels = c.req.queries("label");
+      const priorityStr = c.req.query("priority");
+      const limit = parseLimit(c.req.query("limit"));
+      const sort = c.req.query("sort") as
+        | "priority"
+        | "created_at"
+        | "updated_at"
+        | "title"
+        | undefined;
+
+      // Build options object conditionally
+      const options: Parameters<typeof serviceInstance.list>[0] = {};
+      if (statuses && statuses.length > 0) options.statuses = statuses;
+      if (types && types.length > 0) options.types = types;
+      if (assignee) options.assignee = assignee;
+      if (unassigned) options.unassigned = true;
+      if (labels && labels.length > 0) options.labels = labels;
+      if (priorityStr) {
+        const priority = Number.parseInt(priorityStr, 10);
+        if (!Number.isNaN(priority)) options.priorities = [priority];
+      }
+      if (limit !== undefined) options.limit = limit;
+      if (sort) options.sort = sort;
+
+      log.debug({ options }, "Listing beads");
+      const beads = await serviceInstance.list(options);
+
+      return sendResource(c, "beads", { beads, count: beads.length });
+    } catch (error) {
+      return handleError(error, c);
+    }
+  });
+
+  /**
+   * GET /beads/list/ready - Get ready (unblocked) beads
+   * Query params:
+   *   limit: max results
+   *   assignee: filter by assignee
+   *   unassigned: only show unassigned
+   *   label: filter by label (can be repeated)
+   *   sort: sort by (hybrid|priority|oldest)
+   */
+  router.get("/list/ready", async (c) => {
+    try {
+      const serviceInstance = c.get("beadsService");
+
+      const assignee = c.req.query("assignee");
+      const unassigned = c.req.query("unassigned") === "true";
+      const labels = c.req.queries("label");
+      const limit = parseLimit(c.req.query("limit"));
+      const sort = c.req.query("sort") as "hybrid" | "priority" | "oldest" | undefined;
+
+      const options: Parameters<typeof serviceInstance.ready>[0] = {};
+      if (assignee) options.assignee = assignee;
+      if (unassigned) options.unassigned = true;
+      if (labels && labels.length > 0) options.labels = labels;
+      if (limit !== undefined) options.limit = limit;
+      if (sort) options.sort = sort;
+
+      const beads = await serviceInstance.ready(options);
+      return sendResource(c, "beads", { beads, count: beads.length });
+    } catch (error) {
+      return handleError(error, c);
+    }
+  });
+
+  /**
+   * GET /beads/:id - Show a specific bead
+   */
+  router.get("/:id", async (c) => {
+    try {
+      const serviceInstance = c.get("beadsService");
+      const id = c.req.param("id");
+
+      // Avoid matching other routes
+      if (
+        id === "triage" ||
+        id === "ready" ||
+        id === "blocked" ||
+        id === "insights" ||
+        id === "plan" ||
+        id === "graph" ||
+        id === "sync" ||
+        id === "list"
+      ) {
+        return c.notFound();
+      }
+
+      const beads = await serviceInstance.show(id);
+      if (beads.length === 0) {
         const mapped = createGatewayError(
-          "SYSTEM_UNAVAILABLE",
-          "Beads sync failed",
-          {
-            details: {
-              exitCode: result.exitCode,
-              stderr: result.stderr,
-            },
-          },
+          "BEAD_NOT_FOUND",
+          `Bead not found: ${id}`,
         );
         return respondWithGatewayError(c, mapped);
       }
-      return sendResource(c, "sync_result", {
-        status: "ok",
-        exitCode: result.exitCode,
-        stdout: result.stdout,
-      });
+      return sendResource(c, "bead", beads[0]);
+    } catch (error) {
+      return handleError(error, c);
+    }
+  });
+
+  /**
+   * POST /beads - Create a new bead
+   */
+  router.post("/", async (c) => {
+    try {
+      const serviceInstance = c.get("beadsService");
+      const body = await c.req.json();
+      const parsed = CreateBeadSchema.parse(body);
+
+      // Strip undefined values and cast to satisfy exactOptionalPropertyTypes
+      const bead = await serviceInstance.create(
+        stripUndefined(parsed) as BrCreateInput,
+      );
+      return sendResource(c, "bead", bead, 201);
+    } catch (error) {
+      return handleError(error, c);
+    }
+  });
+
+  /**
+   * PATCH /beads/:id - Update a bead
+   */
+  router.patch("/:id", async (c) => {
+    try {
+      const serviceInstance = c.get("beadsService");
+      const id = c.req.param("id");
+      const body = await c.req.json();
+      const parsed = UpdateBeadSchema.parse(body);
+
+      // Strip undefined values and cast to satisfy exactOptionalPropertyTypes
+      const beads = await serviceInstance.update(
+        id,
+        stripUndefined(parsed) as BrUpdateInput,
+      );
+      if (beads.length === 0) {
+        const mapped = createGatewayError(
+          "BEAD_NOT_FOUND",
+          `Bead not found: ${id}`,
+        );
+        return respondWithGatewayError(c, mapped);
+      }
+      return sendResource(c, "bead", beads[0]);
+    } catch (error) {
+      return handleError(error, c);
+    }
+  });
+
+  /**
+   * DELETE /beads/:id - Close a bead
+   */
+  router.delete("/:id", async (c) => {
+    try {
+      const serviceInstance = c.get("beadsService");
+      const id = c.req.param("id");
+      const reason = c.req.query("reason");
+      const force = c.req.query("force") === "true";
+
+      const options: Parameters<typeof serviceInstance.close>[1] = {};
+      if (reason) options.reason = reason;
+      if (force) options.force = true;
+
+      const beads = await serviceInstance.close(id, options);
+      if (beads.length === 0) {
+        const mapped = createGatewayError(
+          "BEAD_NOT_FOUND",
+          `Bead not found: ${id}`,
+        );
+        return respondWithGatewayError(c, mapped);
+      }
+      return sendResource(c, "bead", beads[0]);
+    } catch (error) {
+      return handleError(error, c);
+    }
+  });
+
+  /**
+   * POST /beads/:id/close - Close a bead (alternative to DELETE)
+   */
+  router.post("/:id/close", async (c) => {
+    try {
+      const serviceInstance = c.get("beadsService");
+      const id = c.req.param("id");
+      const body = await c.req.json().catch(() => ({}));
+      const parsed = CloseBeadSchema.parse(body);
+
+      const options: Parameters<typeof serviceInstance.close>[1] = {};
+      if (parsed.reason) options.reason = parsed.reason;
+      if (parsed.force) options.force = true;
+
+      const beads = await serviceInstance.close(id, options);
+      if (beads.length === 0) {
+        const mapped = createGatewayError(
+          "BEAD_NOT_FOUND",
+          `Bead not found: ${id}`,
+        );
+        return respondWithGatewayError(c, mapped);
+      }
+      return sendResource(c, "bead", beads[0]);
+    } catch (error) {
+      return handleError(error, c);
+    }
+  });
+
+  /**
+   * POST /beads/:id/claim - Claim a bead (set status to in_progress)
+   */
+  router.post("/:id/claim", async (c) => {
+    try {
+      const serviceInstance = c.get("beadsService");
+      const id = c.req.param("id");
+
+      const beads = await serviceInstance.update(id, { claim: true });
+      if (beads.length === 0) {
+        const mapped = createGatewayError(
+          "BEAD_NOT_FOUND",
+          `Bead not found: ${id}`,
+        );
+        return respondWithGatewayError(c, mapped);
+      }
+      return sendResource(c, "bead", beads[0]);
     } catch (error) {
       return handleError(error, c);
     }

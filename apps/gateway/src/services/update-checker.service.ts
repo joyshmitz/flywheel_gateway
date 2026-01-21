@@ -22,6 +22,7 @@ import type {
   DownloadResult,
   ReleaseAsset,
   ReleaseInfo,
+  ToolDefinition,
   UpdateCheckCache,
   UpdateCheckerConfig,
   UpdateCheckerService,
@@ -29,6 +30,7 @@ import type {
 } from "@flywheel/shared";
 import { UpdateError, UpdateErrorCode } from "@flywheel/shared";
 import { getLogger } from "../middleware/correlation";
+import { loadToolRegistry } from "./tool-registry.service";
 
 // ============================================================================
 // Constants
@@ -98,6 +100,66 @@ function secureCompare(a: string, b: string): boolean {
   }
 
   return result === 0;
+}
+
+/**
+ * Parse ACFS checksum format.
+ * Supports formats:
+ * - Raw hex: "abc123..."
+ * - Prefixed: "sha256:abc123..." or "sha512:abc123..."
+ */
+function parseAcfsChecksum(checksum: string): {
+  algorithm: "sha256" | "sha512";
+  hash: string;
+} {
+  if (checksum.startsWith("sha512:")) {
+    return { algorithm: "sha512", hash: checksum.slice(7) };
+  }
+  if (checksum.startsWith("sha256:")) {
+    return { algorithm: "sha256", hash: checksum.slice(7) };
+  }
+  // Default to sha256 for raw hex
+  return { algorithm: "sha256", hash: checksum };
+}
+
+// ============================================================================
+// ACFS Checksum Verification Types
+// ============================================================================
+
+/**
+ * Result of verifying a file against ACFS checksums.
+ */
+export interface AcfsVerifyResult {
+  /** Whether the checksum matched */
+  verified: boolean;
+  /** Tool ID from the registry */
+  toolId: string;
+  /** Filename that was matched */
+  filename: string;
+  /** Actual computed checksum */
+  actualChecksum: string;
+  /** Expected checksum from ACFS manifest */
+  expectedChecksum: string;
+  /** Algorithm used (sha256 or sha512) */
+  algorithm: "sha256" | "sha512";
+  /** File size in bytes */
+  size: number;
+}
+
+/**
+ * Result of refreshing ACFS checksums from a remote source.
+ */
+export interface AcfsRefreshResult {
+  /** Whether the refresh was successful */
+  success: boolean;
+  /** Number of tools with checksums updated */
+  updatedTools: number;
+  /** Source URL that was fetched */
+  sourceUrl: string;
+  /** When the refresh occurred */
+  refreshedAt: string;
+  /** Error message if refresh failed */
+  error?: string;
 }
 
 // ============================================================================
@@ -520,4 +582,233 @@ export function getUpdateCheckerService(): UpdateCheckerService {
     });
   }
   return serviceInstance;
+}
+
+// ============================================================================
+// ACFS Checksum Verification Functions
+// ============================================================================
+
+/**
+ * Verify a file against ACFS tool registry checksums.
+ *
+ * This function:
+ * 1. Loads the tool registry (with caching)
+ * 2. Finds the tool by ID
+ * 3. Looks up the checksum for the given filename
+ * 4. Computes the file's actual checksum
+ * 5. Performs constant-time comparison
+ *
+ * @param toolId - Tool ID from the ACFS registry (e.g., "agents.claude")
+ * @param filename - The artifact filename to match in checksums
+ * @param filePath - Path to the file to verify
+ * @returns Verification result with details
+ */
+export async function verifyAgainstAcfsChecksums(
+  toolId: string,
+  filename: string,
+  filePath: string,
+): Promise<AcfsVerifyResult> {
+  const log = getLogger();
+
+  log.debug({ toolId, filename, filePath }, "Verifying file against ACFS checksums");
+
+  // Load tool registry
+  const registry = await loadToolRegistry();
+  const tool = registry.tools.find((t) => t.id === toolId);
+
+  if (!tool) {
+    throw new UpdateError(
+      `Tool not found in ACFS registry: ${toolId}`,
+      UpdateErrorCode.ASSET_NOT_FOUND,
+    );
+  }
+
+  if (!tool.checksums || Object.keys(tool.checksums).length === 0) {
+    throw new UpdateError(
+      `No checksums defined for tool: ${toolId}`,
+      UpdateErrorCode.CHECKSUM_MISMATCH,
+    );
+  }
+
+  const expectedRaw = tool.checksums[filename];
+  if (!expectedRaw) {
+    throw new UpdateError(
+      `No checksum found for file '${filename}' in tool '${toolId}'. ` +
+        `Available files: ${Object.keys(tool.checksums).join(", ")}`,
+      UpdateErrorCode.ASSET_NOT_FOUND,
+    );
+  }
+
+  // Parse checksum format (may be prefixed with algorithm)
+  const { algorithm, hash: expectedChecksum } = parseAcfsChecksum(expectedRaw);
+
+  // Read file and compute checksum
+  const content = await readFile(filePath);
+  const actualChecksum = createHash(algorithm).update(content).digest("hex");
+
+  // Constant-time comparison
+  const verified = secureCompare(actualChecksum, expectedChecksum);
+
+  const result: AcfsVerifyResult = {
+    verified,
+    toolId,
+    filename,
+    actualChecksum,
+    expectedChecksum,
+    algorithm,
+    size: content.length,
+  };
+
+  if (!verified) {
+    log.warn(
+      {
+        toolId,
+        filename,
+        expected: expectedChecksum.substring(0, 16) + "...",
+        actual: actualChecksum.substring(0, 16) + "...",
+      },
+      "ACFS checksum mismatch",
+    );
+  } else {
+    log.info(
+      { toolId, filename, algorithm, size: content.length },
+      "ACFS checksum verified",
+    );
+  }
+
+  return result;
+}
+
+/**
+ * Find a tool's checksum for a file, matching by filename pattern.
+ *
+ * Useful when you don't know the exact filename but have a pattern
+ * (e.g., looking for any linux-x64 tarball).
+ *
+ * @param toolId - Tool ID from the ACFS registry
+ * @param pattern - Regex pattern or glob-like pattern to match filenames
+ * @returns The matching filename and checksum, or null if not found
+ */
+export async function findAcfsChecksum(
+  toolId: string,
+  pattern: string | RegExp,
+): Promise<{ filename: string; checksum: string; algorithm: "sha256" | "sha512" } | null> {
+  const registry = await loadToolRegistry();
+  const tool = registry.tools.find((t) => t.id === toolId);
+
+  if (!tool?.checksums) {
+    return null;
+  }
+
+  const regex = typeof pattern === "string" ? new RegExp(pattern) : pattern;
+
+  for (const [filename, checksum] of Object.entries(tool.checksums)) {
+    if (regex.test(filename)) {
+      const { algorithm, hash } = parseAcfsChecksum(checksum);
+      return { filename, checksum: hash, algorithm };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Get checksum age for a tool (time since registry was last loaded).
+ *
+ * This helps determine if checksums might be stale and need refresh.
+ *
+ * @param toolId - Tool ID to check
+ * @returns Age information or null if tool not found
+ */
+export async function getChecksumAge(
+  toolId: string,
+): Promise<{
+  toolId: string;
+  hasChecksums: boolean;
+  checksumCount: number;
+  registryGeneratedAt?: string;
+} | null> {
+  const registry = await loadToolRegistry();
+  const tool = registry.tools.find((t) => t.id === toolId);
+
+  if (!tool) {
+    return null;
+  }
+
+  // Build result, only including registryGeneratedAt if defined
+  const result: {
+    toolId: string;
+    hasChecksums: boolean;
+    checksumCount: number;
+    registryGeneratedAt?: string;
+  } = {
+    toolId,
+    hasChecksums: !!(tool.checksums && Object.keys(tool.checksums).length > 0),
+    checksumCount: tool.checksums ? Object.keys(tool.checksums).length : 0,
+  };
+
+  if (registry.generatedAt !== undefined) {
+    result.registryGeneratedAt = registry.generatedAt;
+  }
+
+  return result;
+}
+
+/**
+ * Verify multiple files against ACFS checksums in batch.
+ *
+ * @param toolId - Tool ID from the ACFS registry
+ * @param files - Array of { filename, filePath } to verify
+ * @returns Array of verification results
+ */
+export async function verifyAcfsBatch(
+  toolId: string,
+  files: Array<{ filename: string; filePath: string }>,
+): Promise<AcfsVerifyResult[]> {
+  const results: AcfsVerifyResult[] = [];
+
+  for (const { filename, filePath } of files) {
+    try {
+      const result = await verifyAgainstAcfsChecksums(toolId, filename, filePath);
+      results.push(result);
+    } catch (error) {
+      // Include failed verifications with verified=false
+      results.push({
+        verified: false,
+        toolId,
+        filename,
+        actualChecksum: "",
+        expectedChecksum: "",
+        algorithm: "sha256",
+        size: 0,
+      });
+    }
+  }
+
+  return results;
+}
+
+/**
+ * List all tools with checksums defined in the ACFS registry.
+ *
+ * Useful for audit and monitoring checksum coverage.
+ */
+export async function listToolsWithChecksums(): Promise<
+  Array<{
+    toolId: string;
+    name: string;
+    checksumCount: number;
+    filenames: string[];
+  }>
+> {
+  const registry = await loadToolRegistry();
+
+  return registry.tools
+    .filter((tool) => tool.checksums && Object.keys(tool.checksums).length > 0)
+    .map((tool) => ({
+      toolId: tool.id,
+      name: tool.name,
+      checksumCount: Object.keys(tool.checksums!).length,
+      filenames: Object.keys(tool.checksums!),
+    }));
 }

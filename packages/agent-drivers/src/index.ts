@@ -43,6 +43,8 @@ export {
 } from "./base-driver";
 // Interface and driver contract
 export * from "./interface";
+// Naming utilities for deterministic session names
+export * from "./naming";
 // Driver registry and selection
 export * from "./registry";
 

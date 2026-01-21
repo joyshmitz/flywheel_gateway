@@ -158,6 +158,11 @@ ru status            # View fleet status
 ru agent-sweep       # Run automated maintenance
 ```
 
+## Integration Direction (2026)
+
+- **ACFS manifest registry (in progress)** — Setup/detection will read tool metadata from the ACFS manifest to keep UI, readiness, and CLI inventory in sync.
+- **NTM execution plane (in progress)** — NTM driver + ingest/WS bridge for unified agent state, telemetry, and fleet coordination.
+
 ## Documentation
 
 - [Getting Started Guide](docs/user-guide/getting-started.md)
