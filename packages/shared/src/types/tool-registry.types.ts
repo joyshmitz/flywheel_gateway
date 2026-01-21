@@ -9,6 +9,8 @@ export type ToolCategory = "agent" | "tool";
 
 export type ToolTag = string;
 
+export type ToolPriority = "required" | "recommended" | "optional";
+
 export type InstallMode = "interactive" | "easy" | "manual";
 
 export interface InstallSpec {
@@ -39,6 +41,19 @@ export interface VerificationSpec {
   timeoutMs?: number;
 }
 
+export type InstalledCheckRunAs = "root" | "user";
+
+export interface InstalledCheckSpec {
+  /** Command to check if tool is installed (e.g. ["command", "-v", "tool"]) */
+  command: string[];
+  /** Privilege context for execution */
+  run_as?: InstalledCheckRunAs;
+  /** Timeout for check execution in ms (default: 5000) */
+  timeoutMs?: number;
+  /** Max output bytes to capture (default: 4096) */
+  outputCapBytes?: number;
+}
+
 export interface ToolDefinition {
   /** Stable identifier (e.g. "agents.claude", "tools.bv") */
   id: string;
@@ -56,12 +71,16 @@ export interface ToolDefinition {
   optional?: boolean;
   /** Whether enabled by default in a stack */
   enabledByDefault?: boolean;
+  /** Installation phase/order (lower = earlier) */
+  phase?: number;
   /** Documentation URL */
   docsUrl?: string;
   /** Installation steps */
   install?: InstallSpec[];
   /** Verification instructions */
   verify?: VerificationSpec;
+  /** Installed check instructions (for detection) */
+  installedCheck?: InstalledCheckSpec;
   /** Checksums for install artifacts (public-safe) */
   checksums?: Record<string, string>;
 }

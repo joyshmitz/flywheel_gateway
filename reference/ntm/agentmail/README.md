@@ -32,9 +32,9 @@ send_message({
   project_key: "/abs/path",
   sender_name: "MyAgent",
   to: ["OtherAgent"],
-  subject: "[bd-123] Implementation update",
+  subject: "[br-123] Implementation update",
   body_md: "Completed step 1...",
-  thread_id: "bd-123",
+  thread_id: "br-123",
   ack_required: true,
 });
 ```

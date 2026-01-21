@@ -41,6 +41,13 @@ const VerificationSpecSchema = z.object({
   timeoutMs: z.number().int().positive().optional(),
 });
 
+const InstalledCheckSpecSchema = z.object({
+  command: z.array(z.string()),
+  run_as: z.enum(["root", "user"]).optional(),
+  timeoutMs: z.number().int().positive().optional(),
+  outputCapBytes: z.number().int().positive().optional(),
+});
+
 const ToolDefinitionSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -50,9 +57,11 @@ const ToolDefinitionSchema = z.object({
   tags: z.array(z.string()).optional(),
   optional: z.boolean().optional(),
   enabledByDefault: z.boolean().optional(),
+  phase: z.number().int().optional(),
   docsUrl: z.string().optional(),
   install: z.array(InstallSpecSchema).optional(),
   verify: VerificationSpecSchema.optional(),
+  installedCheck: InstalledCheckSpecSchema.optional(),
   checksums: z.record(z.string()).optional(),
 });
 

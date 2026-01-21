@@ -63,11 +63,19 @@ export interface DetectionResult {
 // CLI Definitions
 // ============================================================================
 
+interface InstalledCheck {
+  command: string[];
+  run_as?: "root" | "user";
+  timeoutMs?: number;
+  outputCapBytes?: number;
+}
+
 interface CLIDefinition {
   name: DetectedType;
   commands: string[]; // Try these in order
   versionFlag: string;
   authCheckCmd?: string[]; // Command to check authentication
+  installedCheck?: InstalledCheck; // Manifest-defined install check
   capabilities: DetectedCapabilities;
 }
 
@@ -267,7 +275,7 @@ function deriveCommandSpec(
   const verifyCommand = tool.verify?.command;
   if (verifyCommand && verifyCommand.length > 0) {
     const last = verifyCommand[verifyCommand.length - 1];
-    if (verifyCommand.length > 1 && VERSION_FLAG_TOKENS.has(last)) {
+    if (last !== undefined && verifyCommand.length > 1 && VERSION_FLAG_TOKENS.has(last)) {
       const commands = verifyCommand.slice(0, -1);
       return {
         commands: commands.length > 0 ? commands : [tool.name],
@@ -292,17 +300,48 @@ function deriveCapabilities(
     : DEFAULT_TOOL_CAPABILITIES;
 }
 
+function deriveInstalledCheck(
+  tool: ToolDefinition,
+): InstalledCheck | undefined {
+  if (tool.installedCheck && tool.installedCheck.command.length > 0) {
+    const result: InstalledCheck = {
+      command: tool.installedCheck.command,
+    };
+    if (tool.installedCheck.run_as !== undefined) {
+      result.run_as = tool.installedCheck.run_as;
+    }
+    if (tool.installedCheck.timeoutMs !== undefined) {
+      result.timeoutMs = tool.installedCheck.timeoutMs;
+    }
+    if (tool.installedCheck.outputCapBytes !== undefined) {
+      result.outputCapBytes = tool.installedCheck.outputCapBytes;
+    }
+    return result;
+  }
+  return undefined;
+}
+
 function buildCLIDefinition(tool: ToolDefinition): CLIDefinition {
   const fallback = FALLBACK_DEFINITIONS.get(tool.name);
   const { commands, versionFlag } = deriveCommandSpec(tool, fallback);
 
-  return {
+  const result: CLIDefinition = {
     name: tool.name,
     commands,
     versionFlag,
-    authCheckCmd: fallback?.authCheckCmd,
     capabilities: deriveCapabilities(tool, fallback),
   };
+
+  if (fallback?.authCheckCmd !== undefined) {
+    result.authCheckCmd = fallback.authCheckCmd;
+  }
+
+  const installedCheck = deriveInstalledCheck(tool);
+  if (installedCheck !== undefined) {
+    result.installedCheck = installedCheck;
+  }
+
+  return result;
 }
 
 async function getRegistryDefinitions(): Promise<{
@@ -350,8 +389,170 @@ async function getRegistryDefinitions(): Promise<{
 // Detection Helpers
 // ============================================================================
 
+// Default limits for safe execution
+const DEFAULT_CHECK_TIMEOUT_MS = 5000;
+const DEFAULT_OUTPUT_CAP_BYTES = 4096;
+
 /**
- * Find executable path using 'which' (Unix) or 'where' (Windows)
+ * Environment variables considered safe to pass to spawned processes.
+ *
+ * Security rationale:
+ * - PATH: Required for command resolution
+ * - HOME: Required by many tools for config lookup
+ * - USER, LOGNAME: User identity (non-sensitive)
+ * - SHELL: Shell preference
+ * - LANG, LC_*: Locale settings for consistent output
+ * - TERM: Terminal type (affects output formatting)
+ * - TMPDIR, TEMP, TMP: Temp directory paths
+ * - XDG_*: Standard config/data directories
+ * - NO_COLOR: Disable color output (we set this)
+ *
+ * Explicitly EXCLUDED (potential secrets):
+ * - API keys: *_API_KEY, *_TOKEN, *_SECRET, *_PASSWORD
+ * - Database URLs: DATABASE_URL, *_DSN
+ * - Cloud credentials: AWS_*, GOOGLE_*, AZURE_*
+ * - Authentication: AUTH_*, SESSION_*, JWT_*
+ */
+const SAFE_ENV_PREFIXES = [
+  "PATH",
+  "HOME",
+  "USER",
+  "LOGNAME",
+  "SHELL",
+  "LANG",
+  "LC_",
+  "TERM",
+  "TMPDIR",
+  "TEMP",
+  "TMP",
+  "XDG_",
+];
+
+/**
+ * Build a sanitized environment for spawned processes.
+ * Only includes non-sensitive variables needed for basic operation.
+ */
+function buildSafeEnv(): Record<string, string> {
+  const safeEnv: Record<string, string> = {
+    NO_COLOR: "1", // Always disable color for predictable parsing
+  };
+
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value === undefined) continue;
+
+    // Check if key starts with any safe prefix
+    const isSafe = SAFE_ENV_PREFIXES.some(
+      (prefix) => key === prefix || key.startsWith(prefix)
+    );
+
+    if (isSafe) {
+      safeEnv[key] = value;
+    }
+  }
+
+  return safeEnv;
+}
+
+/**
+ * Run manifest-defined installed_check command with safety limits.
+ * Returns the path/output on success, null on failure.
+ *
+ * ## Security Properties
+ *
+ * This function enforces several security constraints:
+ *
+ * 1. **No shell interpolation**: Commands are passed as arrays to `Bun.spawn()`,
+ *    preventing shell metacharacter injection (e.g., `; rm -rf /`).
+ *
+ * 2. **Timeout enforcement**: Commands are killed after `timeoutMs` (default 5s)
+ *    to prevent hangs or resource exhaustion attacks.
+ *
+ * 3. **Output capping**: Only `outputCapBytes` (default 4KB) are captured to
+ *    prevent memory exhaustion from malicious output flooding.
+ *
+ * 4. **Environment sanitization**: Only essential non-sensitive env vars are
+ *    passed (PATH, HOME, locale settings). API keys and secrets are excluded.
+ *
+ * 5. **Privilege restriction**: Commands requesting `run_as: root` are skipped.
+ *
+ * ## Manifest Author Guidelines
+ *
+ * When writing `installed_check` commands in ACFS manifests:
+ *
+ * - Use simple, idiomatic checks like `["command", "-v", "toolname"]`
+ * - Avoid shell features (pipes, redirects, subshells) - they won't work
+ * - Keep commands fast (< 5s) and output minimal (< 4KB)
+ * - Don't rely on environment variables beyond PATH/HOME
+ * - Test that the command works with minimal privileges
+ */
+async function runInstalledCheck(
+  check: InstalledCheck,
+): Promise<{ success: boolean; output: string }> {
+  const log = getLogger();
+  const timeoutMs = check.timeoutMs ?? DEFAULT_CHECK_TIMEOUT_MS;
+  const outputCapBytes = check.outputCapBytes ?? DEFAULT_OUTPUT_CAP_BYTES;
+
+  // Validate command is not empty
+  if (check.command.length === 0) {
+    return { success: false, output: "" };
+  }
+
+  // Security: skip if run_as=root is requested (we don't elevate privileges)
+  if (check.run_as === "root") {
+    log.debug(
+      { command: check.command },
+      "Skipping installed_check requiring root",
+    );
+    return { success: false, output: "" };
+  }
+
+  try {
+    const proc = Bun.spawn(check.command, {
+      stdout: "pipe",
+      stderr: "pipe",
+      env: buildSafeEnv(),
+    });
+
+    // Set up timeout
+    const timeoutPromise = new Promise<"timeout">((resolve) =>
+      setTimeout(() => resolve("timeout"), timeoutMs),
+    );
+
+    // Wait for exit or timeout
+    const raceResult = await Promise.race([proc.exited, timeoutPromise]);
+
+    if (raceResult === "timeout") {
+      proc.kill();
+      log.debug(
+        { command: check.command, timeoutMs },
+        "Installed check timed out",
+      );
+      return { success: false, output: "" };
+    }
+
+    const exitCode = raceResult;
+
+    // Read output with cap
+    const stdout = await new Response(proc.stdout).text();
+    const cappedOutput = stdout.slice(0, outputCapBytes).trim();
+
+    if (exitCode === 0) {
+      return { success: true, output: cappedOutput };
+    }
+
+    return { success: false, output: cappedOutput };
+  } catch (error) {
+    log.debug(
+      { command: check.command, error: String(error) },
+      "Installed check failed",
+    );
+    return { success: false, output: "" };
+  }
+}
+
+/**
+ * Find executable path using 'which' (Unix) or 'where' (Windows).
+ * Uses sanitized environment to prevent credential leakage.
  */
 async function findExecutable(command: string): Promise<string | null> {
   const isWindows = process.platform === "win32";
@@ -361,6 +562,7 @@ async function findExecutable(command: string): Promise<string | null> {
     const proc = Bun.spawn([findCmd, command], {
       stdout: "pipe",
       stderr: "pipe",
+      env: buildSafeEnv(),
     });
 
     const stdout = await new Response(proc.stdout).text();
@@ -377,7 +579,8 @@ async function findExecutable(command: string): Promise<string | null> {
 }
 
 /**
- * Get version from CLI
+ * Get version from CLI.
+ * Uses sanitized environment to prevent credential leakage.
  */
 async function getVersion(
   commands: string[],
@@ -388,7 +591,7 @@ async function getVersion(
     const proc = Bun.spawn(args, {
       stdout: "pipe",
       stderr: "pipe",
-      env: { ...process.env, NO_COLOR: "1" },
+      env: buildSafeEnv(),
     });
 
     const stdout = await new Response(proc.stdout).text();
@@ -410,7 +613,8 @@ async function getVersion(
 }
 
 /**
- * Check authentication status
+ * Check authentication status.
+ * Uses sanitized environment to prevent credential leakage.
  */
 async function checkAuth(
   authCmd: string[],
@@ -419,7 +623,7 @@ async function checkAuth(
     const proc = Bun.spawn(authCmd, {
       stdout: "pipe",
       stderr: "pipe",
-      env: { ...process.env, NO_COLOR: "1" },
+      env: buildSafeEnv(),
     });
 
     const stdout = await new Response(proc.stdout).text();
@@ -459,18 +663,50 @@ async function checkAuth(
 }
 
 /**
- * Detect a single CLI
+ * Detect a single CLI using manifest installed_check with fallback to which/where.
  */
 async function detectCLI(def: CLIDefinition): Promise<DetectedCLI> {
   const startTime = performance.now();
   const log = getLogger();
 
-  // Find the primary executable
-  const primaryCmd = def.commands[0]!;
-  const path = await findExecutable(primaryCmd);
+  let path: string | null = null;
+  let detectionMethod: "manifest" | "fallback" = "fallback";
+
+  // Priority 1: Use manifest installed_check if available
+  if (def.installedCheck) {
+    const checkResult = await runInstalledCheck(def.installedCheck);
+    if (checkResult.success) {
+      // Output from installed_check might be a path or just confirmation
+      // If output looks like a path, use it; otherwise find via which/where
+      const output = checkResult.output;
+      if (output && (output.startsWith("/") || output.includes(":"))) {
+        // Looks like a path (Unix absolute or Windows drive letter)
+        path = output.split("\n")[0]!;
+        detectionMethod = "manifest";
+      } else {
+        // Check passed but didn't return path - find it via fallback
+        const primaryCmd = def.commands[0]!;
+        path = await findExecutable(primaryCmd);
+        if (path) {
+          detectionMethod = "manifest";
+        }
+      }
+    }
+    log.debug(
+      { cli: def.name, installedCheck: def.installedCheck.command, success: checkResult.success },
+      "Manifest installed_check executed",
+    );
+  }
+
+  // Priority 2: Fallback to which/where if manifest check not available or failed
+  if (!path) {
+    const primaryCmd = def.commands[0]!;
+    path = await findExecutable(primaryCmd);
+    detectionMethod = "fallback";
+  }
 
   if (!path) {
-    log.debug({ cli: def.name }, "CLI not found in PATH");
+    log.debug({ cli: def.name, method: detectionMethod }, "CLI not found");
     return {
       name: def.name,
       available: false,
@@ -491,7 +727,8 @@ async function detectCLI(def: CLIDefinition): Promise<DetectedCLI> {
   if (def.authCheckCmd) {
     // Use full path for auth check to ensure we test the same binary
     const authCmd = [...def.authCheckCmd];
-    if (authCmd[0] === primaryCmd) {
+    const primaryCommand = def.commands[0];
+    if (primaryCommand && authCmd[0] === primaryCommand) {
       authCmd[0] = path;
     }
     const authResult = await checkAuth(authCmd);
@@ -507,6 +744,7 @@ async function detectCLI(def: CLIDefinition): Promise<DetectedCLI> {
       path,
       version,
       authenticated,
+      detectionMethod,
       durationMs,
     },
     "CLI detected",

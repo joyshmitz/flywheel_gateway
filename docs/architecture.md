@@ -281,6 +281,43 @@ interface AgentDriver {
 | ACP | IDE Integration | Agent Client Protocol |
 | Tmux | Debugging | Visual terminal access |
 
+## Stack Contract (Public Integration Boundaries)
+
+The Flywheel stack is a collection of public, composable tools with clear
+ownership boundaries. The Gateway integrates them without re-implementing or
+duplicating their core responsibilities.
+
+| Component | Role (Source of Truth) | Gateway Integration |
+|-----------|-------------------------|---------------------|
+| **ACFS** (agentic_coding_flywheel_setup) | Tool registry + manifest (metadata, checksums, install/verify commands) | `/setup` endpoints and detection read manifest-derived metadata only |
+| **NTM** | Orchestration + telemetry plane | Driver backend + ingest service → agent state + WS events |
+| **br** (beads_rust) | Task graph + status | Gateway exposes CRUD + ready/blocked views via API + UI |
+| **Agent Mail** | Multi-agent coordination + file reservations | Mail endpoints + UI + MCP callers |
+| **BV** | Graph-aware triage | Gateway surfaces BV robot outputs with caching + logging |
+| **CASS / CM** | Searchable history + memory context | Gateway proxies health/search/context endpoints |
+| **DCG / SLB / UBS** | Safety enforcement + approvals + scanning | Safety endpoints + audit logging + alerts |
+| **RU** | Fleet maintenance orchestration | Fleet status + agent-sweep integrations |
+
+### Contract Rules
+
+1. **Single Source of Truth**: Gateway defers to the owning tool (e.g., ACFS
+   manifest, br issues, NTM status) and only enriches/aggregates.
+2. **Public-Safe Metadata Only**: No private infrastructure or business content
+   is embedded in this repo or exposed via public endpoints.
+3. **Auditable Provenance**: Responses include enough metadata (version/hash,
+   tool id, timestamps) to verify which upstream source produced a result.
+4. **No Shadow Implementations**: If a tool already owns a domain, Gateway
+   integrates rather than re-creating the logic.
+
+### Typical Integration Flow
+
+```
+ACFS manifest → Gateway /setup (tools + readiness)
+NTM robot outputs → Gateway ingest → WebSocket hub
+br tasks → Gateway /beads → Web UI
+Agent Mail → Gateway /mail + reservations → Multi-agent coordination
+```
+
 ## Data Flow
 
 ### Agent Lifecycle

@@ -8,6 +8,15 @@ import { routes } from "./routes";
 import { startAgentEvents } from "./services/agent-events";
 import { startStateCleanupJob } from "./services/agent-state-machine";
 import { initCassService } from "./services/cass.service";
+import {
+  getNtmIngestService,
+  startNtmIngest,
+} from "./services/ntm-ingest.service";
+import { startNtmWsBridge } from "./services/ntm-ws-bridge.service";
+import {
+  createBunNtmCommandRunner,
+  createNtmClient,
+} from "@flywheel/flywheel-clients";
 import { startDCGCleanupJob } from "./services/dcg-pending.service";
 import { logger } from "./services/logger";
 import { registerAgentMailToolCallerFromEnv } from "./services/mcp-agentmail";
@@ -50,6 +59,15 @@ if (import.meta.main) {
 
   // Initialize CASS service
   initCassService({ cwd: process.cwd() });
+
+  // Start NTM ingest service (polls NTM status and updates agent states)
+  startNtmIngest({ cwd: process.cwd() });
+
+  // Start NTM WebSocket bridge (publishes NTM events to WebSocket channels)
+  const ntmRunner = createBunNtmCommandRunner();
+  const ntmClient = createNtmClient({ runner: ntmRunner, cwd: process.cwd() });
+  const ingestService = getNtmIngestService();
+  startNtmWsBridge(getHub(), ingestService, ntmClient);
 
   const mcpEnabled = registerAgentMailToolCallerFromEnv();
   if (mcpEnabled) {
