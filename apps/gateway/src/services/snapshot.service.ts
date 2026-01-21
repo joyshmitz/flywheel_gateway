@@ -40,7 +40,12 @@ import type {
   ToolHealthSnapshot,
   ToolHealthStatus,
   ToolChecksumStatus,
+  AgentMailSnapshot,
+  AgentMailAgentSnapshot,
+  AgentMailMessageSummary,
 } from "@flywheel/shared";
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
 import { getLogger } from "../middleware/correlation";
 import { getBvTriage, getBvClient } from "./bv.service";
 import { getBrList, getBrSyncStatus, getBrClient } from "./br.service";
@@ -157,6 +162,28 @@ async function collectNtmSnapshot(
       // Get status for session/agent info
       const status = await client.status();
 
+      // Get snapshot for alerts (includes session data too, but we prefer status for session info)
+      let alerts: string[] = [];
+      try {
+        const ntmSnapshot = await client.snapshot();
+        // Check if it's a full snapshot (not delta)
+        if ("alerts" in ntmSnapshot && Array.isArray(ntmSnapshot.alerts)) {
+          // Map alert objects to descriptive strings
+          alerts = ntmSnapshot.alerts.map((alert) => {
+            const severity = alert.severity.toUpperCase();
+            const location = alert.session
+              ? alert.pane
+                ? `${alert.session}:${alert.pane}`
+                : alert.session
+              : "system";
+            return `[${severity}] ${alert.type}: ${alert.message} (${location})`;
+          });
+        }
+      } catch (error) {
+        // Log but don't fail - alerts are optional
+        log.debug({ error }, "Failed to fetch NTM alerts, continuing without them");
+      }
+
       // Map to our snapshot format
       const sessions: NtmSessionSnapshot[] = status.sessions.map((session) => {
         const base: NtmSessionSnapshot = {
@@ -201,7 +228,7 @@ async function collectNtmSnapshot(
         version: status.system.version,
         sessions,
         summary,
-        alerts: [],
+        alerts,
       };
     },
     timeoutMs,
@@ -674,6 +701,136 @@ function createEmptyToolHealthSnapshot(): ToolHealthSnapshot {
 }
 
 // ============================================================================
+// Agent Mail Collection
+// ============================================================================
+
+interface AgentMailFileAgent {
+  id: string;
+  name?: string;
+  capabilities?: string[];
+  metadata?: Record<string, unknown>;
+  registeredAt?: string;
+}
+
+interface AgentMailFileMessage {
+  id: string;
+  from: string;
+  to: string;
+  subject: string;
+  body?: unknown;
+  priority?: "low" | "normal" | "high" | "urgent";
+  timestamp: string;
+  read?: boolean;
+}
+
+/**
+ * Collect Agent Mail snapshot from local .agentmail directory.
+ */
+async function collectAgentMailSnapshot(
+  cwd: string,
+  timeoutMs: number,
+): Promise<CollectionResult<AgentMailSnapshot>> {
+  const log = getLogger();
+
+  return withTimeout(
+    async () => {
+      const agentMailDir = path.join(cwd, ".agentmail");
+
+      // Check if .agentmail directory exists
+      try {
+        await fs.access(agentMailDir);
+      } catch {
+        return createEmptyAgentMailSnapshot(false);
+      }
+
+      // Read agents.jsonl
+      const agents: AgentMailAgentSnapshot[] = [];
+      try {
+        const agentsPath = path.join(agentMailDir, "agents.jsonl");
+        const agentsContent = await fs.readFile(agentsPath, "utf-8");
+        const agentLines = agentsContent.trim().split("\n").filter(Boolean);
+
+        for (const line of agentLines) {
+          try {
+            const agent = JSON.parse(line) as AgentMailFileAgent;
+            const agentSnapshot: AgentMailAgentSnapshot = {
+              agentId: agent.id,
+              capabilities: agent.capabilities ?? [],
+            };
+            if (agent.metadata !== undefined) agentSnapshot.metadata = agent.metadata;
+            if (agent.registeredAt !== undefined) agentSnapshot.registeredAt = agent.registeredAt;
+            agents.push(agentSnapshot);
+          } catch {
+            // Skip malformed lines
+          }
+        }
+      } catch {
+        // agents.jsonl doesn't exist or can't be read
+      }
+
+      // Read messages.jsonl and compute summary
+      const messages: AgentMailMessageSummary = {
+        total: 0,
+        unread: 0,
+        byPriority: { low: 0, normal: 0, high: 0, urgent: 0 },
+      };
+
+      try {
+        const messagesPath = path.join(agentMailDir, "messages.jsonl");
+        const messagesContent = await fs.readFile(messagesPath, "utf-8");
+        const messageLines = messagesContent.trim().split("\n").filter(Boolean);
+
+        for (const line of messageLines) {
+          try {
+            const msg = JSON.parse(line) as AgentMailFileMessage;
+            messages.total++;
+
+            if (!msg.read) {
+              messages.unread++;
+            }
+
+            const priority = msg.priority ?? "normal";
+            messages.byPriority[priority]++;
+          } catch {
+            // Skip malformed lines
+          }
+        }
+      } catch {
+        // messages.jsonl doesn't exist or can't be read
+      }
+
+      return {
+        capturedAt: new Date().toISOString(),
+        available: true,
+        status: agents.length > 0 ? "healthy" : "degraded",
+        agents,
+        reservations: [], // Reservations are managed by MCP, not local files
+        messages,
+      };
+    },
+    timeoutMs,
+    "Failed to collect Agent Mail data",
+  );
+}
+
+/**
+ * Create an empty Agent Mail snapshot.
+ */
+function createEmptyAgentMailSnapshot(available: boolean): AgentMailSnapshot {
+  return {
+    capturedAt: new Date().toISOString(),
+    available,
+    agents: [],
+    reservations: [],
+    messages: {
+      total: 0,
+      unread: 0,
+      byPriority: { low: 0, normal: 0, high: 0, urgent: 0 },
+    },
+  };
+}
+
+// ============================================================================
 // Service Implementation
 // ============================================================================
 
@@ -724,10 +881,11 @@ export class SnapshotService {
     log.info("Collecting system snapshot");
 
     // Collect all data sources in parallel
-    const [ntmResult, beadsResult, toolsResult] = await Promise.all([
+    const [ntmResult, beadsResult, toolsResult, agentMailResult] = await Promise.all([
       collectNtmSnapshot(this.ntmClient, this.config.collectionTimeoutMs),
       collectBeadsSnapshot(this.config.collectionTimeoutMs),
       collectToolHealthSnapshot(this.config.collectionTimeoutMs),
+      collectAgentMailSnapshot(this.config.cwd, this.config.collectionTimeoutMs),
     ]);
 
     // Log collection results
@@ -736,6 +894,7 @@ export class SnapshotService {
         ntm: { success: ntmResult.success, latencyMs: ntmResult.latencyMs },
         beads: { success: beadsResult.success, latencyMs: beadsResult.latencyMs },
         tools: { success: toolsResult.success, latencyMs: toolsResult.latencyMs },
+        agentMail: { success: agentMailResult.success, latencyMs: agentMailResult.latencyMs },
       },
       "Data collection completed",
     );

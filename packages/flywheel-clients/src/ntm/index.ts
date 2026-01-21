@@ -319,11 +319,35 @@ const SnapshotSessionSchema = z
   })
   .passthrough();
 
+const NtmAlertSchema = z
+  .object({
+    id: z.string(),
+    type: z.string(),
+    severity: z.enum(["info", "warning", "error", "critical"]),
+    message: z.string(),
+    session: z.string().optional(),
+    pane: z.string().optional(),
+    context: z.record(z.unknown()).optional(),
+    created_at: z.string(),
+    duration_ms: z.number().optional(),
+    count: z.number().optional(),
+  })
+  .passthrough();
+
+const NtmAlertSummarySchema = z
+  .object({
+    total_active: z.number(),
+    by_severity: z.record(z.number()).optional(),
+    by_type: z.record(z.number()).optional(),
+  })
+  .passthrough();
+
 const SnapshotOutputSchema = z
   .object({
     ts: z.string(),
     sessions: z.array(SnapshotSessionSchema),
-    alerts: z.array(z.string()),
+    alerts: z.array(NtmAlertSchema),
+    alert_summary: NtmAlertSummarySchema.optional(),
   })
   .passthrough();
 
@@ -472,6 +496,8 @@ export type NtmProjectHealthOutput = z.infer<typeof ProjectHealthOutputSchema>;
 export type NtmIsWorkingOutput = z.infer<typeof IsWorkingOutputSchema>;
 export type NtmSnapshotResult = NtmSnapshotOutput | NtmSnapshotDeltaOutput;
 export type NtmHealthResult = NtmSessionHealthOutput | NtmProjectHealthOutput;
+export type NtmAlert = z.infer<typeof NtmAlertSchema>;
+export type NtmAlertSummary = z.infer<typeof NtmAlertSummarySchema>;
 
 // ============================================================================
 // Client Options
