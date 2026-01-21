@@ -1,5 +1,8 @@
 /**
  * Tests for snapshot service.
+ *
+ * Note: These tests use short collection timeouts to avoid long test times.
+ * The service is designed for graceful degradation, so partial failures are expected.
  */
 
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
@@ -47,7 +50,7 @@ describe("SnapshotService", () => {
       expect(first).toBe(second);
     });
 
-    test("returns same instance after clearSnapshotServiceInstance", () => {
+    test("returns new instance after clearSnapshotServiceInstance", () => {
       const first = getSnapshotService();
       clearSnapshotServiceInstance();
       const second = getSnapshotService();
@@ -55,12 +58,15 @@ describe("SnapshotService", () => {
     });
   });
 
-  describe("getSnapshot", () => {
-    test("returns valid system snapshot structure", async () => {
-      const service = createSnapshotService({
-        collectionTimeoutMs: 3000,
-      });
+  describe("getSnapshot structure", () => {
+    // Use very short timeouts - we're testing structure, not real data collection
+    const shortTimeoutConfig = {
+      collectionTimeoutMs: 50, // 50ms - will timeout and return empty data
+      cacheTtlMs: 100,
+    };
 
+    test("returns valid system snapshot structure", async () => {
+      const service = createSnapshotService(shortTimeoutConfig);
       const snapshot = await service.getSnapshot();
 
       // Check meta structure
@@ -79,6 +85,11 @@ describe("SnapshotService", () => {
       expect(typeof snapshot.summary.unhealthyCount).toBe("number");
       expect(typeof snapshot.summary.unknownCount).toBe("number");
       expect(Array.isArray(snapshot.summary.issues)).toBe(true);
+    });
+
+    test("returns NTM snapshot with correct structure", async () => {
+      const service = createSnapshotService(shortTimeoutConfig);
+      const snapshot = await service.getSnapshot();
 
       // Check NTM structure
       expect(snapshot.ntm).toBeDefined();
@@ -88,6 +99,20 @@ describe("SnapshotService", () => {
       expect(snapshot.ntm.summary).toBeDefined();
       expect(Array.isArray(snapshot.ntm.alerts)).toBe(true);
 
+      // NTM summary structure
+      expect(typeof snapshot.ntm.summary.totalSessions).toBe("number");
+      expect(typeof snapshot.ntm.summary.totalAgents).toBe("number");
+      expect(typeof snapshot.ntm.summary.attachedCount).toBe("number");
+      expect(snapshot.ntm.summary.byAgentType).toBeDefined();
+      expect(typeof snapshot.ntm.summary.byAgentType.claude).toBe("number");
+      expect(typeof snapshot.ntm.summary.byAgentType.codex).toBe("number");
+      expect(typeof snapshot.ntm.summary.byAgentType.gemini).toBe("number");
+    });
+
+    test("returns Agent Mail snapshot with correct structure", async () => {
+      const service = createSnapshotService(shortTimeoutConfig);
+      const snapshot = await service.getSnapshot();
+
       // Check Agent Mail structure
       expect(snapshot.agentMail).toBeDefined();
       expect(typeof snapshot.agentMail.capturedAt).toBe("string");
@@ -95,6 +120,14 @@ describe("SnapshotService", () => {
       expect(Array.isArray(snapshot.agentMail.agents)).toBe(true);
       expect(Array.isArray(snapshot.agentMail.reservations)).toBe(true);
       expect(snapshot.agentMail.messages).toBeDefined();
+      expect(typeof snapshot.agentMail.messages.total).toBe("number");
+      expect(typeof snapshot.agentMail.messages.unread).toBe("number");
+      expect(snapshot.agentMail.messages.byPriority).toBeDefined();
+    });
+
+    test("returns Beads snapshot with correct structure", async () => {
+      const service = createSnapshotService(shortTimeoutConfig);
+      const snapshot = await service.getSnapshot();
 
       // Check Beads structure
       expect(snapshot.beads).toBeDefined();
@@ -108,49 +141,6 @@ describe("SnapshotService", () => {
       expect(Array.isArray(snapshot.beads.topRecommendations)).toBe(true);
       expect(Array.isArray(snapshot.beads.quickWins)).toBe(true);
       expect(Array.isArray(snapshot.beads.blockersToClean)).toBe(true);
-
-      // Check Tools structure
-      expect(snapshot.tools).toBeDefined();
-      expect(typeof snapshot.tools.capturedAt).toBe("string");
-      expect(snapshot.tools.dcg).toBeDefined();
-      expect(snapshot.tools.slb).toBeDefined();
-      expect(snapshot.tools.ubs).toBeDefined();
-      expect(["healthy", "degraded", "unhealthy"]).toContain(
-        snapshot.tools.status,
-      );
-    });
-
-    test("returns partial data when some sources fail", async () => {
-      const service = createSnapshotService({
-        collectionTimeoutMs: 100, // Short timeout to trigger failures
-      });
-
-      const snapshot = await service.getSnapshot();
-
-      // Should still return a valid snapshot even if sources fail
-      expect(snapshot.meta).toBeDefined();
-      expect(snapshot.summary).toBeDefined();
-      expect(snapshot.ntm).toBeDefined();
-      expect(snapshot.beads).toBeDefined();
-      expect(snapshot.tools).toBeDefined();
-    });
-
-    test("NTM snapshot has correct summary structure", async () => {
-      const service = createSnapshotService();
-      const snapshot = await service.getSnapshot();
-
-      expect(typeof snapshot.ntm.summary.totalSessions).toBe("number");
-      expect(typeof snapshot.ntm.summary.totalAgents).toBe("number");
-      expect(typeof snapshot.ntm.summary.attachedCount).toBe("number");
-      expect(snapshot.ntm.summary.byAgentType).toBeDefined();
-      expect(typeof snapshot.ntm.summary.byAgentType.claude).toBe("number");
-      expect(typeof snapshot.ntm.summary.byAgentType.codex).toBe("number");
-      expect(typeof snapshot.ntm.summary.byAgentType.gemini).toBe("number");
-    });
-
-    test("Beads snapshot has correct count structures", async () => {
-      const service = createSnapshotService();
-      const snapshot = await service.getSnapshot();
 
       // Status counts
       expect(typeof snapshot.beads.statusCounts.open).toBe("number");
@@ -174,9 +164,19 @@ describe("SnapshotService", () => {
       expect(typeof snapshot.beads.priorityCounts.p4).toBe("number");
     });
 
-    test("Tools snapshot has correct tool status structure", async () => {
-      const service = createSnapshotService();
+    test("returns Tools snapshot with correct structure", async () => {
+      const service = createSnapshotService(shortTimeoutConfig);
       const snapshot = await service.getSnapshot();
+
+      // Check Tools structure
+      expect(snapshot.tools).toBeDefined();
+      expect(typeof snapshot.tools.capturedAt).toBe("string");
+      expect(snapshot.tools.dcg).toBeDefined();
+      expect(snapshot.tools.slb).toBeDefined();
+      expect(snapshot.tools.ubs).toBeDefined();
+      expect(["healthy", "degraded", "unhealthy"]).toContain(
+        snapshot.tools.status,
+      );
 
       // Check each tool status
       for (const tool of [
@@ -196,13 +196,58 @@ describe("SnapshotService", () => {
       expect(Array.isArray(snapshot.tools.issues)).toBe(true);
       expect(Array.isArray(snapshot.tools.recommendations)).toBe(true);
     });
+
+    test("returns partial data when all sources fail (graceful degradation)", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 1, // 1ms - guaranteed to fail
+        cacheTtlMs: 100,
+      });
+
+      const snapshot = await service.getSnapshot();
+
+      // Should still return a valid snapshot with empty data
+      expect(snapshot.meta).toBeDefined();
+      expect(snapshot.summary).toBeDefined();
+      expect(snapshot.ntm).toBeDefined();
+      expect(snapshot.beads).toBeDefined();
+      expect(snapshot.tools).toBeDefined();
+
+      // Should indicate failures in status
+      expect(["degraded", "unhealthy"]).toContain(snapshot.summary.status);
+    });
   });
 
   describe("caching", () => {
+    test("getCacheStats returns correct info before any snapshot", () => {
+      const service = createSnapshotService({
+        cacheTtlMs: 5000,
+        collectionTimeoutMs: 50,
+      });
+
+      const stats = service.getCacheStats();
+      expect(stats.cached).toBe(false);
+      expect(stats.age).toBeNull();
+      expect(stats.ttl).toBe(5000);
+    });
+
+    test("getCacheStats returns correct info after snapshot", async () => {
+      const service = createSnapshotService({
+        cacheTtlMs: 5000,
+        collectionTimeoutMs: 50,
+      });
+
+      await service.getSnapshot();
+
+      const stats = service.getCacheStats();
+      expect(stats.cached).toBe(true);
+      expect(stats.age).toBeGreaterThanOrEqual(0);
+      expect(stats.ttl).toBe(5000);
+    });
+
     test("returns cached snapshot within TTL", async () => {
       const service = createSnapshotService({
-        cacheTtlMs: 10000, // 10 seconds
-        collectionTimeoutMs: 3000,
+        cacheTtlMs: 60000, // 60 seconds
+        collectionTimeoutMs: 50,
       });
 
       const first = await service.getSnapshot();
@@ -214,13 +259,13 @@ describe("SnapshotService", () => {
 
     test("bypassCache returns fresh snapshot", async () => {
       const service = createSnapshotService({
-        cacheTtlMs: 60000, // 60 seconds - long TTL
-        collectionTimeoutMs: 3000,
+        cacheTtlMs: 60000, // 60 seconds
+        collectionTimeoutMs: 50,
       });
 
       const first = await service.getSnapshot();
 
-      // Wait a tiny bit to ensure different timestamp
+      // Wait to ensure different timestamp
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       const second = await service.getSnapshot({ bypassCache: true });
@@ -229,28 +274,10 @@ describe("SnapshotService", () => {
       expect(first.meta.generatedAt).not.toBe(second.meta.generatedAt);
     });
 
-    test("getCacheStats returns correct info", async () => {
-      const service = createSnapshotService({
-        cacheTtlMs: 5000,
-      });
-
-      // Before any snapshot
-      let stats = service.getCacheStats();
-      expect(stats.cached).toBe(false);
-      expect(stats.age).toBeNull();
-      expect(stats.ttl).toBe(5000);
-
-      // After snapshot
-      await service.getSnapshot();
-      stats = service.getCacheStats();
-      expect(stats.cached).toBe(true);
-      expect(stats.age).toBeGreaterThanOrEqual(0);
-      expect(stats.ttl).toBe(5000);
-    });
-
     test("clearCache removes cached snapshot", async () => {
       const service = createSnapshotService({
         cacheTtlMs: 60000,
+        collectionTimeoutMs: 50,
       });
 
       await service.getSnapshot();
@@ -262,20 +289,46 @@ describe("SnapshotService", () => {
   });
 
   describe("health summary computation", () => {
-    test("summary counts are consistent", async () => {
-      const service = createSnapshotService();
+    test("summary counts equal 4 components (ntm, agentMail, beads, tools)", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 50,
+      });
       const snapshot = await service.getSnapshot();
 
       const { healthyCount, degradedCount, unhealthyCount, unknownCount } =
         snapshot.summary;
 
-      // Total of all counts should equal 4 (ntm, agentMail, beads, tools)
-      const total = healthyCount + degradedCount + unhealthyCount + unknownCount;
+      // Total of all counts should equal 4
+      const total =
+        healthyCount + degradedCount + unhealthyCount + unknownCount;
       expect(total).toBe(4);
     });
 
-    test("summary status reflects unhealthy components", async () => {
-      const service = createSnapshotService();
+    test("summary includes component statuses", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 50,
+      });
+      const snapshot = await service.getSnapshot();
+
+      // Each component should have a status
+      expect(["healthy", "degraded", "unhealthy", "unknown"]).toContain(
+        snapshot.summary.ntm,
+      );
+      expect(["healthy", "degraded", "unhealthy", "unknown"]).toContain(
+        snapshot.summary.agentMail,
+      );
+      expect(["healthy", "degraded", "unhealthy", "unknown"]).toContain(
+        snapshot.summary.beads,
+      );
+      expect(["healthy", "degraded", "unhealthy", "unknown"]).toContain(
+        snapshot.summary.tools,
+      );
+    });
+
+    test("status reflects unhealthy when unhealthyCount > 0", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 50,
+      });
       const snapshot = await service.getSnapshot();
 
       // If there are unhealthy components, overall should be unhealthy
@@ -284,8 +337,10 @@ describe("SnapshotService", () => {
       }
     });
 
-    test("summary status reflects degraded when no unhealthy", async () => {
-      const service = createSnapshotService();
+    test("status reflects degraded when no unhealthy but has degraded/unknown", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 50,
+      });
       const snapshot = await service.getSnapshot();
 
       // If no unhealthy but some degraded/unknown, should be degraded

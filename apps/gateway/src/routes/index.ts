@@ -37,6 +37,7 @@ import { scanner } from "./scanner";
 import { setup } from "./setup";
 import { slb } from "./slb";
 import { supervisor } from "./supervisor";
+import { system } from "./system";
 import { utilities } from "./utilities";
 
 const routes = new Hono();
@@ -75,6 +76,7 @@ routes.route("/scanner", scanner);
 routes.route("/setup", setup);
 routes.route("/slb", slb);
 routes.route("/supervisor", supervisor);
+routes.route("/system", system);
 routes.route("/utilities", utilities);
 
 // Mount OpenAPI routes at root level
