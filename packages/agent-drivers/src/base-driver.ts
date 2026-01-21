@@ -632,6 +632,17 @@ function getDefaultCapabilities(type: AgentDriverType): DriverCapabilities {
         interrupt: true,
         streaming: true,
       };
+    case "ntm":
+      return {
+        structuredEvents: true,
+        toolCalls: false,
+        fileOperations: true,
+        terminalAttach: true,
+        diffRendering: false,
+        checkpoint: false,
+        interrupt: true,
+        streaming: true,
+      };
     case "mock":
       return {
         structuredEvents: true,

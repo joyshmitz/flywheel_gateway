@@ -7,7 +7,7 @@
 // Driver Types
 // ============================================================================
 
-export type AgentDriverType = "sdk" | "acp" | "tmux" | "mock";
+export type AgentDriverType = "sdk" | "acp" | "tmux" | "ntm" | "mock";
 
 /**
  * Capabilities that a driver may or may not support.

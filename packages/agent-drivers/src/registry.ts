@@ -190,8 +190,8 @@ export class DriverRegistry {
       }
     }
 
-    // Selection order: sdk > acp > tmux
-    const selectionOrder: AgentDriverType[] = ["sdk", "acp", "tmux"];
+    // Selection order: sdk > acp > ntm > tmux
+    const selectionOrder: AgentDriverType[] = ["sdk", "acp", "ntm", "tmux"];
 
     for (const type of selectionOrder) {
       if (!this.entries.has(type)) continue;
