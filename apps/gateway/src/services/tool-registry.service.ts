@@ -7,8 +7,8 @@
 import path from "node:path";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import type { ToolRegistry } from "@flywheel/shared";
-import { createGatewayError } from "@flywheel/shared/errors";
+import type { ToolDefinition, ToolRegistry } from "@flywheel/shared";
+import { createGatewayError, isGatewayError } from "@flywheel/shared/errors";
 import { z } from "zod";
 import { parse as parseYaml } from "yaml";
 import { getLogger } from "../middleware/correlation";
@@ -187,4 +187,68 @@ export async function loadToolRegistry(
 
 export function clearToolRegistryCache(): void {
   cached = undefined;
+}
+
+// ============================================================================
+// Accessors
+// ============================================================================
+
+export interface ToolRegistryAccessOptions extends ToolRegistryLoadOptions {}
+
+function isRequiredTool(tool: ToolDefinition): boolean {
+  if (tool.optional === true) return false;
+  if (tool.tags?.some((tag) => tag === "critical" || tag === "required")) {
+    return true;
+  }
+  if (tool.enabledByDefault === true) return true;
+  return true;
+}
+
+async function withRegistry<T>(
+  options: ToolRegistryAccessOptions,
+  fn: (registry: ToolRegistry) => T,
+): Promise<T> {
+  try {
+    const registry = await loadToolRegistry(options);
+    return fn(registry);
+  } catch (error) {
+    if (isGatewayError(error)) {
+      throw error;
+    }
+    throw createGatewayError("SYSTEM_INTERNAL_ERROR", "Tool registry failed", {
+      details: {
+        cause: error instanceof Error ? error.message : String(error),
+      },
+    });
+  }
+}
+
+export async function listAllTools(
+  options: ToolRegistryAccessOptions = {},
+): Promise<ToolDefinition[]> {
+  return withRegistry(options, (registry) => registry.tools);
+}
+
+export async function listAgentTools(
+  options: ToolRegistryAccessOptions = {},
+): Promise<ToolDefinition[]> {
+  return withRegistry(options, (registry) =>
+    registry.tools.filter((tool) => tool.category === "agent"),
+  );
+}
+
+export async function listSetupTools(
+  options: ToolRegistryAccessOptions = {},
+): Promise<ToolDefinition[]> {
+  return withRegistry(options, (registry) =>
+    registry.tools.filter((tool) => tool.category === "tool"),
+  );
+}
+
+export async function getRequiredTools(
+  options: ToolRegistryAccessOptions = {},
+): Promise<ToolDefinition[]> {
+  return withRegistry(options, (registry) =>
+    registry.tools.filter((tool) => isRequiredTool(tool)),
+  );
 }

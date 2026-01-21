@@ -5,12 +5,14 @@
  * agent CLIs and developer tools for the Flywheel Gateway setup wizard.
  */
 
+import type { InstallSpec, ToolDefinition } from "@flywheel/shared";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
 import {
   type DetectedCLI,
   type DetectedType,
   getAgentDetectionService,
 } from "./agent-detection.service";
+import { getRequiredTools, listAllTools } from "./tool-registry.service";
 
 // ============================================================================
 // Types
@@ -206,6 +208,62 @@ const TOOL_INFO: Record<string, ToolInfo> = {
 // Required tools for basic functionality
 const REQUIRED_TOOLS: DetectedType[] = ["dcg", "br"];
 
+function buildInstallCommand(install?: InstallSpec[]): string | undefined {
+  if (!install || install.length === 0) return undefined;
+  const [primary] = install;
+  if (!primary) return undefined;
+  const args = primary.args?.length ? ` ${primary.args.join(" ")}` : "";
+  return `${primary.command}${args}`.trim();
+}
+
+function toToolInfo(
+  tool: ToolDefinition,
+  fallback: ToolInfo,
+): ToolInfo | null {
+  return {
+    name: fallback.name,
+    displayName: tool.displayName ?? fallback.displayName,
+    description: tool.description ?? fallback.description,
+    category: tool.category,
+    installCommand: buildInstallCommand(tool.install) ?? fallback.installCommand,
+    installUrl: tool.install?.[0]?.url ?? fallback.installUrl,
+    docsUrl: tool.docsUrl ?? fallback.docsUrl,
+  };
+}
+
+async function getRegistryToolInfo(): Promise<ToolInfo[] | null> {
+  const log = getLogger();
+  try {
+    const tools = await listAllTools();
+    const mapped = tools
+      .map((tool) => {
+        const fallback = TOOL_INFO[tool.name];
+        if (!fallback) return null;
+        return toToolInfo(tool, fallback);
+      })
+      .filter((tool): tool is ToolInfo => Boolean(tool));
+
+    return mapped.length > 0 ? mapped : null;
+  } catch (error) {
+    log.warn({ error }, "Failed to load ToolRegistry; using fallback");
+    return null;
+  }
+}
+
+async function getRequiredToolNames(): Promise<DetectedType[]> {
+  const log = getLogger();
+  try {
+    const required = await getRequiredTools();
+    const names = required
+      .map((tool) => tool.name)
+      .filter((name): name is DetectedType => Boolean(TOOL_INFO[name]));
+    return names.length > 0 ? names : REQUIRED_TOOLS;
+  } catch (error) {
+    log.warn({ error }, "Failed to load ToolRegistry required tools");
+    return REQUIRED_TOOLS;
+  }
+}
+
 // ============================================================================
 // Service Functions
 // ============================================================================
@@ -226,7 +284,8 @@ export async function getReadinessStatus(
 
   // Calculate missing required tools
   const missingRequired: string[] = [];
-  for (const tool of REQUIRED_TOOLS) {
+  const requiredTools = await getRequiredToolNames();
+  for (const tool of requiredTools) {
     const found =
       detection.tools.find((t) => t.name === tool)?.available ||
       detection.agents.find((a) => a.name === tool)?.available;
@@ -291,15 +350,19 @@ export async function getReadinessStatus(
 /**
  * Get information about a specific tool.
  */
-export function getToolInfo(name: DetectedType): ToolInfo | undefined {
-  return TOOL_INFO[name];
+export async function getToolInfo(
+  name: DetectedType,
+): Promise<ToolInfo | undefined> {
+  const tools = await getAllToolInfo();
+  return tools.find((tool) => tool.name === name);
 }
 
 /**
  * Get all tool information.
  */
-export function getAllToolInfo(): ToolInfo[] {
-  return Object.values(TOOL_INFO);
+export async function getAllToolInfo(): Promise<ToolInfo[]> {
+  const registryTools = await getRegistryToolInfo();
+  return registryTools ?? Object.values(TOOL_INFO);
 }
 
 /**
@@ -313,7 +376,7 @@ export async function installTool(
   const correlationId = getCorrelationId();
   const startTime = performance.now();
 
-  const toolInfo = TOOL_INFO[request.tool];
+  const toolInfo = await getToolInfo(request.tool);
   if (!toolInfo) {
     return {
       tool: request.tool,
