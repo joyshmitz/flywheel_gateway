@@ -267,22 +267,29 @@ async function collectBeadsSnapshot(
       let syncStatus: BeadsSyncStatus | undefined;
       if (brAvailable) {
         try {
-          const status = await getBrSyncStatus();
-          syncStatus = {
-            dirtyCount: status.dirty_count ?? 0,
-            lastExportTime: status.last_export_time,
-            lastImportTime: status.last_import_time,
-            jsonlExists: status.jsonl_exists ?? false,
-            jsonlNewer: status.jsonl_newer ?? false,
-            dbNewer: status.db_newer ?? false,
+          const brStatus = await getBrSyncStatus();
+          const syncBase: BeadsSyncStatus = {
+            dirtyCount: brStatus.dirty_count ?? 0,
+            jsonlExists: brStatus.jsonl_exists ?? false,
+            jsonlNewer: brStatus.jsonl_newer ?? false,
+            dbNewer: brStatus.db_newer ?? false,
           };
+          if (brStatus.last_export_time !== undefined) {
+            syncBase.lastExportTime = brStatus.last_export_time;
+          }
+          if (brStatus.last_import_time !== undefined) {
+            syncBase.lastImportTime = brStatus.last_import_time;
+          }
+          syncStatus = syncBase;
         } catch {
           // Sync status unavailable
         }
       }
 
       // Extract counts from triage data
-      const health = triageData?.triage?.project_health as
+      // Use bracket notation to access index signature properties
+      const triageObj = triageData?.triage as Record<string, unknown> | undefined;
+      const health = triageObj?.["project_health"] as
         | {
             counts?: {
               total?: number;
@@ -298,21 +305,23 @@ async function collectBeadsSnapshot(
         | undefined;
 
       const counts = health?.counts;
+      const byStatus = counts?.by_status;
+      const byType = counts?.by_type;
 
       const statusCounts: BeadsStatusCounts = {
-        open: counts?.by_status?.open ?? 0,
-        inProgress: counts?.by_status?.in_progress ?? 0,
+        open: byStatus?.["open"] ?? 0,
+        inProgress: byStatus?.["in_progress"] ?? 0,
         blocked: counts?.blocked ?? 0,
         closed: counts?.closed ?? 0,
         total: counts?.total ?? 0,
       };
 
       const typeCounts: BeadsTypeCounts = {
-        bug: counts?.by_type?.bug ?? 0,
-        feature: counts?.by_type?.feature ?? 0,
-        task: counts?.by_type?.task ?? 0,
-        epic: counts?.by_type?.epic ?? 0,
-        chore: counts?.by_type?.chore ?? 0,
+        bug: byType?.["bug"] ?? 0,
+        feature: byType?.["feature"] ?? 0,
+        task: byType?.["task"] ?? 0,
+        epic: byType?.["epic"] ?? 0,
+        chore: byType?.["chore"] ?? 0,
       };
 
       const priorityCounts: BeadsPriorityCounts = {
@@ -328,12 +337,15 @@ async function collectBeadsSnapshot(
         triageData?.triage?.recommendations ?? []
       )
         .slice(0, 5)
-        .map((rec) => ({
-          id: rec.id,
-          title: rec.title,
-          score: rec.score,
-          reasons: rec.reasons,
-        }));
+        .map((rec) => {
+          const base: BeadsTriageRecommendation = {
+            id: rec.id,
+            title: rec.title,
+            score: rec.score,
+          };
+          if (rec.reasons !== undefined) base.reasons = rec.reasons;
+          return base;
+        });
 
       const quickWins: BeadsTriageRecommendation[] = (
         triageData?.triage?.quick_wins ?? []
@@ -355,7 +367,7 @@ async function collectBeadsSnapshot(
           score: rec.score,
         }));
 
-      return {
+      const beadsSnapshot: BeadsSnapshot = {
         capturedAt: new Date().toISOString(),
         brAvailable,
         bvAvailable,
@@ -363,11 +375,14 @@ async function collectBeadsSnapshot(
         typeCounts,
         priorityCounts,
         actionableCount: counts?.actionable ?? 0,
-        syncStatus,
         topRecommendations: recommendations,
         quickWins,
         blockersToClean,
       };
+      if (syncStatus !== undefined) {
+        beadsSnapshot.syncStatus = syncStatus;
+      }
+      return beadsSnapshot;
     },
     timeoutMs,
     "Failed to collect beads data",
