@@ -12,7 +12,7 @@ import {
   type DetectedType,
   getAgentDetectionService,
 } from "./agent-detection.service";
-import { getRequiredTools, listAllTools } from "./tool-registry.service";
+import { getRequiredTools, loadToolRegistry } from "./tool-registry.service";
 
 // ============================================================================
 // Types
@@ -23,6 +23,11 @@ export interface ToolInfo {
   displayName: string;
   description: string;
   category: "agent" | "tool";
+  tags?: string[];
+  optional?: boolean;
+  enabledByDefault?: boolean;
+  phase?: number;
+  manifestVersion?: string;
   installCommand?: string;
   installUrl?: string;
   docsUrl?: string;
@@ -32,6 +37,11 @@ export interface ReadinessStatus {
   ready: boolean;
   agents: DetectedCLI[];
   tools: DetectedCLI[];
+  manifest?: {
+    schemaVersion: string;
+    source?: string;
+    generatedAt?: string;
+  };
   summary: {
     agentsAvailable: number;
     agentsTotal: number;
@@ -220,7 +230,7 @@ function buildInstallCommand(install?: InstallSpec[]): string | undefined {
  * Convert a ToolDefinition from the registry into a ToolInfo for setup endpoints.
  * Uses hardcoded TOOL_INFO as fallback for missing fields only.
  */
-function toToolInfo(tool: ToolDefinition): ToolInfo {
+function toToolInfo(tool: ToolDefinition, manifestVersion?: string): ToolInfo {
   const fallback = TOOL_INFO[tool.name];
   const installCommand = buildInstallCommand(tool.install) ?? fallback?.installCommand;
   const installUrl = tool.install?.[0]?.url ?? fallback?.installUrl;
@@ -231,6 +241,13 @@ function toToolInfo(tool: ToolDefinition): ToolInfo {
     displayName: tool.displayName ?? fallback?.displayName ?? tool.name,
     description: tool.description ?? fallback?.description ?? "",
     category: tool.category,
+    ...(tool.tags && { tags: tool.tags }),
+    ...(tool.optional !== undefined && { optional: tool.optional }),
+    ...(tool.enabledByDefault !== undefined && {
+      enabledByDefault: tool.enabledByDefault,
+    }),
+    ...(tool.phase !== undefined && { phase: tool.phase }),
+    ...(manifestVersion && { manifestVersion }),
     ...(installCommand && { installCommand }),
     ...(installUrl && { installUrl }),
     ...(docsUrl && { docsUrl }),
@@ -244,12 +261,14 @@ function toToolInfo(tool: ToolDefinition): ToolInfo {
 async function getRegistryToolInfo(): Promise<ToolInfo[] | null> {
   const log = getLogger();
   try {
-    const tools = await listAllTools();
-    if (tools.length === 0) {
+    const registry = await loadToolRegistry();
+    if (registry.tools.length === 0) {
       log.debug("ToolRegistry returned empty tools list");
       return null;
     }
-    const mapped = tools.map((tool) => toToolInfo(tool));
+    const mapped = registry.tools.map((tool) =>
+      toToolInfo(tool, registry.schemaVersion),
+    );
     log.debug({ count: mapped.length }, "Loaded tool info from registry");
     return mapped;
   } catch (error) {
@@ -296,6 +315,17 @@ export async function getReadinessStatus(
 
   const service = getAgentDetectionService();
   const detection = await service.detectAll(bypassCache);
+  let manifest: ReadinessStatus["manifest"];
+  try {
+    const registry = await loadToolRegistry();
+    manifest = {
+      schemaVersion: registry.schemaVersion,
+      ...(registry.source && { source: registry.source }),
+      ...(registry.generatedAt && { generatedAt: registry.generatedAt }),
+    };
+  } catch (error) {
+    log.debug({ error }, "Tool registry metadata unavailable");
+  }
 
   // Calculate missing required tools
   const missingRequired: string[] = [];
@@ -352,6 +382,7 @@ export async function getReadinessStatus(
     ready,
     agents: detection.agents,
     tools: detection.tools,
+    ...(manifest && { manifest }),
     summary: {
       ...detection.summary,
       missingRequired,

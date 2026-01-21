@@ -54,6 +54,11 @@ export interface ReadinessStatus {
   ready: boolean;
   agents: DetectedCLI[];
   tools: DetectedCLI[];
+  manifest?: {
+    schemaVersion: string;
+    source?: string;
+    generatedAt?: string;
+  };
   summary: ReadinessSummary;
   recommendations: string[];
   detectedAt: string;
@@ -65,6 +70,11 @@ export interface ToolInfo {
   displayName: string;
   description: string;
   category: ToolCategory;
+  tags?: string[];
+  optional?: boolean;
+  enabledByDefault?: boolean;
+  phase?: number;
+  manifestVersion?: string;
   installCommand?: string;
   installUrl?: string;
   docsUrl?: string;
