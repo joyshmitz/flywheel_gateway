@@ -218,7 +218,7 @@ export class JobService {
   private handlers = new Map<JobType, JobHandler>();
   private running = new Map<string, JobExecution>();
   /** Track jobs that are starting but not yet in `running` with their type/session for concurrency checks */
-  private starting = new Map<string, { type: JobType; sessionId?: string }>();
+  private starting = new Map<string, { type: JobType; sessionId: string | undefined }>();
   private started = false;
   private pollInterval: ReturnType<typeof setInterval> | null = null;
 
