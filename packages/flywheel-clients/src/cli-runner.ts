@@ -1,0 +1,218 @@
+import { z } from "zod";
+
+export type CliCommandErrorKind =
+  | "timeout"
+  | "spawn_failed"
+  | "parse_error"
+  | "validation_error";
+
+export class CliCommandError extends Error {
+  readonly kind: CliCommandErrorKind;
+  readonly details?: Record<string, unknown>;
+
+  constructor(
+    kind: CliCommandErrorKind,
+    message: string,
+    details?: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = "CliCommandError";
+    this.kind = kind;
+    if (details) {
+      this.details = details;
+    }
+  }
+}
+
+export interface CliCommandResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+  stdoutTruncated?: boolean;
+  stderrTruncated?: boolean;
+  timedOut?: boolean;
+}
+
+export interface CliCommandOptions {
+  cwd?: string;
+  timeoutMs?: number;
+  maxOutputBytes?: number;
+  env?: Record<string, string>;
+}
+
+export interface CliCommandRunner {
+  run: (
+    command: string,
+    args: string[],
+    options?: CliCommandOptions,
+  ) => Promise<CliCommandResult>;
+}
+
+export interface CliRunnerDefaults {
+  timeoutMs?: number;
+  maxOutputBytes?: number;
+  env?: Record<string, string>;
+}
+
+const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_MAX_OUTPUT_BYTES = 5 * 1024 * 1024;
+
+async function readStreamSafe(
+  stream: ReadableStream<Uint8Array>,
+  maxBytes: number,
+): Promise<{ text: string; truncated: boolean }> {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  let content = "";
+  let totalBytes = 0;
+  let truncated = false;
+  const drainLimit = maxBytes * 5;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      totalBytes += value.length;
+
+      if (content.length < maxBytes) {
+        const chunk = decoder.decode(value, { stream: true });
+        if (content.length + chunk.length > maxBytes) {
+          truncated = true;
+          content += chunk.slice(0, Math.max(0, maxBytes - content.length));
+        } else {
+          content += chunk;
+        }
+      } else {
+        truncated = true;
+      }
+
+      if (totalBytes > drainLimit) {
+        await reader.cancel();
+        break;
+      }
+    }
+  } catch {
+    // Ignore stream errors (e.g. process killed)
+  } finally {
+    reader.releaseLock();
+  }
+
+  if (content.length > maxBytes) {
+    truncated = true;
+    content = content.slice(0, maxBytes);
+  }
+
+  return { text: content, truncated };
+}
+
+export function createBunCommandRunner(
+  defaults: CliRunnerDefaults = {},
+): CliCommandRunner {
+  return {
+    run: async (command, args, options) => {
+      const timeoutMs = options?.timeoutMs ?? defaults.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+      const maxOutputBytes =
+        options?.maxOutputBytes ??
+        defaults.maxOutputBytes ??
+        DEFAULT_MAX_OUTPUT_BYTES;
+
+      let proc: Bun.Subprocess<"pipe", "pipe", "ignore">;
+      try {
+        proc = Bun.spawn([command, ...args], {
+          cwd: options?.cwd,
+          stdout: "pipe",
+          stderr: "pipe",
+          env: {
+            ...process.env,
+            ...defaults.env,
+            ...options?.env,
+            NO_COLOR: "1",
+          },
+        });
+      } catch (error) {
+        throw new CliCommandError("spawn_failed", "Failed to spawn command", {
+          command,
+          args,
+          cause: error instanceof Error ? error.message : String(error),
+        });
+      }
+
+      let timedOut = false;
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise =
+        timeoutMs > 0
+          ? new Promise<never>((_, reject) => {
+              timeoutId = setTimeout(() => {
+                timedOut = true;
+                proc.kill(9);
+                reject(
+                  new CliCommandError("timeout", "Command timed out", {
+                    command,
+                    args,
+                    timeoutMs,
+                  }),
+                );
+              }, timeoutMs);
+            })
+          : null;
+
+      const stdoutPromise = readStreamSafe(proc.stdout, maxOutputBytes);
+      const stderrPromise = readStreamSafe(proc.stderr, maxOutputBytes);
+
+      try {
+        await Promise.race(
+          [proc.exited, timeoutPromise].filter(Boolean) as Promise<unknown>[],
+        );
+      } finally {
+        if (timeoutId !== undefined) {
+          clearTimeout(timeoutId);
+        }
+      }
+
+      const stdout = await stdoutPromise;
+      const stderr = await stderrPromise;
+
+      return {
+        stdout: stdout.text,
+        stderr: stderr.text,
+        exitCode: proc.exitCode ?? -1,
+        stdoutTruncated: stdout.truncated || undefined,
+        stderrTruncated: stderr.truncated || undefined,
+        timedOut: timedOut || undefined,
+      };
+    },
+  };
+}
+
+export function parseJson<T>(
+  stdout: string,
+  context: string,
+  maxSnippet = 500,
+): T {
+  try {
+    return JSON.parse(stdout) as T;
+  } catch (error) {
+    throw new CliCommandError("parse_error", `Failed to parse ${context}`, {
+      cause: error instanceof Error ? error.message : String(error),
+      stdout: stdout.slice(0, maxSnippet),
+    });
+  }
+}
+
+export function parseJsonWithSchema<T>(
+  stdout: string,
+  schema: z.ZodSchema<T>,
+  context: string,
+): T {
+  const parsed = parseJson<unknown>(stdout, context);
+  const result = schema.safeParse(parsed);
+  if (!result.success) {
+    throw new CliCommandError(
+      "validation_error",
+      `Invalid ${context} response`,
+      { issues: result.error.issues },
+    );
+  }
+  return result.data;
+}

@@ -7,6 +7,10 @@
  */
 
 import { z } from "zod";
+import {
+  CliCommandError,
+  createBunCommandRunner as createSharedBunCommandRunner,
+} from "../cli-runner";
 
 // ============================================================================
 // Command Runner Interface
@@ -476,44 +480,38 @@ export function createCMClient(options: CMClientOptions): CMClient {
  * Create a command runner that uses Bun.spawn for subprocess execution.
  */
 export function createBunCMCommandRunner(): CMCommandRunner {
+  const runner = createSharedBunCommandRunner({ timeoutMs: 30000 });
   return {
     run: async (command, args, options) => {
-      const spawnOptions: { cwd?: string; stdout: "pipe"; stderr: "pipe" } = {
-        stdout: "pipe",
-        stderr: "pipe",
-      };
-      if (options?.cwd !== undefined) {
-        spawnOptions.cwd = options.cwd;
-      }
-
-      const proc = Bun.spawn([command, ...args], spawnOptions);
-
-      const timeout = options?.timeout ?? 30000;
-      let timeoutId: ReturnType<typeof setTimeout> | undefined;
-
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => {
-          proc.kill();
-          reject(
-            new CMClientError("timeout", "Command timed out", { timeout }),
-          );
-        }, timeout);
-      });
-
       try {
-        const exitCode = await Promise.race([proc.exited, timeoutPromise]);
-        if (timeoutId !== undefined) {
-          clearTimeout(timeoutId);
-        }
-        const stdout = await new Response(proc.stdout).text();
-        const stderr = await new Response(proc.stderr).text();
-
-        return { stdout, stderr, exitCode };
+        const result = await runner.run(command, args, {
+          cwd: options?.cwd,
+          timeoutMs: options?.timeout,
+        });
+        return {
+          stdout: result.stdout,
+          stderr: result.stderr,
+          exitCode: result.exitCode,
+        };
       } catch (error) {
-        if (timeoutId !== undefined) {
-          clearTimeout(timeoutId);
+        if (error instanceof CliCommandError) {
+          if (error.kind === "timeout") {
+            throw new CMClientError("timeout", "Command timed out", {
+              timeout: options?.timeout ?? 30000,
+            });
+          }
+          if (error.kind === "spawn_failed") {
+            throw new CMClientError(
+              "unavailable",
+              "CM command failed to start",
+              {
+                command,
+                args,
+                details: error.details,
+              },
+            );
+          }
         }
-        proc.kill();
         throw error;
       }
     },
