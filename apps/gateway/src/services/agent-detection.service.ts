@@ -11,7 +11,7 @@
 
 import type { ToolDefinition } from "@flywheel/shared";
 import { getLogger } from "../middleware/correlation";
-import { listAllTools } from "./tool-registry.service";
+import { getToolRegistryMetadata, listAllTools } from "./tool-registry.service";
 
 // ============================================================================
 // Types
@@ -353,6 +353,15 @@ async function getRegistryDefinitions(): Promise<{
   try {
     const registryTools = await listAllTools();
     if (registryTools.length === 0) {
+      const meta = getToolRegistryMetadata();
+      log.warn(
+        {
+          errorCategory: "registry_empty",
+          manifestVersion: meta?.schemaVersion ?? null,
+          manifestHash: meta?.manifestHash ?? null,
+        },
+        "ToolRegistry returned empty tools list; using fallback detection list",
+      );
       return {
         agents: FALLBACK_AGENT_CLIS,
         tools: FALLBACK_TOOL_CLIS,
@@ -377,7 +386,16 @@ async function getRegistryDefinitions(): Promise<{
 
     return { agents, tools };
   } catch (error) {
-    log.warn({ error }, "Failed to load ToolRegistry; using fallback detection list");
+    const meta = getToolRegistryMetadata();
+    log.warn(
+      {
+        error,
+        errorCategory: "registry_load_failed",
+        manifestVersion: meta?.schemaVersion ?? null,
+        manifestHash: meta?.manifestHash ?? null,
+      },
+      "Failed to load ToolRegistry; using fallback detection list",
+    );
     return {
       agents: FALLBACK_AGENT_CLIS,
       tools: FALLBACK_TOOL_CLIS,
@@ -706,7 +724,17 @@ async function detectCLI(def: CLIDefinition): Promise<DetectedCLI> {
   }
 
   if (!path) {
-    log.debug({ cli: def.name, method: detectionMethod }, "CLI not found");
+    const meta = getToolRegistryMetadata();
+    log.debug(
+      {
+        toolId: def.name,
+        method: detectionMethod,
+        errorCategory: "cli_not_found",
+        manifestVersion: meta?.schemaVersion ?? null,
+        manifestHash: meta?.manifestHash ?? null,
+      },
+      "CLI not found",
+    );
     return {
       name: def.name,
       available: false,

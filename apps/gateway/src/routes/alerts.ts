@@ -353,9 +353,9 @@ alerts.post("/:alertId/dismiss", async (c) => {
 /**
  * POST /alerts/evaluate - Manually trigger alert rule evaluation
  */
-alerts.post("/evaluate", (c) => {
+alerts.post("/evaluate", async (c) => {
   try {
-    const firedAlerts = evaluateAlertRules();
+    const firedAlerts = await evaluateAlertRules();
 
     const serializedAlerts = firedAlerts.map((alert) => ({
       id: alert.id,

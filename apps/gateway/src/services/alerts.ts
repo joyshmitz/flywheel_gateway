@@ -20,11 +20,17 @@ import {
   type AlertRuleUpdate,
   DEFAULT_COOLDOWN_MS,
   type NtmHealthContext,
+  type SafetyPostureContext,
   SEVERITY_ORDER,
 } from "../models/alert";
+import * as dcgService from "./dcg.service";
 import { logger } from "./logger";
 import { getMetricsSnapshot } from "./metrics";
 import { getNtmIngestService } from "./ntm-ingest.service";
+import * as slbService from "./slb.service";
+import { getUBSService } from "./ubs.service";
+import { getChecksumAge, listToolsWithChecksums } from "./update-checker.service";
+import { loadToolRegistry } from "./tool-registry.service";
 
 /** Active alerts */
 const activeAlerts = new Map<string, Alert>();
@@ -137,6 +143,129 @@ function buildHealthContext(): NtmHealthContext | undefined {
   };
 }
 
+/** Stale checksum threshold: 7 days */
+const STALE_CHECKSUM_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Build safety posture context from safety tools (bd-2ig4).
+ */
+async function buildSafetyContext(): Promise<SafetyPostureContext | undefined> {
+  try {
+    // Check DCG status
+    let dcgInstalled = false;
+    let dcgVersion: string | null = null;
+    try {
+      dcgInstalled = await dcgService.isDcgAvailable();
+      if (dcgInstalled) {
+        dcgVersion = await dcgService.getDcgVersion();
+      }
+    } catch {
+      // DCG not available
+    }
+
+    // Check SLB status
+    let slbInstalled = false;
+    let slbVersion: string | null = null;
+    try {
+      slbInstalled = await slbService.isSlbAvailable();
+      if (slbInstalled) {
+        const versionInfo = await slbService.getSlbVersion();
+        slbVersion = versionInfo?.version ?? null;
+      }
+    } catch {
+      // SLB not available
+    }
+
+    // Check UBS status
+    let ubsInstalled = false;
+    let ubsVersion: string | null = null;
+    try {
+      const ubsService = getUBSService();
+      const health = await ubsService.checkHealth();
+      ubsInstalled = health.available;
+      ubsVersion = health.version ?? null;
+    } catch {
+      // UBS not available
+    }
+
+    // Check checksums
+    let registryGeneratedAt: string | null = null;
+    let registryAgeMs: number | null = null;
+    let checksumsStale = false;
+    let checksumsAvailable = false;
+
+    try {
+      const registry = await loadToolRegistry();
+      const toolsWithChecksums = await listToolsWithChecksums();
+      checksumsAvailable = toolsWithChecksums.length > 0;
+
+      const now = Date.now();
+      registryGeneratedAt = registry.generatedAt ?? null;
+      registryAgeMs = registryGeneratedAt
+        ? now - new Date(registryGeneratedAt).getTime()
+        : null;
+      checksumsStale =
+        registryAgeMs !== null && registryAgeMs > STALE_CHECKSUM_THRESHOLD_MS;
+    } catch {
+      // Registry not available
+    }
+
+    const allToolsInstalled = dcgInstalled && slbInstalled && ubsInstalled;
+    const allToolsHealthy = dcgInstalled && slbInstalled && ubsInstalled;
+
+    // Build issues list
+    const issues: string[] = [];
+    if (!dcgInstalled) {
+      issues.push("DCG (Destructive Command Guard) is not installed");
+    }
+    if (!slbInstalled) {
+      issues.push("SLB (Simultaneous Launch Button) is not installed");
+    }
+    if (!ubsInstalled) {
+      issues.push("UBS (Ultimate Bug Scanner) is not installed");
+    }
+    if (checksumsStale) {
+      issues.push("ACFS checksums are stale (older than 7 days)");
+    }
+
+    // Determine overall status
+    let status: "healthy" | "degraded" | "unhealthy";
+    if (allToolsInstalled && allToolsHealthy && !checksumsStale) {
+      status = "healthy";
+    } else if (allToolsInstalled) {
+      status = "degraded";
+    } else {
+      status = "unhealthy";
+    }
+
+    return {
+      status,
+      tools: {
+        dcg: { installed: dcgInstalled, version: dcgVersion, healthy: dcgInstalled },
+        slb: { installed: slbInstalled, version: slbVersion, healthy: slbInstalled },
+        ubs: { installed: ubsInstalled, version: ubsVersion, healthy: ubsInstalled },
+      },
+      checksums: {
+        registryGeneratedAt,
+        registryAgeMs,
+        isStale: checksumsStale,
+        staleThresholdMs: STALE_CHECKSUM_THRESHOLD_MS,
+      },
+      summary: {
+        allToolsInstalled,
+        allToolsHealthy,
+        checksumsAvailable,
+        checksumsStale,
+        overallHealthy: status === "healthy",
+        issues,
+      },
+    };
+  } catch (error) {
+    logger.warn({ error }, "Failed to build safety context for alerting");
+    return undefined;
+  }
+}
+
 /**
  * Generate a cryptographically secure unique alert ID.
  */
@@ -201,7 +330,7 @@ export function getAlertRule(ruleId: string): AlertRule | undefined {
 /**
  * Build alert context for rule evaluation.
  */
-function buildAlertContext(correlationId: string): AlertContext {
+async function buildAlertContext(correlationId: string): Promise<AlertContext> {
   const snapshot = getMetricsSnapshot();
   const ingestService = getNtmIngestService();
   const ntmSnapshot = ingestService.getIsWorkingSnapshot();
@@ -238,7 +367,10 @@ function buildAlertContext(correlationId: string): AlertContext {
   previousTrackedAgentCount = currentAgentCount;
   previousTrackedAgentIds = currentAgentIds;
 
-  return {
+  // Build safety posture context (bd-2ig4)
+  const safetyContext = await buildSafetyContext();
+
+  const context: AlertContext = {
     metrics: {
       agents: snapshot.agents,
       tokens: {
@@ -258,8 +390,16 @@ function buildAlertContext(correlationId: string): AlertContext {
     },
     correlationId,
     timestamp: new Date(),
-    ...(Object.keys(ntmContext).length > 0 ? { ntm: ntmContext } : {}),
   };
+
+  if (Object.keys(ntmContext).length > 0) {
+    context.ntm = ntmContext;
+  }
+  if (safetyContext) {
+    context.safety = safetyContext;
+  }
+
+  return context;
 }
 
 /**
@@ -330,9 +470,9 @@ export function fireAlert(rule: AlertRule, context: AlertContext): Alert {
 /**
  * Evaluate all alert rules.
  */
-export function evaluateAlertRules(): Alert[] {
+export async function evaluateAlertRules(): Promise<Alert[]> {
   const correlationId = getCorrelationId();
-  const context = buildAlertContext(correlationId);
+  const context = await buildAlertContext(correlationId);
   const firedAlerts: Alert[] = [];
 
   for (const rule of alertRules.values()) {
@@ -947,6 +1087,134 @@ export function initializeDefaultAlertRules(): void {
     actions: [
       { id: "view_history", label: "View History", type: "link" },
       { id: "spawn_new", label: "Spawn New Agent", type: "custom" },
+    ],
+  });
+
+  // ==========================================================================
+  // Safety Posture Alerting Rules (bd-2ig4)
+  // ==========================================================================
+
+  // DCG missing - Destructive Command Guard not installed
+  registerAlertRule({
+    id: "safety_dcg_missing",
+    name: "DCG Not Installed",
+    enabled: true,
+    description:
+      "Fires when DCG (Destructive Command Guard) is not installed or unavailable",
+    type: "safety_dcg_missing",
+    severity: "error",
+    cooldown: 60 * 60 * 1000, // 1 hour (tool installation is a manual process)
+    condition: (ctx) => {
+      const safety = ctx.safety;
+      if (!safety) return false;
+      return !safety.tools.dcg.installed;
+    },
+    title: "DCG not installed",
+    message:
+      "DCG (Destructive Command Guard) is not installed. Agents may execute destructive commands without safeguards.",
+    metadata: (ctx) => ({
+      tool: "dcg",
+      safetyStatus: ctx.safety?.status,
+      issues: ctx.safety?.summary.issues,
+    }),
+    source: "safety_posture_monitor",
+    actions: [
+      { id: "install_dcg", label: "Install DCG", type: "link" },
+      { id: "view_safety", label: "View Safety Status", type: "link" },
+    ],
+  });
+
+  // SLB missing - Simultaneous Launch Button not installed
+  registerAlertRule({
+    id: "safety_slb_missing",
+    name: "SLB Not Installed",
+    enabled: true,
+    description:
+      "Fires when SLB (Simultaneous Launch Button) is not installed or unavailable",
+    type: "safety_slb_missing",
+    severity: "warning",
+    cooldown: 60 * 60 * 1000, // 1 hour
+    condition: (ctx) => {
+      const safety = ctx.safety;
+      if (!safety) return false;
+      return !safety.tools.slb.installed;
+    },
+    title: "SLB not installed",
+    message:
+      "SLB (Simultaneous Launch Button) is not installed. Two-person rule for dangerous operations is unavailable.",
+    metadata: (ctx) => ({
+      tool: "slb",
+      safetyStatus: ctx.safety?.status,
+      issues: ctx.safety?.summary.issues,
+    }),
+    source: "safety_posture_monitor",
+    actions: [
+      { id: "install_slb", label: "Install SLB", type: "link" },
+      { id: "view_safety", label: "View Safety Status", type: "link" },
+    ],
+  });
+
+  // UBS missing - Ultimate Bug Scanner not installed
+  registerAlertRule({
+    id: "safety_ubs_missing",
+    name: "UBS Not Installed",
+    enabled: true,
+    description:
+      "Fires when UBS (Ultimate Bug Scanner) is not installed or unavailable",
+    type: "safety_ubs_missing",
+    severity: "warning",
+    cooldown: 60 * 60 * 1000, // 1 hour
+    condition: (ctx) => {
+      const safety = ctx.safety;
+      if (!safety) return false;
+      return !safety.tools.ubs.installed;
+    },
+    title: "UBS not installed",
+    message:
+      "UBS (Ultimate Bug Scanner) is not installed. Code scanning for security vulnerabilities is unavailable.",
+    metadata: (ctx) => ({
+      tool: "ubs",
+      safetyStatus: ctx.safety?.status,
+      issues: ctx.safety?.summary.issues,
+    }),
+    source: "safety_posture_monitor",
+    actions: [
+      { id: "install_ubs", label: "Install UBS", type: "link" },
+      { id: "view_safety", label: "View Safety Status", type: "link" },
+    ],
+  });
+
+  // Checksums stale - ACFS checksums are older than threshold
+  registerAlertRule({
+    id: "safety_checksums_stale",
+    name: "Checksums Stale",
+    enabled: true,
+    description: "Fires when ACFS checksums are older than 7 days",
+    type: "safety_checksums_stale",
+    severity: "warning",
+    cooldown: 24 * 60 * 60 * 1000, // 24 hours (checksums update daily)
+    condition: (ctx) => {
+      const safety = ctx.safety;
+      if (!safety) return false;
+      return safety.checksums.isStale;
+    },
+    title: "ACFS checksums stale",
+    message: (ctx) => {
+      const ageMs = ctx.safety?.checksums.registryAgeMs;
+      if (!ageMs) return "ACFS checksums are stale and should be regenerated.";
+      const ageDays = Math.floor(ageMs / (24 * 60 * 60 * 1000));
+      return `ACFS checksums are ${ageDays} days old (threshold: 7 days). Regenerate to verify tool integrity.`;
+    },
+    metadata: (ctx) => ({
+      registryGeneratedAt: ctx.safety?.checksums.registryGeneratedAt,
+      registryAgeMs: ctx.safety?.checksums.registryAgeMs,
+      staleThresholdMs: ctx.safety?.checksums.staleThresholdMs,
+      safetyStatus: ctx.safety?.status,
+    }),
+    source: "safety_posture_monitor",
+    actions: [
+      { id: "regenerate_checksums", label: "Regenerate Checksums", type: "custom" },
+      { id: "view_safety", label: "View Safety Status", type: "link" },
     ],
   });
 

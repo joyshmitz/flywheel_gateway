@@ -12,7 +12,11 @@ import {
   type DetectedType,
   getAgentDetectionService,
 } from "./agent-detection.service";
-import { getRequiredTools, loadToolRegistry } from "./tool-registry.service";
+import {
+  getRequiredTools,
+  getToolRegistryMetadata,
+  loadToolRegistry,
+} from "./tool-registry.service";
 
 // ============================================================================
 // Types
@@ -272,7 +276,16 @@ async function getRegistryToolInfo(): Promise<ToolInfo[] | null> {
     log.debug({ count: mapped.length }, "Loaded tool info from registry");
     return mapped;
   } catch (error) {
-    log.warn({ error }, "Failed to load ToolRegistry; using fallback");
+    const meta = getToolRegistryMetadata();
+    log.warn(
+      {
+        error,
+        errorCategory: "registry_load_failed",
+        manifestVersion: meta?.schemaVersion ?? null,
+        manifestHash: meta?.manifestHash ?? null,
+      },
+      "Failed to load ToolRegistry; using fallback",
+    );
     return null;
   }
 }
@@ -293,7 +306,16 @@ async function getRequiredToolNames(): Promise<DetectedType[]> {
     log.debug({ required: names }, "Loaded required tools from registry");
     return names;
   } catch (error) {
-    log.warn({ error }, "Failed to load ToolRegistry required tools");
+    const meta = getToolRegistryMetadata();
+    log.warn(
+      {
+        error,
+        errorCategory: "registry_required_failed",
+        manifestVersion: meta?.schemaVersion ?? null,
+        manifestHash: meta?.manifestHash ?? null,
+      },
+      "Failed to load ToolRegistry required tools",
+    );
     return REQUIRED_TOOLS;
   }
 }
@@ -324,7 +346,16 @@ export async function getReadinessStatus(
       ...(registry.generatedAt && { generatedAt: registry.generatedAt }),
     };
   } catch (error) {
-    log.debug({ error }, "Tool registry metadata unavailable");
+    const meta = getToolRegistryMetadata();
+    log.debug(
+      {
+        error,
+        errorCategory: "registry_metadata_unavailable",
+        manifestVersion: meta?.schemaVersion ?? null,
+        manifestHash: meta?.manifestHash ?? null,
+      },
+      "Tool registry metadata unavailable",
+    );
   }
 
   // Calculate missing required tools
@@ -424,6 +455,16 @@ export async function installTool(
 
   const toolInfo = await getToolInfo(request.tool);
   if (!toolInfo) {
+    const meta = getToolRegistryMetadata();
+    log.warn(
+      {
+        toolId: request.tool,
+        errorCategory: "tool_not_found",
+        manifestVersion: meta?.schemaVersion ?? null,
+        manifestHash: meta?.manifestHash ?? null,
+      },
+      "Install requested for unknown tool",
+    );
     return {
       tool: request.tool,
       success: false,
@@ -433,6 +474,16 @@ export async function installTool(
   }
 
   if (!toolInfo.installCommand) {
+    const meta = getToolRegistryMetadata();
+    log.warn(
+      {
+        toolId: request.tool,
+        errorCategory: "install_missing_command",
+        manifestVersion: meta?.schemaVersion ?? null,
+        manifestHash: meta?.manifestHash ?? null,
+      },
+      "Tool install requested without install command",
+    );
     return {
       tool: request.tool,
       success: false,

@@ -24,6 +24,10 @@ export type AlertType =
   | "daemon_failed"
   | "security_violation"
   | "system_health"
+  | "safety_dcg_missing"
+  | "safety_slb_missing"
+  | "safety_ubs_missing"
+  | "safety_checksums_stale"
   | "custom";
 
 /**
@@ -101,6 +105,8 @@ export interface AlertContext {
     /** Agents that were removed since last check */
     removedAgents?: string[];
   };
+  /** Optional safety posture signals (bd-2ig4) */
+  safety?: SafetyPostureContext;
 }
 
 /**
@@ -151,6 +157,45 @@ export interface NtmHealthContext {
     healthyCount: number;
     degradedCount: number;
     unhealthyCount: number;
+  };
+}
+
+/**
+ * Safety tool status for alert rules.
+ */
+export interface SafetyToolStatus {
+  installed: boolean;
+  version: string | null;
+  healthy: boolean;
+}
+
+/**
+ * Safety posture context for alert rules (bd-2ig4).
+ */
+export interface SafetyPostureContext {
+  /** Overall safety status */
+  status: "healthy" | "degraded" | "unhealthy";
+  /** Individual tool statuses */
+  tools: {
+    dcg: SafetyToolStatus;
+    slb: SafetyToolStatus;
+    ubs: SafetyToolStatus;
+  };
+  /** Checksum status */
+  checksums: {
+    registryGeneratedAt: string | null;
+    registryAgeMs: number | null;
+    isStale: boolean;
+    staleThresholdMs: number;
+  };
+  /** Summary */
+  summary: {
+    allToolsInstalled: boolean;
+    allToolsHealthy: boolean;
+    checksumsAvailable: boolean;
+    checksumsStale: boolean;
+    overallHealthy: boolean;
+    issues: string[];
   };
 }
 

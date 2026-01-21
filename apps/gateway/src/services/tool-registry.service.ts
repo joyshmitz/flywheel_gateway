@@ -7,6 +7,7 @@
 import path from "node:path";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import type { ToolDefinition, ToolRegistry } from "@flywheel/shared";
 import { createGatewayError, isGatewayError } from "@flywheel/shared/errors";
 import { z } from "zod";
@@ -107,7 +108,11 @@ function getCacheTtlMs(): number {
   return DEFAULT_CACHE_TTL_MS;
 }
 
-function parseManifest(content: string, sourcePath: string): ToolRegistry {
+function parseManifest(
+  content: string,
+  sourcePath: string,
+  manifestHash: string,
+): ToolRegistry {
   let raw: unknown;
   try {
     raw = parseYaml(content);
@@ -118,12 +123,18 @@ function parseManifest(content: string, sourcePath: string): ToolRegistry {
       {
         details: {
           path: sourcePath,
+          manifestHash,
+          errorCategory: "manifest_parse_error",
           cause: error instanceof Error ? error.message : String(error),
         },
       },
     );
   }
 
+  const schemaVersion =
+    typeof raw === "object" && raw && "schemaVersion" in raw
+      ? String((raw as { schemaVersion?: unknown }).schemaVersion)
+      : undefined;
   const result = ToolRegistrySchema.safeParse(raw);
   if (!result.success) {
     throw createGatewayError(
@@ -132,6 +143,9 @@ function parseManifest(content: string, sourcePath: string): ToolRegistry {
       {
         details: {
           path: sourcePath,
+          manifestHash,
+          ...(schemaVersion && { schemaVersion }),
+          errorCategory: "manifest_validation_error",
           issues: result.error.issues,
         },
       },
@@ -150,6 +164,7 @@ let cached:
       registry: ToolRegistry;
       path: string;
       loadedAt: number;
+      manifestHash: string;
     }
   | undefined;
 
@@ -171,11 +186,28 @@ export async function loadToolRegistry(
     cached.path === manifestPath &&
     Date.now() - cached.loadedAt < ttlMs
   ) {
-    log.debug({ manifestPath, ttlMs }, "Tool registry cache hit");
+    log.debug(
+      {
+        manifestPath,
+        ttlMs,
+        schemaVersion: cached.registry.schemaVersion,
+        manifestHash: cached.manifestHash,
+      },
+      "Tool registry cache hit",
+    );
     return cached.registry;
   }
 
   if (!existsSync(manifestPath)) {
+    log.warn(
+      {
+        manifestPath,
+        manifestHash: null,
+        schemaVersion: null,
+        errorCategory: "manifest_missing",
+      },
+      "Tool registry manifest not found",
+    );
     throw createGatewayError(
       "SYSTEM_UNAVAILABLE",
       "Tool registry manifest not found",
@@ -185,17 +217,86 @@ export async function loadToolRegistry(
 
   const start = performance.now();
   const content = await readFile(manifestPath, "utf-8");
-  const registry = parseManifest(content, manifestPath);
+  const manifestHash = createHash("sha256").update(content).digest("hex");
+  let registry: ToolRegistry;
+  try {
+    registry = parseManifest(content, manifestPath, manifestHash);
+  } catch (error) {
+    const errorCategory =
+      isGatewayError(error) && error.details?.["errorCategory"]
+        ? String(error.details["errorCategory"])
+        : "manifest_load_failed";
+    const schemaVersion =
+      isGatewayError(error) && typeof error.details?.["schemaVersion"] === "string"
+        ? String(error.details["schemaVersion"])
+        : null;
+    log.warn(
+      {
+        manifestPath,
+        manifestHash,
+        schemaVersion,
+        errorCategory,
+        error,
+      },
+      "Tool registry load failed",
+    );
+    throw error;
+  }
   const latencyMs = Math.round(performance.now() - start);
 
-  cached = { registry, path: manifestPath, loadedAt: Date.now() };
-  log.info({ manifestPath, latencyMs }, "Tool registry loaded");
+  cached = {
+    registry,
+    path: manifestPath,
+    loadedAt: Date.now(),
+    manifestHash,
+  };
+  log.info(
+    {
+      manifestPath,
+      schemaVersion: registry.schemaVersion,
+      manifestHash,
+      toolCount: registry.tools.length,
+      latencyMs,
+    },
+    "Tool registry loaded",
+  );
 
   return registry;
 }
 
 export function clearToolRegistryCache(): void {
   cached = undefined;
+}
+
+export interface ToolRegistryMetadata {
+  manifestPath: string;
+  schemaVersion: string;
+  source?: string;
+  generatedAt?: string;
+  manifestHash: string;
+  loadedAt: number;
+}
+
+export function getToolRegistryMetadata(): ToolRegistryMetadata | null {
+  if (!cached) {
+    return null;
+  }
+
+  const metadata: ToolRegistryMetadata = {
+    manifestPath: cached.path,
+    schemaVersion: cached.registry.schemaVersion,
+    manifestHash: cached.manifestHash,
+    loadedAt: cached.loadedAt,
+  };
+
+  if (cached.registry.source !== undefined) {
+    metadata.source = cached.registry.source;
+  }
+  if (cached.registry.generatedAt !== undefined) {
+    metadata.generatedAt = cached.registry.generatedAt;
+  }
+
+  return metadata;
 }
 
 // ============================================================================

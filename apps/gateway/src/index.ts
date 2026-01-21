@@ -8,6 +8,7 @@ import { routes } from "./routes";
 import { startAgentEvents } from "./services/agent-events";
 import { startStateCleanupJob } from "./services/agent-state-machine";
 import { initCassService } from "./services/cass.service";
+import { getConfig, loadConfig } from "./services/config.service";
 import {
   getNtmIngestService,
   startNtmIngest,
@@ -48,7 +49,11 @@ app.route("/", routes);
 export default app;
 
 if (import.meta.main) {
-  const port = Number(process.env["PORT"]) || 3000;
+  // Load configuration (async but we block on it during startup)
+  await loadConfig({ cwd: process.cwd() });
+  const config = getConfig();
+
+  const port = config.server.port;
 
   // Start background jobs
   startCleanupJob();
@@ -60,14 +65,50 @@ if (import.meta.main) {
   // Initialize CASS service
   initCassService({ cwd: process.cwd() });
 
-  // Start NTM ingest service (polls NTM status and updates agent states)
-  startNtmIngest({ cwd: process.cwd() });
+  // Start NTM services if enabled
+  if (config.ntm.enabled) {
+    // Start NTM ingest service (polls NTM status and updates agent states)
+    startNtmIngest({
+      cwd: process.cwd(),
+      pollIntervalMs: config.ntm.pollIntervalMs,
+      commandTimeoutMs: config.ntm.commandTimeoutMs,
+      maxBackoffMultiplier: config.ntm.maxBackoffMultiplier,
+    });
 
-  // Start NTM WebSocket bridge (publishes NTM events to WebSocket channels)
-  const ntmRunner = createBunNtmCommandRunner();
-  const ntmClient = createNtmClient({ runner: ntmRunner, cwd: process.cwd() });
-  const ingestService = getNtmIngestService();
-  startNtmWsBridge(getHub(), ingestService, ntmClient);
+    // Start NTM WebSocket bridge if enabled (publishes NTM events to WebSocket channels)
+    if (config.ntm.wsBridge.enabled) {
+      const ntmRunner = createBunNtmCommandRunner();
+      const ntmClient = createNtmClient({
+        runner: ntmRunner,
+        cwd: process.cwd(),
+      });
+      const ingestService = getNtmIngestService();
+      startNtmWsBridge(getHub(), ingestService, ntmClient, {
+        tailPollIntervalMs: config.ntm.wsBridge.tailPollIntervalMs,
+        tailLines: config.ntm.wsBridge.tailLines,
+        enableOutputStreaming: config.ntm.wsBridge.enableOutputStreaming,
+        enableThrottling: config.ntm.wsBridge.throttling.enabled,
+        batchWindowMs: config.ntm.wsBridge.throttling.batchWindowMs,
+        maxEventsPerBatch: config.ntm.wsBridge.throttling.maxEventsPerBatch,
+        debounceMs: config.ntm.wsBridge.throttling.debounceMs,
+      });
+      logger.info(
+        {
+          pollIntervalMs: config.ntm.pollIntervalMs,
+          wsBridgeEnabled: true,
+          throttlingEnabled: config.ntm.wsBridge.throttling.enabled,
+        },
+        "NTM integration started",
+      );
+    } else {
+      logger.info(
+        { pollIntervalMs: config.ntm.pollIntervalMs, wsBridgeEnabled: false },
+        "NTM ingest started (WS bridge disabled)",
+      );
+    }
+  } else {
+    logger.info("NTM integration disabled by configuration");
+  }
 
   const mcpEnabled = registerAgentMailToolCallerFromEnv();
   if (mcpEnabled) {
