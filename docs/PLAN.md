@@ -1006,10 +1006,10 @@ For a dashboard/control panel application:
 │                                       │                                          │
 │  ┌────────────────────────────────────┴───────────────────────────────────────┐ │
 │  │                          SUPERVISOR SERVICE                                │ │
-│  │  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐                   │ │
-│  │  │  Agent Mail   │  │   CM Server   │  │   BD Daemon   │                   │ │
-│  │  │  MCP Server   │  │   (Memory)    │  │   (Beads)     │                   │ │
-│  │  └───────────────┘  └───────────────┘  └───────────────┘                   │ │
+│  │  ┌───────────────┐  ┌───────────────┐                                   │ │
+│  │  │  Agent Mail   │  │   CM Server   │                                   │ │
+│  │  │  MCP Server   │  │   (Memory)    │                                   │ │
+│  │  └───────────────┘  └───────────────┘                                   │ │
 │  └────────────────────────────────────────────────────────────────────────────┘ │
 │                                       │                                          │
 │                    ┌──────────────────┼──────────────────┐                       │
@@ -4436,7 +4436,7 @@ const DEFAULT_AUTO_RESOLUTION_RULES: AutoResolutionRule[] = [
 | `GET` | `/beads/triage` | Full triage analysis (BV) |
 | `GET` | `/beads/insights` | Graph insights |
 | `POST` | `/beads/{id}/deps` | Add dependency |
-| `POST` | `/beads/sync` | Sync with git |
+| `POST` | `/beads/sync` | Sync Beads export (no git) |
 
 **Gateway BV CLI configuration**
 - `BV_PROJECT_ROOT` or `BEADS_PROJECT_ROOT` to control the working directory for BV commands
@@ -9908,7 +9908,7 @@ When implementing features, consult these references for patterns and data struc
 | Triage | `GET /beads/triage` | — |
 | Insights | `GET /beads/insights` | — |
 | Add dependency | `POST /beads/{id}/deps` | `beads` |
-| Sync | `POST /beads/sync` | — |
+| Sync export (no git) | `POST /beads/sync` | — |
 
 ### A.4 Scanner Operations
 

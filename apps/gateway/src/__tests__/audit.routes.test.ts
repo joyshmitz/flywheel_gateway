@@ -5,7 +5,12 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { Hono } from "hono";
 import audit from "../routes/audit";
-import { restoreDrizzleOrm, restoreRealDb } from "./test-utils/db-mock-restore";
+import {
+  restoreCorrelation,
+  restoreDrizzleOrm,
+  restoreRealDb,
+  restoreResponseUtils,
+} from "./test-utils/db-mock-restore";
 
 // Mock the correlation middleware
 mock.module("../middleware/correlation", () => ({
@@ -106,6 +111,20 @@ mock.module("../db", () => ({
 }));
 
 // Mock drizzle-orm operators
+// IMPORTANT: Must include all sql methods that drizzle-orm uses internally
+const mockSql = Object.assign(
+  (strings: TemplateStringsArray, ..._values: unknown[]) => strings.join(""),
+  {
+    identifier: (name: string) => name,
+    raw: (value: string) => value,
+    placeholder: (name: string) => `$${name}`,
+    empty: "",
+    fromList: (list: unknown[]) => list.join(", "),
+    join: (items: unknown[], separator: string) =>
+      items.map(String).join(separator),
+  },
+);
+
 mock.module("drizzle-orm", () => ({
   and: (...args: unknown[]) => args,
   desc: (col: unknown) => col,
@@ -114,8 +133,7 @@ mock.module("drizzle-orm", () => ({
   lte: (col: unknown, val: unknown) => ({ col, val }),
   like: (col: unknown, val: unknown) => ({ col, val }),
   inArray: (col: unknown, vals: unknown) => ({ col, vals }),
-  sql: (strings: TemplateStringsArray, ..._values: unknown[]) =>
-    strings.join(""),
+  sql: mockSql,
   count: () => "count",
 }));
 
@@ -124,6 +142,8 @@ afterAll(() => {
   // Restore real modules for other test files (mock.restore doesn't restore mock.module)
   restoreRealDb();
   restoreDrizzleOrm();
+  restoreResponseUtils();
+  restoreCorrelation();
 });
 
 describe("Audit Routes", () => {

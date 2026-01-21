@@ -354,6 +354,22 @@ describe("DCG Pending Exceptions Service", () => {
         denyPendingException("invalid", "test-user"),
       ).rejects.toThrow(PendingExceptionNotFoundError);
     });
+
+    test("throws ConflictError for already approved exception", async () => {
+      const exc = await createPendingException({
+        command: "test-command",
+        pack: "test",
+        ruleId: "test:rule",
+        reason: "Test",
+        severity: "low",
+      });
+
+      await approvePendingException(exc.shortCode, "user1");
+
+      await expect(
+        denyPendingException(exc.shortCode, "user2"),
+      ).rejects.toThrow(PendingExceptionConflictError);
+    });
   });
 
   describe("validateExceptionForExecution", () => {
@@ -600,6 +616,23 @@ describe("DCG Pending Exceptions Routes", () => {
 
       const body = await res.json();
       expect(body.data.status).toBe("denied");
+    });
+
+    test("returns 409 for already approved exception", async () => {
+      const exc = await createPendingException({
+        command: "test-command",
+        pack: "test",
+        ruleId: "test:rule",
+        reason: "Test",
+        severity: "low",
+      });
+
+      await approvePendingException(exc.shortCode, "user1");
+
+      const res = await app.request(`/dcg/pending/${exc.shortCode}/deny`, {
+        method: "POST",
+      });
+      expect(res.status).toBe(409);
     });
   });
 

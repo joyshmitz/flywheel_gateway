@@ -600,6 +600,9 @@ dcg.post("/pending/:shortCode/deny", async (c) => {
     if (error instanceof PendingExceptionNotFoundError) {
       return sendNotFound(c, "pending_exception", c.req.param("shortCode"));
     }
+    if (error instanceof PendingExceptionConflictError) {
+      return sendError(c, "EXCEPTION_CONFLICT", error.message, 409);
+    }
     return handleError(error, c);
   }
 });

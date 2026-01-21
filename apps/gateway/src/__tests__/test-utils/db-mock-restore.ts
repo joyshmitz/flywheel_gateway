@@ -67,3 +67,24 @@ export function restoreRealDb(): void {
 export function restoreDrizzleOrm(): void {
   mock.module("drizzle-orm", () => drizzleOrmExports);
 }
+
+/**
+ * Restore the real utils/response module after tests that mock it.
+ * Call this in afterAll() for any test file that uses mock.module("../utils/response", ...).
+ */
+export function restoreResponseUtils(): void {
+  // Import the real module dynamically to avoid circular dependencies
+  const realResponse = require("../../utils/response");
+  mock.module("../utils/response", () => realResponse);
+  mock.module("../../utils/response", () => realResponse);
+}
+
+/**
+ * Restore the real middleware/correlation module after tests that mock it.
+ * Call this in afterAll() for any test file that uses mock.module("../middleware/correlation", ...).
+ */
+export function restoreCorrelation(): void {
+  const realCorrelation = require("../../middleware/correlation");
+  mock.module("../middleware/correlation", () => realCorrelation);
+  mock.module("../../middleware/correlation", () => realCorrelation);
+}

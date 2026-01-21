@@ -91,6 +91,7 @@ export interface CheckpointStorageStats {
  */
 export class CheckpointCompactionService {
   private policy: CompactionPolicy;
+  private initialTimeout: ReturnType<typeof setTimeout> | null = null;
   private scheduledTimer: ReturnType<typeof setInterval> | null = null;
   private isRunning = false;
 
@@ -124,7 +125,8 @@ export class CheckpointCompactionService {
     );
 
     // Set up initial delayed run, then daily interval
-    setTimeout(() => {
+    this.initialTimeout = setTimeout(() => {
+      this.initialTimeout = null;
       this.runAllAgents();
       // Then run every 24 hours
       this.scheduledTimer = setInterval(
@@ -138,6 +140,10 @@ export class CheckpointCompactionService {
    * Stop scheduled compaction.
    */
   stopScheduled(): void {
+    if (this.initialTimeout) {
+      clearTimeout(this.initialTimeout);
+      this.initialTimeout = null;
+    }
     if (this.scheduledTimer) {
       clearInterval(this.scheduledTimer);
       this.scheduledTimer = null;

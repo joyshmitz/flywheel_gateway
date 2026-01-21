@@ -372,6 +372,29 @@ export function idempotencyMiddleware(config: IdempotencyConfig = {}) {
       try {
         const record = await pending.promise;
 
+        // Verify the request fingerprint matches (same check as for cached records)
+        if (record.fingerprint !== fingerprint) {
+          log.warn(
+            {
+              idempotencyKey,
+              expectedFingerprint: record.fingerprint,
+              actualFingerprint: fingerprint,
+            },
+            "Idempotency key reused with different request (concurrent)",
+          );
+          return c.json(
+            {
+              error: {
+                code: "IDEMPOTENCY_KEY_MISMATCH",
+                message: "Idempotency key was used with a different request",
+                correlationId: getCorrelationId(),
+                timestamp: new Date().toISOString(),
+              },
+            },
+            422,
+          );
+        }
+
         // Build headers for the pending response
         const pendingHeaders = new Headers();
         pendingHeaders.set("X-Idempotent-Replayed", "true");

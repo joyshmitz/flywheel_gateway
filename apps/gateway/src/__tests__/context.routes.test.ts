@@ -2,7 +2,55 @@
  * Tests for context routes.
  */
 
-import { describe, expect, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
+
+// Mock BV service to avoid spawning external commands
+mock.module("../services/bv.service", () => ({
+  getBvTriage: async () => ({
+    triage: {
+      recommendations: [
+        {
+          id: "test-bead-1",
+          type: "task",
+          title: "Test Task 1",
+          description: "A test task description",
+          score: 0.9,
+          reasons: ["High priority"],
+        },
+      ],
+    },
+    data_hash: "mock-hash-123",
+  }),
+  getBvClient: () => ({
+    getTriage: async () => ({ triage: { recommendations: [] }, data_hash: "" }),
+    getInsights: async () => ({ insights: {}, data_hash: "" }),
+    getPlan: async () => ({ plan: {}, data_hash: "" }),
+  }),
+  getBvProjectRoot: () => "/mock/project/root",
+  clearBvCache: () => {},
+}));
+
+// Mock CASS service to avoid external calls
+mock.module("../services/cass.service", () => ({
+  isCassAvailable: async () => false,
+  searchWithTokenBudget: async () => ({
+    hits: [],
+    total_matches: 0,
+    query: "",
+  }),
+}));
+
+// Mock correlation middleware
+mock.module("../middleware/correlation", () => ({
+  getCorrelationId: () => "test-correlation-id",
+  getLogger: () => ({
+    info: () => {},
+    error: () => {},
+    warn: () => {},
+    debug: () => {},
+  }),
+}));
+
 import { Hono } from "hono";
 import { context } from "../routes/context";
 

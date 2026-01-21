@@ -2,7 +2,63 @@
  * Context Pack Builder Tests
  */
 
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, mock } from "bun:test";
+
+// Mock BV service to avoid spawning external commands
+mock.module("../services/bv.service", () => ({
+  getBvTriage: async () => ({
+    triage: {
+      recommendations: [
+        {
+          id: "test-bead-1",
+          type: "task",
+          title: "Test Task 1",
+          description: "A test task description",
+          score: 0.9,
+          reasons: ["High priority"],
+        },
+        {
+          id: "test-bead-2",
+          type: "bug",
+          title: "Test Bug 1",
+          description: "A test bug description",
+          score: 0.7,
+          reasons: ["Urgent fix needed"],
+        },
+      ],
+    },
+    data_hash: "mock-hash-123",
+  }),
+  getBvClient: () => ({
+    getTriage: async () => ({ triage: { recommendations: [] }, data_hash: "" }),
+    getInsights: async () => ({ insights: {}, data_hash: "" }),
+    getPlan: async () => ({ plan: {}, data_hash: "" }),
+  }),
+  getBvProjectRoot: () => "/mock/project/root",
+  clearBvCache: () => {},
+}));
+
+// Mock CASS service to avoid external calls
+mock.module("../services/cass.service", () => ({
+  isCassAvailable: async () => false,
+  searchWithTokenBudget: async () => ({
+    hits: [],
+    total_matches: 0,
+    query: "",
+  }),
+}));
+
+// Mock correlation middleware
+mock.module("../middleware/correlation", () => ({
+  getCorrelationId: () => "test-correlation-id",
+  getLogger: () => ({
+    info: () => {},
+    error: () => {},
+    warn: () => {},
+    debug: () => {},
+  }),
+}));
+
 import {
   buildContextPack,
   getContextPackSummary,

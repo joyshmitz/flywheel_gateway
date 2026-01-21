@@ -122,7 +122,7 @@ No SEO needed (internal tool), no SSR needed (real-time WebSocket data), simpler
 
 ### High-Level Architecture
 
-The architecture comprises: Web UI (Vite/React) → Bun HTTP Server (Hono + tRPC) with REST Router and WebSocket Hub → Agent Driver Layer (SDK, ACP, Tmux) → Supervisor Service managing Agent Mail MCP Server, CM Server, and BD Daemon → External Tools (UBS, CASS, CM, CAAM, SLB) and AI Agent SDKs.
+The architecture comprises: Web UI (Vite/React) → Bun HTTP Server (Hono + tRPC) with REST Router and WebSocket Hub → Agent Driver Layer (SDK, ACP, Tmux) → Supervisor Service managing Agent Mail MCP Server and CM Server → External Tools (UBS, CASS, CM, CAAM, SLB) and AI Agent SDKs.
 
 ### Design Principles
 1. SDK-first execution with direct API calls
@@ -401,7 +401,7 @@ Generates suggestions with confidence scores and rationale. Actions include noti
 
 ### REST API Endpoints
 
-List/create/get/update beads, close bead, get ready work, get blocked work, full triage analysis, graph insights, add dependency, sync with git.
+List/create/get/update beads, close bead, get ready work, get blocked work, full triage analysis, graph insights, add dependency, sync export (no git).
 
 BV CLI configuration via `BV_PROJECT_ROOT` and `BV_TRIAGE_TTL_MS` (default 30s cache).
 

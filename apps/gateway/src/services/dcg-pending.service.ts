@@ -431,6 +431,12 @@ export async function denyPendingException(
     throw new PendingExceptionNotFoundError(shortCode);
   }
 
+  if (exception.status !== "pending") {
+    throw new PendingExceptionConflictError(
+      `Exception already ${exception.status}`,
+    );
+  }
+
   const now = new Date();
   const updates: Partial<typeof dcgPendingExceptions.$inferInsert> = {
     status: "denied",

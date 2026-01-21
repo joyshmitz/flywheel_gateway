@@ -337,11 +337,12 @@ async function transitionPhase(
     ...details,
   });
 
-  // Handle terminal states
+  // Handle terminal states (rejected is semi-terminal - can only go to cancelled)
   if (
     newPhase === "complete" ||
     newPhase === "cancelled" ||
-    newPhase === "failed"
+    newPhase === "failed" ||
+    newPhase === "rejected"
   ) {
     record.completedAt = new Date();
 
@@ -998,7 +999,8 @@ async function cleanupExpiredHandoffs(): Promise<number> {
       record.completedAt &&
       (record.phase === "complete" ||
         record.phase === "cancelled" ||
-        record.phase === "failed") &&
+        record.phase === "failed" ||
+        record.phase === "rejected") &&
       now.getTime() - record.completedAt.getTime() > COMPLETED_RETENTION_MS
     ) {
       toRemove.push(id);
