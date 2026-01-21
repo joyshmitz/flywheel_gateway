@@ -216,48 +216,63 @@ function buildInstallCommand(install?: InstallSpec[]): string | undefined {
   return `${primary.command}${args}`.trim();
 }
 
-function toToolInfo(
-  tool: ToolDefinition,
-  fallback: ToolInfo,
-): ToolInfo | null {
+/**
+ * Convert a ToolDefinition from the registry into a ToolInfo for setup endpoints.
+ * Uses hardcoded TOOL_INFO as fallback for missing fields only.
+ */
+function toToolInfo(tool: ToolDefinition): ToolInfo {
+  const fallback = TOOL_INFO[tool.name];
+  const installCommand = buildInstallCommand(tool.install) ?? fallback?.installCommand;
+  const installUrl = tool.install?.[0]?.url ?? fallback?.installUrl;
+  const docsUrl = tool.docsUrl ?? fallback?.docsUrl;
+
   return {
-    name: fallback.name,
-    displayName: tool.displayName ?? fallback.displayName,
-    description: tool.description ?? fallback.description,
+    name: tool.name as DetectedType,
+    displayName: tool.displayName ?? fallback?.displayName ?? tool.name,
+    description: tool.description ?? fallback?.description ?? "",
     category: tool.category,
-    installCommand: buildInstallCommand(tool.install) ?? fallback.installCommand,
-    installUrl: tool.install?.[0]?.url ?? fallback.installUrl,
-    docsUrl: tool.docsUrl ?? fallback.docsUrl,
+    ...(installCommand && { installCommand }),
+    ...(installUrl && { installUrl }),
+    ...(docsUrl && { docsUrl }),
   };
 }
 
+/**
+ * Load tool info from the registry. Returns all tools from the manifest,
+ * using hardcoded TOOL_INFO only for field fallbacks when registry data is incomplete.
+ */
 async function getRegistryToolInfo(): Promise<ToolInfo[] | null> {
   const log = getLogger();
   try {
     const tools = await listAllTools();
-    const mapped = tools
-      .map((tool) => {
-        const fallback = TOOL_INFO[tool.name];
-        if (!fallback) return null;
-        return toToolInfo(tool, fallback);
-      })
-      .filter((tool): tool is ToolInfo => Boolean(tool));
-
-    return mapped.length > 0 ? mapped : null;
+    if (tools.length === 0) {
+      log.debug("ToolRegistry returned empty tools list");
+      return null;
+    }
+    const mapped = tools.map((tool) => toToolInfo(tool));
+    log.debug({ count: mapped.length }, "Loaded tool info from registry");
+    return mapped;
   } catch (error) {
     log.warn({ error }, "Failed to load ToolRegistry; using fallback");
     return null;
   }
 }
 
+/**
+ * Get required tool names from the registry.
+ * Returns tool names without filtering by hardcoded TOOL_INFO.
+ */
 async function getRequiredToolNames(): Promise<DetectedType[]> {
   const log = getLogger();
   try {
     const required = await getRequiredTools();
-    const names = required
-      .map((tool) => tool.name)
-      .filter((name): name is DetectedType => Boolean(TOOL_INFO[name]));
-    return names.length > 0 ? names : REQUIRED_TOOLS;
+    if (required.length === 0) {
+      log.debug("ToolRegistry returned no required tools; using fallback");
+      return REQUIRED_TOOLS;
+    }
+    const names = required.map((tool) => tool.name as DetectedType);
+    log.debug({ required: names }, "Loaded required tools from registry");
+    return names;
   } catch (error) {
     log.warn({ error }, "Failed to load ToolRegistry required tools");
     return REQUIRED_TOOLS;
