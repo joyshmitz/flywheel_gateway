@@ -78,6 +78,56 @@ const analyticsConfigSchema = z.object({
 });
 
 /**
+ * NTM throttling configuration schema.
+ */
+const ntmThrottlingConfigSchema = z.object({
+  /** Whether throttling is enabled (default: true) */
+  enabled: z.boolean().default(true),
+  /** Batch window for event throttling in milliseconds (default: 100) */
+  batchWindowMs: z.number().min(10).default(100),
+  /** Maximum events per batch before dropping oldest (default: 50) */
+  maxEventsPerBatch: z.number().min(1).default(50),
+  /** Per-key debounce window in milliseconds (default: 50) */
+  debounceMs: z.number().min(0).default(50),
+});
+
+/**
+ * NTM WebSocket bridge configuration schema.
+ */
+const ntmWsBridgeConfigSchema = z.object({
+  /** Whether the WS bridge is enabled (default: true) */
+  enabled: z.boolean().default(true),
+  /** Interval between tail polling in milliseconds (default: 2000) */
+  tailPollIntervalMs: z.number().min(500).default(2000),
+  /** Number of lines to fetch from tail (default: 50) */
+  tailLines: z.number().min(1).default(50),
+  /** Whether to enable output streaming (default: true) */
+  enableOutputStreaming: z.boolean().default(true),
+  /** Throttling configuration */
+  throttling: ntmThrottlingConfigSchema
+    .optional()
+    .transform((v) => ntmThrottlingConfigSchema.parse(v ?? {})),
+});
+
+/**
+ * NTM (Named Tmux Manager) configuration schema.
+ */
+const ntmConfigSchema = z.object({
+  /** Whether NTM integration is enabled (default: true) */
+  enabled: z.boolean().default(true),
+  /** Polling interval for NTM status in milliseconds (default: 5000) */
+  pollIntervalMs: z.number().min(1000).default(5000),
+  /** Command timeout in milliseconds (default: 10000) */
+  commandTimeoutMs: z.number().min(1000).default(10_000),
+  /** Maximum backoff multiplier for polling (default: 6, max 30s with 5s base) */
+  maxBackoffMultiplier: z.number().min(1).max(20).default(6),
+  /** WebSocket bridge configuration */
+  wsBridge: ntmWsBridgeConfigSchema
+    .optional()
+    .transform((v) => ntmWsBridgeConfigSchema.parse(v ?? {})),
+});
+
+/**
  * Complete Flywheel configuration schema.
  */
 export const flywheelConfigSchema = z.object({
@@ -99,6 +149,9 @@ export const flywheelConfigSchema = z.object({
   analytics: analyticsConfigSchema
     .optional()
     .transform((v) => analyticsConfigSchema.parse(v ?? {})),
+  ntm: ntmConfigSchema
+    .optional()
+    .transform((v) => ntmConfigSchema.parse(v ?? {})),
 });
 
 export type FlywheelConfig = z.infer<typeof flywheelConfigSchema>;
@@ -108,6 +161,9 @@ export type AgentConfig = z.infer<typeof agentConfigSchema>;
 export type SecurityConfig = z.infer<typeof securityConfigSchema>;
 export type WebsocketConfig = z.infer<typeof websocketConfigSchema>;
 export type AnalyticsConfig = z.infer<typeof analyticsConfigSchema>;
+export type NtmConfig = z.infer<typeof ntmConfigSchema>;
+export type NtmWsBridgeConfig = z.infer<typeof ntmWsBridgeConfigSchema>;
+export type NtmThrottlingConfig = z.infer<typeof ntmThrottlingConfigSchema>;
 
 // ============================================================================
 // Configuration Loading
@@ -299,6 +355,62 @@ function applyEnvOverrides(
     result.analytics = {
       ...result.analytics,
       cacheTtlMs: Number(process.env["CACHE_TTL_MS"]),
+    };
+  }
+
+  // NTM overrides
+  if (process.env["NTM_ENABLED"]) {
+    result.ntm = {
+      ...result.ntm,
+      enabled: process.env["NTM_ENABLED"] === "true",
+    };
+  }
+  if (process.env["NTM_POLL_INTERVAL_MS"]) {
+    result.ntm = {
+      ...result.ntm,
+      pollIntervalMs: Number(process.env["NTM_POLL_INTERVAL_MS"]),
+    };
+  }
+  if (process.env["NTM_COMMAND_TIMEOUT_MS"]) {
+    result.ntm = {
+      ...result.ntm,
+      commandTimeoutMs: Number(process.env["NTM_COMMAND_TIMEOUT_MS"]),
+    };
+  }
+  if (process.env["NTM_MAX_BACKOFF_MULTIPLIER"]) {
+    result.ntm = {
+      ...result.ntm,
+      maxBackoffMultiplier: Number(process.env["NTM_MAX_BACKOFF_MULTIPLIER"]),
+    };
+  }
+  if (process.env["NTM_WS_BRIDGE_ENABLED"]) {
+    result.ntm = {
+      ...result.ntm,
+      wsBridge: {
+        ...result.ntm?.wsBridge,
+        enabled: process.env["NTM_WS_BRIDGE_ENABLED"] === "true",
+      },
+    };
+  }
+  if (process.env["NTM_WS_TAIL_POLL_INTERVAL_MS"]) {
+    result.ntm = {
+      ...result.ntm,
+      wsBridge: {
+        ...result.ntm?.wsBridge,
+        tailPollIntervalMs: Number(process.env["NTM_WS_TAIL_POLL_INTERVAL_MS"]),
+      },
+    };
+  }
+  if (process.env["NTM_WS_THROTTLING_ENABLED"]) {
+    result.ntm = {
+      ...result.ntm,
+      wsBridge: {
+        ...result.ntm?.wsBridge,
+        throttling: {
+          ...result.ntm?.wsBridge?.throttling,
+          enabled: process.env["NTM_WS_THROTTLING_ENABLED"] === "true",
+        },
+      },
     };
   }
 

@@ -76,6 +76,52 @@ const CloseBeadSchema = z.object({
   force: z.boolean().optional(),
 });
 
+/**
+ * Query parameter schema for GET /beads (list endpoint).
+ * Documents all supported filters with validation.
+ * Part of bd-2l4h: Beads API parity with br list/filter/pagination.
+ */
+const ListBeadsQuerySchema = z.object({
+  // Status filters (can be repeated)
+  status: z.union([z.string(), z.array(z.string())]).optional(),
+  // Type filters (can be repeated)
+  type: z.union([z.string(), z.array(z.string())]).optional(),
+  // Assignee filter
+  assignee: z.string().optional(),
+  // Only unassigned issues
+  unassigned: z.enum(["true", "false"]).optional(),
+  // ID filters (can be repeated)
+  id: z.union([z.string(), z.array(z.string())]).optional(),
+  // Label filters - AND logic (can be repeated)
+  label: z.union([z.string(), z.array(z.string())]).optional(),
+  // Label filters - OR logic (can be repeated)
+  labelAny: z.union([z.string(), z.array(z.string())]).optional(),
+  // Priority filters - exact match (can be repeated)
+  priority: z.union([z.string(), z.array(z.string())]).optional(),
+  // Priority range - minimum (0=critical, 4=backlog)
+  priorityMin: z.string().optional(),
+  // Priority range - maximum
+  priorityMax: z.string().optional(),
+  // Text search - title contains
+  titleContains: z.string().optional(),
+  // Text search - description contains
+  descContains: z.string().optional(),
+  // Text search - notes contains
+  notesContains: z.string().optional(),
+  // Include closed issues (default: false)
+  all: z.enum(["true", "false"]).optional(),
+  // Max results (0 = unlimited, default: 50)
+  limit: z.string().optional(),
+  // Sort by field
+  sort: z.enum(["priority", "created_at", "updated_at", "title"]).optional(),
+  // Reverse sort order
+  reverse: z.enum(["true", "false"]).optional(),
+  // Filter for deferred issues
+  deferred: z.enum(["true", "false"]).optional(),
+  // Filter for overdue issues
+  overdue: z.enum(["true", "false"]).optional(),
+});
+
 const _beads = new Hono<{ Variables: { beadsService: BeadsService } }>();
 
 /**
@@ -324,28 +370,50 @@ function createBeadsRoutes(service?: BeadsService) {
 
   /**
    * GET /beads - List beads with optional filtering
+   *
+   * Full parity with `br list` command (bd-2l4h).
+   *
    * Query params:
-   *   status: filter by status (can be repeated)
-   *   type: filter by type (can be repeated)
+   *   status: filter by status (can be repeated, AND logic)
+   *   type: filter by type (can be repeated, AND logic)
    *   assignee: filter by assignee
    *   unassigned: only show unassigned (boolean)
-   *   label: filter by label (can be repeated)
-   *   priority: filter by priority
-   *   limit: max results
+   *   id: filter by specific IDs (can be repeated)
+   *   label: filter by label (can be repeated, AND logic)
+   *   labelAny: filter by label (can be repeated, OR logic)
+   *   priority: filter by exact priority (can be repeated)
+   *   priorityMin: filter by minimum priority (0=critical, 4=backlog)
+   *   priorityMax: filter by maximum priority
+   *   titleContains: title contains substring
+   *   descContains: description contains substring
+   *   notesContains: notes contains substring
+   *   all: include closed issues (default: false, excludes closed)
+   *   limit: max results (default: 50, 0 = unlimited)
    *   sort: sort by (priority|created_at|updated_at|title)
+   *   reverse: reverse sort order (boolean)
+   *   deferred: filter for deferred issues (boolean)
+   *   overdue: filter for overdue issues (boolean)
    */
   router.get("/", async (c) => {
     try {
       const serviceInstance = c.get("beadsService");
       const log = getLogger();
 
-      // Parse query parameters
+      // Parse query parameters with detailed logging for invalid values
       const statuses = c.req.queries("status");
       const types = c.req.queries("type");
       const assignee = c.req.query("assignee");
       const unassigned = c.req.query("unassigned") === "true";
+      const ids = c.req.queries("id");
       const labels = c.req.queries("label");
-      const priorityStr = c.req.query("priority");
+      const labelsAny = c.req.queries("labelAny");
+      const priorityStrs = c.req.queries("priority");
+      const priorityMinStr = c.req.query("priorityMin");
+      const priorityMaxStr = c.req.query("priorityMax");
+      const titleContains = c.req.query("titleContains");
+      const descContains = c.req.query("descContains");
+      const notesContains = c.req.query("notesContains");
+      const all = c.req.query("all") === "true";
       const limit = parseLimit(c.req.query("limit"));
       const sort = c.req.query("sort") as
         | "priority"
@@ -353,6 +421,47 @@ function createBeadsRoutes(service?: BeadsService) {
         | "updated_at"
         | "title"
         | undefined;
+      const reverse = c.req.query("reverse") === "true";
+      const deferred = c.req.query("deferred") === "true";
+      const overdue = c.req.query("overdue") === "true";
+
+      // Validate sort parameter
+      if (sort && !["priority", "created_at", "updated_at", "title"].includes(sort)) {
+        log.warn({ sort }, "Invalid sort parameter, ignoring");
+      }
+
+      // Parse priority values with validation
+      const priorities: number[] = [];
+      if (priorityStrs && priorityStrs.length > 0) {
+        for (const pStr of priorityStrs) {
+          const p = Number.parseInt(pStr, 10);
+          if (Number.isNaN(p) || p < 0 || p > 4) {
+            log.warn({ priority: pStr }, "Invalid priority value, ignoring");
+          } else {
+            priorities.push(p);
+          }
+        }
+      }
+
+      // Parse priority range with validation
+      let priorityMin: number | undefined;
+      let priorityMax: number | undefined;
+      if (priorityMinStr) {
+        const pm = Number.parseInt(priorityMinStr, 10);
+        if (Number.isNaN(pm) || pm < 0 || pm > 4) {
+          log.warn({ priorityMin: priorityMinStr }, "Invalid priorityMin value, ignoring");
+        } else {
+          priorityMin = pm;
+        }
+      }
+      if (priorityMaxStr) {
+        const pm = Number.parseInt(priorityMaxStr, 10);
+        if (Number.isNaN(pm) || pm < 0 || pm > 4) {
+          log.warn({ priorityMax: priorityMaxStr }, "Invalid priorityMax value, ignoring");
+        } else {
+          priorityMax = pm;
+        }
+      }
 
       // Build options object conditionally
       const options: Parameters<typeof serviceInstance.list>[0] = {};
@@ -360,15 +469,25 @@ function createBeadsRoutes(service?: BeadsService) {
       if (types && types.length > 0) options.types = types;
       if (assignee) options.assignee = assignee;
       if (unassigned) options.unassigned = true;
+      if (ids && ids.length > 0) options.ids = ids;
       if (labels && labels.length > 0) options.labels = labels;
-      if (priorityStr) {
-        const priority = Number.parseInt(priorityStr, 10);
-        if (!Number.isNaN(priority)) options.priorities = [priority];
-      }
+      if (labelsAny && labelsAny.length > 0) options.labelsAny = labelsAny;
+      if (priorities.length > 0) options.priorities = priorities;
+      if (priorityMin !== undefined) options.priorityMin = priorityMin;
+      if (priorityMax !== undefined) options.priorityMax = priorityMax;
+      if (titleContains) options.titleContains = titleContains;
+      if (descContains) options.descContains = descContains;
+      if (notesContains) options.notesContains = notesContains;
+      if (all) options.all = true;
       if (limit !== undefined) options.limit = limit;
-      if (sort) options.sort = sort;
+      if (sort && ["priority", "created_at", "updated_at", "title"].includes(sort)) {
+        options.sort = sort;
+      }
+      if (reverse) options.reverse = true;
+      if (deferred) options.deferred = true;
+      if (overdue) options.overdue = true;
 
-      log.debug({ options }, "Listing beads");
+      log.debug({ options }, "Listing beads with filters");
       const beads = await serviceInstance.list(options);
 
       return sendResource(c, "beads", { beads, count: beads.length });
