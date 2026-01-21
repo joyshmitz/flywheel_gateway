@@ -159,14 +159,14 @@ const TOOL_INFO: Record<string, ToolInfo> = {
       "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/cm/main/install.sh | bash",
     docsUrl: "https://github.com/Dicklesworthstone/cm",
   },
-  bd: {
-    name: "bd",
-    displayName: "bd (Beads)",
+  br: {
+    name: "br",
+    displayName: "br (Beads)",
     description: "Beads issue tracker with dependency graphs",
     category: "tool",
     installCommand:
-      "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/bd/main/install.sh | bash",
-    docsUrl: "https://github.com/Dicklesworthstone/bd",
+      "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/beads_rust/main/install.sh | bash",
+    docsUrl: "https://github.com/Dicklesworthstone/beads_rust",
   },
   bv: {
     name: "bv",
@@ -189,7 +189,7 @@ const TOOL_INFO: Record<string, ToolInfo> = {
 };
 
 // Required tools for basic functionality
-const REQUIRED_TOOLS: DetectedType[] = ["dcg", "bd"];
+const REQUIRED_TOOLS: DetectedType[] = ["dcg", "br"];
 
 // ============================================================================
 // Service Functions

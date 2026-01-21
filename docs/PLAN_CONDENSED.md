@@ -23,7 +23,8 @@ The Agent Flywheel is a self-improving development cycle where AI coding agents 
 
 2. **Agent Mail**: MCP-based messaging and coordination system. Agents send messages, reserve files (advisory locks preventing edit conflicts), manage threaded conversations, register under projects (working directory as identity), and respect contact policies.
 
-3. **Beads (bd)**: Issue/task tracking designed for agents. A "bead" is a unit of work (bug, feature, task, chore). Beads have dependencies forming a DAG, status flows (draft → ready → in_progress → review → done), and metadata (priority, assignee, labels).
+3. **Beads (br)**: Issue/task tracking designed for agents. A "bead" is a unit of work (bug, feature, task, chore). Beads have dependencies forming a DAG, status flows (draft → ready → in_progress → review → done), and metadata (priority, assignee, labels).
+   **Note:** `br` is non-invasive and never runs git commands. After `br sync --flush-only`, you must run `git add .beads/ && git commit`.
 
 4. **BV (Bead Voyager)**: Graph-aware triage engine on top of Beads. Uses PageRank, betweenness centrality, and HITS algorithms to find critical-path items. Provides triage recommendations, blocking analysis, quick wins identification, and robot mode for programmatic consumption.
 
@@ -150,7 +151,7 @@ The registry enables automatic generation of REST routes, tRPC procedures, OpenA
 
 ## Supervisor & Daemon Management
 
-Flywheel Gateway depends on external daemons (Agent Mail MCP server, CM server, bd daemon). The Supervisor Service manages their lifecycle with daemon specifications including command, port, health endpoint, restart policy, max restarts, and restart delay.
+Flywheel Gateway depends on external daemons (Agent Mail MCP server, CM server). The Supervisor Service manages their lifecycle with daemon specifications including command, port, health endpoint, restart policy, max restarts, and restart delay.
 
 Daemon states: starting → running → stopping → stopped → failed. Health check loops ping endpoints. Auto-restart on failure with exponential backoff. WebSocket events notify of daemon status changes.
 

@@ -177,7 +177,7 @@ function createBeadsRoutes(service?: BeadsService) {
   });
 
   /**
-   * POST /beads/sync - Run bd sync
+   * POST /beads/sync - Run br sync --flush-only
    */
   router.post("/sync", async (c) => {
     try {

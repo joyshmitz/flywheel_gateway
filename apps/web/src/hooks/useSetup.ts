@@ -442,7 +442,7 @@ export const TOOL_DISPLAY_INFO: Record<
     icon: "M",
     color: "#06B6D4",
   },
-  bd: {
+  br: {
     displayName: "Beads",
     icon: "B",
     color: "#10B981",

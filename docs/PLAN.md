@@ -165,7 +165,9 @@ The Agent Flywheel is implemented through interconnected tools organized into co
 
 **Why it matters:** Without Agent Mail, agents step on each other's toes. With Agent Mail, they coordinate like a teamâ€”claiming work, signaling progress, and handing off context cleanly.
 
-#### 3. bd (Beads)
+#### 3. br (Beads)
+
+**Note:** `br` is non-invasive and never executes git commands. After `br sync --flush-only`, you must manually run `git add .beads/ && git commit`.
 
 **What it is:** An issue/task tracking system designed for AI-agent workflows. Think "GitHub Issues but optimized for agents."
 
@@ -879,7 +881,7 @@ The web UI transforms each phase:
 
 | Phase | CLI Experience | Web UI Experience |
 |-------|----------------|-------------------|
-| **PLAN** | `bv` TUI, `bd ready` | Visual Kanban, dependency graph, drag-drop prioritization |
+| **PLAN** | `bv` TUI, `br ready` | Visual Kanban, dependency graph, drag-drop prioritization |
 | **COORDINATE** | `am` commands, inbox polling | Real-time chat, file reservation map, @mentions |
 | **EXECUTE** | SDK/tmux spawning | Visual agent grid, live output, one-click spawn |
 | **SCAN** | `ubs .` output | Dashboard with severity charts, inline annotations |
@@ -1225,7 +1227,7 @@ This pattern ensures that **new features automatically get full API coverage** â
 
 ### 5.1 The Problem
 
-Flywheel Gateway depends on external daemons (Agent Mail MCP server, CM server, bd daemon). These need lifecycle management.
+Flywheel Gateway depends on external daemons (Agent Mail MCP server, CM server). These need lifecycle management.
 
 ### 5.2 Supervisor Service
 
@@ -1260,13 +1262,6 @@ const DEFAULT_SPECS: DaemonSpec[] = [
     restartPolicy: 'always',
     maxRestarts: 5,
     restartDelayMs: 1000,
-  },
-  {
-    name: 'bd-daemon',
-    command: ['bd', 'daemon'],
-    restartPolicy: 'on-failure',
-    maxRestarts: 3,
-    restartDelayMs: 2000,
   },
 ];
 

@@ -6,7 +6,7 @@
  *
  * Detection Targets:
  * - Agent CLIs: claude, codex, gemini, aider, gh-copilot
- * - Setup Tools: dcg, ubs, cass, cm, bd, bv, ru
+ * - Setup Tools: dcg, ubs, cass, cm, br, bv, ru
  */
 
 import { getLogger } from "../middleware/correlation";
@@ -17,7 +17,7 @@ import { getLogger } from "../middleware/correlation";
 
 export type AgentType = "claude" | "codex" | "gemini" | "aider" | "gh-copilot";
 
-export type ToolType = "dcg" | "ubs" | "cass" | "cm" | "bd" | "bv" | "ru";
+export type ToolType = "dcg" | "ubs" | "cass" | "cm" | "br" | "bv" | "ru";
 
 export type DetectedType = AgentType | ToolType;
 
@@ -183,8 +183,8 @@ const TOOL_CLIS: CLIDefinition[] = [
     },
   },
   {
-    name: "bd",
-    commands: ["bd"],
+    name: "br",
+    commands: ["br"],
     versionFlag: "--version",
     capabilities: {
       streaming: false,

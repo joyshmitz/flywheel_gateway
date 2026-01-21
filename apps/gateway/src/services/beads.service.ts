@@ -29,7 +29,7 @@ export function createBeadsService(): BeadsService {
     getPlan: () => getBvPlan(),
     syncBeads: async () => {
       const log = getLogger();
-      const proc = Bun.spawn(["bd", "sync"], {
+      const proc = Bun.spawn(["br", "sync", "--flush-only"], {
         cwd: getBvProjectRoot(),
         stdout: "pipe",
         stderr: "pipe",

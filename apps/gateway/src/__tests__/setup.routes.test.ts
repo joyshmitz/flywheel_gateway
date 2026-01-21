@@ -138,7 +138,7 @@ describe("Setup Routes", () => {
       const toolNames = body.data.map((t: { name: string }) => t.name);
       expect(toolNames).toContain("claude");
       expect(toolNames).toContain("dcg");
-      expect(toolNames).toContain("bd");
+      expect(toolNames).toContain("br");
     });
   });
 

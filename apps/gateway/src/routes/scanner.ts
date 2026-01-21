@@ -328,7 +328,7 @@ scanner.post("/findings/:id/create-bead", async (c) => {
     const priorityMap = { critical: 0, high: 1, medium: 2, low: 3 };
     const priority = validated.priority ?? priorityMap[finding.severity];
 
-    // Create bead using bd CLI
+    // Create bead using br CLI
     const typeMap = {
       bug: "bug",
       security: "bug",
@@ -355,12 +355,15 @@ scanner.post("/findings/:id/create-bead", async (c) => {
     ].join("\n");
 
     const args = [
-      "bd",
+      "br",
       "create",
-      `--title=${title}`,
-      `--type=${beadType}`,
-      `--priority=${priority}`,
-      `--description=${description}`,
+      title,
+      "-t",
+      beadType,
+      "-p",
+      String(priority),
+      "-d",
+      description,
       "--json",
     ];
 

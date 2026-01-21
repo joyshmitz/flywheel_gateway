@@ -97,13 +97,6 @@ const DEFAULT_SPECS: DaemonSpec[] = [
     maxRestarts: 5,
     restartDelayMs: 1000,
   },
-  {
-    name: "bd-daemon",
-    command: ["bd", "daemon"],
-    restartPolicy: "on-failure",
-    maxRestarts: 3,
-    restartDelayMs: 2000,
-  },
 ];
 
 // ============================================================================

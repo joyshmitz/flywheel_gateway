@@ -181,7 +181,7 @@ agents.get("/", async (c) => {
  * GET /agents/detected - Detect available agent CLIs and tools
  *
  * Returns detected agent CLIs (claude, codex, gemini, aider, gh-copilot)
- * and setup tools (dcg, ubs, cass, cm, bd, bv, ru) with version,
+ * and setup tools (dcg, ubs, cass, cm, br, bv, ru) with version,
  * authentication status, and capabilities.
  */
 agents.get("/detected", async (c) => {

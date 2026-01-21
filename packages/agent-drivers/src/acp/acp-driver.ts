@@ -829,10 +829,11 @@ export class AcpDriver extends BaseDriver {
     // Update token usage if provided
     const usage = event["usage"] as Record<string, number> | undefined;
     if (usage) {
-      const promptTokens =
-        usage["input_tokens"] ?? session.tokenUsage.promptTokens;
-      const completionTokens =
-        usage["output_tokens"] ?? session.tokenUsage.completionTokens;
+      // Use 0 as fallback for missing fields to avoid double-counting.
+      // updateTokenUsage accumulates values, so using session.tokenUsage
+      // (which contains previously accumulated values) would double-count.
+      const promptTokens = usage["input_tokens"] ?? 0;
+      const completionTokens = usage["output_tokens"] ?? 0;
       const tokenUsage: TokenUsage = {
         promptTokens,
         completionTokens,
