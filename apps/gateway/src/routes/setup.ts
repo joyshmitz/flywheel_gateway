@@ -104,7 +104,7 @@ setup.get("/readiness", async (c) => {
  */
 setup.get("/tools", async (c) => {
   try {
-    const tools = getAllToolInfo();
+    const tools = await getAllToolInfo();
     return sendList(c, tools);
   } catch (error) {
     return handleError(error, c);
@@ -117,7 +117,7 @@ setup.get("/tools", async (c) => {
 setup.get("/tools/:name", async (c) => {
   try {
     const name = c.req.param("name") as DetectedType;
-    const info = getToolInfo(name);
+    const info = await getToolInfo(name);
 
     if (!info) {
       return sendNotFound(c, "tool", name);
@@ -175,7 +175,7 @@ setup.post("/install", async (c) => {
     );
 
     // Check if tool has install command
-    const toolInfo = getToolInfo(validated.tool);
+    const toolInfo = await getToolInfo(validated.tool);
     if (!toolInfo?.installCommand) {
       return sendError(
         c,
@@ -254,7 +254,7 @@ setup.post("/install/batch", async (c) => {
     let hasErrors = false;
 
     for (const tool of validated.tools) {
-      const toolInfo = getToolInfo(tool);
+      const toolInfo = await getToolInfo(tool);
       if (!toolInfo?.installCommand) {
         results.push({
           tool,
