@@ -91,7 +91,10 @@ export function useLogParser(
 
   // Pending promises for worker responses (store both resolve and reject)
   const pendingRef = useRef<
-    Map<string, { resolve: (value: unknown) => void; reject: (err: Error) => void }>
+    Map<
+      string,
+      { resolve: (value: unknown) => void; reject: (err: Error) => void }
+    >
   >(new Map());
   const requestIdRef = useRef(0);
 

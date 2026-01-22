@@ -53,7 +53,12 @@ export type LogLevel =
 export type WorkerMessage =
   | { type: "parse"; logs: RawLogLine[]; requestId: number }
   | { type: "search"; query: string; logs: ParsedLogLine[]; requestId: number }
-  | { type: "filter"; filter: LogFilter; logs: ParsedLogLine[]; requestId: number };
+  | {
+      type: "filter";
+      filter: LogFilter;
+      logs: ParsedLogLine[];
+      requestId: number;
+    };
 
 export interface LogFilter {
   levels?: LogLevel[];

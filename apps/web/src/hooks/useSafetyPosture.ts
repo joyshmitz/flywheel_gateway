@@ -83,7 +83,9 @@ const mockSafetyPosture: SafetyPostureResponse = {
     },
   },
   checksums: {
-    registryGeneratedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    registryGeneratedAt: new Date(
+      Date.now() - 3 * 24 * 60 * 60 * 1000,
+    ).toISOString(),
     registryAgeMs: 3 * 24 * 60 * 60 * 1000,
     toolsWithChecksums: 2,
     staleThresholdMs: 7 * 24 * 60 * 60 * 1000,
@@ -93,7 +95,9 @@ const mockSafetyPosture: SafetyPostureResponse = {
         toolId: "safety.dcg",
         hasChecksums: true,
         checksumCount: 5,
-        registryGeneratedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+        registryGeneratedAt: new Date(
+          Date.now() - 3 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
         ageMs: 3 * 24 * 60 * 60 * 1000,
         stale: false,
       },
@@ -101,7 +105,9 @@ const mockSafetyPosture: SafetyPostureResponse = {
         toolId: "safety.slb",
         hasChecksums: true,
         checksumCount: 3,
-        registryGeneratedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+        registryGeneratedAt: new Date(
+          Date.now() - 3 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
         ageMs: 3 * 24 * 60 * 60 * 1000,
         stale: false,
       },
@@ -122,7 +128,9 @@ const mockSafetyPosture: SafetyPostureResponse = {
     checksumsStale: false,
     overallHealthy: false,
     issues: ["UBS (Ultimate Bug Scanner) is not installed"],
-    recommendations: ["Install UBS for static analysis scanning: cargo install ubs"],
+    recommendations: [
+      "Install UBS for static analysis scanning: cargo install ubs",
+    ],
   },
 };
 
@@ -204,7 +212,9 @@ export function useSafetyPosture(): UseQueryResult<SafetyPostureResponse> {
 /**
  * Get the display color for a status.
  */
-export function getStatusColor(status: "healthy" | "degraded" | "unhealthy"): string {
+export function getStatusColor(
+  status: "healthy" | "degraded" | "unhealthy",
+): string {
   switch (status) {
     case "healthy":
       return "var(--color-green-500)";
@@ -218,7 +228,9 @@ export function getStatusColor(status: "healthy" | "degraded" | "unhealthy"): st
 /**
  * Get the display label for a status.
  */
-export function getStatusLabel(status: "healthy" | "degraded" | "unhealthy"): string {
+export function getStatusLabel(
+  status: "healthy" | "degraded" | "unhealthy",
+): string {
   switch (status) {
     case "healthy":
       return "Healthy";
@@ -233,15 +245,15 @@ export function getStatusLabel(status: "healthy" | "degraded" | "unhealthy"): st
  * Get the tone for StatusPill based on status.
  */
 export function getStatusTone(
-  status: "healthy" | "degraded" | "unhealthy"
-): "positive" | "warning" | "negative" {
+  status: "healthy" | "degraded" | "unhealthy",
+): "positive" | "warning" | "danger" {
   switch (status) {
     case "healthy":
       return "positive";
     case "degraded":
       return "warning";
     case "unhealthy":
-      return "negative";
+      return "danger";
   }
 }
 
