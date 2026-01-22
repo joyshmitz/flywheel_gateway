@@ -537,6 +537,441 @@ describe("Setup Endpoint Contract Tests", () => {
   });
 });
 
+// ============================================================================
+// Beads (BR/BV) Endpoint Schemas
+// ============================================================================
+
+const BeadDependencySchema = z.object({
+  id: z.string(),
+  title: z.string().optional(),
+  status: z.string().optional(),
+  priority: z.number().optional(),
+  dep_type: z.string().optional(),
+});
+
+const BeadSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  status: z.string().optional(),
+  priority: z.number().optional(),
+  issue_type: z.string().optional(),
+  created_at: z.string().optional(),
+  created_by: z.string().optional(),
+  updated_at: z.string().optional(),
+  closed_at: z.string().optional(),
+  due_at: z.string().optional(),
+  defer_until: z.string().optional(),
+  assignee: z.string().optional(),
+  owner: z.string().optional(),
+  labels: z.array(z.string()).optional(),
+  dependency_count: z.number().optional(),
+  dependent_count: z.number().optional(),
+  dependencies: z.array(BeadDependencySchema).optional(),
+  dependents: z.array(BeadDependencySchema).optional(),
+  parent: z.string().optional(),
+  external_ref: z.string().optional(),
+});
+
+const BeadListResponseSchema = z.union([
+  z.array(BeadSchema),
+  z.object({
+    beads: z.array(BeadSchema),
+    count: z.number().optional(),
+  }),
+  z.object({
+    object: z.literal("list"),
+    data: z.array(BeadSchema),
+    requestId: z.string(),
+    timestamp: z.string(),
+  }),
+]);
+
+const BeadResponseSchema = z.union([
+  BeadSchema,
+  z.object({
+    object: z.literal("bead"),
+    data: BeadSchema,
+    requestId: z.string(),
+    timestamp: z.string(),
+  }),
+]);
+
+const BvRecommendationSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  type: z.string().optional(),
+  score: z.number(),
+  reasons: z.array(z.string()).optional(),
+  status: z.string().optional(),
+  description: z.string().optional(),
+});
+
+const BvTriageSchema = z.object({
+  recommendations: z.array(BvRecommendationSchema).optional(),
+  quick_wins: z.array(BvRecommendationSchema).optional(),
+  blockers_to_clear: z.array(BvRecommendationSchema).optional(),
+});
+
+const BvTriageResultSchema = z.object({
+  generated_at: z.string(),
+  data_hash: z.string().optional(),
+  triage: BvTriageSchema,
+});
+
+const BvTriageResponseSchema = z.union([
+  BvTriageResultSchema,
+  z.object({
+    object: z.literal("triage"),
+    data: BvTriageResultSchema,
+    requestId: z.string(),
+    timestamp: z.string(),
+  }),
+]);
+
+const BrSyncStatusSchema = z.object({
+  dirty_count: z.number().optional(),
+  last_export_time: z.string().optional(),
+  last_import_time: z.string().optional(),
+  jsonl_content_hash: z.string().optional(),
+  jsonl_exists: z.boolean().optional(),
+  jsonl_newer: z.boolean().optional(),
+  db_newer: z.boolean().optional(),
+});
+
+const BrSyncStatusResponseSchema = z.union([
+  BrSyncStatusSchema,
+  z.object({
+    object: z.literal("sync_status"),
+    data: BrSyncStatusSchema,
+    requestId: z.string(),
+    timestamp: z.string(),
+  }),
+]);
+
+describe("Beads Endpoint Contract Tests", () => {
+  let serverAvailable = false;
+  let beadsAvailable = false;
+
+  beforeAll(async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/health`);
+      serverAvailable = response.ok;
+
+      if (serverAvailable) {
+        // Check if beads endpoint is available
+        const beadsResponse = await fetch(`${BASE_URL}/beads`);
+        beadsAvailable = beadsResponse.ok;
+      }
+    } catch {
+      serverAvailable = false;
+      beadsAvailable = false;
+    }
+  });
+
+  describe("GET /beads", () => {
+    test("returns valid bead list schema", async () => {
+      if (!beadsAvailable) {
+        console.log("Beads API not available, skipping test");
+        return;
+      }
+
+      const response = await apiRequest("/beads");
+      if (!response) return;
+
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+      const result = BeadListResponseSchema.safeParse(body);
+
+      if (!result.success) {
+        console.log("Schema validation failed:", result.error.issues);
+      }
+      expect(result.success).toBe(true);
+    });
+
+    test("supports status filter", async () => {
+      if (!beadsAvailable) return;
+
+      const response = await apiRequest("/beads?status=open");
+      if (!response) return;
+
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+      const result = BeadListResponseSchema.safeParse(body);
+      expect(result.success).toBe(true);
+    });
+
+    test("supports limit parameter", async () => {
+      if (!beadsAvailable) return;
+
+      const response = await apiRequest("/beads?limit=5");
+      if (!response) return;
+
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+      const beads = body.beads || body.data || body;
+      expect(Array.isArray(beads)).toBe(true);
+      expect(beads.length).toBeLessThanOrEqual(5);
+    });
+
+    test("supports sort parameter", async () => {
+      if (!beadsAvailable) return;
+
+      const response = await apiRequest("/beads?sort=priority");
+      if (!response) return;
+
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+      const result = BeadListResponseSchema.safeParse(body);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe("GET /beads/:id", () => {
+    test("returns 404 for non-existent bead", async () => {
+      if (!beadsAvailable) return;
+
+      const response = await apiRequest("/beads/bd-nonexistent-12345");
+      if (!response) return;
+
+      expect(response.status).toBe(404);
+    });
+
+    test("returns valid bead schema for existing bead", async () => {
+      if (!beadsAvailable) return;
+
+      // First get a bead ID from the list
+      const listResponse = await apiRequest("/beads?limit=1");
+      if (!listResponse) return;
+
+      const listBody = await listResponse.json();
+      const beads = listBody.beads || listBody.data || listBody;
+
+      if (!Array.isArray(beads) || beads.length === 0) {
+        console.log("No beads available to test individual fetch");
+        return;
+      }
+
+      const beadId = beads[0].id;
+      const response = await apiRequest(`/beads/${beadId}`);
+      if (!response) return;
+
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+      const result = BeadResponseSchema.safeParse(body);
+
+      if (!result.success) {
+        console.log("Schema validation failed:", result.error.issues);
+      }
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe("GET /beads/triage", () => {
+    test("returns valid triage response", async () => {
+      if (!beadsAvailable) return;
+
+      const response = await apiRequest("/beads/triage");
+      if (!response) return;
+
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+      const result = BvTriageResponseSchema.safeParse(body);
+
+      if (!result.success) {
+        console.log("Schema validation failed:", result.error.issues);
+      }
+      expect(result.success).toBe(true);
+    });
+
+    test("supports limit parameter", async () => {
+      if (!beadsAvailable) return;
+
+      const response = await apiRequest("/beads/triage?limit=3");
+      if (!response) return;
+
+      expect(response.status).toBe(200);
+    });
+  });
+
+  describe("GET /beads/ready", () => {
+    test("returns bead list", async () => {
+      if (!beadsAvailable) return;
+
+      const response = await apiRequest("/beads/ready");
+      if (!response) return;
+
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+      // Should have beads array
+      expect(body.beads !== undefined || Array.isArray(body)).toBe(true);
+    });
+  });
+
+  describe("GET /beads/list/ready", () => {
+    test("returns ready beads list", async () => {
+      if (!beadsAvailable) return;
+
+      const response = await apiRequest("/beads/list/ready");
+      if (!response) return;
+
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+      const result = BeadListResponseSchema.safeParse(body);
+
+      if (!result.success) {
+        console.log("Schema validation failed:", result.error.issues);
+      }
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe("GET /beads/sync/status", () => {
+    test("returns valid sync status", async () => {
+      if (!beadsAvailable) return;
+
+      const response = await apiRequest("/beads/sync/status");
+      if (!response) return;
+
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+      const result = BrSyncStatusResponseSchema.safeParse(body);
+
+      if (!result.success) {
+        console.log("Schema validation failed:", result.error.issues);
+      }
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe("GET /beads/insights", () => {
+    test("returns insights data", async () => {
+      if (!beadsAvailable) return;
+
+      const response = await apiRequest("/beads/insights");
+      if (!response) return;
+
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+      // Should have generated_at timestamp
+      expect(
+        body.generated_at !== undefined || body.data?.generated_at !== undefined,
+      ).toBe(true);
+    });
+  });
+
+  describe("GET /beads/graph", () => {
+    test("returns graph data", async () => {
+      if (!beadsAvailable) return;
+
+      const response = await apiRequest("/beads/graph");
+      if (!response) return;
+
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+      // Should have nodes and edges
+      const data = body.data || body;
+      expect(data.nodes !== undefined || data.edges !== undefined).toBe(true);
+    });
+
+    test("supports format parameter", async () => {
+      if (!beadsAvailable) return;
+
+      const response = await apiRequest("/beads/graph?format=json");
+      if (!response) return;
+
+      expect(response.status).toBe(200);
+    });
+  });
+});
+
+describe("Beads Schema Validation Helpers", () => {
+  test("BeadSchema validates correct structure", () => {
+    const validBead = {
+      id: "bd-1abc",
+      title: "Fix authentication bug",
+      description: "Users cannot log in",
+      status: "open",
+      priority: 1,
+      issue_type: "bug",
+      labels: ["auth", "critical"],
+    };
+
+    const result = BeadSchema.safeParse(validBead);
+    expect(result.success).toBe(true);
+  });
+
+  test("BeadSchema validates bead with dependencies", () => {
+    const beadWithDeps = {
+      id: "bd-2def",
+      title: "Add user dashboard",
+      status: "blocked",
+      dependencies: [
+        { id: "bd-1abc", title: "Fix auth", status: "in_progress" },
+      ],
+      dependents: [],
+    };
+
+    const result = BeadSchema.safeParse(beadWithDeps);
+    expect(result.success).toBe(true);
+  });
+
+  test("BvRecommendationSchema validates triage recommendation", () => {
+    const validRec = {
+      id: "bd-3ghi",
+      title: "Quick win task",
+      score: 8.5,
+      reasons: ["Low complexity", "No blockers"],
+      status: "open",
+    };
+
+    const result = BvRecommendationSchema.safeParse(validRec);
+    expect(result.success).toBe(true);
+  });
+
+  test("BvTriageResultSchema validates full triage response", () => {
+    const validTriage = {
+      generated_at: new Date().toISOString(),
+      data_hash: "abc123",
+      triage: {
+        recommendations: [
+          { id: "bd-1", title: "Task 1", score: 9.0 },
+          { id: "bd-2", title: "Task 2", score: 7.5 },
+        ],
+        quick_wins: [{ id: "bd-3", title: "Easy task", score: 8.0 }],
+        blockers_to_clear: [],
+      },
+    };
+
+    const result = BvTriageResultSchema.safeParse(validTriage);
+    expect(result.success).toBe(true);
+  });
+
+  test("BrSyncStatusSchema validates sync status", () => {
+    const validStatus = {
+      dirty_count: 0,
+      last_export_time: new Date().toISOString(),
+      jsonl_exists: true,
+      jsonl_newer: false,
+      db_newer: true,
+    };
+
+    const result = BrSyncStatusSchema.safeParse(validStatus);
+    expect(result.success).toBe(true);
+  });
+});
+
 describe("Schema Validation Helpers", () => {
   test("AgentSchema validates correct structure", () => {
     const validAgent = {

@@ -1523,6 +1523,533 @@ export const RateCardListResponseSchema = createApiListResponseSchema(
 );
 
 // ============================================================================
+// Beads (BR/BV) Schemas
+// ============================================================================
+
+export const BeadDependencySchema = z
+  .object({
+    id: z.string().openapi({
+      description: "Dependency bead ID",
+      example: "bd-1abc",
+    }),
+    title: z.string().optional().openapi({
+      description: "Dependency bead title",
+    }),
+    status: z.string().optional().openapi({
+      description: "Dependency bead status",
+    }),
+    priority: z.number().optional().openapi({
+      description: "Dependency bead priority (0=critical, 4=backlog)",
+    }),
+    dep_type: z.string().optional().openapi({
+      description: "Dependency type",
+    }),
+  })
+  .openapi("BeadDependency");
+
+registry.register("BeadDependency", BeadDependencySchema);
+
+export const BeadSchema = z
+  .object({
+    id: z.string().openapi({
+      description: "Unique bead identifier",
+      example: "bd-1abc",
+    }),
+    title: z.string().openapi({
+      description: "Bead title",
+      example: "Fix authentication bug",
+    }),
+    description: z.string().optional().openapi({
+      description: "Detailed description of the bead",
+    }),
+    status: z.string().optional().openapi({
+      description: "Current status (open, in_progress, closed, blocked)",
+      example: "open",
+    }),
+    priority: z.number().optional().openapi({
+      description: "Priority level (0=critical, 1=high, 2=medium, 3=low, 4=backlog)",
+      example: 1,
+    }),
+    issue_type: z.string().optional().openapi({
+      description: "Type of issue (bug, feature, task, epic, chore)",
+      example: "bug",
+    }),
+    created_at: z.string().optional().openapi({
+      description: "Creation timestamp",
+    }),
+    created_by: z.string().optional().openapi({
+      description: "Creator identifier",
+    }),
+    updated_at: z.string().optional().openapi({
+      description: "Last update timestamp",
+    }),
+    closed_at: z.string().optional().openapi({
+      description: "Closure timestamp",
+    }),
+    due_at: z.string().optional().openapi({
+      description: "Due date",
+    }),
+    defer_until: z.string().optional().openapi({
+      description: "Defer until date",
+    }),
+    assignee: z.string().optional().openapi({
+      description: "Assigned user",
+    }),
+    owner: z.string().optional().openapi({
+      description: "Owner user",
+    }),
+    labels: z.array(z.string()).optional().openapi({
+      description: "Labels attached to the bead",
+    }),
+    dependency_count: z.number().optional().openapi({
+      description: "Number of dependencies",
+    }),
+    dependent_count: z.number().optional().openapi({
+      description: "Number of dependents",
+    }),
+    dependencies: z.array(BeadDependencySchema).optional().openapi({
+      description: "List of dependency beads",
+    }),
+    dependents: z.array(BeadDependencySchema).optional().openapi({
+      description: "List of dependent beads",
+    }),
+    parent: z.string().optional().openapi({
+      description: "Parent bead ID",
+    }),
+    external_ref: z.string().optional().openapi({
+      description: "External reference (e.g., GitHub issue URL)",
+    }),
+  })
+  .openapi("Bead");
+
+registry.register("Bead", BeadSchema);
+
+export const CreateBeadRequestSchema = z
+  .object({
+    title: z.string().optional().openapi({
+      description: "Bead title",
+    }),
+    type: z.string().optional().openapi({
+      description: "Issue type (bug, feature, task, epic, chore)",
+    }),
+    priority: z.union([z.number(), z.string()]).optional().openapi({
+      description: "Priority level (0-4 or P0-P4)",
+    }),
+    description: z.string().optional().openapi({
+      description: "Detailed description",
+    }),
+    assignee: z.string().optional().openapi({
+      description: "Assignee identifier",
+    }),
+    owner: z.string().optional().openapi({
+      description: "Owner identifier",
+    }),
+    labels: z.array(z.string()).optional().openapi({
+      description: "Initial labels",
+    }),
+    parent: z.string().optional().openapi({
+      description: "Parent bead ID",
+    }),
+    deps: z.union([z.array(z.string()), z.string()]).optional().openapi({
+      description: "Dependency bead IDs",
+    }),
+    estimateMinutes: z.number().optional().openapi({
+      description: "Time estimate in minutes",
+    }),
+    due: z.string().optional().openapi({
+      description: "Due date",
+    }),
+    defer: z.string().optional().openapi({
+      description: "Defer until date",
+    }),
+    externalRef: z.string().optional().openapi({
+      description: "External reference URL",
+    }),
+  })
+  .openapi("CreateBeadRequest");
+
+registry.register("CreateBeadRequest", CreateBeadRequestSchema);
+
+export const UpdateBeadRequestSchema = z
+  .object({
+    title: z.string().optional().openapi({
+      description: "New title",
+    }),
+    description: z.string().optional().openapi({
+      description: "New description",
+    }),
+    design: z.string().optional().openapi({
+      description: "Design notes",
+    }),
+    acceptanceCriteria: z.string().optional().openapi({
+      description: "Acceptance criteria",
+    }),
+    notes: z.string().optional().openapi({
+      description: "Additional notes",
+    }),
+    status: z.string().optional().openapi({
+      description: "New status",
+    }),
+    priority: z.union([z.number(), z.string()]).optional().openapi({
+      description: "New priority",
+    }),
+    type: z.string().optional().openapi({
+      description: "New type",
+    }),
+    assignee: z.string().optional().openapi({
+      description: "New assignee",
+    }),
+    owner: z.string().optional().openapi({
+      description: "New owner",
+    }),
+    claim: z.boolean().optional().openapi({
+      description: "Claim the bead (set status to in_progress)",
+    }),
+    due: z.string().optional().openapi({
+      description: "New due date",
+    }),
+    defer: z.string().optional().openapi({
+      description: "New defer date",
+    }),
+    estimateMinutes: z.number().optional().openapi({
+      description: "New time estimate",
+    }),
+    addLabels: z.array(z.string()).optional().openapi({
+      description: "Labels to add",
+    }),
+    removeLabels: z.array(z.string()).optional().openapi({
+      description: "Labels to remove",
+    }),
+    setLabels: z.array(z.string()).optional().openapi({
+      description: "Replace all labels",
+    }),
+    parent: z.string().optional().openapi({
+      description: "New parent bead ID",
+    }),
+    externalRef: z.string().optional().openapi({
+      description: "New external reference",
+    }),
+  })
+  .openapi("UpdateBeadRequest");
+
+registry.register("UpdateBeadRequest", UpdateBeadRequestSchema);
+
+export const CloseBeadRequestSchema = z
+  .object({
+    reason: z.string().optional().openapi({
+      description: "Reason for closing",
+    }),
+    force: z.boolean().optional().openapi({
+      description: "Force close even with open dependencies",
+    }),
+  })
+  .openapi("CloseBeadRequest");
+
+registry.register("CloseBeadRequest", CloseBeadRequestSchema);
+
+export const ListBeadsQuerySchema = z
+  .object({
+    status: z.union([z.string(), z.array(z.string())]).optional().openapi({
+      description: "Filter by status (can be repeated)",
+    }),
+    type: z.union([z.string(), z.array(z.string())]).optional().openapi({
+      description: "Filter by type (can be repeated)",
+    }),
+    assignee: z.string().optional().openapi({
+      description: "Filter by assignee",
+    }),
+    unassigned: z.enum(["true", "false"]).optional().openapi({
+      description: "Only show unassigned beads",
+    }),
+    id: z.union([z.string(), z.array(z.string())]).optional().openapi({
+      description: "Filter by specific IDs (can be repeated)",
+    }),
+    label: z.union([z.string(), z.array(z.string())]).optional().openapi({
+      description: "Filter by label with AND logic (can be repeated)",
+    }),
+    labelAny: z.union([z.string(), z.array(z.string())]).optional().openapi({
+      description: "Filter by label with OR logic (can be repeated)",
+    }),
+    priority: z.union([z.string(), z.array(z.string())]).optional().openapi({
+      description: "Filter by exact priority (can be repeated)",
+    }),
+    priorityMin: z.string().optional().openapi({
+      description: "Minimum priority (0=critical, 4=backlog)",
+    }),
+    priorityMax: z.string().optional().openapi({
+      description: "Maximum priority",
+    }),
+    titleContains: z.string().optional().openapi({
+      description: "Title contains substring",
+    }),
+    descContains: z.string().optional().openapi({
+      description: "Description contains substring",
+    }),
+    notesContains: z.string().optional().openapi({
+      description: "Notes contains substring",
+    }),
+    all: z.enum(["true", "false"]).optional().openapi({
+      description: "Include closed beads (default: false)",
+    }),
+    limit: z.string().optional().openapi({
+      description: "Max results (default: 50, 0 = unlimited)",
+    }),
+    sort: z.enum(["priority", "created_at", "updated_at", "title"]).optional().openapi({
+      description: "Sort by field",
+    }),
+    reverse: z.enum(["true", "false"]).optional().openapi({
+      description: "Reverse sort order",
+    }),
+    deferred: z.enum(["true", "false"]).optional().openapi({
+      description: "Filter for deferred beads",
+    }),
+    overdue: z.enum(["true", "false"]).optional().openapi({
+      description: "Filter for overdue beads",
+    }),
+  })
+  .openapi("ListBeadsQuery");
+
+registry.register("ListBeadsQuery", ListBeadsQuerySchema);
+
+// BV Triage Schemas
+export const BvRecommendationSchema = z
+  .object({
+    id: z.string().openapi({
+      description: "Bead ID",
+    }),
+    title: z.string().openapi({
+      description: "Bead title",
+    }),
+    type: z.string().optional().openapi({
+      description: "Issue type",
+    }),
+    score: z.number().openapi({
+      description: "Triage score",
+    }),
+    reasons: z.array(z.string()).optional().openapi({
+      description: "Reasons for the score",
+    }),
+    status: z.string().optional().openapi({
+      description: "Current status",
+    }),
+    description: z.string().optional().openapi({
+      description: "Bead description",
+    }),
+  })
+  .openapi("BvRecommendation");
+
+registry.register("BvRecommendation", BvRecommendationSchema);
+
+export const BvTriageSchema = z
+  .object({
+    recommendations: z.array(BvRecommendationSchema).optional().openapi({
+      description: "Prioritized recommendations",
+    }),
+    quick_wins: z.array(BvRecommendationSchema).optional().openapi({
+      description: "Quick win opportunities",
+    }),
+    blockers_to_clear: z.array(BvRecommendationSchema).optional().openapi({
+      description: "Blockers that should be cleared",
+    }),
+  })
+  .openapi("BvTriage");
+
+registry.register("BvTriage", BvTriageSchema);
+
+export const BvTriageResultSchema = z
+  .object({
+    generated_at: z.string().openapi({
+      description: "Generation timestamp",
+    }),
+    data_hash: z.string().optional().openapi({
+      description: "Hash of source data",
+    }),
+    triage: BvTriageSchema,
+  })
+  .openapi("BvTriageResult");
+
+registry.register("BvTriageResult", BvTriageResultSchema);
+
+export const BvInsightsResultSchema = z
+  .object({
+    generated_at: z.string().openapi({
+      description: "Generation timestamp",
+    }),
+    data_hash: z.string().optional().openapi({
+      description: "Hash of source data",
+    }),
+  })
+  .passthrough()
+  .openapi("BvInsightsResult");
+
+registry.register("BvInsightsResult", BvInsightsResultSchema);
+
+export const BvPlanResultSchema = z
+  .object({
+    generated_at: z.string().openapi({
+      description: "Generation timestamp",
+    }),
+    data_hash: z.string().optional().openapi({
+      description: "Hash of source data",
+    }),
+  })
+  .passthrough()
+  .openapi("BvPlanResult");
+
+registry.register("BvPlanResult", BvPlanResultSchema);
+
+export const BvGraphNodeSchema = z
+  .object({
+    id: z.string().openapi({
+      description: "Node bead ID",
+    }),
+    title: z.string().openapi({
+      description: "Node title",
+    }),
+    status: z.string().openapi({
+      description: "Node status",
+    }),
+    priority: z.number().optional().openapi({
+      description: "Node priority",
+    }),
+    pagerank: z.number().optional().openapi({
+      description: "PageRank score",
+    }),
+    type: z.string().optional().openapi({
+      description: "Issue type",
+    }),
+    labels: z.array(z.string()).optional().openapi({
+      description: "Node labels",
+    }),
+  })
+  .openapi("BvGraphNode");
+
+registry.register("BvGraphNode", BvGraphNodeSchema);
+
+export const BvGraphEdgeSchema = z
+  .object({
+    source: z.string().openapi({
+      description: "Source node ID",
+    }),
+    target: z.string().openapi({
+      description: "Target node ID",
+    }),
+    type: z.string().optional().openapi({
+      description: "Edge type",
+    }),
+  })
+  .openapi("BvGraphEdge");
+
+registry.register("BvGraphEdge", BvGraphEdgeSchema);
+
+export const BvGraphResultSchema = z
+  .object({
+    format: z.string().optional().openapi({
+      description: "Output format (json, dot, mermaid)",
+    }),
+    nodes: z.union([z.number(), z.array(BvGraphNodeSchema)]).openapi({
+      description: "Graph nodes (count or array)",
+    }),
+    edges: z.union([z.number(), z.array(BvGraphEdgeSchema)]).openapi({
+      description: "Graph edges (count or array)",
+    }),
+    data_hash: z.string().optional().openapi({
+      description: "Hash of source data",
+    }),
+  })
+  .passthrough()
+  .openapi("BvGraphResult");
+
+registry.register("BvGraphResult", BvGraphResultSchema);
+
+export const BrSyncStatusSchema = z
+  .object({
+    dirty_count: z.number().optional().openapi({
+      description: "Number of dirty records",
+    }),
+    last_export_time: z.string().optional().openapi({
+      description: "Last export timestamp",
+    }),
+    last_import_time: z.string().optional().openapi({
+      description: "Last import timestamp",
+    }),
+    jsonl_content_hash: z.string().optional().openapi({
+      description: "JSONL content hash",
+    }),
+    jsonl_exists: z.boolean().optional().openapi({
+      description: "Whether JSONL file exists",
+    }),
+    jsonl_newer: z.boolean().optional().openapi({
+      description: "Whether JSONL is newer than DB",
+    }),
+    db_newer: z.boolean().optional().openapi({
+      description: "Whether DB is newer than JSONL",
+    }),
+  })
+  .openapi("BrSyncStatus");
+
+registry.register("BrSyncStatus", BrSyncStatusSchema);
+
+export const BrSyncResultSchema = z
+  .object({
+    status: z.string().optional().openapi({
+      description: "Sync operation status",
+    }),
+  })
+  .passthrough()
+  .openapi("BrSyncResult");
+
+registry.register("BrSyncResult", BrSyncResultSchema);
+
+// Beads response wrappers
+export const BeadResponseSchema = createApiResponseSchema(
+  "BeadResponse",
+  BeadSchema,
+  "bead",
+);
+
+export const BeadListResponseSchema = createApiListResponseSchema(
+  "BeadListResponse",
+  BeadSchema,
+);
+
+export const BvTriageResponseSchema = createApiResponseSchema(
+  "BvTriageResponse",
+  BvTriageResultSchema,
+  "triage",
+);
+
+export const BvInsightsResponseSchema = createApiResponseSchema(
+  "BvInsightsResponse",
+  BvInsightsResultSchema,
+  "insights",
+);
+
+export const BvPlanResponseSchema = createApiResponseSchema(
+  "BvPlanResponse",
+  BvPlanResultSchema,
+  "plan",
+);
+
+export const BvGraphResponseSchema = createApiResponseSchema(
+  "BvGraphResponse",
+  BvGraphResultSchema,
+  "graph",
+);
+
+export const BrSyncStatusResponseSchema = createApiResponseSchema(
+  "BrSyncStatusResponse",
+  BrSyncStatusSchema,
+  "sync_status",
+);
+
+export const BrSyncResultResponseSchema = createApiResponseSchema(
+  "BrSyncResultResponse",
+  BrSyncResultSchema,
+  "sync_result",
+);
+
+// ============================================================================
 // Setup Schemas
 // ============================================================================
 

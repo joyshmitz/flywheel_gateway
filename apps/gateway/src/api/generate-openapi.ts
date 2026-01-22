@@ -11,6 +11,19 @@ import {
   AgentListResponseSchema,
   AgentResponseSchema,
   ApiErrorResponseSchema,
+  // Beads (BR/BV)
+  BeadListResponseSchema,
+  BeadResponseSchema,
+  BrSyncResultResponseSchema,
+  BrSyncStatusResponseSchema,
+  BvGraphResponseSchema,
+  BvInsightsResponseSchema,
+  BvPlanResponseSchema,
+  BvTriageResponseSchema,
+  CloseBeadRequestSchema,
+  CreateBeadRequestSchema,
+  ListBeadsQuerySchema,
+  UpdateBeadRequestSchema,
   // Cost Analytics
   BudgetAlertListResponseSchema,
   BudgetListResponseSchema,
@@ -2230,6 +2243,485 @@ registry.registerPath({
 });
 
 // ============================================================================
+// Beads (BR/BV) Routes
+// ============================================================================
+
+registry.registerPath({
+  method: "get",
+  path: "/beads",
+  summary: "List beads",
+  description:
+    "Returns a list of beads with optional filtering. Supports status, type, assignee, label, and priority filters.",
+  tags: ["Beads"],
+  request: {
+    query: ListBeadsQuerySchema,
+  },
+  responses: {
+    200: {
+      description: "List of beads",
+      content: {
+        "application/json": {
+          schema: BeadListResponseSchema,
+        },
+      },
+    },
+    500: {
+      description: "Server error",
+      content: {
+        "application/json": {
+          schema: ApiErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/beads",
+  summary: "Create a bead",
+  description: "Creates a new bead (issue) with the specified properties.",
+  tags: ["Beads"],
+  request: {
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: CreateBeadRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      description: "Bead created successfully",
+      content: {
+        "application/json": {
+          schema: BeadResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: "Invalid request body",
+      content: {
+        "application/json": {
+          schema: ApiErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/beads/{id}",
+  summary: "Get bead details",
+  description: "Returns detailed information about a specific bead.",
+  tags: ["Beads"],
+  request: {
+    params: z.object({
+      id: z.string().openapi({
+        description: "Bead identifier",
+        example: "bd-1abc",
+      }),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Bead details",
+      content: {
+        "application/json": {
+          schema: BeadResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: "Bead not found",
+      content: {
+        "application/json": {
+          schema: ApiErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "patch",
+  path: "/beads/{id}",
+  summary: "Update a bead",
+  description: "Updates the specified bead with new values.",
+  tags: ["Beads"],
+  request: {
+    params: z.object({
+      id: z.string().openapi({
+        description: "Bead identifier",
+      }),
+    }),
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: UpdateBeadRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Bead updated",
+      content: {
+        "application/json": {
+          schema: BeadResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: "Bead not found",
+      content: {
+        "application/json": {
+          schema: ApiErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "delete",
+  path: "/beads/{id}",
+  summary: "Close a bead",
+  description: "Closes the specified bead. Use query params for reason and force.",
+  tags: ["Beads"],
+  request: {
+    params: z.object({
+      id: z.string().openapi({
+        description: "Bead identifier",
+      }),
+    }),
+    query: z.object({
+      reason: z.string().optional().openapi({
+        description: "Reason for closing",
+      }),
+      force: z.enum(["true", "false"]).optional().openapi({
+        description: "Force close even with open dependencies",
+      }),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Bead closed",
+      content: {
+        "application/json": {
+          schema: BeadResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: "Bead not found",
+      content: {
+        "application/json": {
+          schema: ApiErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/beads/{id}/close",
+  summary: "Close a bead (alternative)",
+  description: "Alternative endpoint to close a bead with a request body.",
+  tags: ["Beads"],
+  request: {
+    params: z.object({
+      id: z.string().openapi({
+        description: "Bead identifier",
+      }),
+    }),
+    body: {
+      required: false,
+      content: {
+        "application/json": {
+          schema: CloseBeadRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Bead closed",
+      content: {
+        "application/json": {
+          schema: BeadResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: "Bead not found",
+      content: {
+        "application/json": {
+          schema: ApiErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/beads/{id}/claim",
+  summary: "Claim a bead",
+  description: "Claims the bead by setting status to in_progress.",
+  tags: ["Beads"],
+  request: {
+    params: z.object({
+      id: z.string().openapi({
+        description: "Bead identifier",
+      }),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Bead claimed",
+      content: {
+        "application/json": {
+          schema: BeadResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: "Bead not found",
+      content: {
+        "application/json": {
+          schema: ApiErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/beads/list/ready",
+  summary: "List ready beads",
+  description: "Returns beads that are ready to work on (no blocking dependencies).",
+  tags: ["Beads"],
+  request: {
+    query: z.object({
+      limit: z.string().optional().openapi({
+        description: "Max results",
+      }),
+      assignee: z.string().optional().openapi({
+        description: "Filter by assignee",
+      }),
+      unassigned: z.enum(["true", "false"]).optional().openapi({
+        description: "Only show unassigned",
+      }),
+      label: z.union([z.string(), z.array(z.string())]).optional().openapi({
+        description: "Filter by label (can be repeated)",
+      }),
+      sort: z.enum(["hybrid", "priority", "oldest"]).optional().openapi({
+        description: "Sort mode",
+      }),
+    }),
+  },
+  responses: {
+    200: {
+      description: "List of ready beads",
+      content: {
+        "application/json": {
+          schema: BeadListResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/beads/triage",
+  summary: "Get BV triage",
+  description: "Returns BV triage recommendations, quick wins, and blockers to clear.",
+  tags: ["Beads"],
+  request: {
+    query: z.object({
+      limit: z.string().optional().openapi({
+        description: "Limit recommendations",
+      }),
+      minScore: z.string().optional().openapi({
+        description: "Minimum score threshold",
+      }),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Triage results",
+      content: {
+        "application/json": {
+          schema: BvTriageResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/beads/ready",
+  summary: "Get BV quick wins",
+  description: "Returns quick win beads identified by BV.",
+  tags: ["Beads"],
+  request: {
+    query: z.object({
+      limit: z.string().optional().openapi({
+        description: "Max results",
+      }),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Quick win beads",
+      content: {
+        "application/json": {
+          schema: BeadListResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/beads/blocked",
+  summary: "Get blockers to clear",
+  description: "Returns beads that are blocking other work.",
+  tags: ["Beads"],
+  request: {
+    query: z.object({
+      limit: z.string().optional().openapi({
+        description: "Max results",
+      }),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Blocker beads",
+      content: {
+        "application/json": {
+          schema: BeadListResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/beads/insights",
+  summary: "Get BV insights",
+  description: "Returns BV graph insights and analysis.",
+  tags: ["Beads"],
+  responses: {
+    200: {
+      description: "Insights data",
+      content: {
+        "application/json": {
+          schema: BvInsightsResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/beads/plan",
+  summary: "Get BV plan",
+  description: "Returns BV execution plan.",
+  tags: ["Beads"],
+  responses: {
+    200: {
+      description: "Plan data",
+      content: {
+        "application/json": {
+          schema: BvPlanResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/beads/graph",
+  summary: "Get dependency graph",
+  description: "Returns the bead dependency graph in various formats.",
+  tags: ["Beads"],
+  request: {
+    query: z.object({
+      format: z.enum(["json", "dot", "mermaid"]).optional().openapi({
+        description: "Output format",
+        default: "json",
+      }),
+      rootId: z.string().optional().openapi({
+        description: "Root issue ID for subgraph",
+      }),
+      depth: z.string().optional().openapi({
+        description: "Max depth (0 = unlimited)",
+      }),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Graph data",
+      content: {
+        "application/json": {
+          schema: BvGraphResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/beads/sync/status",
+  summary: "Get sync status",
+  description: "Returns the BR sync status (dirty count, timestamps).",
+  tags: ["Beads"],
+  responses: {
+    200: {
+      description: "Sync status",
+      content: {
+        "application/json": {
+          schema: BrSyncStatusResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/beads/sync",
+  summary: "Sync beads",
+  description: "Runs br sync --flush-only to export changes to JSONL.",
+  tags: ["Beads"],
+  responses: {
+    200: {
+      description: "Sync completed",
+      content: {
+        "application/json": {
+          schema: BrSyncResultResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+// ============================================================================
 // OpenAPI Document Generator
 // ============================================================================
 
@@ -2324,6 +2816,11 @@ See the WebSocket documentation for event types and subscription.
       {
         name: "Agents",
         description: "Agent lifecycle and communication",
+      },
+      {
+        name: "Beads",
+        description:
+          "Issue tracking with BR (beads_rust) and BV (bead viewer) integration. Supports CRUD operations, triage, graph analysis, and sync.",
       },
       {
         name: "Checkpoints",
