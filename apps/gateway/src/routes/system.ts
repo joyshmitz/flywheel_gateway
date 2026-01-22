@@ -74,7 +74,8 @@ system.get("/snapshot/cache", (c) => {
     cached: stats.cached,
     ageMs: stats.age,
     ttlMs: stats.ttl,
-    expiresInMs: stats.cached && stats.age !== null ? stats.ttl - stats.age : null,
+    expiresInMs:
+      stats.cached && stats.age !== null ? stats.ttl - stats.age : null,
   });
 });
 

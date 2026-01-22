@@ -177,8 +177,7 @@ async function getChecksumStatuses(): Promise<{
           checksumCount: checksumInfo.checksumCount,
           registryGeneratedAt: toolGenAt,
           ageMs: toolAgeMs,
-          stale:
-            toolAgeMs !== null && toolAgeMs > STALE_CHECKSUM_THRESHOLD_MS,
+          stale: toolAgeMs !== null && toolAgeMs > STALE_CHECKSUM_THRESHOLD_MS,
         });
       } else {
         tools.push({
@@ -277,15 +276,21 @@ safety.get("/posture", async (c) => {
   // Check tool health (installed but not healthy)
   if (dcg.installed && !dcg.healthy) {
     issues.push("DCG is installed but not responding correctly");
-    recommendations.push("Check DCG configuration and try running: dcg --version");
+    recommendations.push(
+      "Check DCG configuration and try running: dcg --version",
+    );
   }
   if (slb.installed && !slb.healthy) {
     issues.push("SLB is installed but not responding correctly");
-    recommendations.push("Check SLB configuration and try running: slb --version");
+    recommendations.push(
+      "Check SLB configuration and try running: slb --version",
+    );
   }
   if (ubs.installed && !ubs.healthy) {
     issues.push("UBS is installed but not responding correctly");
-    recommendations.push("Check UBS configuration and try running: ubs --version");
+    recommendations.push(
+      "Check UBS configuration and try running: ubs --version",
+    );
   }
 
   // Check checksums
@@ -299,9 +304,7 @@ safety.get("/posture", async (c) => {
     issues.push(
       `ACFS checksums are stale (older than ${Math.round(STALE_CHECKSUM_THRESHOLD_MS / (24 * 60 * 60 * 1000))} days)`,
     );
-    recommendations.push(
-      "Refresh the ACFS manifest to get updated checksums",
-    );
+    recommendations.push("Refresh the ACFS manifest to get updated checksums");
   }
 
   // Determine overall status
@@ -368,7 +371,7 @@ safety.get("/tools", async (c) => {
 
   if (tool) {
     // Validate tool name
-    if (!validTools.includes(tool as typeof validTools[number])) {
+    if (!validTools.includes(tool as (typeof validTools)[number])) {
       return sendValidationError(c, [
         {
           path: "query.tool",

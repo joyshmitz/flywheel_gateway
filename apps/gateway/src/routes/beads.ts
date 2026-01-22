@@ -311,7 +311,11 @@ function createBeadsRoutes(service?: BeadsService) {
   router.get("/graph", async (c) => {
     try {
       const serviceInstance = c.get("beadsService");
-      const format = c.req.query("format") as "json" | "dot" | "mermaid" | undefined;
+      const format = c.req.query("format") as
+        | "json"
+        | "dot"
+        | "mermaid"
+        | undefined;
       const rootId = c.req.query("rootId");
       const depthStr = c.req.query("depth");
       const depth = depthStr ? Number.parseInt(depthStr, 10) : undefined;
@@ -426,7 +430,10 @@ function createBeadsRoutes(service?: BeadsService) {
       const overdue = c.req.query("overdue") === "true";
 
       // Validate sort parameter
-      if (sort && !["priority", "created_at", "updated_at", "title"].includes(sort)) {
+      if (
+        sort &&
+        !["priority", "created_at", "updated_at", "title"].includes(sort)
+      ) {
         log.warn({ sort }, "Invalid sort parameter, ignoring");
       }
 
@@ -449,7 +456,10 @@ function createBeadsRoutes(service?: BeadsService) {
       if (priorityMinStr) {
         const pm = Number.parseInt(priorityMinStr, 10);
         if (Number.isNaN(pm) || pm < 0 || pm > 4) {
-          log.warn({ priorityMin: priorityMinStr }, "Invalid priorityMin value, ignoring");
+          log.warn(
+            { priorityMin: priorityMinStr },
+            "Invalid priorityMin value, ignoring",
+          );
         } else {
           priorityMin = pm;
         }
@@ -457,7 +467,10 @@ function createBeadsRoutes(service?: BeadsService) {
       if (priorityMaxStr) {
         const pm = Number.parseInt(priorityMaxStr, 10);
         if (Number.isNaN(pm) || pm < 0 || pm > 4) {
-          log.warn({ priorityMax: priorityMaxStr }, "Invalid priorityMax value, ignoring");
+          log.warn(
+            { priorityMax: priorityMaxStr },
+            "Invalid priorityMax value, ignoring",
+          );
         } else {
           priorityMax = pm;
         }
@@ -480,7 +493,10 @@ function createBeadsRoutes(service?: BeadsService) {
       if (notesContains) options.notesContains = notesContains;
       if (all) options.all = true;
       if (limit !== undefined) options.limit = limit;
-      if (sort && ["priority", "created_at", "updated_at", "title"].includes(sort)) {
+      if (
+        sort &&
+        ["priority", "created_at", "updated_at", "title"].includes(sort)
+      ) {
         options.sort = sort;
       }
       if (reverse) options.reverse = true;
@@ -513,7 +529,11 @@ function createBeadsRoutes(service?: BeadsService) {
       const unassigned = c.req.query("unassigned") === "true";
       const labels = c.req.queries("label");
       const limit = parseLimit(c.req.query("limit"));
-      const sort = c.req.query("sort") as "hybrid" | "priority" | "oldest" | undefined;
+      const sort = c.req.query("sort") as
+        | "hybrid"
+        | "priority"
+        | "oldest"
+        | undefined;
 
       const options: Parameters<typeof serviceInstance.ready>[0] = {};
       if (assignee) options.assignee = assignee;
