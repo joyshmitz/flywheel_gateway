@@ -20,6 +20,7 @@ import {
   type AlertRuleUpdate,
   DEFAULT_COOLDOWN_MS,
   type NtmHealthContext,
+  type NtmIsWorkingContext,
   type SafetyPostureContext,
   SEVERITY_ORDER,
 } from "../models/alert";
@@ -51,8 +52,6 @@ const alertRules = new Map<string, AlertRule>();
 type AlertListener = (alert: Alert) => void;
 const listeners: AlertListener[] = [];
 
-type IsWorkingContext = NonNullable<AlertContext["ntm"]>["isWorking"];
-
 /** Track previous agent count for termination detection */
 let previousTrackedAgentCount = 0;
 let previousTrackedAgentIds = new Set<string>();
@@ -60,8 +59,8 @@ let previousTrackedAgentIds = new Set<string>();
 function mapIsWorkingContext(snapshot: {
   output: NtmIsWorkingOutput;
   checkedAt: Date;
-}): IsWorkingContext {
-  const agents: NonNullable<IsWorkingContext>["agents"] = {};
+}): NtmIsWorkingContext {
+  const agents: NtmIsWorkingContext["agents"] = {};
   for (const [agentId, status] of Object.entries(snapshot.output.agents)) {
     agents[agentId] = {
       isWorking: status.is_working,
