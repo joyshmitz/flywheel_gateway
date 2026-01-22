@@ -1,4 +1,5 @@
 import { SafetyPosturePanel } from "../components/dashboard/SafetyPosturePanel";
+import { SnapshotSummaryPanel } from "../components/dashboard/SnapshotSummaryPanel";
 import { StatusPill } from "../components/ui/StatusPill";
 import { mockAgents, mockBeads, mockMetrics } from "../lib/mock-data";
 
@@ -12,6 +13,11 @@ export function DashboardPage() {
 
   return (
     <div className="page">
+      {/* System Snapshot Summary - unified overview */}
+      <section style={{ marginBottom: "24px" }}>
+        <SnapshotSummaryPanel />
+      </section>
+
       <section className="grid grid--2">
         <div className="card">
           <div className="card__header">
