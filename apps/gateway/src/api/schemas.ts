@@ -1526,11 +1526,9 @@ export const RateCardListResponseSchema = createApiListResponseSchema(
 // Setup Schemas
 // ============================================================================
 
-export const ToolCategorySchema = z
-  .enum(["agent", "tool"])
-  .openapi({
-    description: "Tool category: agent CLI or developer tool",
-  });
+export const ToolCategorySchema = z.enum(["agent", "tool"]).openapi({
+  description: "Tool category: agent CLI or developer tool",
+});
 
 registry.register("ToolCategory", ToolCategorySchema);
 
@@ -1565,10 +1563,13 @@ export const ToolInfoSchema = z
       description: "Tool description",
     }),
     category: ToolCategorySchema,
-    tags: z.array(z.string()).optional().openapi({
-      description: "Tool tags from manifest (e.g., critical, recommended)",
-      example: ["critical", "safety"],
-    }),
+    tags: z
+      .array(z.string())
+      .optional()
+      .openapi({
+        description: "Tool tags from manifest (e.g., critical, recommended)",
+        example: ["critical", "safety"],
+      }),
     optional: z.boolean().optional().openapi({
       description: "Whether tool is optional for setup",
     }),
@@ -1685,11 +1686,9 @@ export const ToolInfoWithStatusSchema = ToolInfoSchema.extend({
 
 registry.register("ToolInfoWithStatus", ToolInfoWithStatusSchema);
 
-export const SetupInstallModeSchema = z
-  .enum(["interactive", "easy"])
-  .openapi({
-    description: "Installation mode: interactive prompts or automated",
-  });
+export const SetupInstallModeSchema = z.enum(["interactive", "easy"]).openapi({
+  description: "Installation mode: interactive prompts or automated",
+});
 
 registry.register("SetupInstallMode", SetupInstallModeSchema);
 

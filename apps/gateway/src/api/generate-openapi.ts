@@ -2000,7 +2000,8 @@ registry.registerPath({
   },
   responses: {
     200: {
-      description: "Readiness status with manifest metadata and recommendations",
+      description:
+        "Readiness status with manifest metadata and recommendations",
       content: {
         "application/json": {
           schema: ReadinessStatusResponseSchema,
