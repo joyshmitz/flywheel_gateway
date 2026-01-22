@@ -101,8 +101,7 @@ function resolveManifestPath(pathOverride?: string): string {
 
 function getCacheTtlMs(): number {
   const raw =
-    process.env["ACFS_MANIFEST_TTL_MS"] ??
-    process.env["TOOL_REGISTRY_TTL_MS"];
+    process.env["ACFS_MANIFEST_TTL_MS"] ?? process.env["TOOL_REGISTRY_TTL_MS"];
   const ttl = Number(raw);
   if (Number.isFinite(ttl) && ttl >= 0) return ttl;
   return DEFAULT_CACHE_TTL_MS;
@@ -227,7 +226,8 @@ export async function loadToolRegistry(
         ? String(error.details["errorCategory"])
         : "manifest_load_failed";
     const schemaVersion =
-      isGatewayError(error) && typeof error.details?.["schemaVersion"] === "string"
+      isGatewayError(error) &&
+      typeof error.details?.["schemaVersion"] === "string"
         ? String(error.details["schemaVersion"])
         : null;
     log.warn(
