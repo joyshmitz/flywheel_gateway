@@ -232,7 +232,7 @@ export interface SmartRestartOutput extends RobotResponse {
  */
 export function determineRestartAction(
   preCheck: PreCheckInfo,
-  options: { force?: boolean; dryRun?: boolean }
+  options: { force?: boolean; dryRun?: boolean },
 ): RestartAction {
   // Force mode - restart regardless (with warning)
   if (options.force) {
@@ -284,7 +284,7 @@ export function determineRestartAction(
  * Calculate summary from individual actions.
  */
 export function calculateRestartSummary(
-  actions: Record<string, RestartAction>
+  actions: Record<string, RestartAction>,
 ): RestartSummary {
   const agentsByAction: Record<RestartActionType, string[]> = {
     RESTARTED: [],
@@ -347,9 +347,10 @@ export const EXIT_SEQUENCES: Record<
 /**
  * Get exit sequence for agent type.
  */
-export function getExitSequence(
-  agentType: string,
-): { keys: string[]; description: string } {
+export function getExitSequence(agentType: string): {
+  keys: string[];
+  description: string;
+} {
   const sequence = EXIT_SEQUENCES[agentType] ?? EXIT_SEQUENCES["default"];
   if (!sequence) {
     // Fallback if no default found

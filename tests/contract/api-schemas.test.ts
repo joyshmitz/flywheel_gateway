@@ -430,7 +430,10 @@ describe("Setup Endpoint Contract Tests", () => {
       for (const tool of body) {
         const result = ToolInfoSchema.safeParse(tool);
         if (!result.success) {
-          console.log(`Tool ${tool.name} validation failed:`, result.error.issues);
+          console.log(
+            `Tool ${tool.name} validation failed:`,
+            result.error.issues,
+          );
         }
         expect(result.success).toBe(true);
       }
@@ -444,8 +447,12 @@ describe("Setup Endpoint Contract Tests", () => {
 
       const body = await response.json();
 
-      const agents = body.filter((t: { category: string }) => t.category === "agent");
-      const tools = body.filter((t: { category: string }) => t.category === "tool");
+      const agents = body.filter(
+        (t: { category: string }) => t.category === "agent",
+      );
+      const tools = body.filter(
+        (t: { category: string }) => t.category === "tool",
+      );
 
       expect(agents.length).toBeGreaterThan(0);
       expect(tools.length).toBeGreaterThan(0);

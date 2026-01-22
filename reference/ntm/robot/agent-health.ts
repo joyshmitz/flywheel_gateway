@@ -200,7 +200,7 @@ export interface AgentHealthOutput extends RobotResponse {
  */
 export function calculateHealthScore(
   localState: LocalStateInfo,
-  providerUsage?: ProviderUsageInfo
+  providerUsage?: ProviderUsageInfo,
 ): number {
   let score = 100;
 
@@ -238,7 +238,7 @@ export function calculateHealthScore(
  */
 export function determineRecommendation(
   localState: LocalStateInfo,
-  providerUsage?: ProviderUsageInfo
+  providerUsage?: ProviderUsageInfo,
 ): { action: RecommendationAction; reason: string } {
   // Working agents should not be interrupted
   if (localState.is_working && localState.confidence > 0.7) {
@@ -306,7 +306,7 @@ export function determineRecommendation(
  * Calculate fleet-wide health summary from individual agent statuses.
  */
 export function calculateFleetHealth(
-  agentStatuses: Record<string, AgentHealthStatus>
+  agentStatuses: Record<string, AgentHealthStatus>,
 ): FleetHealthSummary {
   const agents = Object.values(agentStatuses);
   const total = agents.length;

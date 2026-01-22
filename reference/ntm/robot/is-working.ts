@@ -226,7 +226,7 @@ export const IDLE_PATTERNS = [
  */
 export function detectWorkState(
   output: string,
-  agentType?: string
+  agentType?: string,
 ): {
   is_working: boolean;
   is_idle: boolean;
@@ -385,7 +385,7 @@ export function determineWorkRecommendation(state: {
  * Calculate summary from individual agent statuses.
  */
 export function calculateIsWorkingSummary(
-  agentStatuses: Record<string, AgentWorkStatus>
+  agentStatuses: Record<string, AgentWorkStatus>,
 ): IsWorkingSummary {
   const byRecommendation: Record<RecommendationAction, string[]> = {
     WAIT: [],
