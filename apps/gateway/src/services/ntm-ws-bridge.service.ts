@@ -79,7 +79,9 @@ export class ThrottledEventBatcher<T> {
   private lastFlushTime = Date.now();
 
   constructor(
-    private readonly onFlush: (events: Array<{ key: string; event: T }>) => void,
+    private readonly onFlush: (
+      events: Array<{ key: string; event: T }>,
+    ) => void,
     private readonly config: {
       batchWindowMs: number;
       maxEventsPerBatch: number;
@@ -277,7 +279,8 @@ export class NtmWsBridgeService {
   private tailPollInterval: ReturnType<typeof setInterval> | null = null;
   private outputStates = new Map<string, OutputState>();
   private running = false;
-  private stateBatcher: ThrottledEventBatcher<BatchableStateEvent> | null = null;
+  private stateBatcher: ThrottledEventBatcher<BatchableStateEvent> | null =
+    null;
 
   constructor(
     private hub: WebSocketHub,
@@ -290,7 +293,8 @@ export class NtmWsBridgeService {
       tailLines: config.tailLines ?? 50,
       enableOutputStreaming: config.enableOutputStreaming ?? true,
       batchWindowMs: config.batchWindowMs ?? DEFAULT_BATCH_WINDOW_MS,
-      maxEventsPerBatch: config.maxEventsPerBatch ?? DEFAULT_MAX_EVENTS_PER_BATCH,
+      maxEventsPerBatch:
+        config.maxEventsPerBatch ?? DEFAULT_MAX_EVENTS_PER_BATCH,
       debounceMs: config.debounceMs ?? DEFAULT_DEBOUNCE_MS,
       enableThrottling: config.enableThrottling ?? true,
     };
@@ -551,7 +555,11 @@ export class NtmWsBridgeService {
     );
 
     getLogger().debug(
-      { agentId, previousHealth: event.previousValue, newHealth: event.newValue },
+      {
+        agentId,
+        previousHealth: event.previousValue,
+        newHealth: event.newValue,
+      },
       "[NTM-WS-BRIDGE] Published health change to WebSocket",
     );
   }
@@ -777,7 +785,7 @@ export class NtmWsBridgeService {
     let hash = 0;
     for (let i = 0; i < content.length; i++) {
       const char = content.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32bit integer
     }
     return hash.toString(16);
@@ -800,7 +808,9 @@ export function getNtmWsBridgeService(): NtmWsBridgeService | null {
 /**
  * Set the default NTM WebSocket bridge service instance (for testing).
  */
-export function setNtmWsBridgeService(service: NtmWsBridgeService | null): void {
+export function setNtmWsBridgeService(
+  service: NtmWsBridgeService | null,
+): void {
   defaultInstance = service;
 }
 
@@ -816,7 +826,12 @@ export function startNtmWsBridge(
   if (defaultInstance) {
     defaultInstance.stop();
   }
-  defaultInstance = new NtmWsBridgeService(hub, ingestService, ntmClient, config);
+  defaultInstance = new NtmWsBridgeService(
+    hub,
+    ingestService,
+    ntmClient,
+    config,
+  );
   defaultInstance.start();
   return defaultInstance;
 }

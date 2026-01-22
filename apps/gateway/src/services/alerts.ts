@@ -30,7 +30,10 @@ import { getMetricsSnapshot } from "./metrics";
 import { getNtmIngestService } from "./ntm-ingest.service";
 import * as slbService from "./slb.service";
 import { getUBSService } from "./ubs.service";
-import { getChecksumAge, listToolsWithChecksums } from "./update-checker.service";
+import {
+  getChecksumAge,
+  listToolsWithChecksums,
+} from "./update-checker.service";
 import { loadToolRegistry } from "./tool-registry.service";
 
 /** Active alerts */
@@ -240,9 +243,21 @@ async function buildSafetyContext(): Promise<SafetyPostureContext | undefined> {
     return {
       status,
       tools: {
-        dcg: { installed: dcgInstalled, version: dcgVersion, healthy: dcgInstalled },
-        slb: { installed: slbInstalled, version: slbVersion, healthy: slbInstalled },
-        ubs: { installed: ubsInstalled, version: ubsVersion, healthy: ubsInstalled },
+        dcg: {
+          installed: dcgInstalled,
+          version: dcgVersion,
+          healthy: dcgInstalled,
+        },
+        slb: {
+          installed: slbInstalled,
+          version: slbVersion,
+          healthy: slbInstalled,
+        },
+        ubs: {
+          installed: ubsInstalled,
+          version: ubsVersion,
+          healthy: ubsInstalled,
+        },
       },
       checksums: {
         registryGeneratedAt,
@@ -907,7 +922,9 @@ export function initializeDefaultAlertRules(): void {
     condition: (ctx) => {
       const health = ctx.ntm?.health;
       if (!health) return false;
-      return health.summary.degradedCount > 0 || health.summary.unhealthyCount > 0;
+      return (
+        health.summary.degradedCount > 0 || health.summary.unhealthyCount > 0
+      );
     },
     title: (ctx) => {
       const health = ctx.ntm?.health;
@@ -1212,7 +1229,11 @@ export function initializeDefaultAlertRules(): void {
     }),
     source: "safety_posture_monitor",
     actions: [
-      { id: "regenerate_checksums", label: "Regenerate Checksums", type: "custom" },
+      {
+        id: "regenerate_checksums",
+        label: "Regenerate Checksums",
+        type: "custom",
+      },
       { id: "view_safety", label: "View Safety Status", type: "link" },
     ],
   });

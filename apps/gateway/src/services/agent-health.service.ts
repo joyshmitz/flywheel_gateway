@@ -559,9 +559,7 @@ export function isSafeToRestart(
 /**
  * Calculate fleet-wide health summary.
  */
-export function getFleetHealthSummary(
-  agentIds: string[],
-): FleetHealthSummary {
+export function getFleetHealthSummary(agentIds: string[]): FleetHealthSummary {
   const byRecommendation: Record<RecommendationAction, string[]> = {
     WAIT: [],
     RESTART: [],

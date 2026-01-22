@@ -236,7 +236,8 @@ function buildInstallCommand(install?: InstallSpec[]): string | undefined {
  */
 function toToolInfo(tool: ToolDefinition, manifestVersion?: string): ToolInfo {
   const fallback = TOOL_INFO[tool.name];
-  const installCommand = buildInstallCommand(tool.install) ?? fallback?.installCommand;
+  const installCommand =
+    buildInstallCommand(tool.install) ?? fallback?.installCommand;
   const installUrl = tool.install?.[0]?.url ?? fallback?.installUrl;
   const docsUrl = tool.docsUrl ?? fallback?.docsUrl;
 

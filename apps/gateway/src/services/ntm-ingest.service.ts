@@ -261,7 +261,10 @@ export class NtmIngestService {
   /**
    * Get the most recent NTM is-working snapshot, if available.
    */
-  getIsWorkingSnapshot(): { output: NtmIsWorkingOutput; checkedAt: Date } | null {
+  getIsWorkingSnapshot(): {
+    output: NtmIsWorkingOutput;
+    checkedAt: Date;
+  } | null {
     if (!this.lastIsWorkingSnapshot) return null;
     return {
       output: this.lastIsWorkingSnapshot.output,

@@ -610,7 +610,10 @@ export async function verifyAgainstAcfsChecksums(
 ): Promise<AcfsVerifyResult> {
   const log = getLogger();
 
-  log.debug({ toolId, filename, filePath }, "Verifying file against ACFS checksums");
+  log.debug(
+    { toolId, filename, filePath },
+    "Verifying file against ACFS checksums",
+  );
 
   // Load tool registry
   const registry = await loadToolRegistry();
@@ -692,7 +695,11 @@ export async function verifyAgainstAcfsChecksums(
 export async function findAcfsChecksum(
   toolId: string,
   pattern: string | RegExp,
-): Promise<{ filename: string; checksum: string; algorithm: "sha256" | "sha512" } | null> {
+): Promise<{
+  filename: string;
+  checksum: string;
+  algorithm: "sha256" | "sha512";
+} | null> {
   const registry = await loadToolRegistry();
   const tool = registry.tools.find((t) => t.id === toolId);
 
@@ -720,9 +727,7 @@ export async function findAcfsChecksum(
  * @param toolId - Tool ID to check
  * @returns Age information or null if tool not found
  */
-export async function getChecksumAge(
-  toolId: string,
-): Promise<{
+export async function getChecksumAge(toolId: string): Promise<{
   toolId: string;
   hasChecksums: boolean;
   checksumCount: number;
@@ -769,7 +774,11 @@ export async function verifyAcfsBatch(
 
   for (const { filename, filePath } of files) {
     try {
-      const result = await verifyAgainstAcfsChecksums(toolId, filename, filePath);
+      const result = await verifyAgainstAcfsChecksums(
+        toolId,
+        filename,
+        filePath,
+      );
       results.push(result);
     } catch (error) {
       // Include failed verifications with verified=false

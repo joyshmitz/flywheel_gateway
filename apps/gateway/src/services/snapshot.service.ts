@@ -181,7 +181,10 @@ async function collectNtmSnapshot(
         }
       } catch (error) {
         // Log but don't fail - alerts are optional
-        log.debug({ error }, "Failed to fetch NTM alerts, continuing without them");
+        log.debug(
+          { error },
+          "Failed to fetch NTM alerts, continuing without them",
+        );
       }
 
       // Map to our snapshot format
@@ -196,15 +199,18 @@ async function collectNtmSnapshot(
               state: agent.is_active ? "active" : "idle",
             };
             if (agent.variant !== undefined) agentBase.variant = agent.variant;
-            if (agent.is_active !== undefined) agentBase.isActive = agent.is_active;
+            if (agent.is_active !== undefined)
+              agentBase.isActive = agent.is_active;
             if (agent.window !== undefined) agentBase.window = agent.window;
-            if (agent.pane_idx !== undefined) agentBase.paneIdx = agent.pane_idx;
+            if (agent.pane_idx !== undefined)
+              agentBase.paneIdx = agent.pane_idx;
             return agentBase;
           }),
         };
         if (session.windows !== undefined) base.windows = session.windows;
         if (session.panes !== undefined) base.panes = session.panes;
-        if (session.created_at !== undefined) base.createdAt = session.created_at;
+        if (session.created_at !== undefined)
+          base.createdAt = session.created_at;
         return base;
       });
 
@@ -315,7 +321,9 @@ async function collectBeadsSnapshot(
 
       // Extract counts from triage data
       // Use bracket notation to access index signature properties
-      const triageObj = triageData?.triage as Record<string, unknown> | undefined;
+      const triageObj = triageData?.triage as
+        | Record<string, unknown>
+        | undefined;
       const health = triageObj?.["project_health"] as
         | {
             counts?: {
@@ -757,8 +765,10 @@ async function collectAgentMailSnapshot(
               agentId: agent.id,
               capabilities: agent.capabilities ?? [],
             };
-            if (agent.metadata !== undefined) agentSnapshot.metadata = agent.metadata;
-            if (agent.registeredAt !== undefined) agentSnapshot.registeredAt = agent.registeredAt;
+            if (agent.metadata !== undefined)
+              agentSnapshot.metadata = agent.metadata;
+            if (agent.registeredAt !== undefined)
+              agentSnapshot.registeredAt = agent.registeredAt;
             agents.push(agentSnapshot);
           } catch {
             // Skip malformed lines
@@ -864,7 +874,9 @@ export class SnapshotService {
    * Uses caching to reduce load on underlying services.
    * Returns partial data when some sources fail.
    */
-  async getSnapshot(options?: { bypassCache?: boolean }): Promise<SystemSnapshot> {
+  async getSnapshot(options?: {
+    bypassCache?: boolean;
+  }): Promise<SystemSnapshot> {
     const log = getLogger();
 
     // Check cache
@@ -881,40 +893,57 @@ export class SnapshotService {
     log.info("Collecting system snapshot");
 
     // Collect all data sources in parallel
-    const [ntmResult, beadsResult, toolsResult, agentMailResult] = await Promise.all([
-      collectNtmSnapshot(this.ntmClient, this.config.collectionTimeoutMs),
-      collectBeadsSnapshot(this.config.collectionTimeoutMs),
-      collectToolHealthSnapshot(this.config.collectionTimeoutMs),
-      collectAgentMailSnapshot(this.config.cwd, this.config.collectionTimeoutMs),
-    ]);
+    const [ntmResult, beadsResult, toolsResult, agentMailResult] =
+      await Promise.all([
+        collectNtmSnapshot(this.ntmClient, this.config.collectionTimeoutMs),
+        collectBeadsSnapshot(this.config.collectionTimeoutMs),
+        collectToolHealthSnapshot(this.config.collectionTimeoutMs),
+        collectAgentMailSnapshot(
+          this.config.cwd,
+          this.config.collectionTimeoutMs,
+        ),
+      ]);
 
     // Log collection results
     log.debug(
       {
         ntm: { success: ntmResult.success, latencyMs: ntmResult.latencyMs },
-        beads: { success: beadsResult.success, latencyMs: beadsResult.latencyMs },
-        tools: { success: toolsResult.success, latencyMs: toolsResult.latencyMs },
-        agentMail: { success: agentMailResult.success, latencyMs: agentMailResult.latencyMs },
+        beads: {
+          success: beadsResult.success,
+          latencyMs: beadsResult.latencyMs,
+        },
+        tools: {
+          success: toolsResult.success,
+          latencyMs: toolsResult.latencyMs,
+        },
+        agentMail: {
+          success: agentMailResult.success,
+          latencyMs: agentMailResult.latencyMs,
+        },
       },
       "Data collection completed",
     );
 
     // Use collected data or fallbacks
-    const ntm = ntmResult.success && ntmResult.data
-      ? ntmResult.data
-      : createEmptyNtmSnapshot(false);
+    const ntm =
+      ntmResult.success && ntmResult.data
+        ? ntmResult.data
+        : createEmptyNtmSnapshot(false);
 
-    const beads = beadsResult.success && beadsResult.data
-      ? beadsResult.data
-      : createEmptyBeadsSnapshot();
+    const beads =
+      beadsResult.success && beadsResult.data
+        ? beadsResult.data
+        : createEmptyBeadsSnapshot();
 
-    const tools = toolsResult.success && toolsResult.data
-      ? toolsResult.data
-      : createEmptyToolHealthSnapshot();
+    const tools =
+      toolsResult.success && toolsResult.data
+        ? toolsResult.data
+        : createEmptyToolHealthSnapshot();
 
-    const agentMail = agentMailResult.success && agentMailResult.data
-      ? agentMailResult.data
-      : createEmptyAgentMailSnapshot(false);
+    const agentMail =
+      agentMailResult.success && agentMailResult.data
+        ? agentMailResult.data
+        : createEmptyAgentMailSnapshot(false);
 
     // Build summary
     const summary = this.buildHealthSummary(
@@ -982,7 +1011,7 @@ export class SnapshotService {
 
     const agentMailHealth: SystemHealthStatus = agentMailResult.success
       ? agentMail.available
-        ? agentMail.status ?? "healthy"
+        ? (agentMail.status ?? "healthy")
         : "unhealthy"
       : "unknown";
 

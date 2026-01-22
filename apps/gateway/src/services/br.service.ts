@@ -300,7 +300,11 @@ export async function getBrSyncStatus(
   const status = await getBrClient().syncStatus(options);
   const latencyMs = Math.round(performance.now() - start);
   log.info(
-    { brCommand: "br sync --status", dirtyCount: status.dirty_count, latencyMs },
+    {
+      brCommand: "br sync --status",
+      dirtyCount: status.dirty_count,
+      latencyMs,
+    },
     "br sync status fetched",
   );
   return status;
@@ -328,14 +332,23 @@ export async function syncBr(options?: BrSyncOptions): Promise<BrSyncResult> {
 export interface BrService {
   ready: (options?: BrReadyOptions) => Promise<BrIssue[]>;
   list: (options?: BrListOptions) => Promise<BrIssue[]>;
-  show: (ids: string | string[], options?: BrCommandOptions) => Promise<BrIssue[]>;
-  create: (input: BrCreateInput, options?: BrCommandOptions) => Promise<BrIssue>;
+  show: (
+    ids: string | string[],
+    options?: BrCommandOptions,
+  ) => Promise<BrIssue[]>;
+  create: (
+    input: BrCreateInput,
+    options?: BrCommandOptions,
+  ) => Promise<BrIssue>;
   update: (
     ids: string | string[],
     input: BrUpdateInput,
     options?: BrCommandOptions,
   ) => Promise<BrIssue[]>;
-  close: (ids: string | string[], options?: BrCloseOptions) => Promise<BrIssue[]>;
+  close: (
+    ids: string | string[],
+    options?: BrCloseOptions,
+  ) => Promise<BrIssue[]>;
   syncStatus: (options?: BrCommandOptions) => Promise<BrSyncStatus>;
   sync: (options?: BrSyncOptions) => Promise<BrSyncResult>;
 }

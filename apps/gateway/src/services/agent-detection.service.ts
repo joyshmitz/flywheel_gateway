@@ -275,7 +275,11 @@ function deriveCommandSpec(
   const verifyCommand = tool.verify?.command;
   if (verifyCommand && verifyCommand.length > 0) {
     const last = verifyCommand[verifyCommand.length - 1];
-    if (last !== undefined && verifyCommand.length > 1 && VERSION_FLAG_TOKENS.has(last)) {
+    if (
+      last !== undefined &&
+      verifyCommand.length > 1 &&
+      VERSION_FLAG_TOKENS.has(last)
+    ) {
       const commands = verifyCommand.slice(0, -1);
       return {
         commands: commands.length > 0 ? commands : [tool.name],
@@ -460,7 +464,7 @@ function buildSafeEnv(): Record<string, string> {
 
     // Check if key starts with any safe prefix
     const isSafe = SAFE_ENV_PREFIXES.some(
-      (prefix) => key === prefix || key.startsWith(prefix)
+      (prefix) => key === prefix || key.startsWith(prefix),
     );
 
     if (isSafe) {
@@ -711,7 +715,11 @@ async function detectCLI(def: CLIDefinition): Promise<DetectedCLI> {
       }
     }
     log.debug(
-      { cli: def.name, installedCheck: def.installedCheck.command, success: checkResult.success },
+      {
+        cli: def.name,
+        installedCheck: def.installedCheck.command,
+        success: checkResult.success,
+      },
       "Manifest installed_check executed",
     );
   }
@@ -848,8 +856,7 @@ export async function detectAllCLIs(
   log.info("Starting CLI detection");
 
   // Detect agents and tools in parallel
-  const { agents: agentDefs, tools: toolDefs } =
-    await getRegistryDefinitions();
+  const { agents: agentDefs, tools: toolDefs } = await getRegistryDefinitions();
   const [agents, tools] = await Promise.all([
     Promise.all(agentDefs.map(detectCLI)),
     Promise.all(toolDefs.map(detectCLI)),
@@ -903,7 +910,8 @@ export async function detectCLIByName(
   name: DetectedType,
 ): Promise<DetectedCLI | null> {
   const { agents, tools } = await getRegistryDefinitions();
-  const def = agents.find((d) => d.name === name) || tools.find((d) => d.name === name);
+  const def =
+    agents.find((d) => d.name === name) || tools.find((d) => d.name === name);
 
   if (!def) {
     return null;

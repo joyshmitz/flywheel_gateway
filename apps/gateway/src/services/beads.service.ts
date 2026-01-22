@@ -42,14 +42,23 @@ export interface BeadsService {
   // BR CRUD operations
   ready: (options?: BrReadyOptions) => Promise<BrIssue[]>;
   list: (options?: BrListOptions) => Promise<BrIssue[]>;
-  show: (ids: string | string[], options?: BrCommandOptions) => Promise<BrIssue[]>;
-  create: (input: BrCreateInput, options?: BrCommandOptions) => Promise<BrIssue>;
+  show: (
+    ids: string | string[],
+    options?: BrCommandOptions,
+  ) => Promise<BrIssue[]>;
+  create: (
+    input: BrCreateInput,
+    options?: BrCommandOptions,
+  ) => Promise<BrIssue>;
   update: (
     ids: string | string[],
     input: BrUpdateInput,
     options?: BrCommandOptions,
   ) => Promise<BrIssue[]>;
-  close: (ids: string | string[], options?: BrCloseOptions) => Promise<BrIssue[]>;
+  close: (
+    ids: string | string[],
+    options?: BrCloseOptions,
+  ) => Promise<BrIssue[]>;
 
   // BR sync operations
   syncStatus: (options?: BrCommandOptions) => Promise<BrSyncStatus>;
