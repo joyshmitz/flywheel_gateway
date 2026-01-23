@@ -2,6 +2,8 @@
  * Tool Registry Service
  *
  * Loads and validates the ACFS tool registry manifest (YAML) with caching.
+ * Provides graceful fallback to a minimal built-in registry when the manifest
+ * is missing, invalid, or fails to load.
  */
 
 import path from "node:path";
@@ -20,6 +22,169 @@ import { getLogger } from "../middleware/correlation";
 
 const DEFAULT_CACHE_TTL_MS = 60_000;
 const DEFAULT_MANIFEST_FILE = "acfs.manifest.yaml";
+
+// ============================================================================
+// Error Categories (for structured logging)
+// ============================================================================
+
+export type ManifestErrorCategory =
+  | "manifest_missing"
+  | "manifest_read_error"
+  | "manifest_parse_error"
+  | "manifest_validation_error"
+  | "registry_load_failed";
+
+// ============================================================================
+// Fallback Registry
+// ============================================================================
+
+/**
+ * Minimal built-in registry with core tools.
+ * Used when the ACFS manifest is missing or invalid.
+ * Contains only essential tools required for basic Flywheel Gateway operation.
+ */
+const FALLBACK_REGISTRY: ToolRegistry = {
+  schemaVersion: "1.0.0-fallback",
+  source: "built-in",
+  generatedAt: new Date().toISOString(),
+  tools: [
+    // Core agent CLI
+    {
+      id: "agents.claude",
+      name: "claude",
+      displayName: "Claude Code",
+      description: "Anthropic's official CLI for Claude - primary agent interface",
+      category: "agent",
+      tags: ["critical", "recommended"],
+      optional: false,
+      enabledByDefault: true,
+      phase: 1,
+      docsUrl: "https://docs.anthropic.com/claude-code",
+      verify: {
+        command: ["claude", "--version"],
+        expectedExitCodes: [0],
+      },
+      installedCheck: {
+        command: ["command", "-v", "claude"],
+      },
+    },
+    // Safety guardrails
+    {
+      id: "tools.dcg",
+      name: "dcg",
+      displayName: "DCG",
+      description: "Destructive Command Guard - prevents dangerous operations",
+      category: "tool",
+      tags: ["critical", "required"],
+      optional: false,
+      enabledByDefault: true,
+      phase: 0, // Install first for safety
+      docsUrl: "https://github.com/Dicklesworthstone/dcg",
+      install: [
+        {
+          command: "curl",
+          args: [
+            "-fsSL",
+            "https://raw.githubusercontent.com/Dicklesworthstone/dcg/main/install.sh",
+            "|",
+            "bash",
+          ],
+        },
+      ],
+      verify: {
+        command: ["dcg", "--version"],
+        expectedExitCodes: [0],
+      },
+      installedCheck: {
+        command: ["command", "-v", "dcg"],
+      },
+    },
+    // Issue tracking
+    {
+      id: "tools.br",
+      name: "br",
+      displayName: "br (Beads)",
+      description: "Beads issue tracker with dependency graphs",
+      category: "tool",
+      tags: ["critical", "required"],
+      optional: false,
+      enabledByDefault: true,
+      phase: 1,
+      docsUrl: "https://github.com/Dicklesworthstone/beads_rust",
+      install: [
+        {
+          command: "curl",
+          args: [
+            "-fsSL",
+            "https://raw.githubusercontent.com/Dicklesworthstone/beads_rust/main/install.sh",
+            "|",
+            "bash",
+          ],
+        },
+      ],
+      verify: {
+        command: ["br", "--version"],
+        expectedExitCodes: [0],
+      },
+      installedCheck: {
+        command: ["command", "-v", "br"],
+      },
+    },
+    // Graph-aware triage
+    {
+      id: "tools.bv",
+      name: "bv",
+      displayName: "bv",
+      description: "Graph-aware issue triage engine",
+      category: "tool",
+      tags: ["recommended"],
+      optional: true,
+      enabledByDefault: true,
+      phase: 2,
+      docsUrl: "https://github.com/Dicklesworthstone/bv",
+      install: [
+        {
+          command: "curl",
+          args: [
+            "-fsSL",
+            "https://raw.githubusercontent.com/Dicklesworthstone/bv/main/install.sh",
+            "|",
+            "bash",
+          ],
+        },
+      ],
+      verify: {
+        command: ["bv", "--version"],
+        expectedExitCodes: [0],
+      },
+      installedCheck: {
+        command: ["command", "-v", "bv"],
+      },
+    },
+  ],
+};
+
+/**
+ * User-facing error messages with actionable guidance.
+ */
+const USER_FACING_MESSAGES: Record<ManifestErrorCategory, string> = {
+  manifest_missing:
+    "ACFS manifest file not found. Using built-in fallback registry. " +
+    "To use the full tool registry, ensure the manifest exists at the configured path " +
+    "(set ACFS_MANIFEST_PATH or TOOL_REGISTRY_PATH environment variable).",
+  manifest_read_error:
+    "Failed to read ACFS manifest file. Using built-in fallback registry. " +
+    "Check file permissions and ensure the path is accessible.",
+  manifest_parse_error:
+    "ACFS manifest contains invalid YAML. Using built-in fallback registry. " +
+    "Validate your manifest file with a YAML linter.",
+  manifest_validation_error:
+    "ACFS manifest failed schema validation. Using built-in fallback registry. " +
+    "Ensure the manifest conforms to the expected schema version.",
+  registry_load_failed:
+    "Failed to load tool registry. Using built-in fallback registry. " +
+    "Check logs for details.",
+};
 
 // ============================================================================
 // Schema Validation
@@ -158,27 +323,62 @@ function parseManifest(
 // Loader
 // ============================================================================
 
-let cached:
-  | {
-      registry: ToolRegistry;
-      path: string;
-      loadedAt: number;
-      manifestHash: string;
-    }
-  | undefined;
+export type RegistrySource = "manifest" | "fallback";
+
+interface CachedRegistry {
+  registry: ToolRegistry;
+  path: string;
+  loadedAt: number;
+  manifestHash: string | null;
+  source: RegistrySource;
+  errorCategory?: ManifestErrorCategory;
+}
+
+let cached: CachedRegistry | undefined;
 
 export interface ToolRegistryLoadOptions {
   bypassCache?: boolean;
   pathOverride?: string;
+  /** If true, throw errors instead of falling back. Default: false */
+  throwOnError?: boolean;
 }
 
+export interface ToolRegistryLoadResult {
+  registry: ToolRegistry;
+  source: RegistrySource;
+  errorCategory?: ManifestErrorCategory;
+  userMessage?: string;
+}
+
+/**
+ * Load the tool registry from the ACFS manifest.
+ * Falls back to the built-in registry if the manifest is missing or invalid.
+ *
+ * @param options - Load options
+ * @returns The loaded registry
+ */
 export async function loadToolRegistry(
   options: ToolRegistryLoadOptions = {},
 ): Promise<ToolRegistry> {
+  const result = await loadToolRegistryWithMetadata(options);
+  return result.registry;
+}
+
+/**
+ * Load the tool registry with metadata about the load operation.
+ * This is the primary internal method that handles fallback logic.
+ *
+ * @param options - Load options
+ * @returns The registry with source metadata
+ */
+export async function loadToolRegistryWithMetadata(
+  options: ToolRegistryLoadOptions = {},
+): Promise<ToolRegistryLoadResult> {
   const log = getLogger();
   const manifestPath = resolveManifestPath(options.pathOverride);
   const ttlMs = getCacheTtlMs();
 
+  // Check cache
   if (
     cached &&
     !options.bypassCache &&
@@ -191,65 +391,185 @@ export async function loadToolRegistry(
         ttlMs,
         schemaVersion: cached.registry.schemaVersion,
         manifestHash: cached.manifestHash,
+        source: cached.source,
       },
       "Tool registry cache hit",
     );
-    return cached.registry;
+    return {
+      registry: cached.registry,
+      source: cached.source,
+      errorCategory: cached.errorCategory,
+      userMessage: cached.errorCategory
+        ? USER_FACING_MESSAGES[cached.errorCategory]
+        : undefined,
+    };
   }
 
+  // Check if manifest exists
   if (!existsSync(manifestPath)) {
+    const errorCategory: ManifestErrorCategory = "manifest_missing";
+    const userMessage = USER_FACING_MESSAGES[errorCategory];
+
     log.warn(
       {
         manifestPath,
         manifestHash: null,
         schemaVersion: null,
-        errorCategory: "manifest_missing",
+        errorCategory,
+        userMessage,
+        fallbackToolCount: FALLBACK_REGISTRY.tools.length,
       },
-      "Tool registry manifest not found",
+      "Tool registry manifest not found, using fallback",
     );
-    throw createGatewayError(
-      "SYSTEM_UNAVAILABLE",
-      "Tool registry manifest not found",
-      { details: { path: manifestPath } },
-    );
+
+    if (options.throwOnError) {
+      throw createGatewayError(
+        "SYSTEM_UNAVAILABLE",
+        "Tool registry manifest not found",
+        {
+          details: {
+            path: manifestPath,
+            errorCategory,
+            userMessage,
+          },
+        },
+      );
+    }
+
+    // Cache and return fallback
+    cached = {
+      registry: FALLBACK_REGISTRY,
+      path: manifestPath,
+      loadedAt: Date.now(),
+      manifestHash: null,
+      source: "fallback",
+      errorCategory,
+    };
+
+    return {
+      registry: FALLBACK_REGISTRY,
+      source: "fallback",
+      errorCategory,
+      userMessage,
+    };
   }
 
+  // Try to load manifest
   const start = performance.now();
-  const content = await readFile(manifestPath, "utf-8");
+  let content: string;
+  try {
+    content = await readFile(manifestPath, "utf-8");
+  } catch (readError) {
+    const errorCategory: ManifestErrorCategory = "manifest_read_error";
+    const userMessage = USER_FACING_MESSAGES[errorCategory];
+
+    log.warn(
+      {
+        manifestPath,
+        manifestHash: null,
+        schemaVersion: null,
+        errorCategory,
+        userMessage,
+        error: readError instanceof Error ? readError.message : String(readError),
+        fallbackToolCount: FALLBACK_REGISTRY.tools.length,
+      },
+      "Failed to read tool registry manifest, using fallback",
+    );
+
+    if (options.throwOnError) {
+      throw createGatewayError(
+        "SYSTEM_UNAVAILABLE",
+        "Failed to read tool registry manifest",
+        {
+          details: {
+            path: manifestPath,
+            errorCategory,
+            userMessage,
+            cause: readError instanceof Error ? readError.message : String(readError),
+          },
+        },
+      );
+    }
+
+    cached = {
+      registry: FALLBACK_REGISTRY,
+      path: manifestPath,
+      loadedAt: Date.now(),
+      manifestHash: null,
+      source: "fallback",
+      errorCategory,
+    };
+
+    return {
+      registry: FALLBACK_REGISTRY,
+      source: "fallback",
+      errorCategory,
+      userMessage,
+    };
+  }
+
   const manifestHash = createHash("sha256").update(content).digest("hex");
   let registry: ToolRegistry;
+
   try {
     registry = parseManifest(content, manifestPath, manifestHash);
-  } catch (error) {
-    const errorCategory =
-      isGatewayError(error) && error.details?.["errorCategory"]
-        ? String(error.details["errorCategory"])
-        : "manifest_load_failed";
+  } catch (parseError) {
+    const errorCategory: ManifestErrorCategory =
+      isGatewayError(parseError) && parseError.details?.["errorCategory"]
+        ? (parseError.details["errorCategory"] as ManifestErrorCategory)
+        : "manifest_parse_error";
     const schemaVersion =
-      isGatewayError(error) &&
-      typeof error.details?.["schemaVersion"] === "string"
-        ? String(error.details["schemaVersion"])
+      isGatewayError(parseError) &&
+      typeof parseError.details?.["schemaVersion"] === "string"
+        ? String(parseError.details["schemaVersion"])
         : null;
+    const userMessage = USER_FACING_MESSAGES[errorCategory];
+
     log.warn(
       {
         manifestPath,
         manifestHash,
         schemaVersion,
         errorCategory,
-        error,
+        userMessage,
+        error: parseError instanceof Error ? parseError.message : String(parseError),
+        fallbackToolCount: FALLBACK_REGISTRY.tools.length,
       },
-      "Tool registry load failed",
+      "Tool registry manifest parse/validation failed, using fallback",
     );
-    throw error;
+
+    if (options.throwOnError) {
+      throw parseError;
+    }
+
+    cached = {
+      registry: FALLBACK_REGISTRY,
+      path: manifestPath,
+      loadedAt: Date.now(),
+      manifestHash,
+      source: "fallback",
+      errorCategory,
+    };
+
+    return {
+      registry: FALLBACK_REGISTRY,
+      source: "fallback",
+      errorCategory,
+      userMessage,
+    };
   }
+
   const latencyMs = Math.round(performance.now() - start);
 
+  // Successfully loaded from manifest
   cached = {
     registry,
     path: manifestPath,
     loadedAt: Date.now(),
     manifestHash,
+    source: "manifest",
   };
+
   log.info(
     {
       manifestPath,
@@ -257,11 +577,15 @@ export async function loadToolRegistry(
       manifestHash,
       toolCount: registry.tools.length,
       latencyMs,
+      source: "manifest",
     },
-    "Tool registry loaded",
+    "Tool registry loaded from manifest",
   );
 
-  return registry;
+  return {
+    registry,
+    source: "manifest",
+  };
 }
 
 export function clearToolRegistryCache(): void {
@@ -273,10 +597,20 @@ export interface ToolRegistryMetadata {
   schemaVersion: string;
   source?: string;
   generatedAt?: string;
-  manifestHash: string;
+  manifestHash: string | null;
   loadedAt: number;
+  /** Whether the registry came from manifest or fallback */
+  registrySource: RegistrySource;
+  /** If fallback, the reason why */
+  errorCategory?: ManifestErrorCategory;
+  /** User-facing message about the fallback */
+  userMessage?: string;
 }
 
+/**
+ * Get metadata about the currently cached tool registry.
+ * Returns null if no registry has been loaded yet.
+ */
 export function getToolRegistryMetadata(): ToolRegistryMetadata | null {
   if (!cached) {
     return null;
@@ -287,6 +621,7 @@ export function getToolRegistryMetadata(): ToolRegistryMetadata | null {
     schemaVersion: cached.registry.schemaVersion,
     manifestHash: cached.manifestHash,
     loadedAt: cached.loadedAt,
+    registrySource: cached.source,
   };
 
   if (cached.registry.source !== undefined) {
@@ -295,8 +630,31 @@ export function getToolRegistryMetadata(): ToolRegistryMetadata | null {
   if (cached.registry.generatedAt !== undefined) {
     metadata.generatedAt = cached.registry.generatedAt;
   }
+  if (cached.errorCategory !== undefined) {
+    metadata.errorCategory = cached.errorCategory;
+    metadata.userMessage = USER_FACING_MESSAGES[cached.errorCategory];
+  }
 
   return metadata;
+}
+
+/**
+ * Check if the current registry is using the built-in fallback.
+ * Returns true if fallback is active, false if using manifest, null if not loaded.
+ */
+export function isUsingFallbackRegistry(): boolean | null {
+  if (!cached) {
+    return null;
+  }
+  return cached.source === "fallback";
+}
+
+/**
+ * Get the built-in fallback registry directly.
+ * Useful for testing or manual comparison.
+ */
+export function getFallbackRegistry(): ToolRegistry {
+  return { ...FALLBACK_REGISTRY };
 }
 
 // ============================================================================
