@@ -409,6 +409,162 @@ ws.send(JSON.stringify({
 }));
 ```
 
+## Setup API
+
+The Setup API provides tool detection, readiness checks, and installation management.
+
+### Get Readiness Status
+
+```http
+GET /setup/readiness?bypass_cache=false
+```
+
+**Query Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `bypass_cache` | boolean | Force fresh detection (default: false) |
+
+**Response (200):**
+```json
+{
+  "object": "readiness_status",
+  "data": {
+    "ready": true,
+    "agents": [
+      {
+        "name": "claude",
+        "available": true,
+        "version": "1.0.0",
+        "path": "/usr/local/bin/claude",
+        "authenticated": true,
+        "detectedAt": "2026-01-12T10:00:00Z",
+        "durationMs": 150
+      }
+    ],
+    "tools": [
+      {
+        "name": "dcg",
+        "available": true,
+        "version": "v0.2.15",
+        "path": "/home/user/.local/bin/dcg",
+        "detectedAt": "2026-01-12T10:00:00Z",
+        "durationMs": 30
+      }
+    ],
+    "manifest": {
+      "schemaVersion": "1.0.0",
+      "source": "acfs",
+      "generatedAt": "2026-01-12T09:00:00Z",
+      "manifestPath": "/path/to/manifest.json",
+      "manifestHash": "sha256:abc123..."
+    },
+    "summary": {
+      "agentsAvailable": 1,
+      "agentsTotal": 1,
+      "toolsAvailable": 3,
+      "toolsTotal": 4,
+      "authIssues": [],
+      "missingRequired": []
+    },
+    "toolCategories": {
+      "required": ["dcg", "br"],
+      "recommended": ["bv", "claude"],
+      "optional": []
+    },
+    "installOrder": [
+      { "phase": 0, "tools": ["dcg"] },
+      { "phase": 1, "tools": ["br", "claude"] },
+      { "phase": 2, "tools": ["bv"] }
+    ],
+    "recommendations": [],
+    "detectedAt": "2026-01-12T10:00:00Z",
+    "durationMs": 500
+  }
+}
+```
+
+> **Migration Note (bd-jfoa):** The `toolCategories` and `installOrder` fields are optional for backwards compatibility. When the ACFS manifest is unavailable, the gateway returns a fallback registry with `schemaVersion: "1.0.0-fallback"`. Clients should check `schemaVersion !== "1.0.0-fallback"` to detect fallback mode.
+
+### List Available Tools
+
+```http
+GET /setup/tools
+```
+
+**Response (200):**
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "name": "dcg",
+      "displayName": "DCG",
+      "description": "Destructive Command Guard",
+      "category": "tool",
+      "tags": ["critical", "required"],
+      "optional": false,
+      "enabledByDefault": true,
+      "phase": 0,
+      "installCommand": "curl -fsSL https://... | bash",
+      "docsUrl": "https://github.com/Dicklesworthstone/dcg"
+    }
+  ]
+}
+```
+
+### Get Tool Info
+
+```http
+GET /setup/tools/:name
+```
+
+Returns detailed info for a specific tool including current detection status.
+
+### Verify Tool Installation
+
+```http
+POST /setup/verify/:name
+```
+
+**Response (200):**
+```json
+{
+  "object": "verification_result",
+  "data": {
+    "tool": "dcg",
+    "available": true,
+    "version": "v0.2.15",
+    "path": "/home/user/.local/bin/dcg",
+    "detectedAt": "2026-01-12T10:00:00Z",
+    "durationMs": 100
+  }
+}
+```
+
+### Clear Detection Cache
+
+```http
+DELETE /setup/cache
+```
+
+Clears the CLI detection cache, forcing fresh detection on next request.
+
+### Refresh Tool Registry
+
+```http
+POST /setup/registry/refresh
+```
+
+Reloads the tool registry from the ACFS manifest. Returns structured error if manifest is unavailable.
+
+### Clear Registry Cache
+
+```http
+DELETE /setup/registry/cache
+```
+
+Clears the tool registry cache.
+
 ## Health & Metrics
 
 ### Health Check

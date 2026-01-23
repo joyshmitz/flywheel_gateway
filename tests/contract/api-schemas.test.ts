@@ -275,13 +275,51 @@ describe("API Contract Tests", () => {
 // Setup Endpoint Schemas (manifest-driven fields)
 // ============================================================================
 
+// ============================================================================
+// Manifest metadata schema with full provenance fields (bd-jfoa)
+//
+// BACKWARDS COMPATIBILITY NOTE:
+// All manifest-related fields are optional for backwards compatibility.
+// When ACFS manifest is unavailable, the gateway returns a fallback registry
+// with schemaVersion "1.0.0-fallback". New fields added in the manifest-driven
+// refactor are marked optional so existing clients continue to work:
+//
+// - manifestPath: Absolute path to loaded manifest (null if fallback)
+// - manifestHash: SHA-256 hash of manifest content (null if fallback)
+// - toolCategories: Categorization of tools (required/recommended/optional)
+// - installOrder: Phase-ordered installation groups
+//
+// Clients should:
+// 1. Not require these fields to be present
+// 2. Check schemaVersion !== "1.0.0-fallback" to detect fallback mode
+// 3. Use manifest.source to identify registry origin
+// ============================================================================
+
 const ManifestMetadataSchema = z
   .object({
     schemaVersion: z.string(),
     source: z.string().optional(),
     generatedAt: z.string().optional(),
+    // New provenance fields (bd-29qb) - optional for backwards compatibility
+    manifestPath: z.string().optional(),
+    manifestHash: z.string().optional(),
   })
   .optional();
+
+// Tool categorization schema (bd-jfoa) - groups tools by priority
+const ToolCategoriesSchema = z
+  .object({
+    required: z.array(z.string()),
+    recommended: z.array(z.string()),
+    optional: z.array(z.string()),
+  })
+  .optional();
+
+// Phase order entry schema (bd-jfoa) - installation order by phase
+const PhaseOrderEntrySchema = z.object({
+  phase: z.number(),
+  tools: z.array(z.string()),
+});
 
 const DetectedCLISchema = z.object({
   name: z.string(),
@@ -309,6 +347,9 @@ const ReadinessStatusSchema = z.object({
   tools: z.array(DetectedCLISchema),
   manifest: ManifestMetadataSchema,
   summary: ReadinessSummarySchema,
+  // New optional fields (bd-jfoa) - for backwards compatibility
+  toolCategories: ToolCategoriesSchema,
+  installOrder: z.array(PhaseOrderEntrySchema).optional(),
   recommendations: z.array(z.string()),
   detectedAt: z.string(),
   durationMs: z.number(),
@@ -1088,6 +1129,90 @@ describe("Schema Validation Helpers", () => {
     };
 
     const result = ReadinessStatusSchema.safeParse(validReadiness);
+    expect(result.success).toBe(true);
+  });
+
+  // bd-jfoa: Backwards compatibility tests for new optional fields
+  test("ReadinessStatusSchema validates response with toolCategories and installOrder", () => {
+    const readinessWithNewFields = {
+      ready: true,
+      agents: [
+        {
+          name: "claude",
+          available: true,
+          detectedAt: new Date().toISOString(),
+          durationMs: 50,
+        },
+      ],
+      tools: [
+        {
+          name: "dcg",
+          available: true,
+          detectedAt: new Date().toISOString(),
+          durationMs: 30,
+        },
+      ],
+      manifest: {
+        schemaVersion: "1.0.0",
+        source: "acfs",
+        generatedAt: new Date().toISOString(),
+        manifestPath: "/path/to/manifest.json",
+        manifestHash: "sha256:abc123",
+      },
+      summary: {
+        agentsAvailable: 1,
+        agentsTotal: 1,
+        toolsAvailable: 1,
+        toolsTotal: 4,
+        authIssues: [],
+        missingRequired: [],
+      },
+      toolCategories: {
+        required: ["dcg", "br"],
+        recommended: ["bv", "claude"],
+        optional: ["caam"],
+      },
+      installOrder: [
+        { phase: 0, tools: ["dcg"] },
+        { phase: 1, tools: ["br", "claude"] },
+        { phase: 2, tools: ["bv"] },
+      ],
+      recommendations: [],
+      detectedAt: new Date().toISOString(),
+      durationMs: 200,
+    };
+
+    const result = ReadinessStatusSchema.safeParse(readinessWithNewFields);
+    if (!result.success) {
+      console.log("Validation failed:", result.error.issues);
+    }
+    expect(result.success).toBe(true);
+  });
+
+  test("ReadinessStatusSchema validates response without optional toolCategories/installOrder (backwards compat)", () => {
+    // This tests that clients not sending new fields still work
+    const legacyReadiness = {
+      ready: false,
+      agents: [],
+      tools: [],
+      manifest: {
+        schemaVersion: "1.0.0-fallback",
+      },
+      summary: {
+        agentsAvailable: 0,
+        agentsTotal: 0,
+        toolsAvailable: 0,
+        toolsTotal: 0,
+        authIssues: [],
+        missingRequired: ["dcg", "br"],
+      },
+      // Note: no toolCategories or installOrder - testing backwards compatibility
+      recommendations: ["Install required tools: dcg, br"],
+      detectedAt: new Date().toISOString(),
+      durationMs: 100,
+    };
+
+    const result = ReadinessStatusSchema.safeParse(legacyReadiness);
     expect(result.success).toBe(true);
   });
 });
