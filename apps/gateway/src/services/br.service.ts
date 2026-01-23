@@ -22,7 +22,7 @@ import type {
   BrUpdateInput,
 } from "@flywheel/flywheel-clients";
 import { createBrClient } from "@flywheel/flywheel-clients";
-import { getLogger } from "../middleware/correlation";
+import { createToolLogger, logCliCommand, logCliWarning } from "../utils/cli-logging";
 
 // ============================================================================
 // Constants
@@ -104,7 +104,6 @@ export async function runBrCommand(
   args: string[],
   options: RunOptions = {},
 ): Promise<BrCommandResult> {
-  const log = getLogger();
   const cwd = options.cwd ?? getBrProjectRoot();
   const timeoutMs = options.timeout ?? DEFAULT_TIMEOUT_MS;
   const maxOutputBytes = options.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES;
@@ -133,12 +132,16 @@ export async function runBrCommand(
   const stderr = await stderrPromise;
 
   const latencyMs = Math.round(performance.now() - start);
+  const exitCode = proc.exitCode ?? -1;
 
   if (timedOut) {
-    log.warn({ command, args, latencyMs }, "br command timed out");
+    logCliWarning(
+      { tool: "br", command, args, latencyMs, exitCode, timedOut: true },
+      "br command timed out",
+    );
   } else {
-    log.debug(
-      { command, args, exitCode: proc.exitCode, latencyMs },
+    logCliCommand(
+      { tool: "br", command, args, exitCode, latencyMs },
       "br command completed",
     );
   }
@@ -146,9 +149,12 @@ export async function runBrCommand(
   return {
     stdout,
     stderr,
-    exitCode: proc.exitCode ?? -1,
+    exitCode,
   };
 }
+
+// Create a scoped logger for br operations
+const brLogger = createToolLogger("br");
 
 export function createBrCommandRunner(
   executor: typeof runBrCommand = runBrCommand,
@@ -186,14 +192,12 @@ export function clearBrCache(): void {
  * List ready (unblocked, not deferred) issues.
  */
 export async function getBrReady(options?: BrReadyOptions): Promise<BrIssue[]> {
-  const log = getLogger();
   const start = performance.now();
   const issues = await getBrClient().ready(options);
   const latencyMs = Math.round(performance.now() - start);
-  log.info(
-    { brCommand: "br ready", count: issues.length, latencyMs },
-    "br ready fetched",
-  );
+  brLogger.result("br ready", latencyMs, "br ready fetched", {
+    count: issues.length,
+  });
   return issues;
 }
 
@@ -201,14 +205,12 @@ export async function getBrReady(options?: BrReadyOptions): Promise<BrIssue[]> {
  * List issues with filtering options.
  */
 export async function getBrList(options?: BrListOptions): Promise<BrIssue[]> {
-  const log = getLogger();
   const start = performance.now();
   const issues = await getBrClient().list(options);
   const latencyMs = Math.round(performance.now() - start);
-  log.info(
-    { brCommand: "br list", count: issues.length, latencyMs },
-    "br list fetched",
-  );
+  brLogger.result("br list", latencyMs, "br list fetched", {
+    count: issues.length,
+  });
   return issues;
 }
 
@@ -219,14 +221,13 @@ export async function getBrShow(
   ids: string | string[],
   options?: BrCommandOptions,
 ): Promise<BrIssue[]> {
-  const log = getLogger();
   const start = performance.now();
   const issues = await getBrClient().show(ids, options);
   const latencyMs = Math.round(performance.now() - start);
-  log.info(
-    { brCommand: "br show", ids, count: issues.length, latencyMs },
-    "br show fetched",
-  );
+  brLogger.result("br show", latencyMs, "br show fetched", {
+    ids: Array.isArray(ids) ? ids : [ids],
+    count: issues.length,
+  });
   return issues;
 }
 
@@ -237,14 +238,13 @@ export async function createBrIssue(
   input: BrCreateInput,
   options?: BrCommandOptions,
 ): Promise<BrIssue> {
-  const log = getLogger();
   const start = performance.now();
   const issue = await getBrClient().create(input, options);
   const latencyMs = Math.round(performance.now() - start);
-  log.info(
-    { brCommand: "br create", id: issue.id, title: input.title, latencyMs },
-    "br issue created",
-  );
+  brLogger.result("br create", latencyMs, "br issue created", {
+    id: issue.id,
+    title: input.title,
+  });
   return issue;
 }
 
@@ -256,14 +256,13 @@ export async function updateBrIssues(
   input: BrUpdateInput,
   options?: BrCommandOptions,
 ): Promise<BrIssue[]> {
-  const log = getLogger();
   const start = performance.now();
   const issues = await getBrClient().update(ids, input, options);
   const latencyMs = Math.round(performance.now() - start);
-  log.info(
-    { brCommand: "br update", ids, count: issues.length, latencyMs },
-    "br issues updated",
-  );
+  brLogger.result("br update", latencyMs, "br issues updated", {
+    ids: Array.isArray(ids) ? ids : [ids],
+    count: issues.length,
+  });
   return issues;
 }
 
@@ -274,14 +273,13 @@ export async function closeBrIssues(
   ids: string | string[],
   options?: BrCloseOptions,
 ): Promise<BrIssue[]> {
-  const log = getLogger();
   const start = performance.now();
   const issues = await getBrClient().close(ids, options);
   const latencyMs = Math.round(performance.now() - start);
-  log.info(
-    { brCommand: "br close", ids, count: issues.length, latencyMs },
-    "br issues closed",
-  );
+  brLogger.result("br close", latencyMs, "br issues closed", {
+    ids: Array.isArray(ids) ? ids : [ids],
+    count: issues.length,
+  });
   return issues;
 }
 
@@ -295,18 +293,12 @@ export async function closeBrIssues(
 export async function getBrSyncStatus(
   options?: BrCommandOptions,
 ): Promise<BrSyncStatus> {
-  const log = getLogger();
   const start = performance.now();
   const status = await getBrClient().syncStatus(options);
   const latencyMs = Math.round(performance.now() - start);
-  log.info(
-    {
-      brCommand: "br sync --status",
-      dirtyCount: status.dirty_count,
-      latencyMs,
-    },
-    "br sync status fetched",
-  );
+  brLogger.result("br sync --status", latencyMs, "br sync status fetched", {
+    dirtyCount: status.dirty_count,
+  });
   return status;
 }
 
@@ -314,14 +306,12 @@ export async function getBrSyncStatus(
  * Run sync operation (export, import, or merge).
  */
 export async function syncBr(options?: BrSyncOptions): Promise<BrSyncResult> {
-  const log = getLogger();
   const start = performance.now();
   const result = await getBrClient().sync(options);
   const latencyMs = Math.round(performance.now() - start);
-  log.info(
-    { brCommand: "br sync", mode: options?.mode ?? "default", latencyMs },
-    "br sync completed",
-  );
+  brLogger.result("br sync", latencyMs, "br sync completed", {
+    mode: options?.mode ?? "default",
+  });
   return result;
 }
 

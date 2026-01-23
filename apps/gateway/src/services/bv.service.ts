@@ -10,6 +10,7 @@ import type {
   BvTriageResult,
 } from "@flywheel/flywheel-clients";
 import { createBvClient } from "@flywheel/flywheel-clients";
+import { createToolLogger, logCliCommand, logCliWarning } from "../utils/cli-logging";
 import { getLogger } from "../middleware/correlation";
 
 interface RunOptions {
@@ -82,7 +83,6 @@ export async function runCommand(
   args: string[],
   options: RunOptions = {},
 ): Promise<BvCommandResult> {
-  const log = getLogger();
   const cwd = options.cwd ?? getBvProjectRoot();
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxOutputBytes = options.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES;
@@ -113,22 +113,29 @@ export async function runCommand(
   const stderr = await stderrPromise;
 
   const latencyMs = Math.round(performance.now() - start);
+  const exitCode = proc.exitCode ?? -1;
 
   if (timedOut) {
-    log.warn({ command, args, latencyMs }, "BV command timed out");
+    logCliWarning(
+      { tool: "bv", command, args, latencyMs, exitCode, timedOut: true },
+      "bv command timed out",
+    );
   } else {
-    log.debug(
-      { command, args, exitCode: proc.exitCode, latencyMs },
-      "BV command completed",
+    logCliCommand(
+      { tool: "bv", command, args, exitCode, latencyMs },
+      "bv command completed",
     );
   }
 
   return {
     stdout,
     stderr,
-    exitCode: proc.exitCode ?? -1,
+    exitCode,
   };
 }
+
+// Create a scoped logger for bv operations
+const bvLogger = createToolLogger("bv");
 
 export function createBvCommandRunner(
   executor: typeof runCommand = runCommand,
@@ -171,66 +178,43 @@ export async function getBvTriage(): Promise<BvTriageResult> {
   const start = performance.now();
   const data = await getBvClient().getTriage();
   const latencyMs = Math.round(performance.now() - start);
-  log.info(
-    {
-      bvCommand: "bv --robot-triage",
-      dataHash: data.data_hash,
-      latencyMs,
-    },
-    "BV triage fetched",
-  );
+  bvLogger.result("bv --robot-triage", latencyMs, "bv triage fetched", {
+    dataHash: data.data_hash,
+  });
   cachedTriage = { data, fetchedAt: Date.now() };
   return data;
 }
 
 export async function getBvInsights(): Promise<BvInsightsResult> {
-  const log = getLogger();
   const start = performance.now();
   const data = await getBvClient().getInsights();
   const latencyMs = Math.round(performance.now() - start);
-  log.info(
-    {
-      bvCommand: "bv --robot-insights",
-      dataHash: data.data_hash,
-      latencyMs,
-    },
-    "BV insights fetched",
-  );
+  bvLogger.result("bv --robot-insights", latencyMs, "bv insights fetched", {
+    dataHash: data.data_hash,
+  });
   return data;
 }
 
 export async function getBvPlan(): Promise<BvPlanResult> {
-  const log = getLogger();
   const start = performance.now();
   const data = await getBvClient().getPlan();
   const latencyMs = Math.round(performance.now() - start);
-  log.info(
-    {
-      bvCommand: "bv --robot-plan",
-      dataHash: data.data_hash,
-      latencyMs,
-    },
-    "BV plan fetched",
-  );
+  bvLogger.result("bv --robot-plan", latencyMs, "bv plan fetched", {
+    dataHash: data.data_hash,
+  });
   return data;
 }
 
 export async function getBvGraph(
   options?: BvGraphOptions,
 ): Promise<BvGraphResult> {
-  const log = getLogger();
   const start = performance.now();
   const data = await getBvClient().getGraph(options);
   const latencyMs = Math.round(performance.now() - start);
-  log.info(
-    {
-      bvCommand: "bv --robot-graph",
-      format: options?.format ?? "json",
-      rootId: options?.rootId,
-      dataHash: data.data_hash,
-      latencyMs,
-    },
-    "BV graph fetched",
-  );
+  bvLogger.result("bv --robot-graph", latencyMs, "bv graph fetched", {
+    format: options?.format ?? "json",
+    rootId: options?.rootId,
+    dataHash: data.data_hash,
+  });
   return data;
 }

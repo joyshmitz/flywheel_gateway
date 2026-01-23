@@ -9,7 +9,11 @@
  */
 
 import { getCorrelationId, getLogger } from "../middleware/correlation";
+import { createToolLogger, logCliCommand, logCliWarning } from "../utils/cli-logging";
 import { logger } from "./logger";
+
+// Create a scoped logger for dcg operations
+const dcgLogger = createToolLogger("dcg");
 
 // ============================================================================
 // Types
@@ -164,17 +168,12 @@ function parseJSONOutput<T>(output: string, fallback: T): T {
 export async function explainCommand(
   command: string,
 ): Promise<DCGExplainResult> {
-  const correlationId = getCorrelationId();
   const log = getLogger();
-  const startTime = Date.now();
-
-  log.info(
-    { correlationId, command: command.substring(0, 50) },
-    "Explaining command with DCG",
-  );
+  const startTime = performance.now();
+  const args = ["explain", "--json", command];
 
   try {
-    const proc = Bun.spawn(["dcg", "explain", "--json", command], {
+    const proc = Bun.spawn(["dcg", ...args], {
       stdout: "pipe",
       stderr: "pipe",
     });
@@ -182,6 +181,7 @@ export async function explainCommand(
     const stdout = await new Response(proc.stdout).text();
     const stderr = await new Response(proc.stderr).text();
     const exitCode = await proc.exited;
+    const latencyMs = Math.round(performance.now() - startTime);
 
     // Non-zero exit is OK for explain - it might just mean the command would be blocked
     // Only error if stderr has content and no stdout
@@ -196,16 +196,11 @@ export async function explainCommand(
       contextClassification: "ambiguous",
     });
 
-    log.info(
-      {
-        correlationId,
-        duration_ms: Date.now() - startTime,
-        command: command.substring(0, 50),
-        wouldBlock: result.wouldBlock,
-        matchedRuleCount: result.matchedRules.length,
-      },
-      "DCG explain completed",
-    );
+    dcgLogger.result("dcg explain", latencyMs, "dcg explain completed", {
+      command: command.substring(0, 50),
+      wouldBlock: result.wouldBlock,
+      matchedRuleCount: result.matchedRules.length,
+    });
 
     return result;
   } catch (error) {
@@ -213,7 +208,7 @@ export async function explainCommand(
       throw error;
     }
     // DCG not available - return a safe default
-    log.warn({ correlationId, error }, "DCG explain failed, returning default");
+    log.warn({ error }, "DCG explain failed, returning default");
     return {
       command,
       wouldBlock: false,
@@ -227,23 +222,19 @@ export async function explainCommand(
  * Test if a command would be blocked.
  */
 export async function testCommand(command: string): Promise<DCGTestResult> {
-  const correlationId = getCorrelationId();
   const log = getLogger();
-  const startTime = Date.now();
-
-  log.debug(
-    { correlationId, command: command.substring(0, 50) },
-    "Testing command with DCG",
-  );
+  const startTime = performance.now();
+  const args = ["test", "--json", command];
 
   try {
-    const proc = Bun.spawn(["dcg", "test", "--json", command], {
+    const proc = Bun.spawn(["dcg", ...args], {
       stdout: "pipe",
       stderr: "pipe",
     });
 
     const stdout = await new Response(proc.stdout).text();
     const exitCode = await proc.exited;
+    const latencyMs = Math.round(performance.now() - startTime);
 
     // Exit code 0 = not blocked, non-zero = would be blocked
     const result = parseJSONOutput<DCGTestResult>(stdout, {
@@ -252,21 +243,16 @@ export async function testCommand(command: string): Promise<DCGTestResult> {
       allowlisted: false,
     });
 
-    log.info(
-      {
-        correlationId,
-        duration_ms: Date.now() - startTime,
-        command: command.substring(0, 50),
-        blocked: result.blocked,
-        matchedRule: result.matchedRule?.ruleId,
-      },
-      "DCG test completed",
-    );
+    dcgLogger.result("dcg test", latencyMs, "dcg test completed", {
+      command: command.substring(0, 50),
+      blocked: result.blocked,
+      matchedRule: result.matchedRule?.ruleId,
+    });
 
     return result;
   } catch (error) {
     // DCG not available - return safe default (not blocked)
-    log.warn({ correlationId, error }, "DCG test failed, allowing command");
+    log.warn({ error }, "DCG test failed, allowing command");
     return {
       command,
       blocked: false,
@@ -279,14 +265,12 @@ export async function testCommand(command: string): Promise<DCGTestResult> {
  * Scan a file for potentially dangerous commands.
  */
 export async function scanFile(filePath: string): Promise<DCGScanResult> {
-  const correlationId = getCorrelationId();
   const log = getLogger();
-  const startTime = Date.now();
-
-  log.info({ correlationId, filePath }, "Scanning file with DCG");
+  const startTime = performance.now();
+  const args = ["scan", "--json", filePath];
 
   try {
-    const proc = Bun.spawn(["dcg", "scan", "--json", filePath], {
+    const proc = Bun.spawn(["dcg", ...args], {
       stdout: "pipe",
       stderr: "pipe",
     });
@@ -294,6 +278,7 @@ export async function scanFile(filePath: string): Promise<DCGScanResult> {
     const stdout = await new Response(proc.stdout).text();
     const stderr = await new Response(proc.stderr).text();
     const exitCode = await proc.exited;
+    const latencyMs = Math.round(performance.now() - startTime);
 
     // Non-zero exit with no stdout is an error
     if (exitCode !== 0 && !stdout) {
@@ -307,16 +292,11 @@ export async function scanFile(filePath: string): Promise<DCGScanResult> {
       summary: { critical: 0, high: 0, medium: 0, low: 0, total: 0 },
     });
 
-    log.info(
-      {
-        correlationId,
-        duration_ms: Date.now() - startTime,
-        filePath,
-        findingCount: result.findings.length,
-        summary: result.summary,
-      },
-      "DCG scan completed",
-    );
+    dcgLogger.result("dcg scan", latencyMs, "dcg scan completed", {
+      filePath,
+      findingCount: result.findings.length,
+      summary: result.summary,
+    });
 
     return result;
   } catch (error) {
@@ -325,7 +305,7 @@ export async function scanFile(filePath: string): Promise<DCGScanResult> {
     }
     // DCG not available - return empty result
     log.warn(
-      { correlationId, error, filePath },
+      { error, filePath },
       "DCG scan failed, returning empty result",
     );
     return {
@@ -377,14 +357,12 @@ export async function scanContent(
  * List all available DCG packs.
  */
 export async function listPacks(): Promise<DCGPackInfo[]> {
-  const correlationId = getCorrelationId();
   const log = getLogger();
-  const startTime = Date.now();
-
-  log.debug({ correlationId }, "Listing DCG packs");
+  const startTime = performance.now();
+  const args = ["list-packs", "--json"];
 
   try {
-    const proc = Bun.spawn(["dcg", "list-packs", "--json"], {
+    const proc = Bun.spawn(["dcg", ...args], {
       stdout: "pipe",
       stderr: "pipe",
     });
@@ -392,6 +370,7 @@ export async function listPacks(): Promise<DCGPackInfo[]> {
     const stdout = await new Response(proc.stdout).text();
     const stderr = await new Response(proc.stderr).text();
     const exitCode = await proc.exited;
+    const latencyMs = Math.round(performance.now() - startTime);
 
     if (exitCode !== 0) {
       throw new DCGCommandError("list-packs", exitCode ?? -1, stderr);
@@ -399,14 +378,9 @@ export async function listPacks(): Promise<DCGPackInfo[]> {
 
     const packs = parseJSONOutput<DCGPackInfo[]>(stdout, []);
 
-    log.info(
-      {
-        correlationId,
-        duration_ms: Date.now() - startTime,
-        packCount: packs.length,
-      },
-      "Listed DCG packs",
-    );
+    dcgLogger.result("dcg list-packs", latencyMs, "dcg list-packs completed", {
+      packCount: packs.length,
+    });
 
     return packs;
   } catch (error) {
@@ -415,7 +389,7 @@ export async function listPacks(): Promise<DCGPackInfo[]> {
     }
     // DCG not available - return empty list
     log.warn(
-      { correlationId, error },
+      { error },
       "DCG list-packs failed, returning empty list",
     );
     return [];
@@ -426,13 +400,12 @@ export async function listPacks(): Promise<DCGPackInfo[]> {
  * Get detailed information about a specific pack.
  */
 export async function getPackInfo(packId: string): Promise<DCGPackInfo> {
-  const correlationId = getCorrelationId();
   const log = getLogger();
-
-  log.debug({ correlationId, packId }, "Getting DCG pack info");
+  const startTime = performance.now();
+  const args = ["pack-info", "--json", packId];
 
   try {
-    const proc = Bun.spawn(["dcg", "pack-info", "--json", packId], {
+    const proc = Bun.spawn(["dcg", ...args], {
       stdout: "pipe",
       stderr: "pipe",
     });
@@ -440,6 +413,7 @@ export async function getPackInfo(packId: string): Promise<DCGPackInfo> {
     const stdout = await new Response(proc.stdout).text();
     const stderr = await new Response(proc.stderr).text();
     const exitCode = await proc.exited;
+    const latencyMs = Math.round(performance.now() - startTime);
 
     if (exitCode !== 0) {
       // Check if pack not found
@@ -454,14 +428,10 @@ export async function getPackInfo(packId: string): Promise<DCGPackInfo> {
       throw new DCGPackNotFoundError(packId);
     }
 
-    log.info(
-      {
-        correlationId,
-        packId,
-        ruleCount: pack.rules.length,
-      },
-      "Got DCG pack info",
-    );
+    dcgLogger.result("dcg pack-info", latencyMs, "dcg pack-info completed", {
+      packId,
+      ruleCount: pack.rules.length,
+    });
 
     return pack;
   } catch (error) {
@@ -472,7 +442,7 @@ export async function getPackInfo(packId: string): Promise<DCGPackInfo> {
       throw error;
     }
     // DCG not available
-    log.warn({ correlationId, error, packId }, "DCG pack-info failed");
+    log.warn({ error, packId }, "DCG pack-info failed");
     throw new DCGNotAvailableError();
   }
 }

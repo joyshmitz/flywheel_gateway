@@ -305,13 +305,49 @@ export function getToolRegistryMetadata(): ToolRegistryMetadata | null {
 
 export interface ToolRegistryAccessOptions extends ToolRegistryLoadOptions {}
 
+/**
+ * Determine if a tool is required.
+ * Required if:
+ * - Has "critical" or "required" tag
+ * - OR (optional !== true AND enabledByDefault === true)
+ * - OR (optional is not set AND no tags indicate otherwise)
+ */
 function isRequiredTool(tool: ToolDefinition): boolean {
-  if (tool.optional === true) return false;
+  // Critical/required tags always mean required
   if (tool.tags?.some((tag) => tag === "critical" || tag === "required")) {
     return true;
   }
+  // Explicitly optional tools are not required
+  if (tool.optional === true) return false;
+  // Enabled by default and not optional means required
   if (tool.enabledByDefault === true) return true;
-  return true;
+  // Default: if not explicitly optional, treat as required
+  return tool.optional !== true;
+}
+
+/**
+ * Determine if a tool is recommended (not required, but suggested).
+ * Recommended if:
+ * - Has "recommended" tag
+ * - OR (optional === true AND enabledByDefault === true)
+ */
+function isRecommendedTool(tool: ToolDefinition): boolean {
+  if (isRequiredTool(tool)) return false;
+  if (tool.tags?.some((tag) => tag === "recommended")) {
+    return true;
+  }
+  // Optional but enabled by default = recommended
+  if (tool.optional === true && tool.enabledByDefault === true) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Determine if a tool is truly optional (not required or recommended).
+ */
+function isOptionalTool(tool: ToolDefinition): boolean {
+  return tool.optional === true && !isRequiredTool(tool) && !isRecommendedTool(tool);
 }
 
 async function withRegistry<T>(
@@ -361,4 +397,81 @@ export async function getRequiredTools(
   return withRegistry(options, (registry) =>
     registry.tools.filter((tool) => isRequiredTool(tool)),
   );
+}
+
+export async function getRecommendedTools(
+  options: ToolRegistryAccessOptions = {},
+): Promise<ToolDefinition[]> {
+  return withRegistry(options, (registry) =>
+    registry.tools.filter((tool) => isRecommendedTool(tool)),
+  );
+}
+
+export async function getOptionalTools(
+  options: ToolRegistryAccessOptions = {},
+): Promise<ToolDefinition[]> {
+  return withRegistry(options, (registry) =>
+    registry.tools.filter((tool) => isOptionalTool(tool)),
+  );
+}
+
+export interface PhaseGroup {
+  phase: number;
+  tools: ToolDefinition[];
+}
+
+/**
+ * Get tools grouped by installation phase.
+ * Tools without a phase are assigned to phase 999 (last).
+ * Returns groups sorted by phase number (ascending).
+ */
+export async function getToolsByPhase(
+  options: ToolRegistryAccessOptions = {},
+): Promise<PhaseGroup[]> {
+  return withRegistry(options, (registry) => {
+    const phaseMap = new Map<number, ToolDefinition[]>();
+
+    for (const tool of registry.tools) {
+      const phase = tool.phase ?? 999;
+      const existing = phaseMap.get(phase) ?? [];
+      existing.push(tool);
+      phaseMap.set(phase, existing);
+    }
+
+    // Sort by phase number and return
+    return Array.from(phaseMap.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([phase, tools]) => ({ phase, tools }));
+  });
+}
+
+export interface ToolCategorization {
+  required: ToolDefinition[];
+  recommended: ToolDefinition[];
+  optional: ToolDefinition[];
+}
+
+/**
+ * Get all tools categorized by priority (required/recommended/optional).
+ */
+export async function categorizeTools(
+  options: ToolRegistryAccessOptions = {},
+): Promise<ToolCategorization> {
+  return withRegistry(options, (registry) => {
+    const required: ToolDefinition[] = [];
+    const recommended: ToolDefinition[] = [];
+    const optional: ToolDefinition[] = [];
+
+    for (const tool of registry.tools) {
+      if (isRequiredTool(tool)) {
+        required.push(tool);
+      } else if (isRecommendedTool(tool)) {
+        recommended.push(tool);
+      } else {
+        optional.push(tool);
+      }
+    }
+
+    return { required, recommended, optional };
+  });
 }

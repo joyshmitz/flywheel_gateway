@@ -206,7 +206,11 @@ const MAX_OUTPUT_LINES = 100;
  */
 export function pushOutputSample(agentId: string, output: string): void {
   let lines = outputSamples.get(agentId) || [];
-  lines.push(output);
+
+  // Split new output into lines to ensure granular retention
+  // Handle various newline formats
+  const newLines = output.split(/\r?\n/);
+  lines.push(...newLines);
 
   // Keep only recent lines
   if (lines.length > MAX_OUTPUT_LINES) {
@@ -269,11 +273,18 @@ export function detectWorkState(
 
   // Check context patterns
   for (const pattern of CONTEXT_PATTERNS) {
-    const match = output.match(pattern);
-    if (match) {
+    // Create global regex to find all matches (latest is most relevant)
+    const flags = pattern.flags.includes("g")
+      ? pattern.flags
+      : pattern.flags + "g";
+    const globalPattern = new RegExp(pattern.source, flags);
+    const matches = Array.from(output.matchAll(globalPattern));
+
+    if (matches.length > 0) {
       contextLowScore += 1;
-      if (match[1]) {
-        contextRemaining = parseInt(match[1], 10);
+      const lastMatch = matches[matches.length - 1];
+      if (lastMatch[1]) {
+        contextRemaining = parseInt(lastMatch[1], 10);
       }
     }
   }

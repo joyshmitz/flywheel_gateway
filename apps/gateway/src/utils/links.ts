@@ -176,12 +176,61 @@ export const conflictLinks: LinkGenerator<{ id: string }> = (
 
 /**
  * Generate HATEOAS links for a bead (issue) resource.
+ *
+ * Includes links for:
+ * - Standard CRUD operations (self, update, close, claim)
+ * - Mail thread coordination (mail_thread) - for viewing/creating Agent Mail
+ *   threads associated with this bead ID
+ *
+ * @example
+ * ```typescript
+ * const links = beadLinks({ id: "bd-123" }, ctx);
+ * // {
+ * //   self: "https://api.example.com/beads/bd-123",
+ * //   update: "https://api.example.com/beads/bd-123",
+ * //   close: "https://api.example.com/beads/bd-123/close",
+ * //   claim: "https://api.example.com/beads/bd-123/claim",
+ * //   mail_thread: "https://api.example.com/mail/threads/bd-123"
+ * // }
+ * ```
  */
 export const beadLinks: LinkGenerator<{ id: string }> = (bead, ctx) => ({
   self: `${ctx.baseUrl}/beads/${bead.id}`,
   update: `${ctx.baseUrl}/beads/${bead.id}`,
   close: `${ctx.baseUrl}/beads/${bead.id}/close`,
+  claim: `${ctx.baseUrl}/beads/${bead.id}/claim`,
+  mail_thread: `${ctx.baseUrl}/mail/threads/${bead.id}`,
 });
+
+/**
+ * Generate threading hints for a bead.
+ *
+ * Returns an object with hints for using the bead ID as a thread_id
+ * in Agent Mail communications. This standardizes the practice of
+ * using bead IDs (e.g., "bd-123") as thread identifiers for
+ * coordinating multi-agent work on the same issue.
+ *
+ * @example
+ * ```typescript
+ * const hints = beadThreadingHints({ id: "bd-123" });
+ * // {
+ * //   thread_id: "bd-123",
+ * //   subject_prefix: "[bd-123]",
+ * //   usage: "Use thread_id when sending Agent Mail about this bead"
+ * // }
+ * ```
+ */
+export function beadThreadingHints(bead: { id: string }): {
+  thread_id: string;
+  subject_prefix: string;
+  usage: string;
+} {
+  return {
+    thread_id: bead.id,
+    subject_prefix: `[${bead.id}]`,
+    usage: "Use thread_id when sending Agent Mail about this bead",
+  };
+}
 
 // ============================================================================
 // Message Links

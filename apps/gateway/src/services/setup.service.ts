@@ -13,8 +13,10 @@ import {
   getAgentDetectionService,
 } from "./agent-detection.service";
 import {
+  categorizeTools,
   getRequiredTools,
   getToolRegistryMetadata,
+  getToolsByPhase,
   loadToolRegistry,
 } from "./tool-registry.service";
 
@@ -37,6 +39,17 @@ export interface ToolInfo {
   docsUrl?: string;
 }
 
+export interface ToolCategories {
+  required: string[];
+  recommended: string[];
+  optional: string[];
+}
+
+export interface PhaseOrderEntry {
+  phase: number;
+  tools: string[];
+}
+
 export interface ReadinessStatus {
   ready: boolean;
   agents: DetectedCLI[];
@@ -45,6 +58,8 @@ export interface ReadinessStatus {
     schemaVersion: string;
     source?: string;
     generatedAt?: string;
+    manifestPath?: string;
+    manifestHash?: string;
   };
   summary: {
     agentsAvailable: number;
@@ -54,6 +69,10 @@ export interface ReadinessStatus {
     authIssues: string[];
     missingRequired: string[];
   };
+  /** Tool categorization: required, recommended, optional */
+  toolCategories?: ToolCategories;
+  /** Install order by phase (lower phase = install first) */
+  installOrder?: PhaseOrderEntry[];
   recommendations: string[];
   detectedAt: string;
   durationMs: number;
@@ -341,10 +360,13 @@ export async function getReadinessStatus(
   let manifest: ReadinessStatus["manifest"];
   try {
     const registry = await loadToolRegistry();
+    const meta = getToolRegistryMetadata();
     manifest = {
       schemaVersion: registry.schemaVersion,
       ...(registry.source && { source: registry.source }),
       ...(registry.generatedAt && { generatedAt: registry.generatedAt }),
+      ...(meta?.manifestPath && { manifestPath: meta.manifestPath }),
+      ...(meta?.manifestHash && { manifestHash: meta.manifestHash }),
     };
   } catch (error) {
     const meta = getToolRegistryMetadata();
@@ -397,6 +419,46 @@ export async function getReadinessStatus(
     detection.summary.agentsAvailable > 0 &&
     detection.summary.authIssues.length === 0;
 
+  // Compute tool categories (required/recommended/optional)
+  let toolCategories: ToolCategories | undefined;
+  let installOrder: PhaseOrderEntry[] | undefined;
+  try {
+    const categorization = await categorizeTools();
+    toolCategories = {
+      required: categorization.required.map((t) => t.name),
+      recommended: categorization.recommended.map((t) => t.name),
+      optional: categorization.optional.map((t) => t.name),
+    };
+
+    // Compute install order by phase
+    const phaseGroups = await getToolsByPhase();
+    installOrder = phaseGroups.map((group) => ({
+      phase: group.phase,
+      tools: group.tools.map((t) => t.name),
+    }));
+
+    log.debug(
+      {
+        required: toolCategories.required.length,
+        recommended: toolCategories.recommended.length,
+        optional: toolCategories.optional.length,
+        phases: installOrder.length,
+      },
+      "Tool categorization computed",
+    );
+  } catch (error) {
+    const meta = getToolRegistryMetadata();
+    log.warn(
+      {
+        error,
+        errorCategory: "categorization_failed",
+        manifestVersion: meta?.schemaVersion ?? null,
+        manifestHash: meta?.manifestHash ?? null,
+      },
+      "Failed to compute tool categories",
+    );
+  }
+
   const durationMs = Math.round(performance.now() - startTime);
 
   log.info(
@@ -419,6 +481,8 @@ export async function getReadinessStatus(
       ...detection.summary,
       missingRequired,
     },
+    ...(toolCategories && { toolCategories }),
+    ...(installOrder && { installOrder }),
     recommendations,
     detectedAt: detection.detectedAt.toISOString(),
     durationMs,

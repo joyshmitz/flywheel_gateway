@@ -10,6 +10,10 @@
  */
 
 import { getLogger } from "../middleware/correlation";
+import { createToolLogger } from "../utils/cli-logging";
+
+// Create a scoped logger for ubs operations
+const ubsLogger = createToolLogger("ubs");
 
 // ============================================================================
 // Types
@@ -380,17 +384,13 @@ export function createUBSService(projectRoot?: string): UBSService {
 
         store.scans.set(scanId, result);
 
-        log.info(
-          {
-            scanId,
-            durationMs,
-            filesScanned: result.filesScanned,
-            findings: result.summary.total,
-            critical: result.summary.critical,
-            high: result.summary.high,
-          },
-          "UBS scan completed",
-        );
+        ubsLogger.result("ubs scan", durationMs, "ubs scan completed", {
+          scanId,
+          filesScanned: result.filesScanned,
+          findings: result.summary.total,
+          critical: result.summary.critical,
+          high: result.summary.high,
+        });
 
         return result;
       } catch (error) {

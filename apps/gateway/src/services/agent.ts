@@ -239,6 +239,17 @@ export async function spawnAgent(config: {
   };
 
   try {
+    // Persist to DB immediately with spawning status
+    await db.insert(agentsTable).values({
+      id: agentId,
+      repoUrl: config.workingDirectory,
+      task: config.systemPrompt?.slice(0, 100) ?? "Interactive Session",
+      model: agentConfig.model,
+      status: "spawning",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
     const result = await drv.spawn(agentConfig);
     spawned = true;
     const agent = result.agent;
@@ -253,17 +264,6 @@ export async function spawnAgent(config: {
     };
 
     agents.set(agentId, record);
-
-    // Persist to DB
-    await db.insert(agentsTable).values({
-      id: agentId,
-      repoUrl: config.workingDirectory,
-      task: config.systemPrompt?.slice(0, 100) ?? "Interactive Session",
-      model: agentConfig.model,
-      status: "spawning",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
 
     // Transition to READY state
     markAgentReady(agentId);
@@ -333,7 +333,7 @@ export async function spawnAgent(config: {
       removeAgentState(agentId);
     }
 
-    // Update DB status to failed
+    // Update DB status to failed (record guaranteed to exist now)
     try {
       await db
         .update(agentsTable)
@@ -514,7 +514,15 @@ export async function terminateAgent(
   const record = agents.get(agentId);
 
   if (!record) {
-    throw new AgentError("AGENT_NOT_FOUND", `Agent ${agentId} not found`);
+    // Check if agent exists in state machine (e.g. stuck in spawning)
+    const state = getAgentState(agentId);
+    if (!state || isTerminalState(state.currentState)) {
+      throw new AgentError("AGENT_NOT_FOUND", `Agent ${agentId} not found`);
+    }
+    log.warn(
+      { agentId, state: state.currentState },
+      "Terminating agent found in state machine but not in memory map",
+    );
   }
 
   // Transition to TERMINATING state
