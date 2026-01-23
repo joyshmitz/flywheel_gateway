@@ -176,10 +176,11 @@ describe("br.service", () => {
         (c) => c.level === "debug" && c.message === "br command completed",
       );
       expect(debugLog).toBeDefined();
-      expect(debugLog?.context.command).toBe("echo");
-      expect(debugLog?.context.args).toEqual(["test"]);
-      expect(debugLog?.context.exitCode).toBe(0);
-      expect(typeof debugLog?.context.latencyMs).toBe("number");
+      expect(debugLog?.context["tool"]).toBe("br");
+      expect(debugLog?.context["command"]).toBe("echo");
+      expect(debugLog?.context["args"]).toEqual(["test"]);
+      expect(debugLog?.context["exitCode"]).toBe(0);
+      expect(typeof debugLog?.context["latencyMs"]).toBe("number");
     });
 
     test("logs warning on timeout", async () => {
@@ -192,7 +193,9 @@ describe("br.service", () => {
         (c) => c.level === "warn" && c.message === "br command timed out",
       );
       expect(warnLog).toBeDefined();
-      expect(warnLog?.context.command).toBe("sleep");
+      expect(warnLog?.context["tool"]).toBe("br");
+      expect(warnLog?.context["command"]).toBe("sleep");
+      expect(warnLog?.context["timedOut"]).toBe(true);
     });
   });
 
@@ -331,9 +334,10 @@ describe("br.service CRUD operations with mocked client", () => {
         (c) => c.level === "info" && c.message === "br ready fetched",
       );
       expect(infoLog).toBeDefined();
-      expect(infoLog?.context.brCommand).toBe("br ready");
-      expect(infoLog?.context.count).toBe(2);
-      expect(typeof infoLog?.context.latencyMs).toBe("number");
+      expect(infoLog?.context["tool"]).toBe("br");
+      expect(infoLog?.context["operation"]).toBe("br ready");
+      expect(infoLog?.context["count"]).toBe(2);
+      expect(typeof infoLog?.context["latencyMs"]).toBe("number");
     });
   });
 
@@ -361,8 +365,9 @@ describe("br.service CRUD operations with mocked client", () => {
         (c) => c.level === "info" && c.message === "br list fetched",
       );
       expect(infoLog).toBeDefined();
-      expect(infoLog?.context.brCommand).toBe("br list");
-      expect(infoLog?.context.count).toBe(1);
+      expect(infoLog?.context["tool"]).toBe("br");
+      expect(infoLog?.context["operation"]).toBe("br list");
+      expect(infoLog?.context["count"]).toBe(1);
     });
   });
 
@@ -385,8 +390,9 @@ describe("br.service CRUD operations with mocked client", () => {
         (c) => c.level === "info" && c.message === "br show fetched",
       );
       expect(infoLog).toBeDefined();
-      expect(infoLog?.context.brCommand).toBe("br show");
-      expect(infoLog?.context.ids).toBe("bd-1234");
+      expect(infoLog?.context["tool"]).toBe("br");
+      expect(infoLog?.context["operation"]).toBe("br show");
+      expect(infoLog?.context["ids"]).toEqual(["bd-1234"]);
     });
   });
 
@@ -417,9 +423,10 @@ describe("br.service CRUD operations with mocked client", () => {
         (c) => c.level === "info" && c.message === "br issue created",
       );
       expect(infoLog).toBeDefined();
-      expect(infoLog?.context.brCommand).toBe("br create");
-      expect(infoLog?.context.id).toBe("bd-1234");
-      expect(infoLog?.context.title).toBe("Test task");
+      expect(infoLog?.context["tool"]).toBe("br");
+      expect(infoLog?.context["operation"]).toBe("br create");
+      expect(infoLog?.context["id"]).toBe("bd-1234");
+      expect(infoLog?.context["title"]).toBe("Test task");
     });
   });
 
@@ -444,9 +451,10 @@ describe("br.service CRUD operations with mocked client", () => {
         (c) => c.level === "info" && c.message === "br issues updated",
       );
       expect(infoLog).toBeDefined();
-      expect(infoLog?.context.brCommand).toBe("br update");
-      expect(infoLog?.context.ids).toBe("bd-1234");
-      expect(infoLog?.context.count).toBe(1);
+      expect(infoLog?.context["tool"]).toBe("br");
+      expect(infoLog?.context["operation"]).toBe("br update");
+      expect(infoLog?.context["ids"]).toEqual(["bd-1234"]);
+      expect(infoLog?.context["count"]).toBe(1);
     });
   });
 
@@ -475,9 +483,10 @@ describe("br.service CRUD operations with mocked client", () => {
         (c) => c.level === "info" && c.message === "br issues closed",
       );
       expect(infoLog).toBeDefined();
-      expect(infoLog?.context.brCommand).toBe("br close");
-      expect(infoLog?.context.ids).toBe("bd-1234");
-      expect(infoLog?.context.count).toBe(1);
+      expect(infoLog?.context["tool"]).toBe("br");
+      expect(infoLog?.context["operation"]).toBe("br close");
+      expect(infoLog?.context["ids"]).toEqual(["bd-1234"]);
+      expect(infoLog?.context["count"]).toBe(1);
     });
   });
 
@@ -494,8 +503,9 @@ describe("br.service CRUD operations with mocked client", () => {
         (c) => c.level === "info" && c.message === "br sync status fetched",
       );
       expect(infoLog).toBeDefined();
-      expect(infoLog?.context.brCommand).toBe("br sync --status");
-      expect(infoLog?.context.dirtyCount).toBe(3);
+      expect(infoLog?.context["tool"]).toBe("br");
+      expect(infoLog?.context["operation"]).toBe("br sync --status");
+      expect(infoLog?.context["dirtyCount"]).toBe(3);
     });
   });
 
@@ -521,8 +531,9 @@ describe("br.service CRUD operations with mocked client", () => {
         (c) => c.level === "info" && c.message === "br sync completed",
       );
       expect(infoLog).toBeDefined();
-      expect(infoLog?.context.brCommand).toBe("br sync");
-      expect(infoLog?.context.mode).toBe("merge");
+      expect(infoLog?.context["tool"]).toBe("br");
+      expect(infoLog?.context["operation"]).toBe("br sync");
+      expect(infoLog?.context["mode"]).toBe("merge");
     });
   });
 });
