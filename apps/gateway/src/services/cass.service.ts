@@ -17,7 +17,7 @@ import {
   type CassSearchResult,
   type CassViewOptions,
   type CassViewResult,
-  createBunCommandRunner,
+  createBunCassCommandRunner,
   createCassClient,
 } from "@flywheel/flywheel-clients";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
@@ -76,7 +76,7 @@ export function initCassService(config: CassServiceConfig = {}): void {
     return;
   }
 
-  const runner = createBunCommandRunner();
+  const runner = createBunCassCommandRunner();
   const clientOptions: CassClientOptions = {
     runner,
     timeout: config.timeout ?? 30000,

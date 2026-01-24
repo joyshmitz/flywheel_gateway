@@ -115,10 +115,9 @@ export function createBunCliRunner(
         defaults.maxOutputBytes ??
         DEFAULT_MAX_OUTPUT_BYTES;
 
-      let proc: Bun.Subprocess<"pipe", "pipe", "ignore">;
+      let proc: Bun.Subprocess<"pipe", "pipe", "pipe">;
       try {
-        proc = Bun.spawn([command, ...args], {
-          cwd: options?.cwd,
+        const spawnOpts: Parameters<typeof Bun.spawn>[1] = {
           stdout: "pipe",
           stderr: "pipe",
           env: {
@@ -127,7 +126,11 @@ export function createBunCliRunner(
             ...options?.env,
             NO_COLOR: "1",
           },
-        });
+        };
+        if (options?.cwd) {
+          spawnOpts.cwd = options.cwd;
+        }
+        proc = Bun.spawn([command, ...args], spawnOpts);
       } catch (error) {
         throw new CliCommandError("spawn_failed", "Failed to spawn command", {
           command,
@@ -156,7 +159,9 @@ export function createBunCliRunner(
           : null;
 
       const stdoutPromise = readStreamSafe(proc.stdout, maxOutputBytes);
-      const stderrPromise = readStreamSafe(proc.stderr, maxOutputBytes);
+      const stderrPromise = proc.stderr
+        ? readStreamSafe(proc.stderr, maxOutputBytes)
+        : Promise.resolve({ text: "", truncated: false });
 
       try {
         await Promise.race(
@@ -171,14 +176,15 @@ export function createBunCliRunner(
       const stdout = await stdoutPromise;
       const stderr = await stderrPromise;
 
-      return {
+      const result: CliCommandResult = {
         stdout: stdout.text,
         stderr: stderr.text,
         exitCode: proc.exitCode ?? -1,
-        stdoutTruncated: stdout.truncated || undefined,
-        stderrTruncated: stderr.truncated || undefined,
-        timedOut: timedOut || undefined,
       };
+      if (stdout.truncated) result.stdoutTruncated = true;
+      if (stderr.truncated) result.stderrTruncated = true;
+      if (timedOut) result.timedOut = true;
+      return result;
     },
   };
 }

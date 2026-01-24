@@ -313,8 +313,8 @@ describe("br.service CRUD operations with mocked client", () => {
     test("returns ready issues", async () => {
       const issues = await getBrReady();
       expect(issues).toHaveLength(2);
-      expect(issues[0].id).toBe("bd-1234");
-      expect(issues[1].id).toBe("bd-5678");
+      expect(issues[0]!.id).toBe("bd-1234");
+      expect(issues[1]!.id).toBe("bd-5678");
     });
 
     test("passes options to client", async () => {
@@ -345,7 +345,7 @@ describe("br.service CRUD operations with mocked client", () => {
     test("returns issue list", async () => {
       const issues = await getBrList();
       expect(issues).toHaveLength(1);
-      expect(issues[0].id).toBe("bd-1234");
+      expect(issues[0]!.id).toBe("bd-1234");
     });
 
     test("passes filter options to client", async () => {
@@ -375,7 +375,7 @@ describe("br.service CRUD operations with mocked client", () => {
     test("returns issue by single id", async () => {
       const issues = await getBrShow("bd-1234");
       expect(issues).toHaveLength(1);
-      expect(issues[0].id).toBe("bd-1234");
+      expect(issues[0]!.id).toBe("bd-1234");
     });
 
     test("accepts array of ids", async () => {

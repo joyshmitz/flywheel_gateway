@@ -28,14 +28,17 @@ import type { CliCommandResult, CliCommandRunner } from "../cli-runner";
  */
 function createMockRunner(result: Partial<CliCommandResult>): CliCommandRunner {
   return {
-    run: async () => ({
-      stdout: result.stdout ?? "",
-      stderr: result.stderr ?? "",
-      exitCode: result.exitCode ?? 0,
-      stdoutTruncated: result.stdoutTruncated,
-      stderrTruncated: result.stderrTruncated,
-      timedOut: result.timedOut,
-    }),
+    run: async () => {
+      const response: CliCommandResult = {
+        stdout: result.stdout ?? "",
+        stderr: result.stderr ?? "",
+        exitCode: result.exitCode ?? 0,
+      };
+      if (result.stdoutTruncated !== undefined) response.stdoutTruncated = result.stdoutTruncated;
+      if (result.stderrTruncated !== undefined) response.stderrTruncated = result.stderrTruncated;
+      if (result.timedOut !== undefined) response.timedOut = result.timedOut;
+      return response;
+    },
   };
 }
 
@@ -179,8 +182,8 @@ describe("parseJsonWithSchema", () => {
     expect(error).toBeInstanceOf(CliCommandError);
     expect(error?.kind).toBe("validation_error");
     expect(error?.message).toBe("Invalid invalid schema test response");
-    expect(error?.details?.issues).toBeDefined();
-    expect(Array.isArray(error?.details?.issues)).toBe(true);
+    expect(error?.details?.["issues"]).toBeDefined();
+    expect(Array.isArray(error?.details?.["issues"])).toBe(true);
   });
 
   test("throws validation_error for missing required fields", () => {
@@ -194,7 +197,7 @@ describe("parseJsonWithSchema", () => {
 
     expect(error).toBeInstanceOf(CliCommandError);
     expect(error?.kind).toBe("validation_error");
-    expect(error?.details?.issues).toHaveLength(1);
+    expect(error?.details?.["issues"]).toHaveLength(1);
   });
 
   test("includes Zod issues in error details", () => {
@@ -206,7 +209,7 @@ describe("parseJsonWithSchema", () => {
       error = e as CliCommandError;
     }
 
-    const issues = error?.details?.issues as z.ZodIssue[];
+    const issues = error?.details?.["issues"] as z.ZodIssue[];
     expect(issues).toBeDefined();
     expect(issues[0]?.path).toContain("count");
     expect(issues[0]?.message).toContain("number");
@@ -341,7 +344,7 @@ describe("createBunCliRunner timeouts", () => {
     expect(error).toBeInstanceOf(CliCommandError);
     expect(error?.kind).toBe("timeout");
     expect(error?.message).toBe("Command timed out");
-    expect(error?.details?.timeoutMs).toBe(50);
+    expect(error?.details?.["timeoutMs"]).toBe(50);
   });
 
   test("completes before timeout on fast command", async () => {
@@ -363,7 +366,7 @@ describe("createBunCliRunner timeouts", () => {
     }
 
     expect(error?.kind).toBe("timeout");
-    expect(error?.details?.timeoutMs).toBe(50);
+    expect(error?.details?.["timeoutMs"]).toBe(50);
   });
 
   test("uses default timeout when not specified", async () => {
@@ -530,9 +533,9 @@ describe("error detail logging", () => {
     }
 
     // Verify error details are actionable for logging/debugging
-    expect(error?.details?.command).toBe("sleep");
-    expect(error?.details?.args).toEqual(["100"]);
-    expect(error?.details?.timeoutMs).toBe(10);
+    expect(error?.details?.["command"]).toBe("sleep");
+    expect(error?.details?.["args"]).toEqual(["100"]);
+    expect(error?.details?.["timeoutMs"]).toBe(10);
   });
 
   test("spawn_failed error includes cause", async () => {
@@ -545,9 +548,9 @@ describe("error detail logging", () => {
       error = e as CliCommandError;
     }
 
-    expect(error?.details?.command).toBe("this_command_does_not_exist");
-    expect(error?.details?.args).toEqual(["--flag"]);
-    expect(error?.details?.cause).toBeDefined();
+    expect(error?.details?.["command"]).toBe("this_command_does_not_exist");
+    expect(error?.details?.["args"]).toEqual(["--flag"]);
+    expect(error?.details?.["cause"]).toBeDefined();
   });
 
   test("parse_error includes stdout snippet", () => {
@@ -558,8 +561,8 @@ describe("error detail logging", () => {
       error = e as CliCommandError;
     }
 
-    expect(error?.details?.stdout).toBe("{malformed json with context data}");
-    expect(error?.details?.cause).toBeDefined();
+    expect(error?.details?.["stdout"]).toBe("{malformed json with context data}");
+    expect(error?.details?.["cause"]).toBeDefined();
   });
 
   test("validation_error includes Zod issues", () => {
@@ -572,7 +575,7 @@ describe("error detail logging", () => {
       error = e as CliCommandError;
     }
 
-    const issues = error?.details?.issues as z.ZodIssue[];
+    const issues = error?.details?.["issues"] as z.ZodIssue[];
     expect(issues).toHaveLength(1);
     expect(issues[0]?.path).toEqual(["required"]);
     expect(issues[0]?.code).toBe("invalid_type");

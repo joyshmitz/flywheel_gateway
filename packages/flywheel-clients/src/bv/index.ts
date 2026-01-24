@@ -176,7 +176,7 @@ export function createBvClient(options: BvClientOptions): BvClient {
         parsed = JSON.parse(stdout);
       } catch (error) {
         throw new BvClientError("parse_error", "Failed to parse BV output", {
-          cause: error,
+          cause: error instanceof Error ? error.message : String(error),
         });
       }
 
@@ -201,7 +201,7 @@ export function createBvClient(options: BvClientOptions): BvClient {
         parsed = JSON.parse(stdout);
       } catch (error) {
         throw new BvClientError("parse_error", "Failed to parse BV output", {
-          cause: error,
+          cause: error instanceof Error ? error.message : String(error),
         });
       }
 
@@ -222,7 +222,7 @@ export function createBvClient(options: BvClientOptions): BvClient {
         parsed = JSON.parse(stdout);
       } catch (error) {
         throw new BvClientError("parse_error", "Failed to parse BV output", {
-          cause: error,
+          cause: error instanceof Error ? error.message : String(error),
         });
       }
 
@@ -268,7 +268,7 @@ export function createBvClient(options: BvClientOptions): BvClient {
         parsed = JSON.parse(stdout);
       } catch (error) {
         throw new BvClientError("parse_error", "Failed to parse BV output", {
-          cause: error,
+          cause: error instanceof Error ? error.message : String(error),
         });
       }
 

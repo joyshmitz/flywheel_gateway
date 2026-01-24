@@ -184,9 +184,9 @@ describe("NTM Alerting Rules (bd-39ee)", () => {
 
       // Verify metadata includes diagnostic info
       expect(alert.metadata).toBeDefined();
-      expect(alert.metadata?.summary).toBeDefined();
-      expect(alert.metadata?.affectedAgents).toBeDefined();
-      expect(Array.isArray(alert.metadata?.affectedAgents)).toBe(true);
+      expect(alert.metadata?.["summary"]).toBeDefined();
+      expect(alert.metadata?.["affectedAgents"]).toBeDefined();
+      expect(Array.isArray(alert.metadata?.["affectedAgents"])).toBe(true);
     });
 
     test("fires alert when agent health is unhealthy", () => {
@@ -207,7 +207,7 @@ describe("NTM Alerting Rules (bd-39ee)", () => {
       expect(alert.title).toContain("unhealthy");
 
       // Verify affected agent metadata includes health status
-      const affected = alert.metadata?.affectedAgents as Array<{
+      const affected = alert.metadata?.["affectedAgents"] as Array<{
         pane: string;
         health: string;
       }>;
@@ -233,7 +233,7 @@ describe("NTM Alerting Rules (bd-39ee)", () => {
       const alert = fireAlert(rule!, context);
       expect(alert.title).toContain("2"); // 2 unhealthy agents
 
-      const affected = alert.metadata?.affectedAgents as unknown[];
+      const affected = alert.metadata?.["affectedAgents"] as unknown[];
       expect(affected?.length).toBe(3); // All non-healthy agents included
     });
 
@@ -300,9 +300,9 @@ describe("NTM Alerting Rules (bd-39ee)", () => {
 
       // Verify metadata includes diagnostic details
       expect(alert.metadata).toBeDefined();
-      expect(alert.metadata?.source).toBe("ntm_is_working");
-      expect(alert.metadata?.agents).toBeDefined();
-      const agents = alert.metadata?.agents as Array<{
+      expect(alert.metadata?.["source"]).toBe("ntm_is_working");
+      expect(alert.metadata?.["agents"]).toBeDefined();
+      const agents = alert.metadata?.["agents"] as Array<{
         agentId: string;
         recommendation: string;
         reason: string;
@@ -332,7 +332,7 @@ describe("NTM Alerting Rules (bd-39ee)", () => {
       expect(rule!.condition(context)).toBe(true);
 
       const alert = fireAlert(rule!, context);
-      const agents = alert.metadata?.agents as Array<{
+      const agents = alert.metadata?.["agents"] as Array<{
         agentId: string;
         recommendation: string;
         confidence: number;
@@ -455,10 +455,10 @@ describe("NTM Alerting Rules (bd-39ee)", () => {
 
       // Verify metadata includes termination details
       expect(alert.metadata).toBeDefined();
-      expect(alert.metadata?.removedAgents).toEqual(["agent-2", "agent-3"]);
-      expect(alert.metadata?.previousAgentCount).toBe(3);
-      expect(alert.metadata?.currentAgentCount).toBe(1);
-      expect(alert.metadata?.timestamp).toBeDefined();
+      expect(alert.metadata?.["removedAgents"]).toEqual(["agent-2", "agent-3"]);
+      expect(alert.metadata?.["previousAgentCount"]).toBe(3);
+      expect(alert.metadata?.["currentAgentCount"]).toBe(1);
+      expect(alert.metadata?.["timestamp"]).toBeDefined();
     });
 
     test("fires alert for single agent termination", () => {
@@ -545,8 +545,8 @@ describe("NTM Alerting Rules (bd-39ee)", () => {
 
       // Verify metadata includes rate limit info
       expect(alert.metadata).toBeDefined();
-      expect(alert.metadata?.summary).toBeDefined();
-      expect(alert.metadata?.rateLimitedAgents).toBeDefined();
+      expect(alert.metadata?.["summary"]).toBeDefined();
+      expect(alert.metadata?.["rateLimitedAgents"]).toBeDefined();
     });
 
     test("does not fire when no agents are rate limited", () => {
@@ -606,7 +606,7 @@ describe("NTM Alerting Rules (bd-39ee)", () => {
 
       // Verify metadata includes context info
       expect(alert.metadata).toBeDefined();
-      expect(alert.metadata?.contextLowAgents).toBeDefined();
+      expect(alert.metadata?.["contextLowAgents"]).toBeDefined();
     });
 
     test("does not fire when no agents have low context", () => {
@@ -686,7 +686,7 @@ describe("NTM Alerting Rules (bd-39ee)", () => {
       const alert = fireAlert(rule!, context);
 
       // Verify detailed agent info in metadata
-      const affected = alert.metadata?.affectedAgents as Array<{
+      const affected = alert.metadata?.["affectedAgents"] as Array<{
         pane: string;
         sessionName: string;
         agentType: string;
@@ -722,7 +722,7 @@ describe("NTM Alerting Rules (bd-39ee)", () => {
 
       const alert = fireAlert(rule!, context);
 
-      const agents = alert.metadata?.agents as Array<{
+      const agents = alert.metadata?.["agents"] as Array<{
         agentId: string;
         reason: string;
         confidence: number;
@@ -747,10 +747,10 @@ describe("NTM Alerting Rules (bd-39ee)", () => {
 
       const alert = fireAlert(rule!, context);
 
-      expect(alert.metadata?.timestamp).toBeDefined();
-      expect(typeof alert.metadata?.timestamp).toBe("string");
+      expect(alert.metadata?.["timestamp"]).toBeDefined();
+      expect(typeof alert.metadata?.["timestamp"]).toBe("string");
       // Should be ISO format
-      expect(() => new Date(alert.metadata?.timestamp as string)).not.toThrow();
+      expect(() => new Date(alert.metadata?.["timestamp"] as string)).not.toThrow();
     });
   });
 

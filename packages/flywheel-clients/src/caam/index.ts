@@ -13,6 +13,7 @@ import {
 import { z } from "zod";
 import {
   CliCommandError,
+  type CliCommandOptions,
   createBunCliRunner as createSharedBunCliRunner,
 } from "../cli-runner";
 
@@ -235,10 +236,12 @@ function buildRunOptions(
   options: CaamClientOptions,
   override?: CaamCommandOptions,
 ): { cwd?: string; timeout?: number } {
-  return {
-    cwd: override?.cwd ?? options.cwd,
-    timeout: override?.timeout ?? options.timeout,
-  };
+  const result: { cwd?: string; timeout?: number } = {};
+  const cwd = override?.cwd ?? options.cwd;
+  const timeout = override?.timeout ?? options.timeout;
+  if (cwd !== undefined) result.cwd = cwd;
+  if (timeout !== undefined) result.timeout = timeout;
+  return result;
 }
 
 export function createCaamClient(options: CaamClientOptions): CaamClient {
@@ -278,10 +281,7 @@ export function createCaamClient(options: CaamClientOptions): CaamClient {
 
     isAvailable: async () => {
       try {
-        await runCaamCommand(options.runner, ["status", "--json"], {
-          cwd: options.cwd,
-          timeout: options.timeout,
-        });
+        await runCaamCommand(options.runner, ["status", "--json"], buildRunOptions(options));
         return true;
       } catch {
         return false;
@@ -297,15 +297,15 @@ export function createCaamClient(options: CaamClientOptions): CaamClient {
 /**
  * Create a command runner that uses Bun.spawn for subprocess execution.
  */
-export function createBunCommandRunner(): CaamCommandRunner {
+export function createBunCaamCommandRunner(): CaamCommandRunner {
   const runner = createSharedBunCliRunner({ timeoutMs: 30000 });
   return {
     run: async (command, args, options) => {
       try {
-        const result = await runner.run(command, args, {
-          cwd: options?.cwd,
-          timeoutMs: options?.timeout,
-        });
+        const cliOpts: CliCommandOptions = {};
+        if (options?.cwd) cliOpts.cwd = options.cwd;
+        if (options?.timeout) cliOpts.timeoutMs = options.timeout;
+        const result = await runner.run(command, args, cliOpts);
         return {
           stdout: result.stdout,
           stderr: result.stderr,

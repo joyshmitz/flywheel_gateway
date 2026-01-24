@@ -288,7 +288,7 @@ describe("Setup Routes", () => {
         expect(body.error).toBeDefined();
         // Error code may be SYSTEM_UNAVAILABLE (original) or INTERNAL_ERROR (wrapped)
         expect(["SYSTEM_UNAVAILABLE", "INTERNAL_ERROR"]).toContain(
-          body.error?.code,
+          body.error?.code ?? "",
         );
       }
     });

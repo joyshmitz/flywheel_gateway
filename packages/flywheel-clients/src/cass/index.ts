@@ -13,6 +13,7 @@ import {
 import { z } from "zod";
 import {
   CliCommandError,
+  type CliCommandOptions,
   createBunCliRunner as createSharedBunCliRunner,
 } from "../cli-runner";
 
@@ -431,15 +432,15 @@ export function createCassClient(options: CassClientOptions): CassClient {
 /**
  * Create a command runner that uses Bun.spawn for subprocess execution.
  */
-export function createBunCommandRunner(): CassCommandRunner {
+export function createBunCassCommandRunner(): CassCommandRunner {
   const runner = createSharedBunCliRunner({ timeoutMs: 30000 });
   return {
     run: async (command, args, options) => {
       try {
-        const result = await runner.run(command, args, {
-          cwd: options?.cwd,
-          timeoutMs: options?.timeout,
-        });
+        const cliOpts: CliCommandOptions = {};
+        if (options?.cwd) cliOpts.cwd = options.cwd;
+        if (options?.timeout) cliOpts.timeoutMs = options.timeout;
+        const result = await runner.run(command, args, cliOpts);
         return {
           stdout: result.stdout,
           stderr: result.stderr,

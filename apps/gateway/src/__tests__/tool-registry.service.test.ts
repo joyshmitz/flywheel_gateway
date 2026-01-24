@@ -52,10 +52,11 @@ mock.module("node:fs", () => ({
 mock.module("node:fs/promises", () => ({
   ...realFsPromises,
   readFile: async (path: string, encoding?: string) => {
-    readFileCalls.push({
-      path,
-      encoding: typeof encoding === "string" ? encoding : undefined,
-    });
+    const call: { path: string; encoding?: string } = { path };
+    if (typeof encoding === "string") {
+      call.encoding = encoding;
+    }
+    readFileCalls.push(call);
     if (manifestContents.has(path)) {
       return manifestContents.get(path) as string;
     }
@@ -228,17 +229,17 @@ describe("Error mapping + logging", () => {
     const details = (
       caught as { details?: Record<string, unknown>; code?: string }
     ).details;
-    expect(details?.errorCategory).toBe("manifest_parse_error");
+    expect(details?.["errorCategory"]).toBe("manifest_parse_error");
 
     const warnEvent = logEvents.find((event) => event.level === "warn");
     expect(warnEvent).toBeDefined();
     const warnPayload = warnEvent?.args[0] as Record<string, unknown>;
-    expect(warnPayload.manifestPath).toBe(manifestPath);
-    expect(warnPayload.manifestHash).toBe(
+    expect(warnPayload["manifestPath"]).toBe(manifestPath);
+    expect(warnPayload["manifestHash"]).toBe(
       createHash("sha256").update("not: [valid").digest("hex"),
     );
-    expect(warnPayload.errorCategory).toBe("manifest_parse_error");
-    expect(warnPayload.schemaVersion).toBeNull();
+    expect(warnPayload["errorCategory"]).toBe("manifest_parse_error");
+    expect(warnPayload["schemaVersion"]).toBeNull();
   });
 
   it("logs manifest_validation_error with schema version", async () => {
@@ -257,17 +258,17 @@ describe("Error mapping + logging", () => {
 
     expect(isGatewayError(caught)).toBe(true);
     const details = (caught as { details?: Record<string, unknown> }).details;
-    expect(details?.errorCategory).toBe("manifest_validation_error");
-    expect(details?.schemaVersion).toBe("2.1.0");
+    expect(details?.["errorCategory"]).toBe("manifest_validation_error");
+    expect(details?.["schemaVersion"]).toBe("2.1.0");
 
     const warnEvent = logEvents.find((event) => event.level === "warn");
     expect(warnEvent).toBeDefined();
     const warnPayload = warnEvent?.args[0] as Record<string, unknown>;
-    expect(warnPayload.manifestPath).toBe(manifestPath);
-    expect(warnPayload.manifestHash).toBe(
+    expect(warnPayload["manifestPath"]).toBe(manifestPath);
+    expect(warnPayload["manifestHash"]).toBe(
       createHash("sha256").update(invalidSchemaManifest).digest("hex"),
     );
-    expect(warnPayload.errorCategory).toBe("manifest_validation_error");
-    expect(warnPayload.schemaVersion).toBe("2.1.0");
+    expect(warnPayload["errorCategory"]).toBe("manifest_validation_error");
+    expect(warnPayload["schemaVersion"]).toBe("2.1.0");
   });
 });

@@ -473,10 +473,10 @@ export function createBunCMCommandRunner(): CMCommandRunner {
   return {
     run: async (command, args, options) => {
       try {
-        const result = await runner.run(command, args, {
-          cwd: options?.cwd,
-          timeoutMs: options?.timeout,
-        });
+        const cliOpts: { cwd?: string; timeoutMs?: number } = {};
+        if (options?.cwd) cliOpts.cwd = options.cwd;
+        if (options?.timeout) cliOpts.timeoutMs = options.timeout;
+        const result = await runner.run(command, args, cliOpts);
         return {
           stdout: result.stdout,
           stderr: result.stderr,

@@ -212,7 +212,8 @@ describe("generateNtmSessionName", () => {
     });
 
     it("uses provider when name is not provided", () => {
-      const config = createTestConfig({ name: undefined });
+      const config = createTestConfig();
+      delete (config as { name?: string }).name;
       const sessionName = generateNtmSessionName({ config });
       expect(sessionName).toContain("-claude-");
     });
