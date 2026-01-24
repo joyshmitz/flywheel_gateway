@@ -16,12 +16,25 @@ import {
   test,
 } from "bun:test";
 import { Hono } from "hono";
+import { spawnSync } from "node:child_process";
 import { createBeadsRoutes } from "../routes/beads";
 import { createBeadsService } from "../services/beads.service";
 
 // Test configuration
 const TEST_TIMEOUT = 30000; // 30 seconds for br CLI calls
 const LOG_PREFIX = "[beads-integration]";
+
+// Check if br CLI is available
+function isBrAvailable(): boolean {
+  try {
+    const result = spawnSync("br", ["--version"], { encoding: "utf8", timeout: 5000 });
+    return result.status === 0;
+  } catch {
+    return false;
+  }
+}
+
+const BR_AVAILABLE = isBrAvailable();
 
 // Test utilities for structured logging
 interface TestLogEntry {
@@ -68,7 +81,7 @@ function getTestBeadTitle(): string {
 // Beads created during tests that need cleanup
 const createdBeadIds: string[] = [];
 
-describe("BR Endpoints Integration Tests", () => {
+describe.skipIf(!BR_AVAILABLE)("BR Endpoints Integration Tests", () => {
   let app: Hono;
   let service: ReturnType<typeof createBeadsService>;
 
