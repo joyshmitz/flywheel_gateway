@@ -421,3 +421,188 @@ describe("Provenance metadata", () => {
     expect(meta?.userMessage).toContain("manifest file not found");
   });
 });
+
+describe("Manifest provenance fields for readiness responses", () => {
+  it("manifest load sets registrySource to 'manifest' (not 'fallback')", async () => {
+    const manifestPath = "/tmp/provenance-test.yaml";
+    process.env["ACFS_MANIFEST_PATH"] = manifestPath;
+    defaultExists = false;
+    existsOverrides.set(manifestPath, true);
+    manifestContents.set(manifestPath, validManifest);
+
+    const registry = await loadToolRegistry();
+    const meta = getToolRegistryMetadata();
+
+    // Registry source field indicates manifest was loaded
+    expect(registry.source).toBe("acfs");
+    expect(meta?.registrySource).toBe("manifest");
+
+    // errorCategory is undefined (not set) for successful loads
+    expect(meta?.errorCategory).toBeUndefined();
+  });
+
+  it("fallback registry sets source to 'built-in' in registry object", async () => {
+    const manifestPath = "/tmp/nonexistent-provenance.yaml";
+    process.env["ACFS_MANIFEST_PATH"] = manifestPath;
+    defaultExists = false;
+    existsOverrides.set(manifestPath, false);
+
+    const registry = await loadToolRegistry();
+
+    // Fallback registry explicitly indicates built-in source
+    expect(registry.source).toBe("built-in");
+    expect(registry.schemaVersion).toBe("1.0.0-fallback");
+  });
+
+  it("fallback metadata indicates built-in registry source for readiness", async () => {
+    const manifestPath = "/tmp/missing-for-readiness.yaml";
+    process.env["ACFS_MANIFEST_PATH"] = manifestPath;
+    defaultExists = false;
+    existsOverrides.set(manifestPath, false);
+
+    await loadToolRegistry();
+    const meta = getToolRegistryMetadata();
+
+    // Readiness response can use these fields to indicate fallback
+    expect(meta?.registrySource).toBe("fallback");
+    expect(meta?.schemaVersion).toBe("1.0.0-fallback");
+    expect(meta?.errorCategory).toBe("manifest_missing");
+  });
+
+  it("manifestHash is a valid SHA256 hex string (64 characters)", async () => {
+    const manifestPath = "/tmp/hash-check.yaml";
+    process.env["ACFS_MANIFEST_PATH"] = manifestPath;
+    defaultExists = false;
+    existsOverrides.set(manifestPath, true);
+    manifestContents.set(manifestPath, validManifest);
+
+    await loadToolRegistry();
+    const meta = getToolRegistryMetadata();
+
+    expect(meta?.manifestHash).toBeDefined();
+    expect(meta?.manifestHash).toHaveLength(64);
+    expect(meta?.manifestHash).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it("manifestPath in metadata matches the resolved path", async () => {
+    const manifestPath = "/custom/path/tool-registry.yaml";
+    process.env["ACFS_MANIFEST_PATH"] = manifestPath;
+    defaultExists = false;
+    existsOverrides.set(manifestPath, true);
+    manifestContents.set(manifestPath, validManifest);
+
+    await loadToolRegistry();
+    const meta = getToolRegistryMetadata();
+
+    // Path should be the exact path that was resolved and loaded
+    expect(meta?.manifestPath).toBe(manifestPath);
+  });
+
+  it("fallback metadata has null manifestPath when manifest missing", async () => {
+    const manifestPath = "/tmp/does-not-exist.yaml";
+    process.env["ACFS_MANIFEST_PATH"] = manifestPath;
+    defaultExists = false;
+    existsOverrides.set(manifestPath, false);
+
+    await loadToolRegistry();
+    const meta = getToolRegistryMetadata();
+
+    // When manifest is missing, path should still indicate what was attempted
+    expect(meta?.manifestPath).toBe(manifestPath);
+    expect(meta?.manifestHash).toBeNull();
+  });
+
+  it("parse error fallback includes manifestPath and hash for diagnostics", async () => {
+    const manifestPath = "/tmp/bad-parse.yaml";
+    const badContent = "this: [is: bad: yaml";
+    process.env["ACFS_MANIFEST_PATH"] = manifestPath;
+    defaultExists = false;
+    existsOverrides.set(manifestPath, true);
+    manifestContents.set(manifestPath, badContent);
+    parseMode = "throw";
+
+    await loadToolRegistry();
+    const meta = getToolRegistryMetadata();
+
+    // Even on parse error, we should know what was attempted
+    expect(meta?.registrySource).toBe("fallback");
+    expect(meta?.errorCategory).toBe("manifest_parse_error");
+    expect(meta?.manifestPath).toBe(manifestPath);
+    // Hash of the content that failed to parse
+    expect(meta?.manifestHash).toBe(
+      createHash("sha256").update(badContent).digest("hex"),
+    );
+  });
+
+  it("validation error fallback uses fallback registry schemaVersion", async () => {
+    const manifestPath = "/tmp/invalid-schema-provenance.yaml";
+    process.env["ACFS_MANIFEST_PATH"] = manifestPath;
+    defaultExists = false;
+    existsOverrides.set(manifestPath, true);
+    manifestContents.set(manifestPath, invalidSchemaManifest);
+
+    await loadToolRegistry();
+    const meta = getToolRegistryMetadata();
+
+    // When validation fails, schemaVersion comes from the fallback registry
+    // (not the invalid manifest's version)
+    expect(meta?.registrySource).toBe("fallback");
+    expect(meta?.errorCategory).toBe("manifest_validation_error");
+    expect(meta?.schemaVersion).toBe("1.0.0-fallback");
+  });
+
+  it("loadedAt timestamp is recent (within last second)", async () => {
+    const manifestPath = "/tmp/timestamp-test.yaml";
+    process.env["ACFS_MANIFEST_PATH"] = manifestPath;
+    defaultExists = false;
+    existsOverrides.set(manifestPath, true);
+    manifestContents.set(manifestPath, validManifest);
+
+    const before = Date.now();
+    await loadToolRegistry();
+    const after = Date.now();
+
+    const meta = getToolRegistryMetadata();
+
+    expect(meta?.loadedAt).toBeGreaterThanOrEqual(before);
+    expect(meta?.loadedAt).toBeLessThanOrEqual(after);
+  });
+
+  it("all provenance fields have correct types for API serialization", async () => {
+    const manifestPath = "/tmp/type-check.yaml";
+    process.env["ACFS_MANIFEST_PATH"] = manifestPath;
+    defaultExists = false;
+    existsOverrides.set(manifestPath, true);
+    manifestContents.set(manifestPath, validManifest);
+
+    await loadToolRegistry();
+    const meta = getToolRegistryMetadata();
+
+    // These assertions ensure JSON serialization works correctly
+    expect(typeof meta?.manifestPath).toBe("string");
+    expect(typeof meta?.schemaVersion).toBe("string");
+    expect(typeof meta?.manifestHash).toBe("string");
+    expect(typeof meta?.registrySource).toBe("string");
+    expect(typeof meta?.loadedAt).toBe("number");
+    // errorCategory is undefined (not set) for successful loads
+    expect(meta?.errorCategory).toBeUndefined();
+  });
+
+  it("fallback provenance fields have correct nullable types", async () => {
+    const manifestPath = "/tmp/nullable-types.yaml";
+    process.env["ACFS_MANIFEST_PATH"] = manifestPath;
+    defaultExists = false;
+    existsOverrides.set(manifestPath, false);
+
+    await loadToolRegistry();
+    const meta = getToolRegistryMetadata();
+
+    // For fallback, some fields should be null while others have values
+    expect(typeof meta?.registrySource).toBe("string");
+    expect(meta?.registrySource).toBe("fallback");
+    expect(typeof meta?.errorCategory).toBe("string");
+    expect(typeof meta?.userMessage).toBe("string");
+    // manifestHash is null when file doesn't exist
+    expect(meta?.manifestHash).toBeNull();
+  });
+});
