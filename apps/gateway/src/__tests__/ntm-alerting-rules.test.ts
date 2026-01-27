@@ -750,7 +750,9 @@ describe("NTM Alerting Rules (bd-39ee)", () => {
       expect(alert.metadata?.["timestamp"]).toBeDefined();
       expect(typeof alert.metadata?.["timestamp"]).toBe("string");
       // Should be ISO format
-      expect(() => new Date(alert.metadata?.["timestamp"] as string)).not.toThrow();
+      expect(
+        () => new Date(alert.metadata?.["timestamp"] as string),
+      ).not.toThrow();
     });
   });
 

@@ -27,7 +27,10 @@ const LOG_PREFIX = "[beads-integration]";
 // Check if br CLI is available
 function isBrAvailable(): boolean {
   try {
-    const result = spawnSync("br", ["--version"], { encoding: "utf8", timeout: 5000 });
+    const result = spawnSync("br", ["--version"], {
+      encoding: "utf8",
+      timeout: 5000,
+    });
     return result.status === 0;
   } catch {
     return false;

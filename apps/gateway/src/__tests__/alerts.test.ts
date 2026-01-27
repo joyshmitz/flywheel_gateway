@@ -431,13 +431,29 @@ describe("Alert Service", () => {
       return {
         status: allToolsInstalled && !checksumsStale ? "healthy" : "unhealthy",
         tools: {
-          dcg: { installed: dcgInstalled, version: dcgInstalled ? "1.0.0" : null, healthy: dcgInstalled },
-          slb: { installed: slbInstalled, version: slbInstalled ? "0.9.0" : null, healthy: slbInstalled },
-          ubs: { installed: ubsInstalled, version: ubsInstalled ? "2.0.0" : null, healthy: ubsInstalled },
+          dcg: {
+            installed: dcgInstalled,
+            version: dcgInstalled ? "1.0.0" : null,
+            healthy: dcgInstalled,
+          },
+          slb: {
+            installed: slbInstalled,
+            version: slbInstalled ? "0.9.0" : null,
+            healthy: slbInstalled,
+          },
+          ubs: {
+            installed: ubsInstalled,
+            version: ubsInstalled ? "2.0.0" : null,
+            healthy: ubsInstalled,
+          },
         },
         checksums: {
-          registryGeneratedAt: checksumsStale ? "2025-01-01T00:00:00Z" : new Date().toISOString(),
-          registryAgeMs: overrides.registryAgeMs ?? (checksumsStale ? 30 * 24 * 60 * 60 * 1000 : 1000),
+          registryGeneratedAt: checksumsStale
+            ? "2025-01-01T00:00:00Z"
+            : new Date().toISOString(),
+          registryAgeMs:
+            overrides.registryAgeMs ??
+            (checksumsStale ? 30 * 24 * 60 * 60 * 1000 : 1000),
           isStale: checksumsStale,
           staleThresholdMs: 7 * 24 * 60 * 60 * 1000,
         },
@@ -623,7 +639,10 @@ describe("Alert Service", () => {
         const ageMs = 10 * 24 * 60 * 60 * 1000; // 10 days
         const context: AlertContext = {
           ...createBaseContext(),
-          safety: createSafetyContext({ checksumsStale: true, registryAgeMs: ageMs }),
+          safety: createSafetyContext({
+            checksumsStale: true,
+            registryAgeMs: ageMs,
+          }),
         };
 
         const alert = fireAlert(rule!, context);
@@ -637,7 +656,10 @@ describe("Alert Service", () => {
         const ageMs = 14 * 24 * 60 * 60 * 1000; // 14 days
         const context: AlertContext = {
           ...createBaseContext(),
-          safety: createSafetyContext({ checksumsStale: true, registryAgeMs: ageMs }),
+          safety: createSafetyContext({
+            checksumsStale: true,
+            registryAgeMs: ageMs,
+          }),
         };
 
         const alert = fireAlert(rule!, context);

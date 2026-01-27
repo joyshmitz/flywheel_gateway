@@ -8,13 +8,7 @@
  * Part of bd-3kes: Tests for beads list/filter parity.
  */
 
-import {
-  afterAll,
-  beforeAll,
-  describe,
-  expect,
-  test,
-} from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 import { createBeadsRoutes } from "../routes/beads";
 import { createBeadsService } from "../services/beads.service";
@@ -468,7 +462,9 @@ describe("Beads Filter Parity Tests (bd-3kes)", () => {
         const beads = data.data.beads;
         // Verify beads are sorted by priority (ascending - 0 is highest)
         for (let i = 1; i < beads.length; i++) {
-          expect(beads[i].priority).toBeGreaterThanOrEqual(beads[i - 1].priority);
+          expect(beads[i].priority).toBeGreaterThanOrEqual(
+            beads[i - 1].priority,
+          );
         }
       },
       TEST_TIMEOUT,
@@ -565,7 +561,9 @@ describe("Beads Filter Parity Tests (bd-3kes)", () => {
         const beads = data.data.beads;
         // Verify beads are sorted by title (alphabetically)
         for (let i = 1; i < beads.length; i++) {
-          expect(beads[i].title.localeCompare(beads[i - 1].title)).toBeGreaterThanOrEqual(0);
+          expect(
+            beads[i].title.localeCompare(beads[i - 1].title),
+          ).toBeGreaterThanOrEqual(0);
         }
       },
       TEST_TIMEOUT,
@@ -780,7 +778,9 @@ describe("Beads Filter Parity Tests (bd-3kes)", () => {
         }
         // Verify sorted by priority
         for (let i = 1; i < beads.length; i++) {
-          expect(beads[i].priority).toBeGreaterThanOrEqual(beads[i - 1].priority);
+          expect(beads[i].priority).toBeGreaterThanOrEqual(
+            beads[i - 1].priority,
+          );
         }
       },
       TEST_TIMEOUT,
