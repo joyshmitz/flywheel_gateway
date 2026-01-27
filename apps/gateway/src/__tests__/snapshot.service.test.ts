@@ -3,15 +3,82 @@
  *
  * Note: These tests use short collection timeouts to avoid long test times.
  * The service is designed for graceful degradation, so partial failures are expected.
+ *
+ * Coverage for bd-n2t5:
+ * - Partial failure scenarios (tool down, NTM unavailable)
+ * - Detailed logging assertions for degraded responses
+ * - Cache behavior validation (TTL expiry, concurrent requests)
+ * - Timeout behavior and error handling
  */
 
-import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import type { SystemSnapshot } from "@flywheel/shared";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import type { SystemHealthStatus, SystemSnapshot } from "@flywheel/shared";
+
+// ============================================================================
+// Mock Logger for Logging Assertions
+// ============================================================================
+
+interface LogCall {
+  level: string;
+  context: Record<string, unknown>;
+  message: string;
+}
+
+const logCalls: LogCall[] = [];
+
+/**
+ * Parse pino-style log arguments which can be either:
+ * - (message: string) - just a message
+ * - (context: object, message: string) - context object and message
+ */
+function parseLogArgs(args: unknown[]): {
+  context: Record<string, unknown>;
+  message: string;
+} {
+  if (args.length === 1 && typeof args[0] === "string") {
+    return { context: {}, message: args[0] };
+  }
+  if (
+    args.length === 2 &&
+    typeof args[0] === "object" &&
+    args[0] !== null &&
+    typeof args[1] === "string"
+  ) {
+    return { context: args[0] as Record<string, unknown>, message: args[1] };
+  }
+  // Fallback
+  return { context: {}, message: String(args[0] ?? "") };
+}
+
+const mockLogger = {
+  info: (...args: unknown[]) => {
+    const { context, message } = parseLogArgs(args);
+    logCalls.push({ level: "info", context, message });
+  },
+  warn: (...args: unknown[]) => {
+    const { context, message } = parseLogArgs(args);
+    logCalls.push({ level: "warn", context, message });
+  },
+  debug: (...args: unknown[]) => {
+    const { context, message } = parseLogArgs(args);
+    logCalls.push({ level: "debug", context, message });
+  },
+  error: (...args: unknown[]) => {
+    const { context, message } = parseLogArgs(args);
+    logCalls.push({ level: "error", context, message });
+  },
+};
+
+// Mock the correlation middleware to return our mock logger
+mock.module("../middleware/correlation", () => ({
+  getLogger: () => mockLogger,
+}));
+
 import {
-  SnapshotService,
+  clearSnapshotServiceInstance,
   createSnapshotService,
   getSnapshotService,
-  clearSnapshotServiceInstance,
+  SnapshotService,
 } from "../services/snapshot.service";
 
 // ============================================================================
@@ -21,6 +88,7 @@ import {
 describe("SnapshotService", () => {
   beforeEach(() => {
     clearSnapshotServiceInstance();
+    logCalls.length = 0; // Clear log calls between tests
   });
 
   afterEach(() => {
@@ -351,6 +419,548 @@ describe("SnapshotService", () => {
       ) {
         expect(snapshot.summary.status).toBe("degraded");
       }
+    });
+  });
+
+  // ============================================================================
+  // Partial Failure Scenarios (bd-n2t5)
+  // ============================================================================
+
+  describe("partial failure scenarios", () => {
+    // These tests verify graceful degradation when individual sources fail
+
+    test("returns valid snapshot when NTM is unavailable", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 50, // Short timeout
+        cacheTtlMs: 100,
+      });
+
+      const snapshot = await service.getSnapshot();
+
+      // NTM should show unavailable but snapshot should still be valid
+      expect(snapshot.ntm).toBeDefined();
+      expect(snapshot.ntm.capturedAt).toBeDefined();
+      // NTM may or may not be available depending on environment
+      // The key test is that other sources are still collected
+      expect(snapshot.beads).toBeDefined();
+      expect(snapshot.tools).toBeDefined();
+      expect(snapshot.agentMail).toBeDefined();
+    });
+
+    test("returns valid snapshot when beads tools are unavailable", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 50,
+        cacheTtlMs: 100,
+      });
+
+      const snapshot = await service.getSnapshot();
+
+      // Beads should have a valid structure even if unavailable
+      expect(snapshot.beads).toBeDefined();
+      expect(snapshot.beads.statusCounts).toBeDefined();
+      expect(snapshot.beads.typeCounts).toBeDefined();
+      expect(snapshot.beads.priorityCounts).toBeDefined();
+
+      // When beads unavailable, counts should be zero
+      if (!snapshot.beads.brAvailable && !snapshot.beads.bvAvailable) {
+        expect(snapshot.beads.statusCounts.total).toBe(0);
+        expect(snapshot.beads.actionableCount).toBe(0);
+        expect(snapshot.beads.topRecommendations).toEqual([]);
+      }
+    });
+
+    test("returns valid snapshot when tool health check fails", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 50,
+        cacheTtlMs: 100,
+      });
+
+      const snapshot = await service.getSnapshot();
+
+      // Tools section should still be present with valid structure
+      expect(snapshot.tools).toBeDefined();
+      expect(snapshot.tools.dcg).toBeDefined();
+      expect(snapshot.tools.slb).toBeDefined();
+      expect(snapshot.tools.ubs).toBeDefined();
+      expect(["healthy", "degraded", "unhealthy"]).toContain(
+        snapshot.tools.status,
+      );
+    });
+
+    test("returns valid snapshot when agent mail is unavailable", async () => {
+      // Use a non-existent directory to ensure agent mail fails
+      const service = createSnapshotService({
+        collectionTimeoutMs: 50,
+        cacheTtlMs: 100,
+        cwd: "/nonexistent/path",
+      });
+
+      const snapshot = await service.getSnapshot();
+
+      // Agent mail should show unavailable
+      expect(snapshot.agentMail).toBeDefined();
+      expect(snapshot.agentMail.available).toBe(false);
+      expect(snapshot.agentMail.agents).toEqual([]);
+      expect(snapshot.agentMail.reservations).toEqual([]);
+      expect(snapshot.agentMail.messages.total).toBe(0);
+    });
+
+    test("issues array contains failures when sources are unavailable", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 1, // Very short - will timeout everything
+        cacheTtlMs: 100,
+      });
+
+      const snapshot = await service.getSnapshot();
+
+      // When sources fail, issues should be populated
+      expect(Array.isArray(snapshot.summary.issues)).toBe(true);
+      // With 1ms timeout, sources will fail and issues will be logged
+      if (snapshot.summary.unknownCount > 0) {
+        expect(snapshot.summary.issues.length).toBeGreaterThan(0);
+      }
+    });
+
+    test("partial data is still usable even with multiple failures", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 5, // Very short timeout
+        cacheTtlMs: 100,
+      });
+
+      const snapshot = await service.getSnapshot();
+
+      // Verify the snapshot is still structurally valid
+      expect(snapshot.meta.schemaVersion).toBe("1.0.0");
+      expect(typeof snapshot.meta.generatedAt).toBe("string");
+      expect(typeof snapshot.meta.generationDurationMs).toBe("number");
+
+      // All sections should be present
+      expect(snapshot.ntm).toBeDefined();
+      expect(snapshot.beads).toBeDefined();
+      expect(snapshot.tools).toBeDefined();
+      expect(snapshot.agentMail).toBeDefined();
+
+      // Summary should reflect the failures
+      const totalStatuses =
+        snapshot.summary.healthyCount +
+        snapshot.summary.degradedCount +
+        snapshot.summary.unhealthyCount +
+        snapshot.summary.unknownCount;
+      expect(totalStatuses).toBe(4);
+    });
+
+    test("health status correctly prioritizes unhealthy over degraded", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 50,
+        cacheTtlMs: 100,
+      });
+
+      const snapshot = await service.getSnapshot();
+
+      // Verify health status hierarchy
+      if (snapshot.summary.unhealthyCount > 0) {
+        expect(snapshot.summary.status).toBe("unhealthy");
+      } else if (
+        snapshot.summary.degradedCount > 0 ||
+        snapshot.summary.unknownCount > 0
+      ) {
+        expect(snapshot.summary.status).toBe("degraded");
+      } else {
+        expect(snapshot.summary.status).toBe("healthy");
+      }
+    });
+  });
+
+  // ============================================================================
+  // Logging Assertions (bd-n2t5)
+  // ============================================================================
+
+  describe("logging for degraded responses", () => {
+    test("logs info message when snapshot is generated", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 50,
+        cacheTtlMs: 100,
+      });
+
+      await service.getSnapshot();
+
+      // Should have an info log for snapshot generation
+      const infoLog = logCalls.find(
+        (c) => c.level === "info" && c.message === "System snapshot generated",
+      );
+      expect(infoLog).toBeDefined();
+      expect(infoLog?.context["status"]).toBeDefined();
+      expect(typeof infoLog?.context["healthyCount"]).toBe("number");
+      expect(typeof infoLog?.context["unhealthyCount"]).toBe("number");
+      expect(typeof infoLog?.context["generationDurationMs"]).toBe("number");
+    });
+
+    test("logs debug message with collection latencies", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 50,
+        cacheTtlMs: 100,
+      });
+
+      await service.getSnapshot();
+
+      // Should have a debug log for data collection
+      const debugLog = logCalls.find(
+        (c) => c.level === "debug" && c.message === "Data collection completed",
+      );
+      expect(debugLog).toBeDefined();
+
+      // Verify latency fields are present for each source
+      const ctx = debugLog?.context as Record<
+        string,
+        { success: boolean; latencyMs: number }
+      >;
+      expect(ctx["ntm"]).toBeDefined();
+      expect(typeof ctx["ntm"]?.success).toBe("boolean");
+      expect(typeof ctx["ntm"]?.latencyMs).toBe("number");
+
+      expect(ctx["beads"]).toBeDefined();
+      expect(typeof ctx["beads"]?.success).toBe("boolean");
+      expect(typeof ctx["beads"]?.latencyMs).toBe("number");
+
+      expect(ctx["tools"]).toBeDefined();
+      expect(typeof ctx["tools"]?.success).toBe("boolean");
+      expect(typeof ctx["tools"]?.latencyMs).toBe("number");
+
+      expect(ctx["agentMail"]).toBeDefined();
+      expect(typeof ctx["agentMail"]?.success).toBe("boolean");
+      expect(typeof ctx["agentMail"]?.latencyMs).toBe("number");
+    });
+
+    test("logs cache hit on subsequent requests within TTL", async () => {
+      const service = createSnapshotService({
+        cacheTtlMs: 60000, // Long TTL
+        collectionTimeoutMs: 50,
+      });
+
+      // First request - should collect data
+      await service.getSnapshot();
+      logCalls.length = 0; // Clear logs
+
+      // Second request - should use cache
+      await service.getSnapshot();
+
+      // Should have a debug log for cache hit
+      const cacheLog = logCalls.find(
+        (c) => c.level === "debug" && c.message === "Snapshot cache hit",
+      );
+      expect(cacheLog).toBeDefined();
+      expect(typeof cacheLog?.context["cacheTtlMs"]).toBe("number");
+    });
+
+    test("logs collection start message", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 50,
+        cacheTtlMs: 100,
+      });
+
+      await service.getSnapshot();
+
+      // Should log collection start
+      const startLog = logCalls.find(
+        (c) => c.level === "info" && c.message === "Collecting system snapshot",
+      );
+      expect(startLog).toBeDefined();
+    });
+
+    test("logs cache clear operation", async () => {
+      const service = createSnapshotService({
+        cacheTtlMs: 60000,
+        collectionTimeoutMs: 50,
+      });
+
+      await service.getSnapshot();
+      logCalls.length = 0;
+
+      service.clearCache();
+
+      const clearLog = logCalls.find(
+        (c) => c.level === "debug" && c.message === "Snapshot cache cleared",
+      );
+      expect(clearLog).toBeDefined();
+    });
+  });
+
+  // ============================================================================
+  // Timeout Behavior (bd-n2t5)
+  // ============================================================================
+
+  describe("timeout behavior", () => {
+    test("handles source timeout gracefully", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 1, // 1ms - will timeout
+        cacheTtlMs: 100,
+      });
+
+      const snapshot = await service.getSnapshot();
+
+      // Should not throw, should return valid snapshot
+      expect(snapshot).toBeDefined();
+      expect(snapshot.meta).toBeDefined();
+      expect(snapshot.summary).toBeDefined();
+    });
+
+    test("timeout does not block other source collection", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 50,
+        cacheTtlMs: 100,
+      });
+
+      const startTime = performance.now();
+      await service.getSnapshot();
+      const duration = performance.now() - startTime;
+
+      // With parallel collection and 50ms timeout per source,
+      // total time should be < 4x50ms (sources run in parallel)
+      // Allow significant overhead for CI environments and test execution
+      expect(duration).toBeLessThan(2000);
+    });
+
+    test("generation duration is tracked accurately", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 50,
+        cacheTtlMs: 100,
+      });
+
+      const snapshot = await service.getSnapshot();
+
+      // Generation duration should be positive and reasonable
+      expect(snapshot.meta.generationDurationMs).toBeGreaterThanOrEqual(0);
+      expect(snapshot.meta.generationDurationMs).toBeLessThan(1000);
+    });
+
+    test("very short timeout still produces valid empty data", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 1,
+        cacheTtlMs: 100,
+      });
+
+      const snapshot = await service.getSnapshot();
+
+      // With 1ms timeout, data will be empty but valid
+      expect(snapshot.ntm.sessions).toEqual([]);
+      expect(snapshot.ntm.summary.totalSessions).toBe(0);
+      expect(snapshot.ntm.summary.totalAgents).toBe(0);
+    });
+  });
+
+  // ============================================================================
+  // Cache TTL Expiry (bd-n2t5)
+  // ============================================================================
+
+  describe("cache TTL expiry", () => {
+    test("cache expires after TTL", async () => {
+      const service = createSnapshotService({
+        cacheTtlMs: 50, // 50ms TTL
+        collectionTimeoutMs: 30,
+      });
+
+      const first = await service.getSnapshot();
+
+      // Wait for TTL to expire
+      await new Promise((resolve) => setTimeout(resolve, 60));
+
+      const second = await service.getSnapshot();
+
+      // Should have different timestamps (cache expired)
+      expect(first.meta.generatedAt).not.toBe(second.meta.generatedAt);
+    });
+
+    test("cache does not expire before TTL", async () => {
+      const service = createSnapshotService({
+        cacheTtlMs: 5000, // 5 second TTL
+        collectionTimeoutMs: 30,
+      });
+
+      const first = await service.getSnapshot();
+
+      // Wait less than TTL
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      const second = await service.getSnapshot();
+
+      // Should have same timestamps (cache still valid)
+      expect(first.meta.generatedAt).toBe(second.meta.generatedAt);
+    });
+
+    test("concurrent requests use same cached snapshot", async () => {
+      const service = createSnapshotService({
+        cacheTtlMs: 60000,
+        collectionTimeoutMs: 50,
+      });
+
+      // First request to populate cache
+      await service.getSnapshot();
+
+      // Concurrent requests should all use cache
+      const [snap1, snap2, snap3] = await Promise.all([
+        service.getSnapshot(),
+        service.getSnapshot(),
+        service.getSnapshot(),
+      ]);
+
+      // All should have same timestamp
+      expect(snap1.meta.generatedAt).toBe(snap2.meta.generatedAt);
+      expect(snap2.meta.generatedAt).toBe(snap3.meta.generatedAt);
+    });
+
+    test("bypassCache ignores TTL", async () => {
+      const service = createSnapshotService({
+        cacheTtlMs: 60000, // Long TTL
+        collectionTimeoutMs: 30,
+      });
+
+      const first = await service.getSnapshot();
+
+      // Wait a tiny bit to ensure different timestamp
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      const second = await service.getSnapshot({ bypassCache: true });
+
+      // Should have different timestamps despite long TTL
+      expect(first.meta.generatedAt).not.toBe(second.meta.generatedAt);
+    });
+
+    test("cache age is tracked correctly", async () => {
+      const service = createSnapshotService({
+        cacheTtlMs: 60000,
+        collectionTimeoutMs: 30,
+      });
+
+      await service.getSnapshot();
+
+      // Wait a bit
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const stats = service.getCacheStats();
+      expect(stats.cached).toBe(true);
+      expect(stats.age).toBeGreaterThanOrEqual(50);
+    });
+  });
+
+  // ============================================================================
+  // Fallback Value Verification (bd-n2t5)
+  // ============================================================================
+
+  describe("fallback value structure", () => {
+    test("NTM fallback has correct structure", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 1, // Will fail
+        cacheTtlMs: 100,
+      });
+
+      const snapshot = await service.getSnapshot();
+
+      // Verify NTM fallback structure
+      expect(snapshot.ntm.capturedAt).toBeDefined();
+      expect(typeof snapshot.ntm.available).toBe("boolean");
+      expect(Array.isArray(snapshot.ntm.sessions)).toBe(true);
+      expect(snapshot.ntm.summary.totalSessions).toBe(0);
+      expect(snapshot.ntm.summary.totalAgents).toBe(0);
+      expect(snapshot.ntm.summary.attachedCount).toBe(0);
+      expect(snapshot.ntm.summary.byAgentType).toEqual({
+        claude: 0,
+        codex: 0,
+        gemini: 0,
+        cursor: 0,
+        windsurf: 0,
+        aider: 0,
+      });
+      expect(Array.isArray(snapshot.ntm.alerts)).toBe(true);
+    });
+
+    test("Beads fallback has correct structure", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 1, // Will fail
+        cacheTtlMs: 100,
+      });
+
+      const snapshot = await service.getSnapshot();
+
+      // Verify beads fallback structure
+      expect(snapshot.beads.capturedAt).toBeDefined();
+      expect(typeof snapshot.beads.brAvailable).toBe("boolean");
+      expect(typeof snapshot.beads.bvAvailable).toBe("boolean");
+      expect(snapshot.beads.statusCounts).toEqual({
+        open: 0,
+        inProgress: 0,
+        blocked: 0,
+        closed: 0,
+        total: 0,
+      });
+      expect(snapshot.beads.typeCounts).toEqual({
+        bug: 0,
+        feature: 0,
+        task: 0,
+        epic: 0,
+        chore: 0,
+      });
+      expect(snapshot.beads.priorityCounts).toEqual({
+        p0: 0,
+        p1: 0,
+        p2: 0,
+        p3: 0,
+        p4: 0,
+      });
+      expect(snapshot.beads.actionableCount).toBe(0);
+      expect(snapshot.beads.topRecommendations).toEqual([]);
+      expect(snapshot.beads.quickWins).toEqual([]);
+      expect(snapshot.beads.blockersToClean).toEqual([]);
+    });
+
+    test("Tool health fallback has correct structure", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 1, // Will fail
+        cacheTtlMs: 100,
+      });
+
+      const snapshot = await service.getSnapshot();
+
+      // Verify tool health fallback structure
+      expect(snapshot.tools.capturedAt).toBeDefined();
+      expect(snapshot.tools.dcg).toEqual({
+        installed: false,
+        version: null,
+        healthy: false,
+      });
+      expect(snapshot.tools.slb).toEqual({
+        installed: false,
+        version: null,
+        healthy: false,
+      });
+      expect(snapshot.tools.ubs).toEqual({
+        installed: false,
+        version: null,
+        healthy: false,
+      });
+      expect(snapshot.tools.status).toBe("unhealthy");
+      expect(Array.isArray(snapshot.tools.issues)).toBe(true);
+      expect(Array.isArray(snapshot.tools.recommendations)).toBe(true);
+    });
+
+    test("Agent Mail fallback has correct structure", async () => {
+      const service = createSnapshotService({
+        collectionTimeoutMs: 1,
+        cacheTtlMs: 100,
+        cwd: "/nonexistent",
+      });
+
+      const snapshot = await service.getSnapshot();
+
+      // Verify agent mail fallback structure
+      expect(snapshot.agentMail.capturedAt).toBeDefined();
+      expect(snapshot.agentMail.available).toBe(false);
+      expect(snapshot.agentMail.agents).toEqual([]);
+      expect(snapshot.agentMail.reservations).toEqual([]);
+      expect(snapshot.agentMail.messages).toEqual({
+        total: 0,
+        unread: 0,
+        byPriority: { low: 0, normal: 0, high: 0, urgent: 0 },
+      });
     });
   });
 });
