@@ -34,11 +34,14 @@ import {
   type ToolCategories,
   type ToolPriority,
   type PhaseOrderEntry,
+  type ToolRegistryDefinition,
   getToolDisplayInfo,
+  getToolDisplayInfoFromRegistry,
   getToolPriority,
   getToolPhase,
   useInstallTool,
   useReadiness,
+  useToolRegistry,
 } from "../hooks/useSetup";
 import {
   fadeVariants,
@@ -197,6 +200,7 @@ interface ToolCardProps {
   index?: number;
   priority?: ToolPriority;
   phase?: number | undefined;
+  registryTool?: ToolRegistryDefinition;
 }
 
 function ToolCard({
@@ -206,11 +210,15 @@ function ToolCard({
   index = 0,
   priority,
   phase,
+  registryTool,
 }: ToolCardProps) {
-  const display = getToolDisplayInfo(cli.name);
-  const isAgent = ["claude", "codex", "gemini", "aider", "gh-copilot"].includes(
-    cli.name,
-  );
+  // Use registry display info if available, otherwise fall back to static map
+  const display = registryTool
+    ? getToolDisplayInfoFromRegistry(registryTool)
+    : getToolDisplayInfo(cli.name);
+  const isAgent = registryTool
+    ? registryTool.category === "agent"
+    : ["claude", "codex", "gemini", "aider", "gh-copilot"].includes(cli.name);
 
   return (
     <motion.div
@@ -491,6 +499,7 @@ interface DetectStepContentProps {
   missingRequired: string[];
   toolCategories?: ToolCategories | undefined;
   installOrder?: PhaseOrderEntry[] | undefined;
+  toolMap?: Map<string, ToolRegistryDefinition>;
   onNext: () => void;
 }
 
@@ -503,6 +512,7 @@ function DetectStepContent({
   missingRequired,
   toolCategories,
   installOrder,
+  toolMap,
   onNext,
 }: DetectStepContentProps) {
   return (
@@ -554,6 +564,7 @@ function DetectStepContent({
               index={i}
               priority={getToolPriority(agent.name, toolCategories)}
               phase={getToolPhase(agent.name, installOrder)}
+              registryTool={toolMap?.get(agent.name)}
             />
           ))}
         </motion.div>
@@ -585,6 +596,7 @@ function DetectStepContent({
               index={i}
               priority={getToolPriority(tool.name, toolCategories)}
               phase={getToolPhase(tool.name, installOrder)}
+              registryTool={toolMap?.get(tool.name)}
             />
           ))}
         </motion.div>
@@ -613,6 +625,7 @@ interface InstallStepContentProps {
   installingTool: string | null;
   toolCategories?: ToolCategories | undefined;
   installOrder?: PhaseOrderEntry[] | undefined;
+  toolMap?: Map<string, ToolRegistryDefinition>;
   onNext: () => void;
   onBack: () => void;
 }
@@ -623,6 +636,7 @@ function InstallStepContent({
   installingTool,
   toolCategories,
   installOrder,
+  toolMap,
   onNext,
   onBack,
 }: InstallStepContentProps) {
@@ -688,6 +702,7 @@ function InstallStepContent({
                 index={i}
                 priority={getToolPriority(tool.name, toolCategories)}
                 phase={getToolPhase(tool.name, installOrder)}
+                registryTool={toolMap?.get(tool.name)}
               />
             ))}
           </motion.div>
@@ -715,6 +730,7 @@ function InstallStepContent({
                 index={i}
                 priority={getToolPriority(tool.name, toolCategories)}
                 phase={getToolPhase(tool.name, installOrder)}
+                registryTool={toolMap?.get(tool.name)}
               />
             ))}
           </motion.div>
@@ -755,6 +771,7 @@ interface VerifyStepContentProps {
     toolCategories?: ToolCategories;
     installOrder?: PhaseOrderEntry[];
   };
+  toolMap?: Map<string, ToolRegistryDefinition>;
   onRefresh: () => void;
   loading: boolean;
   onBack: () => void;
@@ -762,6 +779,7 @@ interface VerifyStepContentProps {
 
 function VerifyStepContent({
   status,
+  toolMap,
   onRefresh,
   loading,
   onBack,
@@ -951,6 +969,7 @@ function VerifyStepContent({
 export function SetupPage() {
   const { status, loading, error, refresh, isReady } = useReadiness();
   const { install, installing } = useInstallTool();
+  const { toolMap } = useToolRegistry();
   const [currentStep, setCurrentStep] = useState<SetupStep>("detect");
   const [completedSteps, setCompletedSteps] = useState<SetupStep[]>([]);
   const [installingTool, setInstallingTool] = useState<string | null>(null);
