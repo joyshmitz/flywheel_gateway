@@ -11,7 +11,8 @@ Welcome to the Flywheel Gateway User Guide. This documentation covers how to use
 5. [Working with Sessions](./sessions.md) - Session lifecycle and outputs
 6. [Account Management](./accounts.md) - BYOA setup and provider accounts
 7. [Configuration](./configuration.md) - System settings and preferences
-8. [Troubleshooting](./troubleshooting.md) - Common issues and solutions
+8. [Tool Registry](./tool-registry.md) - Manifest fallback and cache refresh behavior
+9. [Troubleshooting](./troubleshooting.md) - Common issues and solutions
 
 ## Quick Links
 
