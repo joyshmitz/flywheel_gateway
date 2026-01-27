@@ -178,8 +178,7 @@ export async function isRchAvailable(): Promise<boolean> {
     const stdout = await new Response(proc.stdout).text();
     const exitCode = await proc.exited;
 
-    // Check for version pattern in output
-    return exitCode === 0 || stdout.includes("v");
+    return exitCode === 0;
   } catch {
     return false;
   }

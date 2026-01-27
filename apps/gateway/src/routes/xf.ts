@@ -170,8 +170,13 @@ xf.get("/search", async (c) => {
     const limitParam = c.req.query("limit");
     const limit = limitParam ? parseInt(limitParam, 10) : undefined;
     const typesParam = c.req.query("types");
+    const validTypes = new Set(["tweet", "like", "dm", "grok", "all"]);
     const types = typesParam
-      ? (typesParam.split(",") as ("tweet" | "like" | "dm" | "grok" | "all")[])
+      ? (typesParam
+          .split(",")
+          .filter((t): t is "tweet" | "like" | "dm" | "grok" | "all" =>
+            validTypes.has(t),
+          ) as ("tweet" | "like" | "dm" | "grok" | "all")[])
       : undefined;
     const db = c.req.query("db");
     const index = c.req.query("index");
