@@ -68,14 +68,22 @@ if (isPlaywright) {
       await expect(page.locator(".page")).toBeVisible();
 
       // Check step buttons exist
-      await expect(page.locator(".btn").filter({ hasText: "Detect" })).toBeVisible();
-      await expect(page.locator(".btn").filter({ hasText: "Install" })).toBeVisible();
-      await expect(page.locator(".btn").filter({ hasText: "Verify" })).toBeVisible();
+      await expect(
+        page.locator(".btn").filter({ hasText: "Detect" }),
+      ).toBeVisible();
+      await expect(
+        page.locator(".btn").filter({ hasText: "Install" }),
+      ).toBeVisible();
+      await expect(
+        page.locator(".btn").filter({ hasText: "Verify" }),
+      ).toBeVisible();
     });
 
     test("should start on detect step", async ({ page }) => {
       // Detect step should be primary (active)
-      const detectBtn = page.locator(".btn--primary").filter({ hasText: "Detect" });
+      const detectBtn = page
+        .locator(".btn--primary")
+        .filter({ hasText: "Detect" });
       await expect(detectBtn).toBeVisible();
     });
 
@@ -83,12 +91,16 @@ if (isPlaywright) {
       page,
     }) => {
       // Click "Continue to Install" button
-      const continueBtn = page.locator(".btn--primary").filter({ hasText: "Continue to Install" });
+      const continueBtn = page
+        .locator(".btn--primary")
+        .filter({ hasText: "Continue to Install" });
       await expect(continueBtn).toBeVisible();
       await continueBtn.click();
 
       // Install step should now be active
-      const installBtn = page.locator(".btn--primary").filter({ hasText: "Install" });
+      const installBtn = page
+        .locator(".btn--primary")
+        .filter({ hasText: "Install" });
       await expect(installBtn).toBeVisible();
     });
 
@@ -96,7 +108,9 @@ if (isPlaywright) {
       page,
     }) => {
       // Go to install step first
-      const continueBtn = page.locator(".btn--primary").filter({ hasText: "Continue to Install" });
+      const continueBtn = page
+        .locator(".btn--primary")
+        .filter({ hasText: "Continue to Install" });
       await continueBtn.click();
 
       // Click Back button
@@ -104,18 +118,30 @@ if (isPlaywright) {
       await backBtn.click();
 
       // Detect step should be active again
-      const detectBtn = page.locator(".btn--primary").filter({ hasText: "Detect" });
+      const detectBtn = page
+        .locator(".btn--primary")
+        .filter({ hasText: "Detect" });
       await expect(detectBtn).toBeVisible();
     });
 
     test("should navigate through all steps to verify", async ({ page }) => {
       // Detect → Install
-      await page.locator(".btn--primary").filter({ hasText: "Continue to Install" }).click();
-      await expect(page.locator(".btn--primary").filter({ hasText: "Install" })).toBeVisible();
+      await page
+        .locator(".btn--primary")
+        .filter({ hasText: "Continue to Install" })
+        .click();
+      await expect(
+        page.locator(".btn--primary").filter({ hasText: "Install" }),
+      ).toBeVisible();
 
       // Install → Verify
-      await page.locator(".btn--primary").filter({ hasText: "Continue to Verify" }).click();
-      await expect(page.locator(".btn--primary").filter({ hasText: "Verify" })).toBeVisible();
+      await page
+        .locator(".btn--primary")
+        .filter({ hasText: "Continue to Verify" })
+        .click();
+      await expect(
+        page.locator(".btn--primary").filter({ hasText: "Verify" }),
+      ).toBeVisible();
     });
 
     test("should allow direct navigation to steps via step buttons", async ({
@@ -123,11 +149,15 @@ if (isPlaywright) {
     }) => {
       // Click on Install step directly
       await page.locator(".btn").filter({ hasText: "Install" }).click();
-      await expect(page.locator(".btn--primary").filter({ hasText: "Install" })).toBeVisible();
+      await expect(
+        page.locator(".btn--primary").filter({ hasText: "Install" }),
+      ).toBeVisible();
 
       // Click on Verify step directly
       await page.locator(".btn").filter({ hasText: "Verify" }).click();
-      await expect(page.locator(".btn--primary").filter({ hasText: "Verify" })).toBeVisible();
+      await expect(
+        page.locator(".btn--primary").filter({ hasText: "Verify" }),
+      ).toBeVisible();
     });
   });
 
@@ -139,7 +169,9 @@ if (isPlaywright) {
     test("should display Setup Status card with readiness", async ({
       page,
     }) => {
-      const statusCard = page.locator(".card").filter({ hasText: "Setup Status" });
+      const statusCard = page
+        .locator(".card")
+        .filter({ hasText: "Setup Status" });
       await expect(statusCard).toBeVisible();
 
       // Should have a status pill (Ready or Setup Required)
@@ -149,12 +181,17 @@ if (isPlaywright) {
 
     test("should display readiness percentage gauge", async ({ page }) => {
       // Look for the percentage display inside the gauge
-      const percentDisplay = page.locator("div").filter({ hasText: /^\d+%$/ }).first();
+      const percentDisplay = page
+        .locator("div")
+        .filter({ hasText: /^\d+%$/ })
+        .first();
       await expect(percentDisplay).toBeVisible();
     });
 
     test("should display AI Coding Agents section", async ({ page }) => {
-      const agentsSection = page.locator("h3").filter({ hasText: "AI Coding Agents" });
+      const agentsSection = page
+        .locator("h3")
+        .filter({ hasText: "AI Coding Agents" });
       await expect(agentsSection).toBeVisible();
 
       // Should show availability count
@@ -163,7 +200,9 @@ if (isPlaywright) {
     });
 
     test("should display Developer Tools section", async ({ page }) => {
-      const toolsSection = page.locator("h3").filter({ hasText: "Developer Tools" });
+      const toolsSection = page
+        .locator("h3")
+        .filter({ hasText: "Developer Tools" });
       await expect(toolsSection).toBeVisible();
 
       // Should show installed count
@@ -185,7 +224,10 @@ if (isPlaywright) {
     });
 
     test("should display required badge with red styling", async ({ page }) => {
-      const requiredBadge = page.locator("div").filter({ hasText: /^REQUIRED/ }).first();
+      const requiredBadge = page
+        .locator("div")
+        .filter({ hasText: /^REQUIRED/ })
+        .first();
       if ((await requiredBadge.count()) > 0) {
         await expect(requiredBadge).toBeVisible();
       }
@@ -194,7 +236,10 @@ if (isPlaywright) {
     test("should display recommended badge with amber styling", async ({
       page,
     }) => {
-      const recommendedBadge = page.locator("div").filter({ hasText: /^RECOMMENDED/ }).first();
+      const recommendedBadge = page
+        .locator("div")
+        .filter({ hasText: /^RECOMMENDED/ })
+        .first();
       if ((await recommendedBadge.count()) > 0) {
         await expect(recommendedBadge).toBeVisible();
       }
@@ -203,7 +248,10 @@ if (isPlaywright) {
     test("should display optional badge with slate styling", async ({
       page,
     }) => {
-      const optionalBadge = page.locator("div").filter({ hasText: /^OPTIONAL/ }).first();
+      const optionalBadge = page
+        .locator("div")
+        .filter({ hasText: /^OPTIONAL/ })
+        .first();
       if ((await optionalBadge.count()) > 0) {
         await expect(optionalBadge).toBeVisible();
       }
@@ -211,7 +259,10 @@ if (isPlaywright) {
 
     test("should display phase numbers on badges", async ({ page }) => {
       // Look for badges with phase notation (P1, P2, etc.)
-      const phaseIndicator = page.locator("span").filter({ hasText: /^P\d+$/ }).first();
+      const phaseIndicator = page
+        .locator("span")
+        .filter({ hasText: /^P\d+$/ })
+        .first();
       if ((await phaseIndicator.count()) > 0) {
         await expect(phaseIndicator).toBeVisible();
       }
@@ -222,24 +273,35 @@ if (isPlaywright) {
     test.beforeEach(async ({ page }) => {
       await page.goto("/setup");
       // Navigate to Install step
-      await page.locator(".btn--primary").filter({ hasText: "Continue to Install" }).click();
-      await expect(page.locator(".btn--primary").filter({ hasText: "Install" })).toBeVisible();
+      await page
+        .locator(".btn--primary")
+        .filter({ hasText: "Continue to Install" })
+        .click();
+      await expect(
+        page.locator(".btn--primary").filter({ hasText: "Install" }),
+      ).toBeVisible();
     });
 
     test("should display Install Missing Tools header", async ({ page }) => {
-      const header = page.locator("h3").filter({ hasText: "Install Missing Tools" });
+      const header = page
+        .locator("h3")
+        .filter({ hasText: "Install Missing Tools" });
       await expect(header).toBeVisible();
     });
 
     test("should display missing tools count in pill", async ({ page }) => {
-      const missingPill = page.locator(".pill").filter({ hasText: /\d+ missing/ });
+      const missingPill = page
+        .locator(".pill")
+        .filter({ hasText: /\d+ missing/ });
       await expect(missingPill).toBeVisible();
     });
 
     test("should display Already Installed section when tools are present", async ({
       page,
     }) => {
-      const installedHeader = page.locator("h3").filter({ hasText: "Already Installed" });
+      const installedHeader = page
+        .locator("h3")
+        .filter({ hasText: "Already Installed" });
       // This section may or may not be visible depending on state
       if ((await installedHeader.count()) > 0) {
         await expect(installedHeader).toBeVisible();
@@ -251,7 +313,9 @@ if (isPlaywright) {
     test("should show install buttons for missing non-agent tools", async ({
       page,
     }) => {
-      const installBtns = page.locator(".btn--sm").filter({ hasText: "Install" });
+      const installBtns = page
+        .locator(".btn--sm")
+        .filter({ hasText: "Install" });
       // May or may not have install buttons depending on detection results
       const count = await installBtns.count();
       // Just verify the test doesn't error - count can be 0 or more
@@ -267,8 +331,12 @@ if (isPlaywright) {
     });
 
     test("should have navigation buttons", async ({ page }) => {
-      await expect(page.locator(".btn--ghost").filter({ hasText: "Back" })).toBeVisible();
-      await expect(page.locator(".btn--primary").filter({ hasText: "Continue to Verify" })).toBeVisible();
+      await expect(
+        page.locator(".btn--ghost").filter({ hasText: "Back" }),
+      ).toBeVisible();
+      await expect(
+        page.locator(".btn--primary").filter({ hasText: "Continue to Verify" }),
+      ).toBeVisible();
     });
   });
 
@@ -276,13 +344,19 @@ if (isPlaywright) {
     test.beforeEach(async ({ page }) => {
       await page.goto("/setup");
       // Navigate to Install step
-      await page.locator(".btn--primary").filter({ hasText: "Continue to Install" }).click();
+      await page
+        .locator(".btn--primary")
+        .filter({ hasText: "Continue to Install" })
+        .click();
     });
 
     test("should show confirmation modal when clicking install button", async ({
       page,
     }) => {
-      const installBtn = page.locator(".btn--sm").filter({ hasText: "Install" }).first();
+      const installBtn = page
+        .locator(".btn--sm")
+        .filter({ hasText: "Install" })
+        .first();
       if ((await installBtn.count()) > 0) {
         await installBtn.click();
 
@@ -296,7 +370,10 @@ if (isPlaywright) {
     });
 
     test("should close modal when clicking cancel", async ({ page }) => {
-      const installBtn = page.locator(".btn--sm").filter({ hasText: "Install" }).first();
+      const installBtn = page
+        .locator(".btn--sm")
+        .filter({ hasText: "Install" })
+        .first();
       if ((await installBtn.count()) > 0) {
         await installBtn.click();
 
@@ -316,42 +393,64 @@ if (isPlaywright) {
     test.beforeEach(async ({ page }) => {
       await page.goto("/setup");
       // Navigate to Verify step
-      await page.locator(".btn--primary").filter({ hasText: "Continue to Install" }).click();
-      await page.locator(".btn--primary").filter({ hasText: "Continue to Verify" }).click();
-      await expect(page.locator(".btn--primary").filter({ hasText: "Verify" })).toBeVisible();
+      await page
+        .locator(".btn--primary")
+        .filter({ hasText: "Continue to Install" })
+        .click();
+      await page
+        .locator(".btn--primary")
+        .filter({ hasText: "Continue to Verify" })
+        .click();
+      await expect(
+        page.locator(".btn--primary").filter({ hasText: "Verify" }),
+      ).toBeVisible();
     });
 
     test("should display Verification Results header", async ({ page }) => {
-      const header = page.locator("h3").filter({ hasText: "Verification Results" });
+      const header = page
+        .locator("h3")
+        .filter({ hasText: "Verification Results" });
       await expect(header).toBeVisible();
     });
 
     test("should display Re-verify button", async ({ page }) => {
-      const reverifyBtn = page.locator(".btn--sm").filter({ hasText: "Re-verify" });
+      const reverifyBtn = page
+        .locator(".btn--sm")
+        .filter({ hasText: "Re-verify" });
       await expect(reverifyBtn).toBeVisible();
     });
 
     test("should display Component Summary section", async ({ page }) => {
-      const summaryHeader = page.locator("h3").filter({ hasText: "Component Summary" });
+      const summaryHeader = page
+        .locator("h3")
+        .filter({ hasText: "Component Summary" });
       await expect(summaryHeader).toBeVisible();
     });
 
     test("should display Next Steps section", async ({ page }) => {
-      const nextStepsHeader = page.locator("h3").filter({ hasText: "Next Steps" });
+      const nextStepsHeader = page
+        .locator("h3")
+        .filter({ hasText: "Next Steps" });
       await expect(nextStepsHeader).toBeVisible();
     });
 
     test("should have Go to Dashboard link", async ({ page }) => {
-      const dashboardLink = page.locator(".btn--primary").filter({ hasText: "Go to Dashboard" });
+      const dashboardLink = page
+        .locator(".btn--primary")
+        .filter({ hasText: "Go to Dashboard" });
       await expect(dashboardLink).toBeVisible();
       await expect(dashboardLink).toHaveAttribute("href", "/");
     });
 
     test("should have external documentation links", async ({ page }) => {
-      const gettingStartedLink = page.locator(".btn--ghost").filter({ hasText: "Getting Started Guide" });
+      const gettingStartedLink = page
+        .locator(".btn--ghost")
+        .filter({ hasText: "Getting Started Guide" });
       await expect(gettingStartedLink).toBeVisible();
 
-      const agentDocsLink = page.locator(".btn--ghost").filter({ hasText: "Agent Documentation" });
+      const agentDocsLink = page
+        .locator(".btn--ghost")
+        .filter({ hasText: "Agent Documentation" });
       await expect(agentDocsLink).toBeVisible();
     });
 
@@ -359,8 +458,12 @@ if (isPlaywright) {
       page,
     }) => {
       // Should show either "Setup Complete!" or "Some components are missing"
-      const completeMsg = page.locator("div").filter({ hasText: "Setup Complete!" });
-      const incompleteMsg = page.locator("div").filter({ hasText: "Some components are missing" });
+      const completeMsg = page
+        .locator("div")
+        .filter({ hasText: "Setup Complete!" });
+      const incompleteMsg = page
+        .locator("div")
+        .filter({ hasText: "Some components are missing" });
 
       const hasComplete = (await completeMsg.count()) > 0;
       const hasIncomplete = (await incompleteMsg.count()) > 0;
@@ -371,7 +474,9 @@ if (isPlaywright) {
 
     test("should display component availability count", async ({ page }) => {
       // Should show "X / Y components available"
-      const availableText = page.locator("div").filter({ hasText: /\d+ \/ \d+ components available/ });
+      const availableText = page
+        .locator("div")
+        .filter({ hasText: /\d+ \/ \d+ components available/ });
       await expect(availableText).toBeVisible();
     });
   });
@@ -385,8 +490,12 @@ if (isPlaywright) {
       page,
     }) => {
       // Either show recommendations or all-ready state
-      const recsHeader = page.locator("h3").filter({ hasText: "Recommendations" });
-      const allReady = page.locator("div").filter({ hasText: "All systems ready!" });
+      const recsHeader = page
+        .locator("h3")
+        .filter({ hasText: "Recommendations" });
+      const allReady = page
+        .locator("div")
+        .filter({ hasText: "All systems ready!" });
 
       const hasRecs = (await recsHeader.count()) > 0;
       const hasReady = (await allReady.count()) > 0;
@@ -398,9 +507,13 @@ if (isPlaywright) {
     test("should show recommendation count in pill when present", async ({
       page,
     }) => {
-      const recsHeader = page.locator("h3").filter({ hasText: "Recommendations" });
+      const recsHeader = page
+        .locator("h3")
+        .filter({ hasText: "Recommendations" });
       if ((await recsHeader.count()) > 0) {
-        const itemsPill = page.locator(".pill").filter({ hasText: /\d+ items/ });
+        const itemsPill = page
+          .locator(".pill")
+          .filter({ hasText: /\d+ items/ });
         await expect(itemsPill).toBeVisible();
       }
     });
@@ -441,7 +554,9 @@ if (isPlaywright) {
       page,
     }) => {
       // Look for authentication status pills
-      const authPill = page.locator(".pill").filter({ hasText: /authenticated/i });
+      const authPill = page
+        .locator(".pill")
+        .filter({ hasText: /authenticated/i });
       // May or may not be present
       const count = await authPill.count();
       expect(count).toBeGreaterThanOrEqual(0);
@@ -454,7 +569,9 @@ if (isPlaywright) {
       page.goto("/setup");
 
       // Look for loading indicator
-      const loadingText = page.locator("div").filter({ hasText: "Detecting installed tools..." });
+      const loadingText = page
+        .locator("div")
+        .filter({ hasText: "Detecting installed tools..." });
       // Either we catch the loading state or page loads quickly
       const isVisible = await loadingText.isVisible().catch(() => false);
       // Test passes either way - we're just checking no crash
@@ -466,7 +583,9 @@ if (isPlaywright) {
       await expect(page.locator(".page")).toBeVisible();
 
       // Click refresh
-      const refreshBtn = page.locator(".btn--secondary").filter({ hasText: "Refresh" });
+      const refreshBtn = page
+        .locator(".btn--secondary")
+        .filter({ hasText: "Refresh" });
       await refreshBtn.click();
 
       // Button should show spinner or page should update
@@ -483,10 +602,14 @@ if (isPlaywright) {
       await expect(page.locator(".page")).toBeVisible();
 
       // No error alerts should be present (unless API actually errors)
-      const fatalError = page.locator("div").filter({ hasText: "Error loading setup status" });
+      const fatalError = page
+        .locator("div")
+        .filter({ hasText: "Error loading setup status" });
       // If there's an error, it should have a retry button
       if ((await fatalError.count()) > 0) {
-        const retryBtn = page.locator(".btn--secondary").filter({ hasText: "Retry" });
+        const retryBtn = page
+          .locator(".btn--secondary")
+          .filter({ hasText: "Retry" });
         await expect(retryBtn).toBeVisible();
       }
     });
@@ -509,25 +632,39 @@ if (isPlaywright) {
       await page.locator(".btn").filter({ hasText: "Detect" }).click();
 
       // Should still be accessible
-      await expect(page.locator("h3").filter({ hasText: "Setup Status" })).toBeVisible();
+      await expect(
+        page.locator("h3").filter({ hasText: "Setup Status" }),
+      ).toBeVisible();
     });
 
     test("should track completed steps as user progresses", async ({
       page,
     }) => {
       // Progress through wizard
-      await page.locator(".btn--primary").filter({ hasText: "Continue to Install" }).click();
-      await page.locator(".btn--primary").filter({ hasText: "Continue to Verify" }).click();
+      await page
+        .locator(".btn--primary")
+        .filter({ hasText: "Continue to Install" })
+        .click();
+      await page
+        .locator(".btn--primary")
+        .filter({ hasText: "Continue to Verify" })
+        .click();
 
       // All steps should now be reachable
       await page.locator(".btn").filter({ hasText: "Detect" }).click();
-      await expect(page.locator("h3").filter({ hasText: "Setup Status" })).toBeVisible();
+      await expect(
+        page.locator("h3").filter({ hasText: "Setup Status" }),
+      ).toBeVisible();
 
       await page.locator(".btn").filter({ hasText: "Install" }).click();
-      await expect(page.locator("h3").filter({ hasText: "Install Missing Tools" })).toBeVisible();
+      await expect(
+        page.locator("h3").filter({ hasText: "Install Missing Tools" }),
+      ).toBeVisible();
 
       await page.locator(".btn").filter({ hasText: "Verify" }).click();
-      await expect(page.locator("h3").filter({ hasText: "Verification Results" })).toBeVisible();
+      await expect(
+        page.locator("h3").filter({ hasText: "Verification Results" }),
+      ).toBeVisible();
     });
   });
 
@@ -601,9 +738,15 @@ if (isPlaywright) {
       });
 
       await page.goto("/setup");
-      await page.locator(".btn--primary").filter({ hasText: "Continue to Install" }).click();
+      await page
+        .locator(".btn--primary")
+        .filter({ hasText: "Continue to Install" })
+        .click();
 
-      const installBtn = page.locator(".btn--sm").filter({ hasText: "Install" }).first();
+      const installBtn = page
+        .locator(".btn--sm")
+        .filter({ hasText: "Install" })
+        .first();
       if ((await installBtn.count()) > 0) {
         await installBtn.click();
 
@@ -638,11 +781,19 @@ if (isPlaywright) {
       await page.goto("/setup");
 
       // Navigate to verify step
-      await page.locator(".btn--primary").filter({ hasText: "Continue to Install" }).click();
-      await page.locator(".btn--primary").filter({ hasText: "Continue to Verify" }).click();
+      await page
+        .locator(".btn--primary")
+        .filter({ hasText: "Continue to Install" })
+        .click();
+      await page
+        .locator(".btn--primary")
+        .filter({ hasText: "Continue to Verify" })
+        .click();
 
       // Click Go to Dashboard
-      const dashboardBtn = page.locator(".btn--primary").filter({ hasText: "Go to Dashboard" });
+      const dashboardBtn = page
+        .locator(".btn--primary")
+        .filter({ hasText: "Go to Dashboard" });
       await dashboardBtn.click();
 
       // Should be on dashboard

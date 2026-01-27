@@ -95,9 +95,7 @@ export default class StructuredReporter implements Reporter {
       console.log(
         `[E2E Reporter] Results: ${summary.passed} passed, ${summary.failed} failed, ${summary.skipped} skipped`,
       );
-      console.log(
-        `[E2E Reporter] Logs written to: ${this.options.outputDir}`,
-      );
+      console.log(`[E2E Reporter] Logs written to: ${this.options.outputDir}`);
     }
   }
 
@@ -160,7 +158,8 @@ export default class StructuredReporter implements Reporter {
     const browser = project?.name ?? "unknown";
     const viewport = project?.use?.viewport;
     const baseURL =
-      (project?.use?.baseURL as string | undefined) ?? this.config?.projects[0]?.use?.baseURL;
+      (project?.use?.baseURL as string | undefined) ??
+      this.config?.projects[0]?.use?.baseURL;
 
     return {
       testId: test.id,
@@ -179,12 +178,8 @@ export default class StructuredReporter implements Reporter {
       baseURL: baseURL as string | undefined,
 
       // Include logging data from fixture
-      console: this.options.includeConsole
-        ? (loggingData.console ?? [])
-        : [],
-      network: this.options.includeNetwork
-        ? (loggingData.network ?? [])
-        : [],
+      console: this.options.includeConsole ? (loggingData.console ?? []) : [],
+      network: this.options.includeNetwork ? (loggingData.network ?? []) : [],
       webSocket: this.options.includeWebSocket
         ? (loggingData.webSocket ?? [])
         : [],
@@ -203,9 +198,7 @@ export default class StructuredReporter implements Reporter {
 
   private buildRunSummary(result: FullResult): RunSummary {
     const endTime = Date.now();
-    const projects = [
-      ...new Set(this.tests.map((t) => t.browser)),
-    ];
+    const projects = [...new Set(this.tests.map((t) => t.browser))];
 
     return {
       runId: this.runId,

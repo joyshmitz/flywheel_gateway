@@ -906,7 +906,8 @@ describe("Beads Endpoint Contract Tests", () => {
       const body = await response.json();
       // Should have generated_at timestamp
       expect(
-        body.generated_at !== undefined || body.data?.generated_at !== undefined,
+        body.generated_at !== undefined ||
+          body.data?.generated_at !== undefined,
       ).toBe(true);
     });
   });

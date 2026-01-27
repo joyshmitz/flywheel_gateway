@@ -38,7 +38,7 @@ export interface LoggingFixtures {
  * ```
  */
 export const test = base.extend<LoggingFixtures>({
-  testLogger: async ({ }, use, testInfo) => {
+  testLogger: async ({}, use, testInfo) => {
     const logger = new TestLogger(
       testInfo.testId,
       testInfo.title,
@@ -66,13 +66,12 @@ export const test = base.extend<LoggingFixtures>({
 
     // Log summary if verbose mode or test failed
     const summary = testLogger.getSummary();
-    if (
-      testInfo.status === "failed" ||
-      process.env["E2E_VERBOSE"] === "1"
-    ) {
+    if (testInfo.status === "failed" || process.env["E2E_VERBOSE"] === "1") {
       console.log(`\n[E2E Log Summary] ${testInfo.title}`);
       console.log(`  Console errors: ${summary.consoleErrors}`);
-      console.log(`  Network requests: ${summary.networkRequests} (${summary.failedRequests} failed)`);
+      console.log(
+        `  Network requests: ${summary.networkRequests} (${summary.failedRequests} failed)`,
+      );
       console.log(`  WebSocket messages: ${summary.webSocketMessages}`);
       console.log(`  Page errors: ${summary.pageErrors}`);
     }
@@ -88,10 +87,9 @@ export { expect } from "@playwright/test";
  * Helper to create a unique test file name prefix.
  */
 export function getTestPrefix(testInfo: TestInfo): string {
-  const file = testInfo.file.split("/").pop()?.replace(".spec.ts", "") ?? "test";
-  const title = testInfo.title
-    .replace(/[^a-zA-Z0-9]/g, "-")
-    .slice(0, 30);
+  const file =
+    testInfo.file.split("/").pop()?.replace(".spec.ts", "") ?? "test";
+  const title = testInfo.title.replace(/[^a-zA-Z0-9]/g, "-").slice(0, 30);
   return `${file}--${title}`;
 }
 

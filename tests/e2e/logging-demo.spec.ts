@@ -121,7 +121,9 @@ if (isPlaywright) {
 
       // Access the logger directly for custom logging needs
       const summary = testLogger.getSummary();
-      console.log(`[Manual Check] Network requests so far: ${summary.networkRequests}`);
+      console.log(
+        `[Manual Check] Network requests so far: ${summary.networkRequests}`,
+      );
 
       await expect(loggedPage.locator("body")).toBeVisible();
     });

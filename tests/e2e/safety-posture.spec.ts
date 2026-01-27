@@ -32,7 +32,9 @@ if (isPlaywright) {
 
     test("should display overall status pill", async ({ page }) => {
       // Should show status: All Systems Healthy, Some Issues, or Attention Required
-      const safetySection = page.locator(".card").filter({ hasText: "Safety Posture" });
+      const safetySection = page
+        .locator(".card")
+        .filter({ hasText: "Safety Posture" });
       const statusPill = safetySection.locator(".pill").first();
       await expect(statusPill).toBeVisible();
 
@@ -40,19 +42,23 @@ if (isPlaywright) {
       const text = await statusPill.textContent();
       expect(
         text?.includes("Healthy") ||
-        text?.includes("Issues") ||
-        text?.includes("Attention")
+          text?.includes("Issues") ||
+          text?.includes("Attention"),
       ).toBe(true);
     });
 
     test("should display refresh button", async ({ page }) => {
-      const safetySection = page.locator(".card").filter({ hasText: "Safety Posture" });
+      const safetySection = page
+        .locator(".card")
+        .filter({ hasText: "Safety Posture" });
       const refreshButton = safetySection.locator('button[title="Refresh"]');
       await expect(refreshButton).toBeVisible();
     });
 
     test("should trigger refresh on button click", async ({ page }) => {
-      const safetySection = page.locator(".card").filter({ hasText: "Safety Posture" });
+      const safetySection = page
+        .locator(".card")
+        .filter({ hasText: "Safety Posture" });
       const refreshButton = safetySection.locator('button[title="Refresh"]');
 
       // Click refresh
@@ -126,7 +132,9 @@ if (isPlaywright) {
 
         if (pillText?.includes("Healthy")) {
           // Installed tools should show version (v1.x.x format or "Installed")
-          const versionText = card.locator(".muted").filter({ hasText: /v\d|Installed/ });
+          const versionText = card
+            .locator(".muted")
+            .filter({ hasText: /v\d|Installed/ });
           await expect(versionText.or(card.locator(".muted"))).toBeVisible();
         }
       }
@@ -173,7 +181,9 @@ if (isPlaywright) {
     test("should display Integrity Verification section header", async ({
       page,
     }) => {
-      const header = page.locator("h4").filter({ hasText: "Integrity Verification" });
+      const header = page
+        .locator("h4")
+        .filter({ hasText: "Integrity Verification" });
       await expect(header).toBeVisible();
     });
 
@@ -208,8 +218,8 @@ if (isPlaywright) {
       const text = await statusPill.textContent();
       expect(
         text?.includes("Current") ||
-        text?.includes("Stale") ||
-        text?.includes("Unavailable")
+          text?.includes("Stale") ||
+          text?.includes("Unavailable"),
       ).toBe(true);
     });
 
@@ -274,7 +284,10 @@ if (isPlaywright) {
       });
 
       // Either healthy message or issues panel should be visible (but not both)
-      const isHealthy = await healthyMessage.first().isVisible().catch(() => false);
+      const isHealthy = await healthyMessage
+        .first()
+        .isVisible()
+        .catch(() => false);
       const hasIssues = await issuesPanel.isVisible().catch(() => false);
 
       // One or the other should be visible
@@ -314,7 +327,7 @@ if (isPlaywright) {
       // Should navigate to DCG page
       await expect(page).toHaveURL(/\/dcg/);
       await expect(
-        page.locator("h2").filter({ hasText: "Destructive Command Guard" })
+        page.locator("h2").filter({ hasText: "Destructive Command Guard" }),
       ).toBeVisible();
     });
   });
@@ -482,13 +495,18 @@ if (isPlaywright) {
       // This verifies the loading state exists even if briefly
       const loader = page.locator(".spin");
       // Don't fail if it's too fast to catch
-      const wasVisible = await loader.first().isVisible().catch(() => false);
+      const wasVisible = await loader
+        .first()
+        .isVisible()
+        .catch(() => false);
       // Just log whether we caught it
       console.log(`Loading spinner visible: ${wasVisible}`);
     });
 
     test("should handle refresh errors gracefully", async ({ page }) => {
-      const safetySection = page.locator(".card").filter({ hasText: "Safety Posture" });
+      const safetySection = page
+        .locator(".card")
+        .filter({ hasText: "Safety Posture" });
       const refreshButton = safetySection.locator('button[title="Refresh"]');
 
       // Click refresh multiple times rapidly
@@ -505,7 +523,9 @@ if (isPlaywright) {
       await page.setViewportSize({ width: 1280, height: 800 });
       await page.goto("/");
 
-      const safetySection = page.locator(".card").filter({ hasText: "Safety Posture" });
+      const safetySection = page
+        .locator(".card")
+        .filter({ hasText: "Safety Posture" });
       await expect(safetySection).toBeVisible();
 
       // Tool cards should be in 3-column grid
@@ -517,7 +537,9 @@ if (isPlaywright) {
       await page.setViewportSize({ width: 768, height: 1024 });
       await page.goto("/");
 
-      const safetySection = page.locator(".card").filter({ hasText: "Safety Posture" });
+      const safetySection = page
+        .locator(".card")
+        .filter({ hasText: "Safety Posture" });
       await expect(safetySection).toBeVisible();
     });
 
@@ -525,7 +547,9 @@ if (isPlaywright) {
       await page.setViewportSize({ width: 375, height: 812 });
       await page.goto("/");
 
-      const safetySection = page.locator(".card").filter({ hasText: "Safety Posture" });
+      const safetySection = page
+        .locator(".card")
+        .filter({ hasText: "Safety Posture" });
       await expect(safetySection).toBeVisible();
 
       // Tool cards should still be visible (may stack vertically)

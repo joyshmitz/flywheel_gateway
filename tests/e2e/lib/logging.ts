@@ -27,11 +27,7 @@ export class TestLogger {
   private timing: TimingMetrics;
   private cdpSession: CDPSession | null = null;
 
-  constructor(
-    testId: string,
-    testTitle: string,
-    testFile: string,
-  ) {
+  constructor(testId: string, testTitle: string, testFile: string) {
     this.testId = testId;
     this.testTitle = testTitle;
     this.testFile = testFile;
@@ -93,15 +89,14 @@ export class TestLogger {
 
     page.on("response", (response) => {
       const url = response.url();
-      const entry = this.network.find(
-        (n) => n.url === url && !n.status,
-      );
+      const entry = this.network.find((n) => n.url === url && !n.status);
       if (entry) {
         entry.status = response.status();
         entry.statusText = response.statusText();
         if (entry.timing) {
           entry.timing.responseEnd = Date.now();
-          entry.timing.duration = entry.timing.responseEnd - entry.timing.startTime;
+          entry.timing.duration =
+            entry.timing.responseEnd - entry.timing.startTime;
         }
         try {
           entry.responseHeaders = response.headers();
@@ -113,9 +108,7 @@ export class TestLogger {
 
     page.on("requestfailed", (request) => {
       const url = request.url();
-      const entry = this.network.find(
-        (n) => n.url === url && !n.failed,
-      );
+      const entry = this.network.find((n) => n.url === url && !n.failed);
       if (entry) {
         entry.failed = true;
         entry.failureReason = request.failure()?.errorText;
@@ -134,13 +127,16 @@ export class TestLogger {
         });
       });
 
-      this.cdpSession.on("Network.webSocketClosed", (event: { requestId?: string }) => {
-        this.webSocket.push({
-          timestamp: Date.now(),
-          url: event.requestId || "unknown",
-          type: "close",
-        });
-      });
+      this.cdpSession.on(
+        "Network.webSocketClosed",
+        (event: { requestId?: string }) => {
+          this.webSocket.push({
+            timestamp: Date.now(),
+            url: event.requestId || "unknown",
+            type: "close",
+          });
+        },
+      );
 
       this.cdpSession.on("Network.webSocketFrameReceived", (event) => {
         this.webSocket.push({
@@ -203,8 +199,8 @@ export class TestLogger {
               ?.startTime ?? 0,
           largestContentfulPaint:
             lcpEntries.length > 0
-              ? (lcpEntries[lcpEntries.length - 1] as { startTime?: number })
-                  .startTime ?? 0
+              ? ((lcpEntries[lcpEntries.length - 1] as { startTime?: number })
+                  .startTime ?? 0)
               : 0,
           cumulativeLayoutShift: layoutShift.reduce(
             (sum, e) => sum + ((e as { value?: number }).value ?? 0),
@@ -280,8 +276,10 @@ export class TestLogger {
 /**
  * Create a logger for a test.
  */
-export function createTestLogger(
-  testInfo: { testId: string; title: string; file: string },
-): TestLogger {
+export function createTestLogger(testInfo: {
+  testId: string;
+  title: string;
+  file: string;
+}): TestLogger {
   return new TestLogger(testInfo.testId, testInfo.title, testInfo.file);
 }

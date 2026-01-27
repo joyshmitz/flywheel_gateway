@@ -183,7 +183,9 @@ if (isPlaywright) {
       });
     });
 
-    test("should surface degraded state when sources are missing", async ({ page }) => {
+    test("should surface degraded state when sources are missing", async ({
+      page,
+    }) => {
       const consoleErrors: string[] = [];
       page.on("console", (msg) => {
         if (msg.type() === "error") {
@@ -210,9 +212,16 @@ if (isPlaywright) {
         },
         tools: {
           status: "degraded",
-          ubs: { installed: false, version: null, healthy: false, latencyMs: 6 },
+          ubs: {
+            installed: false,
+            version: null,
+            healthy: false,
+            latencyMs: 6,
+          },
           issues: ["UBS (Ultimate Bug Scanner) is not installed"],
-          recommendations: ["Install UBS for static analysis scanning: cargo install ubs"],
+          recommendations: [
+            "Install UBS for static analysis scanning: cargo install ubs",
+          ],
         },
       });
 
