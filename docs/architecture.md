@@ -318,6 +318,47 @@ br tasks → Gateway /beads → Web UI
 Agent Mail → Gateway /mail + reservations → Multi-agent coordination
 ```
 
+## Developer Guide: Adding Tools via ACFS Manifest
+
+Flywheel Gateway treats the ACFS manifest as the single source of truth for
+tool metadata. Do not hardcode tool lists in the gateway; add or update tools
+in the manifest and let `/setup` endpoints surface the data.
+
+### 1) Update the ACFS manifest (source of truth)
+
+- Add a new module/tool entry in the ACFS manifest with public-safe fields:
+  `id`, `name`, `category`, `phase`, `install` or `verifiedInstaller`,
+  `verify`, `installedCheck`, `docsUrl`, and optional `checksums`.
+- Keep anything private (paths, internal infra) out of the manifest.
+
+### 2) Ensure the gateway can read the manifest
+
+- The gateway defaults to `acfs.manifest.yaml` in the project root.
+- Override the path with `ACFS_MANIFEST_PATH` or `TOOL_REGISTRY_PATH`.
+- Refresh the in-memory cache after changes:
+  - `POST /setup/registry/refresh`
+  - `DELETE /setup/registry/cache` (to force re-load)
+
+### 3) Verify registry + readiness output
+
+- `GET /setup/tools` should include the new tool.
+- `GET /setup/readiness` should include manifest metadata
+  (`schemaVersion`, `source`, `manifestHash`).
+- If you see `schemaVersion: "1.0.0-fallback"`, the manifest failed to load.
+
+### 4) Update schema/types if the manifest shape changes
+
+- Shared types: `packages/shared/src/types/tool-registry.types.ts`
+- Gateway validation: `apps/gateway/src/services/tool-registry.service.ts`
+- UI consumption (if adding new fields): `apps/web/src/hooks/useSetup.ts`
+  and any setup/safety UI that renders tool metadata.
+
+### 5) Adjust detection mapping when needed
+
+The manifest provides install/verify metadata, but capability and auth checks
+are still curated in the gateway. If a new tool needs special detection logic,
+update `apps/gateway/src/services/agent-detection.service.ts`.
+
 ## Data Flow
 
 ### Agent Lifecycle
