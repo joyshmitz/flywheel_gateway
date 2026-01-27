@@ -428,14 +428,15 @@ export function createRuClient(options: RuClientOptions): RuClient {
     },
 
     sweepPhase1: async (repo, opts) => {
-      const timeout = opts?.timeout ?? 300000;
-      const args = ["agent-sweep", "--phase", "1", "--json", "--timeout", String(timeout), repo];
+      const cliTimeout = opts?.timeout ?? 300000;
+      const args = ["agent-sweep", "--phase", "1", "--json", "--timeout", String(cliTimeout), repo];
       if (opts?.dryRun) args.push("--dry-run");
 
+      // Runner timeout has 5s buffer to let CLI timeout gracefully first
       const result = await runRuCommand(
         options.runner,
         args,
-        buildRunOptions(options, { ...opts, timeout }),
+        buildRunOptions(options, { ...opts, timeout: cliTimeout + 5000 }),
       );
 
       try {
@@ -467,14 +468,15 @@ export function createRuClient(options: RuClientOptions): RuClient {
     },
 
     sweepPhase2: async (repo, opts) => {
-      const timeout = opts?.timeout ?? 600000;
-      const args = ["agent-sweep", "--phase", "2", "--json", "--timeout", String(timeout), repo];
+      const cliTimeout = opts?.timeout ?? 600000;
+      const args = ["agent-sweep", "--phase", "2", "--json", "--timeout", String(cliTimeout), repo];
       if (opts?.dryRun) args.push("--dry-run");
 
+      // Runner timeout has 5s buffer to let CLI timeout gracefully first
       const result = await runRuCommand(
         options.runner,
         args,
-        buildRunOptions(options, { ...opts, timeout }),
+        buildRunOptions(options, { ...opts, timeout: cliTimeout + 5000 }),
       );
 
       try {
@@ -506,14 +508,14 @@ export function createRuClient(options: RuClientOptions): RuClient {
     },
 
     sweepPhase3: async (repo, planPath, opts) => {
-      const timeout = opts?.timeout ?? 300000;
+      const cliTimeout = opts?.timeout ?? 300000;
       const args = [
         "agent-sweep",
         "--phase",
         "3",
         "--json",
         "--timeout",
-        String(timeout),
+        String(cliTimeout),
         "--plan-file",
         planPath,
         repo,
@@ -521,10 +523,11 @@ export function createRuClient(options: RuClientOptions): RuClient {
       if (opts?.dryRun) args.push("--dry-run");
       if (opts?.autoApprove) args.push("--auto-approve");
 
+      // Runner timeout has 5s buffer to let CLI timeout gracefully first
       const result = await runRuCommand(
         options.runner,
         args,
-        buildRunOptions(options, { ...opts, timeout }),
+        buildRunOptions(options, { ...opts, timeout: cliTimeout + 5000 }),
       );
 
       try {
