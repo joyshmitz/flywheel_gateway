@@ -47,11 +47,7 @@ import type {
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { getLogger } from "../middleware/correlation";
-import {
-  incrementCounter,
-  setGauge,
-  recordHistogram,
-} from "./metrics";
+import { incrementCounter, setGauge, recordHistogram } from "./metrics";
 import { getBvTriage, getBvClient } from "./bv.service";
 import { getBrList, getBrSyncStatus, getBrClient } from "./br.service";
 import * as dcgService from "./dcg.service";
@@ -249,7 +245,9 @@ async function collectNtmSnapshot(
 
   // Emit snapshot collection metrics
   const latencyMs = Math.round(performance.now() - start);
-  recordHistogram("flywheel_snapshot_collection_duration_ms", latencyMs, { source: "ntm" });
+  recordHistogram("flywheel_snapshot_collection_duration_ms", latencyMs, {
+    source: "ntm",
+  });
   incrementCounter("flywheel_snapshot_collection_total", 1, {
     source: "ntm",
     status: result.success ? "success" : "failure",
@@ -442,7 +440,9 @@ async function collectBeadsSnapshot(
 
   // Emit snapshot collection metrics
   const latencyMs = Math.round(performance.now() - start);
-  recordHistogram("flywheel_snapshot_collection_duration_ms", latencyMs, { source: "beads" });
+  recordHistogram("flywheel_snapshot_collection_duration_ms", latencyMs, {
+    source: "beads",
+  });
   incrementCounter("flywheel_snapshot_collection_total", 1, {
     source: "beads",
     status: result.success ? "success" : "failure",
@@ -565,7 +565,9 @@ async function collectToolHealthSnapshot(
 
   // Emit snapshot collection metrics
   const latencyMs = Math.round(performance.now() - start);
-  recordHistogram("flywheel_snapshot_collection_duration_ms", latencyMs, { source: "tools" });
+  recordHistogram("flywheel_snapshot_collection_duration_ms", latencyMs, {
+    source: "tools",
+  });
   incrementCounter("flywheel_snapshot_collection_total", 1, {
     source: "tools",
     status: result.success ? "success" : "failure",
@@ -587,7 +589,9 @@ async function collectDcgStatus(): Promise<ToolHealthStatus> {
     // Emit metrics
     setGauge("flywheel_tool_installed", available ? 1 : 0, { tool: "dcg" });
     setGauge("flywheel_tool_health_status", available ? 1 : 0, { tool: "dcg" });
-    recordHistogram("flywheel_tool_check_duration_ms", latencyMs, { tool: "dcg" });
+    recordHistogram("flywheel_tool_check_duration_ms", latencyMs, {
+      tool: "dcg",
+    });
 
     return {
       installed: available,
@@ -601,7 +605,9 @@ async function collectDcgStatus(): Promise<ToolHealthStatus> {
     // Emit metrics for failure case
     setGauge("flywheel_tool_installed", 0, { tool: "dcg" });
     setGauge("flywheel_tool_health_status", 0, { tool: "dcg" });
-    recordHistogram("flywheel_tool_check_duration_ms", latencyMs, { tool: "dcg" });
+    recordHistogram("flywheel_tool_check_duration_ms", latencyMs, {
+      tool: "dcg",
+    });
 
     return {
       installed: false,
@@ -625,7 +631,9 @@ async function collectSlbStatus(): Promise<ToolHealthStatus> {
     // Emit metrics
     setGauge("flywheel_tool_installed", available ? 1 : 0, { tool: "slb" });
     setGauge("flywheel_tool_health_status", available ? 1 : 0, { tool: "slb" });
-    recordHistogram("flywheel_tool_check_duration_ms", latencyMs, { tool: "slb" });
+    recordHistogram("flywheel_tool_check_duration_ms", latencyMs, {
+      tool: "slb",
+    });
 
     return {
       installed: available,
@@ -639,7 +647,9 @@ async function collectSlbStatus(): Promise<ToolHealthStatus> {
     // Emit metrics for failure case
     setGauge("flywheel_tool_installed", 0, { tool: "slb" });
     setGauge("flywheel_tool_health_status", 0, { tool: "slb" });
-    recordHistogram("flywheel_tool_check_duration_ms", latencyMs, { tool: "slb" });
+    recordHistogram("flywheel_tool_check_duration_ms", latencyMs, {
+      tool: "slb",
+    });
 
     return {
       installed: false,
@@ -661,9 +671,15 @@ async function collectUbsStatus(): Promise<ToolHealthStatus> {
     const latencyMs = Math.round(performance.now() - start);
 
     // Emit metrics
-    setGauge("flywheel_tool_installed", health.available ? 1 : 0, { tool: "ubs" });
-    setGauge("flywheel_tool_health_status", health.available ? 1 : 0, { tool: "ubs" });
-    recordHistogram("flywheel_tool_check_duration_ms", latencyMs, { tool: "ubs" });
+    setGauge("flywheel_tool_installed", health.available ? 1 : 0, {
+      tool: "ubs",
+    });
+    setGauge("flywheel_tool_health_status", health.available ? 1 : 0, {
+      tool: "ubs",
+    });
+    recordHistogram("flywheel_tool_check_duration_ms", latencyMs, {
+      tool: "ubs",
+    });
 
     return {
       installed: health.available,
@@ -677,7 +693,9 @@ async function collectUbsStatus(): Promise<ToolHealthStatus> {
     // Emit metrics for failure case
     setGauge("flywheel_tool_installed", 0, { tool: "ubs" });
     setGauge("flywheel_tool_health_status", 0, { tool: "ubs" });
-    recordHistogram("flywheel_tool_check_duration_ms", latencyMs, { tool: "ubs" });
+    recordHistogram("flywheel_tool_check_duration_ms", latencyMs, {
+      tool: "ubs",
+    });
 
     return {
       installed: false,
@@ -915,7 +933,9 @@ async function collectAgentMailSnapshot(
 
   // Emit snapshot collection metrics
   const latencyMs = Math.round(performance.now() - start);
-  recordHistogram("flywheel_snapshot_collection_duration_ms", latencyMs, { source: "agentmail" });
+  recordHistogram("flywheel_snapshot_collection_duration_ms", latencyMs, {
+    source: "agentmail",
+  });
   incrementCounter("flywheel_snapshot_collection_total", 1, {
     source: "agentmail",
     status: result.success ? "success" : "failure",
@@ -1061,7 +1081,10 @@ export class SnapshotService {
     const generationDurationMs = Math.round(performance.now() - startTime);
 
     // Emit snapshot generation duration metric
-    recordHistogram("flywheel_snapshot_generation_duration_ms", generationDurationMs);
+    recordHistogram(
+      "flywheel_snapshot_generation_duration_ms",
+      generationDurationMs,
+    );
 
     // Build metadata
     const meta: SystemSnapshotMeta = {

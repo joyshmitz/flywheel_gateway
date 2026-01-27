@@ -9,7 +9,11 @@
  */
 
 import { getCorrelationId, getLogger } from "../middleware/correlation";
-import { createToolLogger, logCliCommand, logCliWarning } from "../utils/cli-logging";
+import {
+  createToolLogger,
+  logCliCommand,
+  logCliWarning,
+} from "../utils/cli-logging";
 import { logger } from "./logger";
 
 // Create a scoped logger for dcg operations
@@ -304,10 +308,7 @@ export async function scanFile(filePath: string): Promise<DCGScanResult> {
       throw error;
     }
     // DCG not available - return empty result
-    log.warn(
-      { error, filePath },
-      "DCG scan failed, returning empty result",
-    );
+    log.warn({ error, filePath }, "DCG scan failed, returning empty result");
     return {
       file: filePath,
       lineCount: 0,
@@ -388,10 +389,7 @@ export async function listPacks(): Promise<DCGPackInfo[]> {
       throw error;
     }
     // DCG not available - return empty list
-    log.warn(
-      { error },
-      "DCG list-packs failed, returning empty list",
-    );
+    log.warn({ error }, "DCG list-packs failed, returning empty list");
     return [];
   }
 }

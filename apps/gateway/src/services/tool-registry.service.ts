@@ -53,7 +53,8 @@ const FALLBACK_REGISTRY: ToolRegistry = {
       id: "agents.claude",
       name: "claude",
       displayName: "Claude Code",
-      description: "Anthropic's official CLI for Claude - primary agent interface",
+      description:
+        "Anthropic's official CLI for Claude - primary agent interface",
       category: "agent",
       tags: ["critical", "recommended"],
       optional: false,
@@ -171,7 +172,8 @@ const FALLBACK_REGISTRY: ToolRegistry = {
         altFlags: ["--format jsonl", "--format sarif"],
         outputFormats: ["json", "jsonl", "sarif"],
         envelopeCompliant: false,
-        notes: "Multiple output formats: JSON, streaming JSONL, and SARIF for security tools",
+        notes:
+          "Multiple output formats: JSON, streaming JSONL, and SARIF for security tools",
       },
       mcp: { available: false },
     },
@@ -625,7 +627,8 @@ export async function loadToolRegistryWithMetadata(
         schemaVersion: null,
         errorCategory,
         userMessage,
-        error: readError instanceof Error ? readError.message : String(readError),
+        error:
+          readError instanceof Error ? readError.message : String(readError),
         fallbackToolCount: FALLBACK_REGISTRY.tools.length,
       },
       "Failed to read tool registry manifest, using fallback",
@@ -640,7 +643,10 @@ export async function loadToolRegistryWithMetadata(
             path: manifestPath,
             errorCategory,
             userMessage,
-            cause: readError instanceof Error ? readError.message : String(readError),
+            cause:
+              readError instanceof Error
+                ? readError.message
+                : String(readError),
           },
         },
       );
@@ -687,7 +693,8 @@ export async function loadToolRegistryWithMetadata(
         schemaVersion,
         errorCategory,
         userMessage,
-        error: parseError instanceof Error ? parseError.message : String(parseError),
+        error:
+          parseError instanceof Error ? parseError.message : String(parseError),
         fallbackToolCount: FALLBACK_REGISTRY.tools.length,
       },
       "Tool registry manifest parse/validation failed, using fallback",
@@ -861,7 +868,9 @@ function isRecommendedTool(tool: ToolDefinition): boolean {
  * Determine if a tool is truly optional (not required or recommended).
  */
 function isOptionalTool(tool: ToolDefinition): boolean {
-  return tool.optional === true && !isRequiredTool(tool) && !isRecommendedTool(tool);
+  return (
+    tool.optional === true && !isRequiredTool(tool) && !isRecommendedTool(tool)
+  );
 }
 
 async function withRegistry<T>(

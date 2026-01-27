@@ -101,9 +101,19 @@ export interface XfStatus {
 
 async function executeXfCommand(
   args: string[],
-  options: { timeout?: number; maxOutputSize?: number; db?: string; index?: string } = {},
+  options: {
+    timeout?: number;
+    maxOutputSize?: number;
+    db?: string;
+    index?: string;
+  } = {},
 ): Promise<string> {
-  const { timeout = 30000, maxOutputSize = 5 * 1024 * 1024, db, index } = options;
+  const {
+    timeout = 30000,
+    maxOutputSize = 5 * 1024 * 1024,
+    db,
+    index,
+  } = options;
   const log = getLogger();
 
   try {
@@ -133,10 +143,7 @@ async function executeXfCommand(
       const exitCode = await proc.exited;
 
       if (exitCode !== 0) {
-        log.error(
-          { exitCode, stderr, args },
-          "xf command failed",
-        );
+        log.error({ exitCode, stderr, args }, "xf command failed");
         throw new Error(`xf command failed: ${stderr || "Unknown error"}`);
       }
 
@@ -286,10 +293,10 @@ export async function search(
   }
 
   const startTime = Date.now();
-  const output = await executeXfCommand(args, {
-    db: options.db,
-    index: options.index,
-  });
+  const executeOptions: { db?: string; index?: string } = {};
+  if (options.db !== undefined) executeOptions.db = options.db;
+  if (options.index !== undefined) executeOptions.index = options.index;
+  const output = await executeXfCommand(args, executeOptions);
   const took_ms = Date.now() - startTime;
 
   const results = parseJson<XfSearchResult[]>(output, "search");

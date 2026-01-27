@@ -643,7 +643,9 @@ export async function installTool(
   }
 
   // Determine install source for logging
-  const installSource = toolInfo.verifiedInstaller ? "verified_installer" : "install_spec";
+  const installSource = toolInfo.verifiedInstaller
+    ? "verified_installer"
+    : "install_spec";
 
   log.info(
     {

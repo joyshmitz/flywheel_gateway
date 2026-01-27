@@ -203,7 +203,10 @@ export function buildCliResultLogFields(
  * Log a CLI command execution at debug level.
  * Use this for low-level command execution details.
  */
-export function logCliCommand(input: CliCommandLogInput, message: string): void {
+export function logCliCommand(
+  input: CliCommandLogInput,
+  message: string,
+): void {
   const log = getLogger();
   const fields = buildCliCommandLogFields(input);
   log.debug(fields, message);
@@ -270,7 +273,13 @@ export function createToolLogger(tool: string) {
     command(
       command: string,
       args: string[],
-      result: { exitCode: number; latencyMs: number; stdout?: string; stderr?: string; timedOut?: boolean },
+      result: {
+        exitCode: number;
+        latencyMs: number;
+        stdout?: string;
+        stderr?: string;
+        timedOut?: boolean;
+      },
       message: string,
     ): void {
       logCliCommand(

@@ -22,7 +22,11 @@ import type {
   BrUpdateInput,
 } from "@flywheel/flywheel-clients";
 import { createBrClient } from "@flywheel/flywheel-clients";
-import { createToolLogger, logCliCommand, logCliWarning } from "../utils/cli-logging";
+import {
+  createToolLogger,
+  logCliCommand,
+  logCliWarning,
+} from "../utils/cli-logging";
 
 // ============================================================================
 // Constants

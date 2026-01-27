@@ -156,7 +156,9 @@ async function executeRchCommand<T = unknown>(
       version: "unknown",
       command: args.join(" "),
       success: false,
-      data: { error: error instanceof Error ? error.message : "Unknown error" } as T,
+      data: {
+        error: error instanceof Error ? error.message : "Unknown error",
+      } as T,
       error: "Failed to execute rch command",
     };
   }
@@ -236,10 +238,7 @@ export async function getStatus(): Promise<RchStatus> {
  */
 export async function getHealth(): Promise<RchHealthStatus> {
   try {
-    const [doctor, version] = await Promise.all([
-      getDoctor(),
-      getRchVersion(),
-    ]);
+    const [doctor, version] = await Promise.all([getDoctor(), getRchVersion()]);
 
     let status: RchStatus = {};
     try {
@@ -289,7 +288,10 @@ export async function getHealth(): Promise<RchHealthStatus> {
  * List configured workers.
  */
 export async function listWorkers(): Promise<RchWorker[]> {
-  const response = await executeRchCommand<{ workers: RchWorker[] }>(["workers", "list"]);
+  const response = await executeRchCommand<{ workers: RchWorker[] }>([
+    "workers",
+    "list",
+  ]);
 
   if (!response.success) {
     throw new Error(response.error ?? `rch workers list failed`);
@@ -306,7 +308,10 @@ export async function listWorkers(): Promise<RchWorker[]> {
  * List detected agents.
  */
 export async function listAgents(): Promise<RchAgent[]> {
-  const response = await executeRchCommand<{ agents: RchAgent[] }>(["agents", "list"]);
+  const response = await executeRchCommand<{ agents: RchAgent[] }>([
+    "agents",
+    "list",
+  ]);
 
   if (!response.success) {
     throw new Error(response.error ?? `rch agents list failed`);

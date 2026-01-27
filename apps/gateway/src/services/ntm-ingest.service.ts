@@ -22,11 +22,7 @@ import {
 } from "@flywheel/flywheel-clients";
 import { getLogger } from "../middleware/correlation";
 import { LifecycleState } from "../models/agent-state";
-import {
-  incrementCounter,
-  setGauge,
-  recordHistogram,
-} from "./metrics";
+import { incrementCounter, setGauge, recordHistogram } from "./metrics";
 import {
   getAgentState,
   initializeAgentState,
@@ -406,7 +402,9 @@ export class NtmIngestService {
     this.consecutiveErrors++;
 
     // Emit error metric
-    incrementCounter("flywheel_ntm_poll_errors_total", 1, { error_type: "unavailable" });
+    incrementCounter("flywheel_ntm_poll_errors_total", 1, {
+      error_type: "unavailable",
+    });
     setGauge("flywheel_ntm_consecutive_errors", this.consecutiveErrors);
 
     // Increase backoff
@@ -433,7 +431,9 @@ export class NtmIngestService {
     this.consecutiveErrors++;
 
     // Emit error metric
-    incrementCounter("flywheel_ntm_poll_errors_total", 1, { error_type: "poll_error" });
+    incrementCounter("flywheel_ntm_poll_errors_total", 1, {
+      error_type: "poll_error",
+    });
     setGauge("flywheel_ntm_consecutive_errors", this.consecutiveErrors);
 
     // Increase backoff on repeated errors

@@ -19,11 +19,48 @@ import { getToolRegistryMetadata, listAllTools } from "./tool-registry.service";
 
 export type AgentType = "claude" | "codex" | "gemini" | "aider" | "gh-copilot";
 
-export type ToolType = "dcg" | "ubs" | "cass" | "cm" | "br" | "bv" | "ru";
+export type ToolType =
+  | "dcg"
+  | "ubs"
+  | "slb"
+  | "cass"
+  | "cm"
+  | "br"
+  | "bv"
+  | "ru"
+  | "ms"
+  | "xf"
+  | "pt"
+  | "rch"
+  | "giil"
+  | "csctf"
+  | "caam"
+  | "ntm"
+  | "scanner";
 
 export type KnownDetectedType = AgentType | ToolType;
 
 export type DetectedType = string;
+
+export interface RobotModeInfo {
+  /** Whether robot/machine-readable mode is supported */
+  supported: boolean;
+  /** Primary flag to enable robot output (e.g., "--json", "--robot") */
+  flag?: string;
+  /** Output formats this mode can produce */
+  outputFormats?: string[];
+  /** Whether output conforms to the standard JSON envelope */
+  envelopeCompliant?: boolean;
+}
+
+export interface McpInfo {
+  /** Whether the tool exposes an MCP server */
+  available: boolean;
+  /** Capability level (tools, resources, or full) */
+  capabilities?: string;
+  /** Estimated count of available MCP tools */
+  toolCount?: number;
+}
 
 export interface DetectedCapabilities {
   streaming: boolean;
@@ -31,6 +68,10 @@ export interface DetectedCapabilities {
   vision: boolean;
   codeExecution: boolean;
   fileAccess: boolean;
+  /** Robot/machine-readable output mode info */
+  robotMode?: RobotModeInfo;
+  /** MCP server info */
+  mcp?: McpInfo;
 }
 
 export interface DetectedCLI {
@@ -156,6 +197,7 @@ const FALLBACK_AGENT_CLIS: CLIDefinition[] = [
 ];
 
 const FALLBACK_TOOL_CLIS: CLIDefinition[] = [
+  // Safety & Security Tools
   {
     name: "dcg",
     commands: ["dcg"],
@@ -166,6 +208,12 @@ const FALLBACK_TOOL_CLIS: CLIDefinition[] = [
       vision: false,
       codeExecution: false,
       fileAccess: false,
+      robotMode: {
+        supported: true,
+        flag: "--format json",
+        outputFormats: ["json"],
+        envelopeCompliant: true,
+      },
     },
   },
   {
@@ -178,8 +226,33 @@ const FALLBACK_TOOL_CLIS: CLIDefinition[] = [
       vision: false,
       codeExecution: false,
       fileAccess: false,
+      robotMode: {
+        supported: true,
+        flag: "--format json",
+        outputFormats: ["json", "jsonl", "sarif"],
+        envelopeCompliant: true,
+      },
     },
   },
+  {
+    name: "slb",
+    commands: ["slb"],
+    versionFlag: "--version",
+    capabilities: {
+      streaming: false,
+      toolUse: false,
+      vision: false,
+      codeExecution: false,
+      fileAccess: false,
+      robotMode: {
+        supported: true,
+        flag: "--json",
+        outputFormats: ["json"],
+        envelopeCompliant: true,
+      },
+    },
+  },
+  // Session & Memory Tools
   {
     name: "cass",
     commands: ["cass"],
@@ -189,7 +262,13 @@ const FALLBACK_TOOL_CLIS: CLIDefinition[] = [
       toolUse: false,
       vision: false,
       codeExecution: false,
-      fileAccess: false,
+      fileAccess: true,
+      robotMode: {
+        supported: true,
+        flag: "--robot",
+        outputFormats: ["json"],
+        envelopeCompliant: false,
+      },
     },
   },
   {
@@ -201,9 +280,21 @@ const FALLBACK_TOOL_CLIS: CLIDefinition[] = [
       toolUse: false,
       vision: false,
       codeExecution: false,
-      fileAccess: false,
+      fileAccess: true,
+      robotMode: {
+        supported: true,
+        flag: "--json",
+        outputFormats: ["json"],
+        envelopeCompliant: true,
+      },
+      mcp: {
+        available: true,
+        capabilities: "full",
+        toolCount: 10,
+      },
     },
   },
+  // Issue Tracking Tools
   {
     name: "br",
     commands: ["br"],
@@ -213,7 +304,13 @@ const FALLBACK_TOOL_CLIS: CLIDefinition[] = [
       toolUse: false,
       vision: false,
       codeExecution: false,
-      fileAccess: false,
+      fileAccess: true,
+      robotMode: {
+        supported: true,
+        flag: "--json",
+        outputFormats: ["json"],
+        envelopeCompliant: true,
+      },
     },
   },
   {
@@ -225,9 +322,16 @@ const FALLBACK_TOOL_CLIS: CLIDefinition[] = [
       toolUse: false,
       vision: false,
       codeExecution: false,
-      fileAccess: false,
+      fileAccess: true,
+      robotMode: {
+        supported: true,
+        flag: "--robot-triage",
+        outputFormats: ["json"],
+        envelopeCompliant: true,
+      },
     },
   },
+  // Repository & Project Tools
   {
     name: "ru",
     commands: ["ru"],
@@ -237,7 +341,150 @@ const FALLBACK_TOOL_CLIS: CLIDefinition[] = [
       toolUse: false,
       vision: false,
       codeExecution: false,
+      fileAccess: true,
+      robotMode: {
+        supported: true,
+        flag: "--json",
+        outputFormats: ["json"],
+        envelopeCompliant: true,
+      },
+    },
+  },
+  // Knowledge & Search Tools
+  {
+    name: "ms",
+    commands: ["ms"],
+    versionFlag: "--version",
+    capabilities: {
+      streaming: false,
+      toolUse: false,
+      vision: false,
+      codeExecution: false,
+      fileAccess: true,
+      robotMode: {
+        supported: true,
+        flag: "--json",
+        outputFormats: ["json"],
+        envelopeCompliant: true,
+      },
+    },
+  },
+  {
+    name: "xf",
+    commands: ["xf"],
+    versionFlag: "--version",
+    capabilities: {
+      streaming: false,
+      toolUse: false,
+      vision: false,
+      codeExecution: false,
+      fileAccess: true,
+      robotMode: {
+        supported: true,
+        flag: "--format json",
+        outputFormats: ["json", "jsonl"],
+        envelopeCompliant: true,
+      },
+    },
+  },
+  // Process & System Tools
+  {
+    name: "pt",
+    commands: ["pt"],
+    versionFlag: "--version",
+    capabilities: {
+      streaming: false,
+      toolUse: false,
+      vision: false,
+      codeExecution: false,
       fileAccess: false,
+      robotMode: {
+        supported: true,
+        flag: "--json",
+        outputFormats: ["json"],
+        envelopeCompliant: true,
+      },
+    },
+  },
+  {
+    name: "rch",
+    commands: ["rch"],
+    versionFlag: "--version",
+    capabilities: {
+      streaming: false,
+      toolUse: false,
+      vision: false,
+      codeExecution: false,
+      fileAccess: false,
+      robotMode: {
+        supported: true,
+        flag: "--json",
+        outputFormats: ["json"],
+        envelopeCompliant: true,
+      },
+    },
+  },
+  // Utilities & Converters
+  {
+    name: "giil",
+    commands: ["giil"],
+    versionFlag: "--version",
+    capabilities: {
+      streaming: false,
+      toolUse: false,
+      vision: false,
+      codeExecution: false,
+      fileAccess: true,
+    },
+  },
+  {
+    name: "csctf",
+    commands: ["csctf"],
+    versionFlag: "--version",
+    capabilities: {
+      streaming: false,
+      toolUse: false,
+      vision: false,
+      codeExecution: false,
+      fileAccess: true,
+    },
+  },
+  // Account & Orchestration Tools
+  {
+    name: "caam",
+    commands: ["caam"],
+    versionFlag: "--version",
+    capabilities: {
+      streaming: false,
+      toolUse: false,
+      vision: false,
+      codeExecution: false,
+      fileAccess: false,
+    },
+  },
+  {
+    name: "ntm",
+    commands: ["ntm"],
+    versionFlag: "--version",
+    capabilities: {
+      streaming: false,
+      toolUse: false,
+      vision: false,
+      codeExecution: true,
+      fileAccess: true,
+    },
+  },
+  // Code Analysis Tools
+  {
+    name: "scanner",
+    commands: ["scanner"],
+    versionFlag: "--version",
+    capabilities: {
+      streaming: false,
+      toolUse: false,
+      vision: false,
+      codeExecution: false,
+      fileAccess: true,
     },
   },
 ];
@@ -298,10 +545,36 @@ function deriveCapabilities(
   tool: ToolDefinition,
   fallback?: CLIDefinition,
 ): DetectedCapabilities {
-  if (fallback) return fallback.capabilities;
-  return tool.category === "agent"
-    ? DEFAULT_AGENT_CAPABILITIES
-    : DEFAULT_TOOL_CAPABILITIES;
+  // Start with base capabilities
+  const base =
+    fallback?.capabilities ??
+    (tool.category === "agent"
+      ? DEFAULT_AGENT_CAPABILITIES
+      : DEFAULT_TOOL_CAPABILITIES);
+
+  // Build result with robot mode and MCP info from manifest
+  const result: DetectedCapabilities = { ...base };
+
+  // Derive robot mode info from manifest
+  if (tool.robotMode) {
+    result.robotMode = {
+      supported: true,
+      flag: tool.robotMode.flag,
+      outputFormats: tool.robotMode.outputFormats,
+      envelopeCompliant: tool.robotMode.envelopeCompliant,
+    };
+  }
+
+  // Derive MCP info from manifest
+  if (tool.mcp && tool.mcp.available) {
+    result.mcp = {
+      available: true,
+      capabilities: tool.mcp.capabilities,
+      toolCount: tool.mcp.toolCount,
+    };
+  }
+
+  return result;
 }
 
 function deriveInstalledCheck(

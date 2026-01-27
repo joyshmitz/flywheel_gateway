@@ -10,7 +10,11 @@ import type {
   BvTriageResult,
 } from "@flywheel/flywheel-clients";
 import { createBvClient } from "@flywheel/flywheel-clients";
-import { createToolLogger, logCliCommand, logCliWarning } from "../utils/cli-logging";
+import {
+  createToolLogger,
+  logCliCommand,
+  logCliWarning,
+} from "../utils/cli-logging";
 import { getLogger } from "../middleware/correlation";
 
 interface RunOptions {
