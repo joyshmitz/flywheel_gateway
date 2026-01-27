@@ -99,6 +99,59 @@ const FALLBACK_REGISTRY: ToolRegistry = {
         command: ["command", "-v", "dcg"],
       },
     },
+    // Two-person authorization
+    {
+      id: "tools.slb",
+      name: "slb",
+      displayName: "SLB",
+      description:
+        "Simultaneous Launch Button - two-person rule for destructive commands",
+      category: "tool",
+      tags: ["critical", "required"],
+      optional: false,
+      enabledByDefault: true,
+      phase: 0, // Install first for safety
+      docsUrl: "https://github.com/Dicklesworthstone/slb",
+      install: [
+        {
+          command: "go",
+          args: ["install", "github.com/Dicklesworthstone/slb@latest"],
+        },
+      ],
+      verify: {
+        command: ["slb", "--version"],
+        expectedExitCodes: [0],
+      },
+      installedCheck: {
+        command: ["command", "-v", "slb"],
+      },
+    },
+    // Code security scanning
+    {
+      id: "tools.ubs",
+      name: "ubs",
+      displayName: "UBS",
+      description: "Ultimate Bug Scanner - code security scanning",
+      category: "tool",
+      tags: ["critical", "required"],
+      optional: false,
+      enabledByDefault: true,
+      phase: 0, // Install first for safety
+      docsUrl: "https://github.com/Dicklesworthstone/ubs",
+      install: [
+        {
+          command: "cargo",
+          args: ["install", "ubs"],
+        },
+      ],
+      verify: {
+        command: ["ubs", "--version"],
+        expectedExitCodes: [0],
+      },
+      installedCheck: {
+        command: ["command", "-v", "ubs"],
+      },
+    },
     // Issue tracking
     {
       id: "tools.br",

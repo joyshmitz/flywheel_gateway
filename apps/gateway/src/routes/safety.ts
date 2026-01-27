@@ -18,7 +18,12 @@ import {
   getChecksumAge,
   listToolsWithChecksums,
 } from "../services/update-checker.service";
-import { loadToolRegistry } from "../services/tool-registry.service";
+import {
+  loadToolRegistry,
+  getRequiredTools,
+  getToolRegistryMetadata,
+} from "../services/tool-registry.service";
+import type { ToolDefinition } from "@flywheel/shared/types";
 
 const safety = new Hono();
 
@@ -42,6 +47,14 @@ interface ChecksumStatus {
   stale: boolean;
 }
 
+interface ManifestMetadata {
+  source: "manifest" | "fallback";
+  schemaVersion: string | null;
+  manifestPath: string | null;
+  manifestHash: string | null;
+  errorCategory: string | null;
+}
+
 interface SafetyPostureResponse {
   status: "healthy" | "degraded" | "unhealthy";
   timestamp: string;
@@ -58,6 +71,7 @@ interface SafetyPostureResponse {
     isStale: boolean;
     tools: ChecksumStatus[];
   };
+  manifest: ManifestMetadata;
   summary: {
     allToolsInstalled: boolean;
     allToolsHealthy: boolean;
@@ -66,6 +80,7 @@ interface SafetyPostureResponse {
     overallHealthy: boolean;
     issues: string[];
     recommendations: string[];
+    requiredSafetyTools: string[];
   };
 }
 
@@ -74,11 +89,97 @@ interface SafetyPostureResponse {
 // ============================================================================
 
 const STALE_CHECKSUM_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+// Safety tool names that we check - manifest determines which are "required"
+const SAFETY_TOOL_NAMES = ["dcg", "slb", "ubs"] as const;
+type SafetyToolName = (typeof SAFETY_TOOL_NAMES)[number];
+
+// Legacy constant for checksum lookups (uses safety.* prefix)
 const SAFETY_TOOLS = ["safety.dcg", "safety.slb", "safety.ubs"] as const;
 
 // ============================================================================
 // Helpers
 // ============================================================================
+
+/**
+ * Get safety tools that are marked as required in the manifest.
+ * Returns manifest metadata for provenance tracking.
+ */
+async function getRequiredSafetyToolsFromManifest(): Promise<{
+  requiredTools: Map<SafetyToolName, ToolDefinition>;
+  manifestMetadata: ManifestMetadata;
+}> {
+  const requiredTools = await getRequiredTools();
+  const metadata = getToolRegistryMetadata();
+
+  // Filter for safety-relevant tools by name
+  const safetyToolMap = new Map<SafetyToolName, ToolDefinition>();
+  for (const tool of requiredTools) {
+    if (SAFETY_TOOL_NAMES.includes(tool.name as SafetyToolName)) {
+      safetyToolMap.set(tool.name as SafetyToolName, tool);
+    }
+  }
+
+  return {
+    requiredTools: safetyToolMap,
+    manifestMetadata: {
+      source: metadata?.registrySource ?? "fallback",
+      schemaVersion: metadata?.schemaVersion ?? null,
+      manifestPath: metadata?.manifestPath ?? null,
+      manifestHash: metadata?.manifestHash ?? null,
+      errorCategory: metadata?.errorCategory ?? null,
+    },
+  };
+}
+
+/**
+ * Generate issue message for a missing required tool.
+ * Uses manifest metadata if available, falls back to hardcoded strings.
+ */
+function getToolMissingIssue(
+  toolName: SafetyToolName,
+  toolDef: ToolDefinition | undefined,
+): string {
+  const displayName =
+    toolDef?.displayName ?? toolName.toUpperCase();
+  const description = toolDef?.description ?? "";
+  return `${displayName} is not installed${description ? ` - ${description}` : ""}`;
+}
+
+/**
+ * Generate recommendation for installing a missing tool.
+ * Uses manifest metadata if available.
+ */
+function getToolInstallRecommendation(
+  toolName: SafetyToolName,
+  toolDef: ToolDefinition | undefined,
+): string {
+  const displayName =
+    toolDef?.displayName ?? toolName.toUpperCase();
+  const docsUrl = toolDef?.docsUrl;
+
+  // Use install command from manifest if available
+  if (toolDef?.install?.[0]) {
+    const installSpec = toolDef.install[0];
+    const cmd = Array.isArray(installSpec.args)
+      ? `${installSpec.command} ${installSpec.args.join(" ")}`
+      : installSpec.command;
+    return `Install ${displayName}: ${cmd}`;
+  }
+
+  // Fallback recommendations
+  const fallbacks: Record<SafetyToolName, string> = {
+    dcg: "Install DCG to prevent dangerous command execution: cargo install dcg",
+    slb: "Install SLB for two-person authorization: go install github.com/Dicklesworthstone/slb@latest",
+    ubs: "Install UBS for static analysis scanning: cargo install ubs",
+  };
+
+  const recommendation = fallbacks[toolName];
+  if (docsUrl) {
+    return `${recommendation} (${docsUrl})`;
+  }
+  return recommendation;
+}
 
 async function checkDcgStatus(): Promise<ToolStatus> {
   const startTime = performance.now();
@@ -226,6 +327,9 @@ async function getChecksumStatuses(): Promise<{
  * Returns the installation status of DCG, SLB, and UBS safety tools,
  * along with ACFS checksum age for tool integrity verification.
  *
+ * Now manifest-aware: uses ACFS manifest to determine which tools are required
+ * and generates issues/recommendations based on manifest metadata.
+ *
  * Used by the readiness UI to display safety visibility.
  */
 safety.get("/posture", async (c) => {
@@ -234,17 +338,19 @@ safety.get("/posture", async (c) => {
 
   const startTime = performance.now();
 
-  // Run all checks in parallel
-  const [dcg, slb, ubs, checksumStatuses] = await Promise.all([
+  // Run all checks in parallel, including manifest query
+  const [dcg, slb, ubs, checksumStatuses, manifestInfo] = await Promise.all([
     checkDcgStatus(),
     checkSlbStatus(),
     checkUbsStatus(),
     getChecksumStatuses(),
+    getRequiredSafetyToolsFromManifest(),
   ]);
 
   const tools = { dcg, slb, ubs };
+  const toolStatuses: Record<SafetyToolName, ToolStatus> = { dcg, slb, ubs };
 
-  // Build summary
+  // Build summary using manifest-aware logic
   const allToolsInstalled = dcg.installed && slb.installed && ubs.installed;
   const allToolsHealthy = dcg.healthy && slb.healthy && ubs.healthy;
   const checksumsAvailable = checksumStatuses.toolsWithChecksums > 0;
@@ -252,45 +358,32 @@ safety.get("/posture", async (c) => {
 
   const issues: string[] = [];
   const recommendations: string[] = [];
+  const requiredSafetyToolNames: string[] = [];
 
-  // Check tool installation
-  if (!dcg.installed) {
-    issues.push("DCG (Destructive Command Guard) is not installed");
-    recommendations.push(
-      "Install DCG to prevent dangerous command execution: cargo install dcg",
-    );
-  }
-  if (!slb.installed) {
-    issues.push("SLB (Simultaneous Launch Button) is not installed");
-    recommendations.push(
-      "Install SLB for two-person authorization: go install github.com/Dicklesworthstone/slb@latest",
-    );
-  }
-  if (!ubs.installed) {
-    issues.push("UBS (Ultimate Bug Scanner) is not installed");
-    recommendations.push(
-      "Install UBS for static analysis scanning: cargo install ubs",
-    );
-  }
+  // Check tool installation using manifest metadata
+  for (const toolName of SAFETY_TOOL_NAMES) {
+    const toolStatus = toolStatuses[toolName];
+    const toolDef = manifestInfo.requiredTools.get(toolName);
+    const isRequired = toolDef !== undefined;
 
-  // Check tool health (installed but not healthy)
-  if (dcg.installed && !dcg.healthy) {
-    issues.push("DCG is installed but not responding correctly");
-    recommendations.push(
-      "Check DCG configuration and try running: dcg --version",
-    );
-  }
-  if (slb.installed && !slb.healthy) {
-    issues.push("SLB is installed but not responding correctly");
-    recommendations.push(
-      "Check SLB configuration and try running: slb --version",
-    );
-  }
-  if (ubs.installed && !ubs.healthy) {
-    issues.push("UBS is installed but not responding correctly");
-    recommendations.push(
-      "Check UBS configuration and try running: ubs --version",
-    );
+    if (isRequired) {
+      requiredSafetyToolNames.push(toolName);
+    }
+
+    // Only report missing tools that are required by the manifest
+    if (!toolStatus.installed && isRequired) {
+      issues.push(getToolMissingIssue(toolName, toolDef));
+      recommendations.push(getToolInstallRecommendation(toolName, toolDef));
+    }
+
+    // Check tool health (installed but not healthy) - always report regardless of manifest
+    if (toolStatus.installed && !toolStatus.healthy) {
+      const displayName = toolDef?.displayName ?? toolName.toUpperCase();
+      issues.push(`${displayName} is installed but not responding correctly`);
+      recommendations.push(
+        `Check ${displayName} configuration and try running: ${toolName} --version`,
+      );
+    }
   }
 
   // Check checksums
@@ -305,6 +398,16 @@ safety.get("/posture", async (c) => {
       `ACFS checksums are stale (older than ${Math.round(STALE_CHECKSUM_THRESHOLD_MS / (24 * 60 * 60 * 1000))} days)`,
     );
     recommendations.push("Refresh the ACFS manifest to get updated checksums");
+  }
+
+  // Add manifest-related issues
+  if (manifestInfo.manifestMetadata.source === "fallback") {
+    const errorCategory = manifestInfo.manifestMetadata.errorCategory;
+    if (errorCategory === "manifest_missing") {
+      issues.push("ACFS manifest not found - using fallback tool registry");
+    } else if (errorCategory) {
+      issues.push(`ACFS manifest error (${errorCategory}) - using fallback`);
+    }
   }
 
   // Determine overall status
@@ -331,6 +434,7 @@ safety.get("/posture", async (c) => {
       isStale: checksumStatuses.isStale,
       tools: checksumStatuses.tools,
     },
+    manifest: manifestInfo.manifestMetadata,
     summary: {
       allToolsInstalled,
       allToolsHealthy,
@@ -339,6 +443,7 @@ safety.get("/posture", async (c) => {
       overallHealthy,
       issues,
       recommendations,
+      requiredSafetyTools: requiredSafetyToolNames,
     },
   };
 
@@ -350,6 +455,8 @@ safety.get("/posture", async (c) => {
       slbInstalled: slb.installed,
       ubsInstalled: ubs.installed,
       checksumsStale,
+      manifestSource: manifestInfo.manifestMetadata.source,
+      requiredSafetyTools: requiredSafetyToolNames,
       totalLatencyMs,
     },
     "Safety posture check complete",
