@@ -66,6 +66,11 @@ coverage/
 playwright-report/
 test-results/
 
+# E2E test artifacts (bd-1vr1.5 logging framework)
+tests/e2e/logs/
+tests/e2e/results/
+tests/e2e/report/
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Logs
 # ═══════════════════════════════════════════════════════════════════════════════
