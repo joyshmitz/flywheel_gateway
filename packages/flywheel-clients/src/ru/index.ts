@@ -506,14 +506,17 @@ export function createRuClient(options: RuClientOptions): RuClient {
     },
 
     sweepPhase3: async (repo, planPath, opts) => {
+      const timeout = opts?.timeout ?? 300000;
       const args = [
         "agent-sweep",
-        "--phase3",
+        "--phase",
+        "3",
         "--json",
-        "--repo",
-        repo,
-        "--plan",
+        "--timeout",
+        String(timeout),
+        "--plan-file",
         planPath,
+        repo,
       ];
       if (opts?.dryRun) args.push("--dry-run");
       if (opts?.autoApprove) args.push("--auto-approve");
@@ -521,7 +524,7 @@ export function createRuClient(options: RuClientOptions): RuClient {
       const result = await runRuCommand(
         options.runner,
         args,
-        buildRunOptions(options, { ...opts, timeout: opts?.timeout ?? 300000 }),
+        buildRunOptions(options, { ...opts, timeout }),
       );
 
       try {
