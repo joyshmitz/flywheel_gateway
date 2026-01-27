@@ -141,12 +141,9 @@ The response includes a health summary indicating overall system status. Uses ca
   tags: ["System"],
   request: {
     query: z.object({
-      bypass_cache: z
-        .enum(["true", "false"])
-        .optional()
-        .openapi({
-          description: "Set to 'true' to force fresh data collection",
-        }),
+      bypass_cache: z.enum(["true", "false"]).optional().openapi({
+        description: "Set to 'true' to force fresh data collection",
+      }),
     }),
   },
   responses: {
@@ -2474,7 +2471,8 @@ registry.registerPath({
   method: "delete",
   path: "/beads/{id}",
   summary: "Close a bead",
-  description: "Closes the specified bead. Use query params for reason and force.",
+  description:
+    "Closes the specified bead. Use query params for reason and force.",
   tags: ["Beads"],
   request: {
     params: z.object({
@@ -2589,7 +2587,8 @@ registry.registerPath({
   method: "get",
   path: "/beads/list/ready",
   summary: "List ready beads",
-  description: "Returns beads that are ready to work on (no blocking dependencies).",
+  description:
+    "Returns beads that are ready to work on (no blocking dependencies).",
   tags: ["Beads"],
   request: {
     query: z.object({
@@ -2602,9 +2601,12 @@ registry.registerPath({
       unassigned: z.enum(["true", "false"]).optional().openapi({
         description: "Only show unassigned",
       }),
-      label: z.union([z.string(), z.array(z.string())]).optional().openapi({
-        description: "Filter by label (can be repeated)",
-      }),
+      label: z
+        .union([z.string(), z.array(z.string())])
+        .optional()
+        .openapi({
+          description: "Filter by label (can be repeated)",
+        }),
       sort: z.enum(["hybrid", "priority", "oldest"]).optional().openapi({
         description: "Sort mode",
       }),
@@ -2626,7 +2628,8 @@ registry.registerPath({
   method: "get",
   path: "/beads/triage",
   summary: "Get BV triage",
-  description: "Returns BV triage recommendations, quick wins, and blockers to clear.",
+  description:
+    "Returns BV triage recommendations, quick wins, and blockers to clear.",
   tags: ["Beads"],
   request: {
     query: z.object({

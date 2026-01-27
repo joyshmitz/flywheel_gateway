@@ -1567,7 +1567,8 @@ export const BeadSchema = z
       example: "open",
     }),
     priority: z.number().optional().openapi({
-      description: "Priority level (0=critical, 1=high, 2=medium, 3=low, 4=backlog)",
+      description:
+        "Priority level (0=critical, 1=high, 2=medium, 3=low, 4=backlog)",
       example: 1,
     }),
     issue_type: z.string().optional().openapi({
@@ -1650,9 +1651,12 @@ export const CreateBeadRequestSchema = z
     parent: z.string().optional().openapi({
       description: "Parent bead ID",
     }),
-    deps: z.union([z.array(z.string()), z.string()]).optional().openapi({
-      description: "Dependency bead IDs",
-    }),
+    deps: z
+      .union([z.array(z.string()), z.string()])
+      .optional()
+      .openapi({
+        description: "Dependency bead IDs",
+      }),
     estimateMinutes: z.number().optional().openapi({
       description: "Time estimate in minutes",
     }),
@@ -1749,30 +1753,48 @@ registry.register("CloseBeadRequest", CloseBeadRequestSchema);
 
 export const ListBeadsQuerySchema = z
   .object({
-    status: z.union([z.string(), z.array(z.string())]).optional().openapi({
-      description: "Filter by status (can be repeated)",
-    }),
-    type: z.union([z.string(), z.array(z.string())]).optional().openapi({
-      description: "Filter by type (can be repeated)",
-    }),
+    status: z
+      .union([z.string(), z.array(z.string())])
+      .optional()
+      .openapi({
+        description: "Filter by status (can be repeated)",
+      }),
+    type: z
+      .union([z.string(), z.array(z.string())])
+      .optional()
+      .openapi({
+        description: "Filter by type (can be repeated)",
+      }),
     assignee: z.string().optional().openapi({
       description: "Filter by assignee",
     }),
     unassigned: z.enum(["true", "false"]).optional().openapi({
       description: "Only show unassigned beads",
     }),
-    id: z.union([z.string(), z.array(z.string())]).optional().openapi({
-      description: "Filter by specific IDs (can be repeated)",
-    }),
-    label: z.union([z.string(), z.array(z.string())]).optional().openapi({
-      description: "Filter by label with AND logic (can be repeated)",
-    }),
-    labelAny: z.union([z.string(), z.array(z.string())]).optional().openapi({
-      description: "Filter by label with OR logic (can be repeated)",
-    }),
-    priority: z.union([z.string(), z.array(z.string())]).optional().openapi({
-      description: "Filter by exact priority (can be repeated)",
-    }),
+    id: z
+      .union([z.string(), z.array(z.string())])
+      .optional()
+      .openapi({
+        description: "Filter by specific IDs (can be repeated)",
+      }),
+    label: z
+      .union([z.string(), z.array(z.string())])
+      .optional()
+      .openapi({
+        description: "Filter by label with AND logic (can be repeated)",
+      }),
+    labelAny: z
+      .union([z.string(), z.array(z.string())])
+      .optional()
+      .openapi({
+        description: "Filter by label with OR logic (can be repeated)",
+      }),
+    priority: z
+      .union([z.string(), z.array(z.string())])
+      .optional()
+      .openapi({
+        description: "Filter by exact priority (can be repeated)",
+      }),
     priorityMin: z.string().optional().openapi({
       description: "Minimum priority (0=critical, 4=backlog)",
     }),
@@ -1794,9 +1816,12 @@ export const ListBeadsQuerySchema = z
     limit: z.string().optional().openapi({
       description: "Max results (default: 50, 0 = unlimited)",
     }),
-    sort: z.enum(["priority", "created_at", "updated_at", "title"]).optional().openapi({
-      description: "Sort by field",
-    }),
+    sort: z
+      .enum(["priority", "created_at", "updated_at", "title"])
+      .optional()
+      .openapi({
+        description: "Sort by field",
+      }),
     reverse: z.enum(["true", "false"]).optional().openapi({
       description: "Reverse sort order",
     }),
@@ -2593,12 +2618,9 @@ export const AgentMailSnapshotSchema = z
     available: z.boolean().openapi({
       description: "Whether Agent Mail server is available",
     }),
-    status: z
-      .enum(["healthy", "degraded", "unhealthy"])
-      .optional()
-      .openapi({
-        description: "Server status",
-      }),
+    status: z.enum(["healthy", "degraded", "unhealthy"]).optional().openapi({
+      description: "Server status",
+    }),
     projectId: z.string().optional().openapi({
       description: "Project identifier",
     }),

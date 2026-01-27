@@ -22,11 +22,7 @@ import {
   type BeadsService,
   createBeadsService,
 } from "../services/beads.service";
-import {
-  beadLinks,
-  beadThreadingHints,
-  getLinkContext,
-} from "../utils/links";
+import { beadLinks, beadThreadingHints, getLinkContext } from "../utils/links";
 import {
   sendError,
   sendResource,

@@ -100,10 +100,13 @@ rch.get("/workers", async (c) => {
     const onlineCount = workers.filter((w) => w.status === "online").length;
     const busyCount = workers.filter((w) => w.status === "busy").length;
 
-    return sendList(c, workers, {
-      total: workers.length,
-      online: onlineCount,
-      busy: busyCount,
+    return sendResource(c, "rch_workers", {
+      workers,
+      summary: {
+        total: workers.length,
+        online: onlineCount,
+        busy: busyCount,
+      },
     });
   } catch (error) {
     return handleError(error, c);

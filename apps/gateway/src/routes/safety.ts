@@ -140,8 +140,7 @@ function getToolMissingIssue(
   toolName: SafetyToolName,
   toolDef: ToolDefinition | undefined,
 ): string {
-  const displayName =
-    toolDef?.displayName ?? toolName.toUpperCase();
+  const displayName = toolDef?.displayName ?? toolName.toUpperCase();
   const description = toolDef?.description ?? "";
   return `${displayName} is not installed${description ? ` - ${description}` : ""}`;
 }
@@ -154,8 +153,7 @@ function getToolInstallRecommendation(
   toolName: SafetyToolName,
   toolDef: ToolDefinition | undefined,
 ): string {
-  const displayName =
-    toolDef?.displayName ?? toolName.toUpperCase();
+  const displayName = toolDef?.displayName ?? toolName.toUpperCase();
   const docsUrl = toolDef?.docsUrl;
 
   // Use install command from manifest if available

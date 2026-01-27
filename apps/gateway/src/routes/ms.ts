@@ -149,7 +149,10 @@ ms.post("/search", async (c) => {
     const log = getLogger();
 
     log.info(
-      { query: validated.query.slice(0, 50), knowledgeBase: validated.knowledgeBase },
+      {
+        query: validated.query.slice(0, 50),
+        knowledgeBase: validated.knowledgeBase,
+      },
       "Running ms search",
     );
 
@@ -160,7 +163,8 @@ ms.post("/search", async (c) => {
     if (validated.knowledgeBase !== undefined)
       options.knowledgeBase = validated.knowledgeBase;
     if (validated.limit !== undefined) options.limit = validated.limit;
-    if (validated.threshold !== undefined) options.threshold = validated.threshold;
+    if (validated.threshold !== undefined)
+      options.threshold = validated.threshold;
     if (validated.semantic !== undefined) options.semantic = validated.semantic;
 
     const result = await service.search(validated.query, options);
@@ -255,7 +259,10 @@ ms.post("/entries", async (c) => {
     const log = getLogger();
 
     log.info(
-      { title: validated.title.slice(0, 50), knowledgeBase: validated.knowledgeBase },
+      {
+        title: validated.title.slice(0, 50),
+        knowledgeBase: validated.knowledgeBase,
+      },
       "Adding ms entry",
     );
 

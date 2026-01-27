@@ -244,9 +244,7 @@ pt.get("/processes/:pid", async (c) => {
     const pid = parseInt(pidParam, 10);
 
     if (Number.isNaN(pid) || pid < 0) {
-      return sendValidationError(c, [
-        { path: "pid", message: "Invalid PID" },
-      ]);
+      return sendValidationError(c, [{ path: "pid", message: "Invalid PID" }]);
     }
 
     const service = getPtService();
@@ -275,9 +273,7 @@ pt.post("/processes/:pid/kill", async (c) => {
     const pid = parseInt(pidParam, 10);
 
     if (Number.isNaN(pid) || pid < 0) {
-      return sendValidationError(c, [
-        { path: "pid", message: "Invalid PID" },
-      ]);
+      return sendValidationError(c, [{ path: "pid", message: "Invalid PID" }]);
     }
 
     const body = await c.req.json().catch(() => ({}));
