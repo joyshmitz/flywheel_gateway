@@ -210,7 +210,7 @@ describe("Manifest path resolution", () => {
 });
 
 describe("Error mapping + logging", () => {
-  it("logs manifest_parse_error with path/hash and throws GatewayError", async () => {
+  it("logs manifest_parse_error with path/hash and throws GatewayError when throwOnError", async () => {
     const manifestPath = "/tmp/invalid.yaml";
     process.env["ACFS_MANIFEST_PATH"] = manifestPath;
     defaultExists = false;
@@ -220,7 +220,7 @@ describe("Error mapping + logging", () => {
 
     let caught: unknown;
     try {
-      await loadToolRegistry();
+      await loadToolRegistry({ throwOnError: true });
     } catch (error) {
       caught = error;
     }
@@ -242,7 +242,7 @@ describe("Error mapping + logging", () => {
     expect(warnPayload["schemaVersion"]).toBeNull();
   });
 
-  it("logs manifest_validation_error with schema version", async () => {
+  it("logs manifest_validation_error with schema version when throwOnError", async () => {
     const manifestPath = "/tmp/invalid-schema.yaml";
     process.env["ACFS_MANIFEST_PATH"] = manifestPath;
     defaultExists = false;
@@ -251,7 +251,7 @@ describe("Error mapping + logging", () => {
 
     let caught: unknown;
     try {
-      await loadToolRegistry();
+      await loadToolRegistry({ throwOnError: true });
     } catch (error) {
       caught = error;
     }
@@ -270,5 +270,154 @@ describe("Error mapping + logging", () => {
     );
     expect(warnPayload["errorCategory"]).toBe("manifest_validation_error");
     expect(warnPayload["schemaVersion"]).toBe("2.1.0");
+  });
+});
+
+describe("Manifest fallback behavior", () => {
+  it("returns fallback registry when manifest is missing", async () => {
+    const manifestPath = "/tmp/nonexistent.yaml";
+    process.env["ACFS_MANIFEST_PATH"] = manifestPath;
+    defaultExists = false;
+    existsOverrides.set(manifestPath, false);
+
+    const registry = await loadToolRegistry();
+
+    // Should return fallback, not throw
+    expect(registry.schemaVersion).toBe("1.0.0-fallback");
+    expect(registry.source).toBe("built-in");
+    expect(registry.tools.length).toBeGreaterThan(0);
+
+    // Should log warning with correct error category
+    const warnEvent = logEvents.find((event) => event.level === "warn");
+    expect(warnEvent).toBeDefined();
+    const warnPayload = warnEvent?.args[0] as Record<string, unknown>;
+    expect(warnPayload["errorCategory"]).toBe("manifest_missing");
+    expect(warnPayload["manifestPath"]).toBe(manifestPath);
+  });
+
+  it("returns fallback registry when manifest has invalid YAML", async () => {
+    const manifestPath = "/tmp/bad-yaml.yaml";
+    process.env["ACFS_MANIFEST_PATH"] = manifestPath;
+    defaultExists = false;
+    existsOverrides.set(manifestPath, true);
+    manifestContents.set(manifestPath, "this: [is: bad: yaml");
+    parseMode = "throw";
+
+    const registry = await loadToolRegistry();
+
+    // Should return fallback, not throw
+    expect(registry.schemaVersion).toBe("1.0.0-fallback");
+    expect(registry.source).toBe("built-in");
+
+    // Metadata should reflect fallback state
+    const meta = getToolRegistryMetadata();
+    expect(meta?.registrySource).toBe("fallback");
+    expect(meta?.errorCategory).toBe("manifest_parse_error");
+  });
+
+  it("returns fallback registry when manifest fails validation", async () => {
+    const manifestPath = "/tmp/invalid-schema.yaml";
+    process.env["ACFS_MANIFEST_PATH"] = manifestPath;
+    defaultExists = false;
+    existsOverrides.set(manifestPath, true);
+    manifestContents.set(manifestPath, invalidSchemaManifest);
+
+    const registry = await loadToolRegistry();
+
+    // Should return fallback, not throw
+    expect(registry.schemaVersion).toBe("1.0.0-fallback");
+
+    // Metadata should indicate validation error
+    const meta = getToolRegistryMetadata();
+    expect(meta?.registrySource).toBe("fallback");
+    expect(meta?.errorCategory).toBe("manifest_validation_error");
+    expect(meta?.userMessage).toContain("schema validation");
+  });
+});
+
+describe("Refresh/bypass cache", () => {
+  it("bypassCache: true forces fresh load even within TTL", async () => {
+    const manifestPath = "/tmp/tool-registry.yaml";
+    process.env["ACFS_MANIFEST_PATH"] = manifestPath;
+    process.env["ACFS_MANIFEST_TTL_MS"] = "60000";
+    defaultExists = false;
+    existsOverrides.set(manifestPath, true);
+    manifestContents.set(manifestPath, validManifest);
+
+    // First load - should read from file
+    await loadToolRegistry();
+    expect(readFileCalls.length).toBe(1);
+
+    // Second load with bypassCache - should read again
+    await loadToolRegistry({ bypassCache: true });
+    expect(readFileCalls.length).toBe(2);
+
+    // Third load without bypassCache - should use cache
+    await loadToolRegistry();
+    expect(readFileCalls.length).toBe(2);
+  });
+
+  it("clearToolRegistryCache forces next load to read from file", async () => {
+    const manifestPath = "/tmp/tool-registry.yaml";
+    process.env["ACFS_MANIFEST_PATH"] = manifestPath;
+    process.env["ACFS_MANIFEST_TTL_MS"] = "60000";
+    defaultExists = false;
+    existsOverrides.set(manifestPath, true);
+    manifestContents.set(manifestPath, validManifest);
+
+    // First load
+    await loadToolRegistry();
+    expect(readFileCalls.length).toBe(1);
+
+    // Clear cache
+    clearToolRegistryCache();
+
+    // Next load should read from file again
+    await loadToolRegistry();
+    expect(readFileCalls.length).toBe(2);
+  });
+});
+
+describe("Provenance metadata", () => {
+  it("getToolRegistryMetadata returns path, hash, and version", async () => {
+    const manifestPath = "/tmp/tool-registry.yaml";
+    process.env["ACFS_MANIFEST_PATH"] = manifestPath;
+    defaultExists = false;
+    existsOverrides.set(manifestPath, true);
+    manifestContents.set(manifestPath, validManifest);
+
+    await loadToolRegistry();
+
+    const meta = getToolRegistryMetadata();
+    expect(meta).not.toBeNull();
+    expect(meta?.manifestPath).toBe(manifestPath);
+    expect(meta?.schemaVersion).toBe("1.0.0");
+    expect(meta?.manifestHash).toBe(
+      createHash("sha256").update(validManifest).digest("hex"),
+    );
+    expect(meta?.registrySource).toBe("manifest");
+    expect(meta?.loadedAt).toBeGreaterThan(0);
+  });
+
+  it("getToolRegistryMetadata returns null before any load", () => {
+    // Cache is cleared in beforeEach
+    const meta = getToolRegistryMetadata();
+    expect(meta).toBeNull();
+  });
+
+  it("getToolRegistryMetadata includes errorCategory and userMessage for fallback", async () => {
+    const manifestPath = "/tmp/missing.yaml";
+    process.env["ACFS_MANIFEST_PATH"] = manifestPath;
+    defaultExists = false;
+    existsOverrides.set(manifestPath, false);
+
+    await loadToolRegistry();
+
+    const meta = getToolRegistryMetadata();
+    expect(meta).not.toBeNull();
+    expect(meta?.registrySource).toBe("fallback");
+    expect(meta?.errorCategory).toBe("manifest_missing");
+    expect(meta?.userMessage).toBeDefined();
+    expect(meta?.userMessage).toContain("manifest file not found");
   });
 });
