@@ -495,40 +495,56 @@ export async function checkReservation(
     (r) => r.projectId === params.projectId && r.expiresAt > now,
   );
 
+  let allowed = true;
+  let blockingReservation: FileReservation | undefined;
+  const holdingReservations: FileReservation[] = [];
+
   for (const reservation of projectReservations) {
     // Check if the file matches any pattern in this reservation
     if (fileMatchesPatterns(params.filePath, reservation.patterns)) {
-      // If this is the agent's own reservation, they can access
       if (reservation.agentId === params.agentId) {
-        return {
-          allowed: true,
-          heldBy: reservation.agentId,
-          expiresAt: reservation.expiresAt,
-          mode: reservation.mode,
-          reservationId: reservation.id,
-        };
+        // Agent holds this reservation
+        holdingReservations.push(reservation);
+      } else {
+        // Another agent holds this
+        if (reservation.mode === "exclusive") {
+          // Exclusive held by other -> Blocking
+          allowed = false;
+          blockingReservation = reservation;
+          // Fail fast on first blocking reservation? 
+          // Yes, because one exclusive block is enough to deny.
+          break; 
+        }
+        // Shared held by other -> Non-blocking (continue checking)
+        holdingReservations.push(reservation);
       }
-
-      // If the reservation is exclusive, deny access
-      if (reservation.mode === "exclusive") {
-        return {
-          allowed: false,
-          heldBy: reservation.agentId,
-          expiresAt: reservation.expiresAt,
-          mode: reservation.mode,
-          reservationId: reservation.id,
-        };
-      }
-
-      // Shared mode - allow read access but indicate holder
-      return {
-        allowed: true,
-        heldBy: reservation.agentId,
-        expiresAt: reservation.expiresAt,
-        mode: reservation.mode,
-        reservationId: reservation.id,
-      };
     }
+  }
+
+  if (!allowed && blockingReservation) {
+    return {
+      allowed: false,
+      heldBy: blockingReservation.agentId,
+      expiresAt: blockingReservation.expiresAt,
+      mode: blockingReservation.mode,
+      reservationId: blockingReservation.id,
+    };
+  }
+
+  // If we have holders (shared or self), return info about the 'best' one (e.g. self or first shared)
+  // Prefer showing self-reservation if exists
+  const relevantReservation = 
+    holdingReservations.find(r => r.agentId === params.agentId) || 
+    holdingReservations[0];
+
+  if (relevantReservation) {
+    return {
+      allowed: true,
+      heldBy: relevantReservation.agentId,
+      expiresAt: relevantReservation.expiresAt,
+      mode: relevantReservation.mode,
+      reservationId: relevantReservation.id,
+    };
   }
 
   // No reservation covers this file - access allowed
@@ -733,30 +749,36 @@ export async function listReservations(
   );
 
   // Handle cursor-based pagination
-  let startIndex = 0;
+  let paginatedReservations = reservations;
+  
   if (params.startingAfter) {
     const cursor = decodeCursor(params.startingAfter);
     if (cursor) {
-      const cursorIndex = reservations.findIndex((r) => r.id === cursor.id);
-      if (cursorIndex !== -1) {
-        startIndex = cursorIndex + 1;
-      }
+      const cursorTime = cursor.value ?? 0;
+      paginatedReservations = reservations.filter(r => 
+        r.createdAt.getTime() < cursorTime || 
+        (r.createdAt.getTime() === cursorTime && r.id < cursor.id)
+      );
     }
   } else if (params.endingBefore) {
     const cursor = decodeCursor(params.endingBefore);
     if (cursor) {
-      const cursorIndex = reservations.findIndex((r) => r.id === cursor.id);
-      if (cursorIndex !== -1) {
-        // Move backward by one page from the cursor
-        startIndex = Math.max(0, cursorIndex - limit);
-      }
+      const cursorTime = cursor.value ?? 0;
+      // Get items before cursor (newer), then reverse to get correct page
+      const itemsBefore = reservations.filter(r => 
+        r.createdAt.getTime() > cursorTime || 
+        (r.createdAt.getTime() === cursorTime && r.id > cursor.id)
+      );
+      // We want the *last* 'limit' items from the 'before' set (which are the oldest of the new set)
+      // Since 'itemsBefore' is sorted Descending, the 'last' items are the oldest (closest to cursor)
+      const startIndex = Math.max(0, itemsBefore.length - limit);
+      paginatedReservations = itemsBefore.slice(startIndex);
     }
   }
 
-  // Get limit+1 to check if there are more
-  const pageItems = reservations.slice(startIndex, startIndex + limit + 1);
-  const hasMore = pageItems.length > limit;
-  const resultItems = hasMore ? pageItems.slice(0, limit) : pageItems;
+  // Slice to limit + 1 to check hasMore
+  const resultItems = paginatedReservations.slice(0, limit);
+  const hasMore = paginatedReservations.length > limit;
 
   // Build cursors
   const result: ListReservationsResult = {
@@ -801,34 +823,33 @@ export async function listConflicts(
   conflicts.sort((a, b) => b.detectedAt.getTime() - a.detectedAt.getTime());
 
   // Handle cursor-based pagination
-  let startIndex = 0;
+  let paginatedConflicts = conflicts;
+
   if (params.startingAfter) {
     const cursor = decodeCursor(params.startingAfter);
     if (cursor) {
-      const cursorIndex = conflicts.findIndex(
-        (c) => c.conflictId === cursor.id,
+      const cursorTime = cursor.value ?? 0;
+      paginatedConflicts = conflicts.filter(c => 
+        c.detectedAt.getTime() < cursorTime || 
+        (c.detectedAt.getTime() === cursorTime && c.conflictId < cursor.id)
       );
-      if (cursorIndex !== -1) {
-        startIndex = cursorIndex + 1;
-      }
     }
   } else if (params.endingBefore) {
     const cursor = decodeCursor(params.endingBefore);
     if (cursor) {
-      const cursorIndex = conflicts.findIndex(
-        (c) => c.conflictId === cursor.id,
+      const cursorTime = cursor.value ?? 0;
+      const itemsBefore = conflicts.filter(c => 
+        c.detectedAt.getTime() > cursorTime || 
+        (c.detectedAt.getTime() === cursorTime && c.conflictId > cursor.id)
       );
-      if (cursorIndex !== -1) {
-        // Move backward by one page from the cursor
-        startIndex = Math.max(0, cursorIndex - limit);
-      }
+      const startIndex = Math.max(0, itemsBefore.length - limit);
+      paginatedConflicts = itemsBefore.slice(startIndex);
     }
   }
 
   // Get limit+1 to check if there are more
-  const pageItems = conflicts.slice(startIndex, startIndex + limit + 1);
-  const hasMore = pageItems.length > limit;
-  const resultItems = hasMore ? pageItems.slice(0, limit) : pageItems;
+  const resultItems = paginatedConflicts.slice(0, limit);
+  const hasMore = paginatedConflicts.length > limit;
 
   // Build result with cursors
   const result: ListConflictsResult = {

@@ -72,7 +72,12 @@ const MAX_REGEX_CACHE = 1000;
 export function globToRegex(pattern: string): RegExp {
   // Check cache
   const cached = regexCache.get(pattern);
-  if (cached) return cached;
+  if (cached) {
+    // Refresh LRU order
+    regexCache.delete(pattern);
+    regexCache.set(pattern, cached);
+    return cached;
+  }
 
   // Use placeholder to avoid ** replacement affecting later * replacement
   const GLOBSTAR_PLACEHOLDER = "\x00GLOBSTAR\x00";
