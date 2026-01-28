@@ -872,8 +872,7 @@ async function runInstalledCheck(
     const exitCode = raceResult;
 
     // Read output with cap
-    const stdout = await new Response(proc.stdout).text();
-    const cappedOutput = stdout.slice(0, outputCapBytes).trim();
+    const cappedOutput = (await readStreamSafe(proc.stdout, outputCapBytes)).trim();
 
     if (exitCode === 0) {
       return { success: true, output: cappedOutput };
@@ -904,7 +903,7 @@ async function findExecutable(command: string): Promise<string | null> {
       env: buildSafeEnv(),
     });
 
-    const stdout = await new Response(proc.stdout).text();
+    const stdout = await readStreamSafe(proc.stdout, MAX_SAFE_OUTPUT_BYTES);
     const exitCode = await proc.exited;
 
     if (exitCode === 0 && stdout.trim()) {
@@ -933,8 +932,8 @@ async function getVersion(
       env: buildSafeEnv(),
     });
 
-    const stdout = await new Response(proc.stdout).text();
-    const stderr = await new Response(proc.stderr).text();
+    const stdout = await readStreamSafe(proc.stdout, MAX_SAFE_OUTPUT_BYTES);
+    const stderr = await readStreamSafe(proc.stderr, MAX_SAFE_OUTPUT_BYTES);
     const exitCode = await proc.exited;
 
     // Some CLIs output version to stderr
@@ -965,8 +964,8 @@ async function checkAuth(
       env: buildSafeEnv(),
     });
 
-    const stdout = await new Response(proc.stdout).text();
-    const stderr = await new Response(proc.stderr).text();
+    const stdout = await readStreamSafe(proc.stdout, MAX_SAFE_OUTPUT_BYTES);
+    const stderr = await readStreamSafe(proc.stderr, MAX_SAFE_OUTPUT_BYTES);
     const exitCode = await proc.exited;
 
     // Exit code 0 typically means authenticated
