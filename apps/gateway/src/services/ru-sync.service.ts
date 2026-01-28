@@ -112,6 +112,55 @@ const activeSessions = new Map<
 // Helpers
 // ============================================================================
 
+const MAX_LOG_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Safely read a stream up to a limit, draining excess to avoid pipe blocking.
+ */
+async function readStreamSafe(
+  stream: ReadableStream<Uint8Array>,
+  maxBytes: number,
+): Promise<string> {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  let content = "";
+  let totalBytes = 0;
+  const drainLimit = maxBytes * 5;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      totalBytes += value.length;
+
+      if (content.length < maxBytes) {
+        content += decoder.decode(value, { stream: true });
+      }
+
+      if (totalBytes > drainLimit) {
+        await reader.cancel();
+        break;
+      }
+    }
+  } catch {
+    // Ignore errors
+  } finally {
+    reader.releaseLock();
+  }
+
+  // Flush decoder
+  if (content.length < maxBytes) {
+    content += decoder.decode();
+  }
+
+  if (content.length > maxBytes) {
+    content = content.slice(0, maxBytes) + "\n[TRUNCATED]";
+  }
+
+  return content;
+}
+
 /**
  * Generate a cryptographically secure random ID.
  */
@@ -288,8 +337,8 @@ async function runSyncProcess(
           const proc = spawn(args, { stdout: "pipe", stderr: "pipe" });
           activeSyncs.set(repo.id, proc);
 
-          const stdout = await new Response(proc.stdout).text();
-          const stderr = await new Response(proc.stderr).text();
+          const stdout = await readStreamSafe(proc.stdout, MAX_LOG_BYTES);
+          const stderr = await readStreamSafe(proc.stderr, MAX_LOG_BYTES);
           const exitCode = await proc.exited;
 
           activeSyncs.delete(repo.id);
