@@ -180,6 +180,54 @@ function generateId(prefix: string, length = 12): string {
   return `${prefix}${result}`;
 }
 
+const MAX_LOG_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Safely read a stream up to a limit, draining excess to avoid pipe blocking.
+ */
+async function readStreamSafe(
+  stream: ReadableStream<Uint8Array>,
+  maxBytes: number,
+): Promise<string> {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  let content = "";
+  let totalBytes = 0;
+  const drainLimit = maxBytes * 5;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      totalBytes += value.length;
+
+      if (content.length < maxBytes) {
+        content += decoder.decode(value, { stream: true });
+      }
+
+      if (totalBytes > drainLimit) {
+        await reader.cancel();
+        break;
+      }
+    }
+  } catch {
+    // Ignore errors
+  } finally {
+    reader.releaseLock();
+  }
+
+  if (content.length < maxBytes) {
+    content += decoder.decode();
+  }
+
+  if (content.length > maxBytes) {
+    content = content.slice(0, maxBytes) + "\n[TRUNCATED]";
+  }
+
+  return content;
+}
+
 /**
  * Log a sweep event to the database.
  */
@@ -536,15 +584,7 @@ async function runSweepPhases(
 /**
  * Phase 1: Analysis - Scan repos for issues.
  */
-async function runPhase1Analysis(
-  sessionId: string,
-  repos: FleetRepo[],
-  config: SweepConfig,
-): Promise<void> {
-  const _correlationId = getCorrelationId();
-  await logSweepEvent(
-    sessionId,
-    "info",
+info"info",
     "Starting Phase 1: Analysis",
     undefined,
     {
@@ -692,7 +732,7 @@ async function runPhase2Planning(
         { stdout: "pipe", stderr: "pipe" },
       );
 
-      const stdout = await new Response(proc.stdout).text();
+      const stdout = await readStreamSafe(proc.stdout, MAX_LOG_BYTES);
       const exitCode = await proc.exited;
 
       const duration = Date.now() - startTime;
@@ -875,7 +915,7 @@ async function runPhase3Execution(
       proc.stdin.write(plan.planJson);
       proc.stdin.end();
 
-      const stdout = await new Response(proc.stdout).text();
+      const stdout = await readStreamSafe(proc.stdout, MAX_LOG_BYTES);
       const exitCode = await proc.exited;
 
       const duration = Date.now() - startTime;
