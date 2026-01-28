@@ -23,7 +23,7 @@ import { startDCGCleanupJob } from "./services/dcg-pending.service";
 import { logger } from "./services/logger";
 import { registerAgentMailToolCallerFromEnv } from "./services/mcp-agentmail";
 import { startCleanupJob } from "./services/reservation.service";
-import { createGuestAuthContext } from "./ws/authorization";
+import { createGuestAuthContext, createInternalAuthContext } from "./ws/authorization";
 import { handleWSClose, handleWSMessage, handleWSOpen } from "./ws/handlers";
 import { startHeartbeat } from "./ws/heartbeat";
 import { getHub } from "./ws/hub";
@@ -136,11 +136,24 @@ if (import.meta.main) {
           initialSubscriptions.set(`agent:tools:${agentId}`, undefined);
         }
 
+        // Check for admin authentication
+        const authHeader = req.headers.get("Authorization");
+        const urlToken = url.searchParams.get("token");
+        const token = authHeader?.replace("Bearer ", "") ?? urlToken;
+        
+        let authContext = createGuestAuthContext();
+        
+        // Simple admin key check
+        const adminKey = process.env["GATEWAY_ADMIN_KEY"];
+        if (adminKey && token === adminKey) {
+          authContext = createInternalAuthContext();
+        }
+
         const upgraded = server.upgrade(req, {
           data: {
             connectionId: `ws_${crypto.randomUUID()}`,
             connectedAt: new Date(),
-            auth: createGuestAuthContext(), // TODO: Real auth
+            auth: authContext,
             subscriptions: initialSubscriptions,
             lastHeartbeat: new Date(),
             pendingAcks: new Map(),
