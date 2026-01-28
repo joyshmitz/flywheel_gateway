@@ -506,11 +506,38 @@ export class NtmIngestService {
     for (const [pane, tracked] of this.trackedAgents.entries()) {
       if (!seenPanes.has(pane)) {
         this.trackedAgents.delete(pane);
+
+        if (tracked.gatewayAgentId) {
+          this.markGatewayAgentTerminated(tracked.gatewayAgentId);
+        }
+
         log.info(
           { pane, sessionName: tracked.sessionName },
           "[NTM-INGEST] Agent no longer present",
         );
       }
+    }
+  }
+
+  private markGatewayAgentTerminated(agentId: string): void {
+    const log = getLogger();
+    try {
+      const agentRecord = getAgentState(agentId);
+      if (
+        agentRecord &&
+        agentRecord.currentState !== LifecycleState.TERMINATED
+      ) {
+        transitionState(agentId, LifecycleState.TERMINATED, "ntm_disappeared");
+        log.info(
+          { agentId },
+          "[NTM-INGEST] Marked gateway agent as terminated (disappeared from NTM)",
+        );
+      }
+    } catch (err) {
+      log.warn(
+        { agentId, error: String(err) },
+        "[NTM-INGEST] Failed to mark agent terminated",
+      );
     }
   }
 
