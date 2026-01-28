@@ -209,8 +209,16 @@ export function pushOutputSample(agentId: string, output: string): void {
 
   // Split new output into lines to ensure granular retention
   // Handle various newline formats
-  const newLines = output.split(/\r?\n/);
-  lines.push(...newLines);
+  let newLines = output.split(/\r?\n/);
+
+  // Optimization: If newLines is huge, only keep the tail
+  // This prevents potential stack overflow from spreading too many arguments
+  if (newLines.length > MAX_OUTPUT_LINES) {
+    newLines = newLines.slice(-MAX_OUTPUT_LINES);
+  }
+
+  // Combine
+  lines = lines.concat(newLines);
 
   // Keep only recent lines
   if (lines.length > MAX_OUTPUT_LINES) {
