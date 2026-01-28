@@ -692,58 +692,21 @@ async function executeLoop(
       }
 
       if (config.parallel && config.parallelLimit && config.parallelLimit > 1) {
-        // Parallel execution
-        // WARNING: Parallel loops have race conditions with shared context.
-        // Each iteration will overwrite the loop variables. Use with caution.
-        const items = Array.from(iterator);
-        const limit = Math.min(config.parallelLimit, items.length);
-        const batches: unknown[][] = [];
+        log.warn(
+          "[PIPELINE] Parallel loop execution is currently disabled due to context isolation constraints. Executing sequentially.",
+        );
+      }
 
-        for (let i = 0; i < items.length; i += limit) {
-          batches.push(items.slice(i, i + limit));
+      // Sequential execution
+      for (const item of iterator) {
+        if (signal?.aborted) break;
+        if (iteration >= config.maxIterations) break;
+
+        const result = await executeIteration(item, iteration);
+        if (result !== undefined) {
+          results.push(result);
         }
-
-        for (const batch of batches) {
-          if (signal?.aborted) break;
-          if (iteration >= config.maxIterations) break;
-
-          // Capture the starting iteration for this batch to avoid index calculation bug
-          const batchStartIteration = iteration;
-          const batchPromises = batch.map((item, batchIndex) => {
-            const index = batchStartIteration + batchIndex;
-            if (index >= config.maxIterations)
-              return Promise.resolve(undefined);
-            return executeIteration(item, index, true); // true = isolated mode for parallel
-          });
-
-          const batchResults = await Promise.all(batchPromises);
-
-          // Count how many actually executed (not skipped due to maxIterations)
-          const executedCount = batch.filter(
-            (_, batchIndex) =>
-              batchStartIteration + batchIndex < config.maxIterations,
-          ).length;
-          iteration += executedCount;
-
-          // Collect results in order
-          for (const result of batchResults) {
-            if (result !== undefined) {
-              results.push(result);
-            }
-          }
-        }
-      } else {
-        // Sequential execution
-        for (const item of iterator) {
-          if (signal?.aborted) break;
-          if (iteration >= config.maxIterations) break;
-
-          const result = await executeIteration(item, iteration);
-          if (result !== undefined) {
-            results.push(result);
-          }
-          iteration++;
-        }
+        iteration++;
       }
     } else {
       // while/until modes
