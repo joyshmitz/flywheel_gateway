@@ -1,59 +1,36 @@
 /**
  * Unit tests for the History Service.
- *
- * Note: Database tests require existing agents due to foreign key constraints.
- * Focus tests on extraction functions which are pure and don't need database.
  */
 
-import { afterAll, describe, expect, mock, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
+import { agents, db, history } from "../db";
 import {
   exportHistory,
   extractFromOutput,
   getHistoryStats,
+  getHistoryEntry,
+  incrementReplayCount,
 } from "../services/history.service";
-import { restoreRealDb } from "./test-utils/db-mock-restore";
-
-// Mock the database module to avoid actual DB operations
-// Using a Promise-based chainable mock to simulate Drizzle ORM query builder
-mock.module("../db", () => {
-  // Define the chainable type explicitly to avoid implicit any
-  interface ChainableResult extends Promise<unknown[]> {
-    select: () => ChainableResult;
-    from: () => ChainableResult;
-    where: () => ChainableResult;
-    orderBy: () => ChainableResult;
-    limit: () => ChainableResult;
-    offset: () => ChainableResult;
-    [key: string]: unknown;
-  }
-
-  // Create a chainable mock that returns empty results when awaited
-  const createChainable = (): ChainableResult => {
-    // Create the base promise and cast through unknown to add properties
-    const emptyResult = Promise.resolve([]) as unknown as ChainableResult;
-    emptyResult.select = createChainable;
-    emptyResult.from = createChainable;
-    emptyResult.where = createChainable;
-    emptyResult.orderBy = createChainable;
-    emptyResult.limit = createChainable;
-    emptyResult.offset = createChainable;
-    return emptyResult;
-  };
-
-  return {
-    db: {
-      select: createChainable,
-    },
-  };
-});
-
-afterAll(() => {
-  mock.restore();
-  // Restore real db module for other test files (mock.restore doesn't restore mock.module)
-  restoreRealDb();
-});
 
 describe("History Service", () => {
+  const testAgentId = `test-agent-${Date.now()}`;
+
+  beforeAll(async () => {
+    try {
+      await db.insert(agents).values({
+        id: testAgentId,
+        repoUrl: "/test",
+        task: "test",
+        status: "idle",
+        model: "test-model",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    } catch {
+      // Ignore if already exists (primary key constraint)
+    }
+  });
+
   describe("extractFromOutput", () => {
     describe("code_blocks", () => {
       test("extracts markdown code blocks", () => {
@@ -352,7 +329,69 @@ Line 4`;
     });
   });
 
-  describe("getHistoryStats (empty database)", () => {
+  describe("incrementReplayCount", () => {
+    test("increments from missing replayCount", async () => {
+      const entryId = `history-${Date.now()}-missing`;
+
+      await db.insert(history).values({
+        id: entryId,
+        agentId: testAgentId,
+        command: "test",
+        input: { prompt: "hi" },
+        output: { responseSummary: "ok", outcome: "success" },
+        durationMs: 1,
+        createdAt: new Date(),
+      });
+
+      await incrementReplayCount(entryId);
+
+      const entry = await getHistoryEntry(entryId);
+      expect(entry?.replayCount).toBe(1);
+    });
+
+    test("increments when input is null", async () => {
+      const entryId = `history-${Date.now()}-null`;
+
+      await db.insert(history).values({
+        id: entryId,
+        agentId: testAgentId,
+        command: "test",
+        input: null,
+        output: null,
+        durationMs: 1,
+        createdAt: new Date(),
+      });
+
+      await incrementReplayCount(entryId);
+
+      const entry = await getHistoryEntry(entryId);
+      expect(entry?.replayCount).toBe(1);
+    });
+
+    test("is atomic under concurrent increments", async () => {
+      const entryId = `history-${Date.now()}-concurrent`;
+      const increments = 100;
+
+      await db.insert(history).values({
+        id: entryId,
+        agentId: testAgentId,
+        command: "test",
+        input: { replayCount: 0, prompt: "hi" },
+        output: { responseSummary: "ok", outcome: "success" },
+        durationMs: 1,
+        createdAt: new Date(),
+      });
+
+      await Promise.all(
+        Array.from({ length: increments }, () => incrementReplayCount(entryId)),
+      );
+
+      const entry = await getHistoryEntry(entryId);
+      expect(entry?.replayCount).toBe(increments);
+    });
+  });
+
+  describe("getHistoryStats", () => {
     test("returns statistics structure", async () => {
       const stats = await getHistoryStats();
 
@@ -374,7 +413,7 @@ Line 4`;
     });
   });
 
-  describe("exportHistory (empty database)", () => {
+  describe("exportHistory", () => {
     test("exports as JSON", async () => {
       const content = await exportHistory({ format: "json" });
 

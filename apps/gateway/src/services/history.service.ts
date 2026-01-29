@@ -9,7 +9,7 @@
  * - Export capabilities
  */
 
-import { and, desc, eq, gte, lte } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "../db";
 import { history as historyTable } from "../db/schema";
 import { getCorrelationId } from "../middleware/correlation";
@@ -422,33 +422,19 @@ export async function toggleStar(
  * Increment replay count for an entry.
  */
 export async function incrementReplayCount(entryId: string): Promise<void> {
-  const rows = await db
-    .select()
-    .from(historyTable)
-    .where(eq(historyTable.id, entryId))
-    .limit(1);
-
-  const row = rows[0];
-  if (!row) {
-    return;
-  }
-  const inputData = (row.input as Record<string, unknown>) ?? {};
-  const currentCount = (inputData["replayCount"] as number) ?? 0;
-
   await db
     .update(historyTable)
     .set({
-      input: {
-        ...inputData,
-        replayCount: currentCount + 1,
-      },
+      // Atomic, single-statement increment to avoid read-modify-write races.
+      input: sql`json_set(
+        COALESCE(${historyTable.input}, '{}'),
+        '$.replayCount',
+        CAST(COALESCE(json_extract(${historyTable.input}, '$.replayCount'), 0) AS INTEGER) + 1
+      )`,
     })
     .where(eq(historyTable.id, entryId));
 
-  logger.debug(
-    { entryId, replayCount: currentCount + 1 },
-    "Replay count incremented",
-  );
+  logger.debug({ entryId }, "Replay count incremented");
 }
 
 /**
