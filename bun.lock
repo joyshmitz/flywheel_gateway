@@ -92,6 +92,9 @@
     "packages/test-utils": {
       "name": "@flywheel/test-utils",
       "version": "0.1.0",
+      "dependencies": {
+        "drizzle-orm": "^0.40.1",
+      },
       "devDependencies": {
         "typescript": "^5.9.3",
       },

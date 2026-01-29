@@ -6,3 +6,4 @@ export * from "./db";
 export * from "./logging";
 export * from "./time";
 export * from "./ws";
+export * from "./gateway-harness";

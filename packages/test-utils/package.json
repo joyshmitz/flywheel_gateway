@@ -12,6 +12,9 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
+  "dependencies": {
+    "drizzle-orm": "^0.40.1"
+  },
   "devDependencies": {
     "typescript": "^5.9.3"
   }
