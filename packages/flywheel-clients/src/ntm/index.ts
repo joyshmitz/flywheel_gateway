@@ -482,6 +482,36 @@ const IsWorkingOutputSchema = RobotResponseSchema.and(
     .passthrough(),
 );
 
+// Alerts output (--robot-alerts)
+const AlertsOutputSchema = RobotResponseSchema.and(
+  z
+    .object({
+      alerts: z.array(NtmAlertSchema),
+      summary: NtmAlertSummarySchema.optional(),
+    })
+    .passthrough(),
+);
+
+// Activity output (--robot-activity)
+const ActivityAgentSchema = z
+  .object({
+    name: z.string(),
+    state: z.string(),
+    is_working: z.boolean(),
+    confidence: z.number().optional(),
+    last_output_ago: z.string().optional(),
+  })
+  .passthrough();
+
+const ActivityOutputSchema = RobotResponseSchema.and(
+  z
+    .object({
+      session: z.string(),
+      agents: z.array(ActivityAgentSchema),
+    })
+    .passthrough(),
+);
+
 // ============================================================================
 // Exported Types
 // ============================================================================
@@ -497,6 +527,8 @@ export type NtmSessionHealthOutput = z.infer<typeof SessionHealthOutputSchema>;
 export type NtmProjectHealthOutput = z.infer<typeof ProjectHealthOutputSchema>;
 export type NtmIsWorkingOutput = z.infer<typeof IsWorkingOutputSchema>;
 export type NtmSnapshotResult = NtmSnapshotOutput | NtmSnapshotDeltaOutput;
+export type NtmAlertsOutput = z.infer<typeof AlertsOutputSchema>;
+export type NtmActivityOutput = z.infer<typeof ActivityOutputSchema>;
 export type NtmHealthResult = NtmSessionHealthOutput | NtmProjectHealthOutput;
 export type NtmAlert = z.infer<typeof NtmAlertSchema>;
 export type NtmAlertSummary = z.infer<typeof NtmAlertSummarySchema>;
@@ -543,6 +575,18 @@ export interface NtmIsWorkingOptions {
   cwd?: string;
 }
 
+export interface NtmAlertsOptions {
+  session?: string;
+  severity?: "info" | "warning" | "error" | "critical";
+  type?: string;
+  cwd?: string;
+}
+
+export interface NtmActivityOptions {
+  activityType?: string;
+  cwd?: string;
+}
+
 // ============================================================================
 // Client Interface
 // ============================================================================
@@ -568,6 +612,15 @@ export interface NtmClient {
     options?: NtmHealthOptions,
   ) => Promise<NtmSessionHealthOutput>;
   isWorking: (options?: NtmIsWorkingOptions) => Promise<NtmIsWorkingOutput>;
+  projectHealth: (options?: { cwd?: string }) => Promise<NtmProjectHealthOutput>;
+  alerts: (
+    session: string,
+    options?: NtmAlertsOptions,
+  ) => Promise<NtmAlertsOutput>;
+  activity: (
+    session: string,
+    options?: NtmActivityOptions,
+  ) => Promise<NtmActivityOutput>;
   /** Returns true if ntm is available on PATH */
   isAvailable: () => Promise<boolean>;
 }
@@ -772,6 +825,45 @@ export function createNtmClient(options: NtmClientOptions): NtmClient {
         buildRunOptions(defaultTimeout, workingOpts?.cwd),
       );
       return parseJson(stdout, IsWorkingOutputSchema, "is-working");
+    },
+
+    projectHealth: async (opts) => {
+      const args = ["--robot-health", ROBOT_FORMAT_ARG];
+      const stdout = await runNtmCommand(
+        options.runner,
+        args,
+        buildRunOptions(defaultTimeout, opts?.cwd),
+      );
+      return parseJson(stdout, ProjectHealthOutputSchema, "project-health");
+    },
+
+    alerts: async (session, alertsOpts) => {
+      const args = [`--robot-alerts=${session}`, ROBOT_FORMAT_ARG];
+      if (alertsOpts?.severity) {
+        args.push("--severity", alertsOpts.severity);
+      }
+      if (alertsOpts?.type) {
+        args.push("--type", alertsOpts.type);
+      }
+      const stdout = await runNtmCommand(
+        options.runner,
+        args,
+        buildRunOptions(defaultTimeout, alertsOpts?.cwd),
+      );
+      return parseJson(stdout, AlertsOutputSchema, "alerts");
+    },
+
+    activity: async (session, activityOpts) => {
+      const args = [`--robot-activity=${session}`, ROBOT_FORMAT_ARG];
+      if (activityOpts?.activityType) {
+        args.push("--activity-type", activityOpts.activityType);
+      }
+      const stdout = await runNtmCommand(
+        options.runner,
+        args,
+        buildRunOptions(defaultTimeout, activityOpts?.cwd),
+      );
+      return parseJson(stdout, ActivityOutputSchema, "activity");
     },
 
     isAvailable: async () => {

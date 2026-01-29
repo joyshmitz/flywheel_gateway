@@ -529,6 +529,64 @@ const FIXTURES = {
       ],
       alerts: [],
     }),
+    projectHealth: JSON.stringify({
+      checked_at: "2025-01-15T12:00:00Z",
+      system: {
+        tmux_ok: true,
+        disk_free_gb: 50.2,
+        load_avg: 1.5,
+      },
+      sessions: {
+        "agent-1": {
+          healthy: true,
+          agents: {
+            "0": {
+              responsive: true,
+              output_rate: "normal",
+              last_activity_sec: 30,
+            },
+          },
+        },
+      },
+      alerts: [],
+      bv_available: true,
+      bd_available: true,
+      ready_count: 3,
+      in_progress_count: 1,
+      blocked_count: 2,
+    }),
+    alerts: JSON.stringify({
+      success: true,
+      timestamp: "2025-01-15T12:00:00Z",
+      alerts: [
+        {
+          id: "alert-001",
+          type: "idle_timeout",
+          severity: "warning",
+          message: "Agent idle for extended period",
+          session: "agent-1",
+          created_at: "2025-01-15T11:55:00Z",
+        },
+      ],
+      summary: {
+        total_active: 1,
+        by_severity: { warning: 1 },
+      },
+    }),
+    activity: JSON.stringify({
+      success: true,
+      timestamp: "2025-01-15T12:00:00Z",
+      session: "agent-1",
+      agents: [
+        {
+          name: "claude",
+          state: "idle",
+          is_working: false,
+          confidence: 0.9,
+          last_output_ago: "30s",
+        },
+      ],
+    }),
   },
 
   // ms (Meta Skill) fixtures
@@ -1473,6 +1531,105 @@ describe("ntm Client Contract Tests", () => {
       expect(inv?.args.some((a) => a.includes("--robot-health=agent-1"))).toBe(
         true,
       );
+    });
+  });
+
+  describe("projectHealth", () => {
+    test("parses project-level health check", async () => {
+      const runner = createStubRunner<NtmCommandResult>(
+        [
+          {
+            command: "ntm",
+            argsContain: ["--robot-health"],
+            response: { stdout: FIXTURES.ntm.projectHealth },
+          },
+        ],
+        logger,
+      );
+
+      const client = createNtmClient({ runner });
+      const result = await client.projectHealth();
+
+      expect(result.checked_at).toBe("2025-01-15T12:00:00Z");
+      expect(result.system.tmux_ok).toBe(true);
+      expect(result.bv_available).toBe(true);
+      expect(result.ready_count).toBe(3);
+
+      const inv = logger.getLast();
+      expect(inv?.args).toContain("--robot-health");
+      // Should NOT have session suffix (unlike session health)
+      expect(inv?.args.every((a: string) => !a.includes("--robot-health="))).toBe(true);
+    });
+  });
+
+  describe("alerts", () => {
+    test("parses alerts for a session", async () => {
+      const runner = createStubRunner<NtmCommandResult>(
+        [
+          {
+            command: "ntm",
+            argsMatch: /--robot-alerts=agent-1/,
+            response: { stdout: FIXTURES.ntm.alerts },
+          },
+        ],
+        logger,
+      );
+
+      const client = createNtmClient({ runner });
+      const result = await client.alerts("agent-1");
+
+      expect(result.success).toBe(true);
+      expect(result.alerts).toHaveLength(1);
+      expect(result.alerts[0]!.severity).toBe("warning");
+
+      const inv = logger.getLast();
+      expect(inv?.args.some((a: string) => a.includes("--robot-alerts=agent-1"))).toBe(true);
+    });
+
+    test("passes severity filter", async () => {
+      const runner = createStubRunner<NtmCommandResult>(
+        [
+          {
+            command: "ntm",
+            argsMatch: /--robot-alerts/,
+            response: { stdout: FIXTURES.ntm.alerts },
+          },
+        ],
+        logger,
+      );
+
+      const client = createNtmClient({ runner });
+      await client.alerts("agent-1", { severity: "error" });
+
+      const inv = logger.getLast();
+      expect(inv?.args).toContain("--severity");
+      expect(inv?.args).toContain("error");
+    });
+  });
+
+  describe("activity", () => {
+    test("parses activity for a session", async () => {
+      const runner = createStubRunner<NtmCommandResult>(
+        [
+          {
+            command: "ntm",
+            argsMatch: /--robot-activity=agent-1/,
+            response: { stdout: FIXTURES.ntm.activity },
+          },
+        ],
+        logger,
+      );
+
+      const client = createNtmClient({ runner });
+      const result = await client.activity("agent-1");
+
+      expect(result.success).toBe(true);
+      expect(result.session).toBe("agent-1");
+      expect(result.agents).toHaveLength(1);
+      expect(result.agents[0]!.is_working).toBe(false);
+
+      const inv = logger.getLast();
+      expect(inv?.args.some((a: string) => a.includes("--robot-activity=agent-1"))).toBe(true);
     });
   });
 
