@@ -100,6 +100,19 @@ export interface HubStats {
   messagesPerSecond: number;
   /** Buffer utilization per channel type (0-100) */
   bufferUtilization: Record<string, number>;
+  /** Event loss telemetry */
+  eventLoss: {
+    /** Total buffer capacity evictions across all channels */
+    totalCapacityEvictions: number;
+    /** Total TTL expirations across all channels */
+    totalTtlExpirations: number;
+    /** Total WebSocket send failures */
+    totalSendFailures: number;
+    /** Timestamp of last drop event */
+    lastDropAt: string | null;
+    /** Per-channel drop counts (only channels with drops) */
+    byChannel: Record<string, { capacityEvictions: number; ttlExpirations: number }>;
+  };
 }
 
 /**
@@ -115,6 +128,8 @@ export class WebSocketHub {
   /** Message count for stats */
   private messageCount = 0;
   private lastStatsReset = Date.now();
+  /** WebSocket send failure counter */
+  private sendFailureCount = 0;
 
   /**
    * Add a new connection to the hub.
@@ -342,6 +357,7 @@ export class WebSocketHub {
               });
             }
           } catch (err) {
+            this.sendFailureCount++;
             logger.warn(
               { connectionId: connId, channel: channelStr, error: err },
               "Failed to send message to subscriber",
@@ -696,11 +712,48 @@ export class WebSocketHub {
       bufferUtilization[prefix] = data.count > 0 ? data.total / data.count : 0;
     }
 
+    // Aggregate event loss telemetry from ring buffers
+    let totalCapacityEvictions = 0;
+    let totalTtlExpirations = 0;
+    let lastDropAt: number | null = null;
+    const byChannel: Record<string, { capacityEvictions: number; ttlExpirations: number }> = {};
+
+    for (const [channelStr, buffer] of this.buffers) {
+      const stats = buffer.dropStats;
+      if (stats.capacityEvictions > 0 || stats.ttlExpirations > 0) {
+        const channel = parseChannel(channelStr);
+        const prefix = channel ? getChannelTypePrefix(channel) : channelStr;
+
+        if (!byChannel[prefix]) {
+          byChannel[prefix] = { capacityEvictions: 0, ttlExpirations: 0 };
+        }
+        byChannel[prefix]!.capacityEvictions += stats.capacityEvictions;
+        byChannel[prefix]!.ttlExpirations += stats.ttlExpirations;
+        totalCapacityEvictions += stats.capacityEvictions;
+        totalTtlExpirations += stats.ttlExpirations;
+
+        const lastDrop = Math.max(
+          stats.lastEvictionAt ?? 0,
+          stats.lastExpirationAt ?? 0,
+        );
+        if (lastDrop > 0 && (lastDropAt === null || lastDrop > lastDropAt)) {
+          lastDropAt = lastDrop;
+        }
+      }
+    }
+
     return {
       activeConnections: this.connections.size,
       subscriptionsByChannel,
       messagesPerSecond,
       bufferUtilization,
+      eventLoss: {
+        totalCapacityEvictions,
+        totalTtlExpirations,
+        totalSendFailures: this.sendFailureCount,
+        lastDropAt: lastDropAt ? new Date(lastDropAt).toISOString() : null,
+        byChannel,
+      },
     };
   }
 

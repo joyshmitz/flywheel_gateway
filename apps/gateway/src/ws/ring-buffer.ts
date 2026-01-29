@@ -35,6 +35,20 @@ export interface RingBufferConfig {
 }
 
 /**
+ * Telemetry counters for event loss tracking.
+ */
+export interface RingBufferDropStats {
+  /** Items evicted due to capacity overflow */
+  capacityEvictions: number;
+  /** Items removed due to TTL expiration (via prune) */
+  ttlExpirations: number;
+  /** Timestamp of last eviction */
+  lastEvictionAt: number | null;
+  /** Timestamp of last TTL expiration */
+  lastExpirationAt: number | null;
+}
+
+/**
  * Generic ring buffer with cursor-based access.
  *
  * @template T - Type of items stored in the buffer
@@ -44,6 +58,12 @@ export class RingBuffer<T> {
   private readonly ttlMs: number;
   private readonly buffer: BufferEntry<T>[] = [];
   private sequence = 0;
+  private _dropStats: RingBufferDropStats = {
+    capacityEvictions: 0,
+    ttlExpirations: 0,
+    lastEvictionAt: null,
+    lastExpirationAt: null,
+  };
 
   constructor(config: RingBufferConfig) {
     if (config.capacity < 1) {
@@ -51,6 +71,13 @@ export class RingBuffer<T> {
     }
     this.capacity = config.capacity;
     this.ttlMs = config.ttlMs;
+  }
+
+  /**
+   * Get drop statistics for telemetry.
+   */
+  get dropStats(): Readonly<RingBufferDropStats> {
+    return this._dropStats;
   }
 
   /**
@@ -76,6 +103,8 @@ export class RingBuffer<T> {
     // Evict oldest entries if over capacity
     while (this.buffer.length > this.capacity) {
       this.buffer.shift();
+      this._dropStats.capacityEvictions++;
+      this._dropStats.lastEvictionAt = now;
     }
 
     return cursor;
@@ -223,7 +252,12 @@ export class RingBuffer<T> {
     }
 
     this.buffer.length = writeIndex;
-    return originalLength - writeIndex;
+    const pruned = originalLength - writeIndex;
+    if (pruned > 0) {
+      this._dropStats.ttlExpirations += pruned;
+      this._dropStats.lastExpirationAt = now;
+    }
+    return pruned;
   }
 
   /**
