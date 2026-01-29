@@ -550,7 +550,7 @@ export function UtilitiesSkeleton() {
 
 export function NTMSkeleton() {
   return (
-    <div className="page" role="region" aria-busy="true" aria-label="Loading notifications">
+    <div className="page" role="region" aria-busy="true" aria-label="Loading NTM sessions">
       <div className="card">
         <div className="card__header">
           <Skeleton variant="text" style={{ width: 100 }} />
@@ -616,7 +616,7 @@ export function SLBSkeleton() {
 
 export function CMSkeleton() {
   return (
-    <div className="page" role="region" aria-busy="true" aria-label="Loading memory insights">
+    <div className="page" role="region" aria-busy="true" aria-label="Loading credential manager">
       <div className="card card--compact" style={{ marginBottom: 16 }}>
         <Skeleton variant="text" style={{ width: 200 }} />
       </div>

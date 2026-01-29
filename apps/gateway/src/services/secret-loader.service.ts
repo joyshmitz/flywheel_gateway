@@ -166,13 +166,16 @@ export async function resolveSecret(
   fileEntries?: SecretFileEntry[],
 ): Promise<ResolvedSecret> {
   // 1. Try environment (mapping + convention)
+  const mappedEnvVar = envMapping?.toolSecrets?.[spec.tool];
   const envValue = resolveToolSecret(spec.tool, envMapping);
   if (envValue) {
+    // Source is "mapping" only if the mapped env var actually provided the value
+    const mappedVarValue = mappedEnvVar ? process.env[mappedEnvVar] : undefined;
     return {
       tool: spec.tool,
       key: spec.key,
       found: true,
-      source: envMapping?.toolSecrets?.[spec.tool] ? "mapping" : "env",
+      source: mappedEnvVar && mappedVarValue ? "mapping" : "env",
       value: envValue,
     };
   }
