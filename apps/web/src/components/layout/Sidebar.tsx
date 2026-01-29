@@ -16,6 +16,7 @@ import {
   Sparkles,
   Wand2,
   Workflow,
+  Wrench,
 } from "lucide-react";
 
 import { mockAgents, mockBeads } from "../../lib/mock-data";
@@ -33,6 +34,7 @@ const navItems = [
   { label: "Fleet", icon: GitBranch, to: "/fleet" },
   { label: "Pipelines", icon: Workflow, to: "/pipelines" },
   { label: "Velocity", icon: Activity, to: "/velocity" },
+  { label: "Utilities", icon: Wrench, to: "/utilities" },
   { label: "Collab", icon: Network, to: "/collaboration" },
   { label: "Settings", icon: Settings, to: "/settings" },
 ];

@@ -26,6 +26,7 @@ import {
   PipelinesSkeleton,
   SettingsSkeleton,
   SetupSkeleton,
+  UtilitiesSkeleton,
   VelocitySkeleton,
 } from "./components/skeletons";
 
@@ -75,6 +76,9 @@ const CostAnalyticsPage = lazy(() =>
 );
 const SetupPage = lazy(() =>
   import("./pages/Setup").then((m) => ({ default: m.SetupPage })),
+);
+const UtilitiesPage = lazy(() =>
+  import("./pages/Utilities").then((m) => ({ default: m.UtilitiesPage })),
 );
 
 // NotFoundPage stays static (small, always needed)
@@ -187,6 +191,12 @@ const setupRoute = createRoute({
   component: withSuspense(SetupPage, SetupSkeleton),
 });
 
+const utilitiesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/utilities",
+  component: withSuspense(UtilitiesPage, UtilitiesSkeleton),
+});
+
 const notFoundRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "*",
@@ -209,6 +219,7 @@ const routeTree = rootRoute.addChildren([
   fleetRoute,
   pipelinesRoute,
   setupRoute,
+  utilitiesRoute,
   velocityRoute,
   collaborationRoute,
   settingsRoute,

@@ -522,6 +522,29 @@ export function SetupSkeleton() {
 }
 
 // ============================================================================
+// Utilities Page Skeleton
+// ============================================================================
+
+export function UtilitiesSkeleton() {
+  return (
+    <div className="page" role="region" aria-busy="true" aria-label="Loading utilities">
+      <SkeletonCard />
+      <div className="grid grid--3" style={{ marginTop: 16 }}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <SkeletonCard key={i} />
+        ))}
+      </div>
+      <div style={{ marginTop: 24 }}>
+        <SkeletonCard />
+        <div style={{ marginTop: 16 }}>
+          <SkeletonCard />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // Generic Page Skeleton (fallback)
 // ============================================================================
 
