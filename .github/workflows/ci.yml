@@ -46,6 +46,9 @@ jobs:
       - name: Parity check
         run: bun run parity-check
 
+      - name: Coverage matrix drift check
+        run: bun scripts/generate-coverage-matrix.ts --check
+
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
