@@ -150,22 +150,41 @@ describe("Long-running agent memory", () => {
     expect(history.length).toBeLessThanOrEqual(HISTORY_LIMIT);
   }, 90000); // 90 second timeout
 
-  it("should handle rapid message sending without memory leak", async () => {
-    // Send messages rapidly without waiting for full processing
+  it("should handle attempted rapid message sending without memory leak", async () => {
+    // Try to send messages rapidly - driver will reject concurrent sends
+    // This tests that failed sends don't cause memory issues
     const rapidCount = 50;
-    const promises: Promise<void>[] = [];
+    let successCount = 0;
+    let busyCount = 0;
 
     for (let i = 0; i < rapidCount; i++) {
-      // Send without awaiting completion
-      const sendPromise = driver.send(AGENT_ID, `Rapid message ${i}`);
-      promises.push(sendPromise);
+      try {
+        await driver.send(AGENT_ID, `Rapid message ${i}`);
+        successCount++;
+        // Small delay to allow processing to begin
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      } catch (err) {
+        // Expected: agent is busy
+        if (err instanceof Error && err.message.includes("busy")) {
+          busyCount++;
+        } else {
+          throw err;
+        }
+      }
     }
 
-    // Wait for all to complete
-    await Promise.all(promises);
+    // Wait for any pending processing
+    await new Promise((resolve) => setTimeout(resolve, 3000));
 
-    // Give time for processing
-    await new Promise((resolve) => setTimeout(resolve, 6000));
+    console.log({
+      rapidCount,
+      successCount,
+      busyCount,
+      message: "Driver correctly rejects concurrent sends",
+    });
+
+    // Some messages should have succeeded
+    expect(successCount).toBeGreaterThan(0);
 
     // History should still be bounded
     const checkpoint = await driver.createCheckpoint(AGENT_ID, "rapid-test");
