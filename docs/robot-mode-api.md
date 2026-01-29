@@ -376,40 +376,132 @@ DELETE /agents/:agentId?graceful=true
 
 ## Agent Coordination (Mail)
 
-Agents coordinate via a message-passing system tied to bead IDs as thread identifiers.
+Agents coordinate via the Agent Mail MCP server, exposed through REST endpoints.
 
-### Check Inbox
+### Ensure Project
 
 ```http
-GET /mail/inbox/:agentId
+POST /mail/projects
 ```
 
-**Query Parameters:**
-- `unread`: Only unread messages
-- `threadId`: Filter by thread (typically a bead ID)
-- `limit`, `cursor`: Pagination
+### Register Agent
+
+```http
+POST /mail/agents
+```
 
 ### Send Message
 
 ```http
-POST /mail/send
+POST /mail/messages
 ```
 
 **Request Body:**
 ```json
 {
-  "to": "agent_456",
-  "threadId": "bd-abc1",
+  "projectId": "my-project",
+  "from": "agent_123",
+  "to": ["agent_456"],
   "subject": "[bd-abc1] Handoff: authentication module",
   "body": "I've completed the implementation. Please review and test.",
-  "priority": "normal"
+  "priority": "normal",
+  "ttl": 3600
 }
 ```
 
-### Get Thread Messages
+### Reply to Message
 
 ```http
-GET /mail/threads/:threadId/messages
+POST /mail/messages/:messageId/reply
+```
+
+### Fetch Inbox
+
+```http
+GET /mail/messages/inbox
+```
+
+**Query Parameters:**
+- `project_key`: Project identifier
+- `agent_name`: Agent name
+- `limit`: Max messages (default 20)
+- `since`: ISO-8601 timestamp for incremental fetch
+- `priority`: Filter by priority level
+
+### Mark Message Read
+
+```http
+POST /mail/messages/:messageId/read
+```
+
+### Acknowledge Message
+
+```http
+POST /mail/messages/:messageId/acknowledge
+```
+
+### Search Messages
+
+```http
+GET /mail/messages/search
+```
+
+**Query Parameters:**
+- `project_key`: Project identifier
+- `query`: FTS5 query string (supports phrases, prefix, boolean)
+- `limit`: Max results
+
+### Summarize Thread
+
+```http
+GET /mail/threads/:threadId/summary
+```
+
+**Query Parameters:**
+- `project_key`: Project identifier
+- `include_examples`: Include sample messages
+- `llm_mode`: Use LLM for refined summary
+
+### File Reservations
+
+```http
+POST /mail/reservations
+```
+
+Request advisory file locks on paths/globs to prevent edit conflicts.
+
+```http
+POST /mail/reservations/release
+```
+
+Release active reservations.
+
+```http
+POST /mail/reservations/renew
+```
+
+Extend reservation expiry without reissuing.
+
+### Agent Lookup
+
+```http
+GET /mail/agents/:agentName/whois
+```
+
+Returns enriched agent profile with optional recent commit history.
+
+### Start Session (Macro)
+
+```http
+POST /mail/sessions
+```
+
+Combines ensure project + register agent in one call.
+
+### Mail Health
+
+```http
+GET /mail/health
 ```
 
 ---
@@ -661,9 +753,14 @@ bv --robot-graph                 # Dependency graph
 ntm --robot-status               # Session status
 ntm --robot-snapshot             # Full snapshot
 ntm --robot-health=SESSION       # Session health
+ntm --robot-health               # Project-level health
 ntm --robot-is-working           # Work detection
 ntm --robot-context=SESSION      # Context usage
 ntm --robot-tail=SESSION         # Output tail
+ntm --robot-alerts=SESSION       # Session alerts
+ntm --robot-activity=SESSION     # Agent activity state
+ntm --robot-files=SESSION        # File access tracking
+ntm --robot-metrics=SESSION      # Performance metrics
 ```
 
 All robot commands output JSON with `--robot-format=json` (NTM/BV) or `--json` (BR).

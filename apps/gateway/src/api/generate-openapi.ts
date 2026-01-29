@@ -2808,6 +2808,189 @@ registry.registerPath({
 });
 
 // ============================================================================
+// Mail Routes
+// ============================================================================
+
+registry.registerPath({
+  method: "post",
+  path: "/mail/projects",
+  summary: "Ensure project exists",
+  description: "Idempotently create or ensure a project exists for agent coordination.",
+  tags: ["Mail"],
+  responses: {
+    200: { description: "Project ensured" },
+    201: { description: "Project created" },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/mail/agents",
+  summary: "Register agent",
+  description: "Register an agent identity within a project.",
+  tags: ["Mail"],
+  responses: {
+    200: { description: "Agent registered" },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/mail/messages",
+  summary: "Send message",
+  description: "Send a message to one or more agent recipients with priority and TTL.",
+  tags: ["Mail"],
+  responses: {
+    201: { description: "Message sent" },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/mail/messages/{messageId}/reply",
+  summary: "Reply to message",
+  description: "Reply to an existing message, preserving thread context.",
+  tags: ["Mail"],
+  responses: {
+    201: { description: "Reply sent" },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/mail/messages/inbox",
+  summary: "Fetch inbox",
+  description: "Retrieve recent messages for an agent with optional filters (limit, since, priority).",
+  tags: ["Mail"],
+  responses: {
+    200: { description: "Inbox messages" },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/mail/messages/{messageId}/read",
+  summary: "Mark message read",
+  description: "Mark a message as read for the specified agent.",
+  tags: ["Mail"],
+  responses: {
+    200: { description: "Message marked as read" },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/mail/messages/{messageId}/acknowledge",
+  summary: "Acknowledge message",
+  description: "Acknowledge receipt of a message (also marks as read).",
+  tags: ["Mail"],
+  responses: {
+    200: { description: "Message acknowledged" },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/mail/messages/search",
+  summary: "Search messages",
+  description: "Full-text search over message subjects and bodies using FTS5 syntax.",
+  tags: ["Mail"],
+  responses: {
+    200: { description: "Search results" },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/mail/threads/{threadId}/summary",
+  summary: "Summarize thread",
+  description: "Extract participants, key points, and action items from a thread.",
+  tags: ["Mail"],
+  responses: {
+    200: { description: "Thread summary" },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/mail/reservations",
+  summary: "Request file reservation",
+  description: "Request advisory file reservations on project-relative paths or globs.",
+  tags: ["Mail"],
+  responses: {
+    201: { description: "Reservation granted" },
+    409: { description: "Reservation conflict" },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/mail/reservations",
+  summary: "List reservations",
+  description: "List active file reservations for a project.",
+  tags: ["Mail"],
+  responses: {
+    200: { description: "Active reservations" },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/mail/reservations/release",
+  summary: "Release reservations",
+  description: "Release active file reservations held by an agent.",
+  tags: ["Mail"],
+  responses: {
+    200: { description: "Reservations released" },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/mail/reservations/renew",
+  summary: "Renew reservations",
+  description: "Extend expiry for active file reservations without reissuing them.",
+  tags: ["Mail"],
+  responses: {
+    200: { description: "Reservations renewed" },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/mail/agents/{agentName}/whois",
+  summary: "Agent profile lookup",
+  description: "Return enriched profile details for an agent, optionally including recent commits.",
+  tags: ["Mail"],
+  responses: {
+    200: { description: "Agent profile" },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/mail/sessions",
+  summary: "Start session",
+  description: "Macro: ensure project + register agent in one call.",
+  tags: ["Mail"],
+  responses: {
+    201: { description: "Session started" },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/mail/health",
+  summary: "Mail health check",
+  description: "Health check for the Agent Mail MCP server connection.",
+  tags: ["Mail"],
+  responses: {
+    200: { description: "Mail system healthy" },
+    503: { description: "Mail system unavailable" },
+  },
+});
+
+// ============================================================================
 // OpenAPI Document Generator
 // ============================================================================
 
@@ -2982,6 +3165,11 @@ See \`/docs/robot-mode-api.md\` for complete WebSocket documentation.
         name: "Cost Analytics",
         description:
           "Cost tracking, budgets, forecasting, and optimization recommendations",
+      },
+      {
+        name: "Mail",
+        description:
+          "Agent Mail MCP integration for inter-agent messaging, file reservations, thread summaries, and agent lookup",
       },
     ],
     security: [
