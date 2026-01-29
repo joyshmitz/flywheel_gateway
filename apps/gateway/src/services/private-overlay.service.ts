@@ -13,8 +13,8 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { parse as parseYaml } from "yaml";
 import type { ToolDefinition, ToolRegistry } from "@flywheel/shared";
+import { parse as parseYaml } from "yaml";
 
 // ============================================================================
 // Constants
@@ -251,9 +251,5 @@ export function applyOverlay(
  * Get the current environment name from env vars.
  */
 export function getCurrentEnvironment(): string | undefined {
-  return (
-    process.env["FLYWHEEL_ENV"] ??
-    process.env["NODE_ENV"] ??
-    undefined
-  );
+  return process.env["FLYWHEEL_ENV"] ?? process.env["NODE_ENV"] ?? undefined;
 }

@@ -5,23 +5,23 @@
  * and graceful handling when private dir is absent.
  */
 
-import { describe, expect, it, beforeEach, afterEach } from "bun:test";
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { ToolDefinition, ToolRegistry } from "@flywheel/shared";
 import {
-  resolvePrivateDir,
+  applyOverlay,
+  type EnvMapping,
+  getCurrentEnvironment,
   isPrivateOverlayAvailable,
-  loadOverlayManifest,
   loadEnvMapping,
   loadOverlay,
-  resolveToolSecret,
-  resolveConfigValue,
-  applyOverlay,
-  getCurrentEnvironment,
+  loadOverlayManifest,
   type OverlayManifest,
-  type EnvMapping,
+  resolveConfigValue,
+  resolvePrivateDir,
+  resolveToolSecret,
 } from "../services/private-overlay.service";
 
 // ============================================================================
@@ -268,7 +268,12 @@ describe("resolveConfigValue", () => {
 
 describe("applyOverlay", () => {
   const baseTools: ToolDefinition[] = [
-    makeTool({ id: "tools.dcg", name: "dcg", displayName: "DCG", tags: ["critical"] }),
+    makeTool({
+      id: "tools.dcg",
+      name: "dcg",
+      displayName: "DCG",
+      tags: ["critical"],
+    }),
     makeTool({ id: "tools.slb", name: "slb", displayName: "SLB" }),
     makeTool({ id: "tools.bv", name: "bv", displayName: "BV", optional: true }),
   ];
@@ -370,7 +375,11 @@ describe("applyOverlay", () => {
     const overlay: OverlayManifest = {
       schemaVersion: "1.0",
       additionalTools: [
-        makeTool({ id: "tools.internal", name: "internal", displayName: "Internal Tool" }),
+        makeTool({
+          id: "tools.internal",
+          name: "internal",
+          displayName: "Internal Tool",
+        }),
       ],
     };
     const result = applyOverlay(baseRegistry, overlay);
