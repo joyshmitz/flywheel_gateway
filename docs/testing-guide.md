@@ -338,6 +338,161 @@ bun test --filter "my test name" --verbose
 DEBUG=* bun test path/to/test.ts
 ```
 
+## E2E Testing
+
+### Prerequisites
+
+E2E tests use Playwright and require a running gateway server.
+
+| Prerequisite | Required | How to check |
+|---|---|---|
+| Bun | Yes | `bun --version` |
+| Playwright browsers | Yes | `bunx playwright install chromium` |
+| E2E gateway server | Yes | `bun scripts/e2e-server.ts` |
+| dcg | Optional | `command -v dcg` |
+| ntm | Optional | `command -v ntm` |
+| Agent Mail MCP | Optional | MCP server on port 8765 |
+
+### Running E2E Tests
+
+```bash
+# Start E2E gateway (temp SQLite DB with seed data)
+E2E_GATEWAY_PORT=3456 bun scripts/e2e-server.ts &
+
+# Wait for server
+curl -s http://localhost:3456/health
+
+# Run all E2E tests
+bun run test:e2e
+
+# Run specific browser
+bun run test:e2e --project=chromium
+
+# Run single spec
+bun run test:e2e tests/e2e/dashboard.spec.ts
+```
+
+### E2E Test Architecture
+
+E2E tests use the logging fixtures framework:
+
+```typescript
+import { test, expect } from "./lib/fixtures";
+
+test("page loads without errors", async ({ loggedPage, testLogger }) => {
+  await loggedPage.goto("/setup");
+  await loggedPage.waitForLoadState("networkidle");
+
+  const summary = testLogger.getSummary();
+  expect(summary.pageErrors).toBe(0);
+  expect(summary.consoleErrors).toBe(0);
+  expect(summary.networkRequests).toBeGreaterThan(0);
+});
+```
+
+**Key fixtures:**
+
+| Fixture | Description |
+|---|---|
+| `loggedPage` | Playwright page with auto console/network/error capture |
+| `testLogger` | Structured log collector with `getSummary()` for assertions |
+
+### E2E Server (`scripts/e2e-server.ts`)
+
+The E2E server boots a standalone gateway with:
+- Temporary SQLite database (auto-cleaned)
+- Schema migrations applied
+- Seed data for agents, beads, notifications
+- Port configurable via `E2E_GATEWAY_PORT` (default: 3456)
+
+### Interpreting E2E Failures
+
+| Symptom | Likely Cause | Fix |
+|---|---|---|
+| `net::ERR_CONNECTION_REFUSED` | E2E server not running | Start with `bun scripts/e2e-server.ts` |
+| `Timeout waiting for selector` | UI element not rendered | Check API responses, seed data |
+| `pageErrors > 0` | JavaScript error in browser | Check console output in test logs |
+| `consoleErrors > 0` | Console.error called | May indicate API failure or missing data |
+| `networkRequests === 0` | No API calls made | Page may not have loaded correctly |
+
+### E2E Artifacts (CI)
+
+| Artifact | Retention | When |
+|---|---|---|
+| `e2e-report-<browser>` | 14 days | Always |
+| `e2e-failures-<browser>` | 30 days | On failure |
+| `e2e-logs-<browser>` | 14 days | Always (if present) |
+
+## Structured Logging Interpretation
+
+### Gateway Logs
+
+The gateway uses structured JSON logging via `getLogger()`:
+
+```
+level=warn manifestPath=/path/to/manifest.yaml errorCategory=manifest_parse_error manifestHash=abc123...
+```
+
+| Field | Description |
+|---|---|
+| `manifestPath` | Path to the ACFS manifest file attempted |
+| `manifestHash` | SHA256 of manifest content (for integrity checks) |
+| `errorCategory` | One of: `manifest_missing`, `manifest_read_error`, `manifest_parse_error`, `manifest_validation_error` |
+| `schemaVersion` | Manifest schema version (null if unparseable) |
+| `correlationId` | Request correlation ID for tracing |
+
+### Tool Detection Logs
+
+```
+level=info tool=dcg available=true detectionMs=45 version=0.9.2
+level=warn tool=ntm available=false reason=not_installed
+```
+
+| Field | Description |
+|---|---|
+| `tool` | Tool name |
+| `available` | Whether tool was detected |
+| `detectionMs` | Detection latency |
+| `version` | Detected version (if available) |
+| `reason` | Unavailability reason (see `ToolUnavailabilityReason` enum) |
+
+### Unavailability Reasons
+
+| Reason | Description |
+|---|---|
+| `not_installed` | Binary not found in PATH |
+| `permission_denied` | Insufficient permissions |
+| `version_unsupported` | Version below minimum |
+| `auth_required` | Authentication/API key missing |
+| `network_unreachable` | Cannot reach required service |
+| `timeout` | Detection timed out |
+| `crash` | Process crashed during detection |
+| `config_invalid` | Configuration file malformed |
+| `dependency_missing` | Required dependency not found |
+| `license_expired` | License validation failed |
+| `platform_unsupported` | OS/arch not supported |
+| `resource_exhausted` | System resources exceeded |
+| `mcp_unreachable` | MCP server not available |
+| `unknown` | Unclassified failure |
+
+## Real Tool Integration Testing
+
+Some tests can exercise real tool binaries when available:
+
+```bash
+# Check which tools are available
+curl http://localhost:3456/agents/detected | jq '.data.agents'
+
+# Run with real tool detection
+E2E_GATEWAY_PORT=3456 bun scripts/e2e-server.ts &
+bun run test:e2e
+```
+
+Tests handle tool unavailability gracefully:
+- API tests accept both success and "tool unavailable" status codes
+- UI tests verify pages render regardless of tool availability
+- The `testLogger.getSummary()` tracks errors independently
+
 ## Best Practices
 
 1. **Use mock runners** for CLI tool tests to avoid external dependencies
@@ -346,3 +501,6 @@ DEBUG=* bun test path/to/test.ts
 4. **Use fixtures** - share test data for consistency
 5. **Test logging** - verify structured log fields for debugging
 6. **Isolate state** - reset shared state in beforeEach hooks
+7. **E2E: use logging fixtures** - always capture `testLogger.getSummary()` for diagnostics
+8. **E2E: handle unavailability** - accept multiple status codes when tools may not be installed
+9. **Coverage matrix** - run `bun scripts/generate-coverage-matrix.ts` after adding new integrations
