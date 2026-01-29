@@ -330,6 +330,38 @@ Line 4`;
   });
 
   describe("incrementReplayCount", () => {
+    test("increments count by exactly 1", async () => {
+      const entryId = `history-${Date.now()}-basic`;
+
+      await db.insert(history).values({
+        id: entryId,
+        agentId: testAgentId,
+        command: "test",
+        input: { prompt: "hi", replayCount: 5 },
+        output: { responseSummary: "ok", outcome: "success" },
+        durationMs: 1,
+        createdAt: new Date(),
+      });
+
+      // Verify initial state
+      let entry = await getHistoryEntry(entryId);
+      expect(entry?.replayCount).toBe(5);
+
+      // Increment
+      await incrementReplayCount(entryId);
+
+      // Verify count increased by 1
+      entry = await getHistoryEntry(entryId);
+      expect(entry?.replayCount).toBe(6);
+
+      // Increment again
+      await incrementReplayCount(entryId);
+
+      // Verify count increased by 1 again
+      entry = await getHistoryEntry(entryId);
+      expect(entry?.replayCount).toBe(7);
+    });
+
     test("increments from missing replayCount", async () => {
       const entryId = `history-${Date.now()}-missing`;
 
@@ -388,6 +420,29 @@ Line 4`;
 
       const entry = await getHistoryEntry(entryId);
       expect(entry?.replayCount).toBe(increments);
+    });
+
+    test("handles corrupted non-numeric replayCount gracefully", async () => {
+      const entryId = `history-${Date.now()}-corrupt`;
+
+      // Insert with corrupted replayCount (string instead of number)
+      await db.insert(history).values({
+        id: entryId,
+        agentId: testAgentId,
+        command: "test",
+        input: { replayCount: "not-a-number", prompt: "hi" },
+        output: { responseSummary: "ok", outcome: "success" },
+        durationMs: 1,
+        createdAt: new Date(),
+      });
+
+      // Increment should handle this gracefully
+      // SQLite's CAST converts non-numeric strings to 0, so increment should set to 1
+      await incrementReplayCount(entryId);
+
+      const entry = await getHistoryEntry(entryId);
+      // The SQL CAST(... AS INTEGER) converts non-numeric to 0, so 0 + 1 = 1
+      expect(entry?.replayCount).toBe(1);
     });
   });
 
