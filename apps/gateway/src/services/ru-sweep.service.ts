@@ -584,7 +584,15 @@ async function runSweepPhases(
 /**
  * Phase 1: Analysis - Scan repos for issues.
  */
-info"info",
+async function runPhase1Analysis(
+  sessionId: string,
+  repos: FleetRepo[],
+  config: SweepConfig,
+): Promise<void> {
+  const _correlationId = getCorrelationId();
+  await logSweepEvent(
+    sessionId,
+    "info",
     "Starting Phase 1: Analysis",
     undefined,
     {

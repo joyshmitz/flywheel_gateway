@@ -14,6 +14,7 @@
     "test": "bun test",
     "test:integration": "bun test --filter 'tests/integration/**'",
     "test:e2e": "bunx playwright test",
+    "e2e:server": "bun scripts/e2e-server.ts",
     "test:contract": "bun test tests/contract/",
     "test:load": "k6 run tests/load/api.k6.js",
     "test:load:ws": "k6 run tests/load/websocket.k6.js",

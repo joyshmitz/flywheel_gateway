@@ -81,19 +81,22 @@ export default defineConfig({
     },
   ],
 
-  // Web server configuration (uncomment to auto-start dev servers)
-  // webServer: [
-  //   {
-  //     command: "bun run dev:gateway",
-  //     url: "http://localhost:3000/health",
-  //     reuseExistingServer: !process.env["CI"],
-  //     timeout: 60_000,
-  //   },
-  //   {
-  //     command: "bun run dev:web",
-  //     url: "http://localhost:5173",
-  //     reuseExistingServer: !process.env["CI"],
-  //     timeout: 60_000,
-  //   },
-  // ],
+  // Web server configuration — boots E2E gateway with seeded temp DB
+  webServer: [
+    {
+      command: "bun scripts/e2e-server.ts",
+      url: "http://localhost:3456/health",
+      reuseExistingServer: !process.env["CI"],
+      timeout: 30_000,
+      env: {
+        E2E_GATEWAY_PORT: "3456",
+      },
+    },
+    {
+      command: "bun run dev:web",
+      url: "http://localhost:5173",
+      reuseExistingServer: !process.env["CI"],
+      timeout: 30_000,
+    },
+  ],
 });
