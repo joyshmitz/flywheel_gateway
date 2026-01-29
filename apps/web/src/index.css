@@ -655,6 +655,26 @@
     background: var(--color-surface-muted);
     color: var(--color-ink);
   }
+
+  /* Mock Data Banner */
+  .mock-data-banner {
+    @apply flex items-center gap-2;
+    padding: 10px 14px;
+    background: color-mix(in srgb, var(--color-warning) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-warning) 30%, transparent);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    color: var(--color-ink);
+  }
+
+  .mock-data-banner__icon {
+    @apply shrink-0;
+    color: var(--color-warning);
+  }
+
+  .mock-data-banner__text {
+    @apply m-0;
+  }
 }
 
 /* ============================================

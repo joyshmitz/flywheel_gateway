@@ -426,11 +426,14 @@ export async function incrementReplayCount(entryId: string): Promise<void> {
     .update(historyTable)
     .set({
       // Atomic, single-statement increment to avoid read-modify-write races.
-      input: sql`json_set(
+      // Cast to BLOB to keep Drizzle's `blob({ mode: "json" })` column happy.
+      // If SQLite stores this as TEXT, Bun returns a string and Drizzle's blob-json
+      // decoder throws. BLOB ensures we continue to read/write JSON as bytes.
+      input: sql`CAST(json_set(
         COALESCE(${historyTable.input}, '{}'),
         '$.replayCount',
         CAST(COALESCE(json_extract(${historyTable.input}, '$.replayCount'), 0) AS INTEGER) + 1
-      )`,
+      ) AS BLOB)`,
     })
     .where(eq(historyTable.id, entryId));
 

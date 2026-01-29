@@ -10,7 +10,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { SystemSnapshot } from "@flywheel/shared";
+import { toast } from "../components/ui/Toaster";
 import { useUiStore } from "../stores/ui";
+import { useAllowMockFallback } from "./useMockFallback";
 
 // ============================================================================
 // Mock Data (used when mockMode is enabled or API unavailable)
@@ -237,6 +239,8 @@ interface UseQueryResult<T> {
   data: T | null;
   isLoading: boolean;
   error: Error | null;
+  /** True when displaying mock/fallback data instead of real API data */
+  usingMockData: boolean;
   refetch: (bypassCache?: boolean) => void;
 }
 
@@ -249,9 +253,11 @@ export function useSnapshot(options?: {
   pollingInterval?: number;
 }): UseQueryResult<SystemSnapshot> {
   const mockMode = useUiStore((state) => state.mockMode);
+  const allowMockFallback = useAllowMockFallback();
   const [data, setData] = useState<SystemSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [usingMockData, setUsingMockData] = useState(false);
 
   const fetchSnapshot = useCallback(
     async (bypassCache = false) => {
@@ -268,6 +274,7 @@ export function useSnapshot(options?: {
             generatedAt: new Date().toISOString(),
           },
         });
+        setUsingMockData(true);
         setIsLoading(false);
         return;
       }
@@ -275,15 +282,27 @@ export function useSnapshot(options?: {
       try {
         const result = await fetchAPI<SystemSnapshot>("/snapshot", bypassCache);
         setData(result);
+        setUsingMockData(false);
       } catch (e) {
-        setError(e instanceof Error ? e : new Error("Unknown error"));
-        // Fall back to mock data on error
-        setData(mockSnapshot);
+        const err = e instanceof Error ? e : new Error("Unknown error");
+        setError(err);
+
+        if (allowMockFallback) {
+          // Development mode: fall back to mock data but indicate it
+          setData(mockSnapshot);
+          setUsingMockData(true);
+          toast.warning("Using mock data - API unavailable");
+        } else {
+          // Production: show error, no mock data
+          setData(null);
+          setUsingMockData(false);
+          toast.error(`Failed to load snapshot: ${err.message}`);
+        }
       } finally {
         setIsLoading(false);
       }
     },
-    [mockMode],
+    [mockMode, allowMockFallback],
   );
 
   useEffect(() => {
@@ -301,7 +320,7 @@ export function useSnapshot(options?: {
     return () => clearInterval(interval);
   }, [fetchSnapshot, options?.pollingInterval]);
 
-  return { data, isLoading, error, refetch: fetchSnapshot };
+  return { data, isLoading, error, usingMockData, refetch: fetchSnapshot };
 }
 
 // ============================================================================
