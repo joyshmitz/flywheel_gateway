@@ -715,6 +715,8 @@ export function useDeviceCodeFlow(): UseDeviceCodeFlowResult {
 
       if (mockMode) {
         await new Promise((r) => setTimeout(r, 500));
+        // Guard against setState after unmount
+        if (!isMounted.current) return;
         const mockChallenge: DeviceCodeChallenge = {
           provider,
           profileId: `prof_mock_${Date.now().toString(36)}`,
@@ -766,6 +768,9 @@ export function useDeviceCodeFlow(): UseDeviceCodeFlowResult {
           body: JSON.stringify({ workspaceId, mode: "device_code" }),
         });
 
+        // Guard against setState after unmount
+        if (!isMounted.current) return;
+
         const flowChallenge: DeviceCodeChallenge = {
           ...result.challenge,
           userCode: "CHECK-TERMINAL",
@@ -790,12 +795,14 @@ export function useDeviceCodeFlow(): UseDeviceCodeFlowResult {
           });
         }, 1000);
       } catch (e) {
+        // Guard against setState after unmount
+        if (!isMounted.current) return;
         const err = e instanceof Error ? e : new Error("Failed to start login");
         setError(err);
         setStatus("error");
       }
     },
-    [mockMode, clearIntervals],
+    [isMounted, mockMode, clearIntervals],
   );
 
   const complete = useCallback(async () => {
@@ -809,6 +816,8 @@ export function useDeviceCodeFlow(): UseDeviceCodeFlowResult {
 
     if (mockMode) {
       await new Promise((r) => setTimeout(r, 1000));
+      // Guard against setState after unmount
+      if (!isMounted.current) return;
       clearIntervals();
       setStatus("success");
       return;
@@ -819,14 +828,18 @@ export function useDeviceCodeFlow(): UseDeviceCodeFlowResult {
         method: "POST",
         body: JSON.stringify({ profileId: challenge.profileId }),
       });
+      // Guard against setState after unmount
+      if (!isMounted.current) return;
       clearIntervals();
       setStatus("success");
     } catch (e) {
+      // Guard against setState after unmount
+      if (!isMounted.current) return;
       const err = e instanceof Error ? e : new Error("Verification failed");
       setError(err);
       setStatus("error");
     }
-  }, [challenge, mockMode, clearIntervals]);
+  }, [challenge, isMounted, mockMode, clearIntervals]);
 
   const cancel = useCallback(() => {
     clearIntervals();
