@@ -1,3 +1,6 @@
+import type { ToolUnavailabilityReason } from "./tool-unavailability";
+import { classifyToolUnavailability } from "./tool-unavailability";
+
 export type CliErrorKind =
   | "command_failed"
   | "parse_error"
@@ -14,6 +17,8 @@ export type CliErrorDetails = Record<string, unknown> & {
   stderr?: string;
   stdout?: string;
   cause?: string;
+  /** Canonical unavailability reason from the shared taxonomy. */
+  unavailabilityReason?: ToolUnavailabilityReason;
 };
 
 export class CliClientError extends Error {
@@ -25,6 +30,15 @@ export class CliClientError extends Error {
     this.name = "CliClientError";
     this.kind = kind;
     if (details) {
+      // Auto-classify unavailability reason when not explicitly provided
+      if (!details.unavailabilityReason && (kind === "unavailable" || kind === "not_installed" || kind === "command_failed")) {
+        details.unavailabilityReason = classifyToolUnavailability({
+          exitCode: details.exitCode,
+          stderr: details.stderr,
+          stdout: details.stdout,
+          error: details.cause,
+        });
+      }
       this.details = details;
     }
   }

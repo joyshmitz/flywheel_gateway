@@ -81,6 +81,8 @@ export interface DetectedCLI {
   version?: string;
   authenticated?: boolean;
   authError?: string;
+  /** Canonical reason the tool is unavailable (only set when available=false). */
+  unavailabilityReason?: import("@flywheel/shared/errors").ToolUnavailabilityReason;
   capabilities: DetectedCapabilities;
   detectedAt: Date;
   durationMs: number;
@@ -1054,6 +1056,7 @@ async function detectCLI(def: CLIDefinition): Promise<DetectedCLI> {
         toolId: def.name,
         method: detectionMethod,
         errorCategory: "cli_not_found",
+        unavailabilityReason: "not_installed",
         manifestVersion: meta?.schemaVersion ?? null,
         manifestHash: meta?.manifestHash ?? null,
       },
@@ -1062,6 +1065,7 @@ async function detectCLI(def: CLIDefinition): Promise<DetectedCLI> {
     return {
       name: def.name,
       available: false,
+      unavailabilityReason: "not_installed",
       capabilities: def.capabilities,
       detectedAt: new Date(),
       durationMs: Math.round(performance.now() - startTime),

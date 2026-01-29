@@ -179,6 +179,36 @@ export const ErrorCodes = {
   DCG_BLOCKED: { httpStatus: 403, message: "Command blocked by DCG" },
   DCG_PACK_NOT_FOUND: { httpStatus: 404, message: "DCG pack not found" },
 
+  // Tool availability
+  TOOL_NOT_INSTALLED: { httpStatus: 404, message: "Tool not installed" },
+  TOOL_NOT_IN_PATH: { httpStatus: 404, message: "Tool not in PATH" },
+  TOOL_PERMISSION_DENIED: {
+    httpStatus: 403,
+    message: "Tool permission denied",
+  },
+  TOOL_VERSION_UNSUPPORTED: {
+    httpStatus: 422,
+    message: "Tool version unsupported",
+  },
+  TOOL_AUTH_REQUIRED: {
+    httpStatus: 401,
+    message: "Tool authentication required",
+  },
+  TOOL_AUTH_EXPIRED: { httpStatus: 401, message: "Tool auth token expired" },
+  TOOL_CONFIG_MISSING: { httpStatus: 404, message: "Tool config missing" },
+  TOOL_CONFIG_INVALID: { httpStatus: 422, message: "Tool config invalid" },
+  TOOL_DEPENDENCY_MISSING: {
+    httpStatus: 424,
+    message: "Tool dependency missing",
+  },
+  TOOL_MCP_UNREACHABLE: {
+    httpStatus: 503,
+    message: "Tool MCP server unreachable",
+  },
+  TOOL_SPAWN_FAILED: { httpStatus: 500, message: "Tool failed to start" },
+  TOOL_TIMEOUT: { httpStatus: 408, message: "Tool timed out" },
+  TOOL_CRASH: { httpStatus: 500, message: "Tool crashed" },
+
   // Fleet / utilities
   FLEET_REPO_NOT_FOUND: {
     httpStatus: 404,

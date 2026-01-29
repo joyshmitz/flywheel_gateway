@@ -47,6 +47,68 @@ const AI_HINT_OVERRIDES: Partial<Record<ErrorCode, AIHint>> = {
     severity: "recoverable",
     suggestedAction: "Request approval for the sweep and retry when approved.",
   },
+  TOOL_NOT_INSTALLED: {
+    severity: "terminal",
+    suggestedAction: "Install the tool and retry detection.",
+    alternativeApproach:
+      "Use the setup page to install missing tools automatically.",
+  },
+  TOOL_NOT_IN_PATH: {
+    severity: "recoverable",
+    suggestedAction: "Add the tool directory to PATH and restart the gateway.",
+  },
+  TOOL_PERMISSION_DENIED: {
+    severity: "terminal",
+    suggestedAction: "Fix file permissions on the tool binary (chmod +x).",
+  },
+  TOOL_VERSION_UNSUPPORTED: {
+    severity: "recoverable",
+    suggestedAction: "Upgrade the tool to a supported version.",
+  },
+  TOOL_AUTH_REQUIRED: {
+    severity: "recoverable",
+    suggestedAction: "Run the tool's login/auth command to authenticate.",
+  },
+  TOOL_AUTH_EXPIRED: {
+    severity: "recoverable",
+    suggestedAction: "Re-authenticate — the current token has expired.",
+  },
+  TOOL_CONFIG_MISSING: {
+    severity: "recoverable",
+    suggestedAction:
+      "Create the required configuration file for the tool.",
+  },
+  TOOL_CONFIG_INVALID: {
+    severity: "recoverable",
+    suggestedAction:
+      "Fix the tool configuration file — check syntax and required fields.",
+  },
+  TOOL_DEPENDENCY_MISSING: {
+    severity: "terminal",
+    suggestedAction:
+      "Install the missing dependency required by the tool.",
+  },
+  TOOL_MCP_UNREACHABLE: {
+    severity: "retry",
+    suggestedAction: "Check that the MCP server is running and retry.",
+    retryAfterMs: 5000,
+  },
+  TOOL_SPAWN_FAILED: {
+    severity: "retry",
+    suggestedAction: "Retry starting the tool — check system resources.",
+    retryAfterMs: 2000,
+  },
+  TOOL_TIMEOUT: {
+    severity: "retry",
+    suggestedAction: "Increase the timeout or check tool responsiveness.",
+    retryAfterMs: 3000,
+  },
+  TOOL_CRASH: {
+    severity: "retry",
+    suggestedAction:
+      "The tool crashed — check for updates or report the issue upstream.",
+    retryAfterMs: 5000,
+  },
 };
 
 function defaultHintForCode(code: ErrorCode): AIHint {
