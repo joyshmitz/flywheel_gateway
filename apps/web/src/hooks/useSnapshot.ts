@@ -8,8 +8,8 @@
  * - Tool health status (DCG, SLB, UBS)
  */
 
-import { useCallback, useEffect, useState } from "react";
 import type { SystemSnapshot } from "@flywheel/shared";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "../components/ui/Toaster";
 import { useUiStore } from "../stores/ui";
 import { useAllowMockFallback } from "./useMockFallback";

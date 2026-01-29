@@ -156,4 +156,117 @@ describe("ClaudeSDKDriver", () => {
     // 3 sends = 6 messages (3 user + 3 assistant), no pruning
     expect(history.length).toBe(6);
   });
+
+  it("should not prune when history is exactly at the limit", async () => {
+    const config = createDriverOptions("sdk", { driverId: "test-claude-at-limit" });
+    const driver = new ClaudeSDKDriver(config, {
+      apiKey: "",
+      maxHistoryMessages: 6, // Exactly 3 sends = 6 messages
+    });
+
+    const agentConfig: AgentConfig = {
+      id: "agent-at-limit",
+      provider: "claude",
+      model: "claude-3-sonnet",
+      workingDirectory: "/tmp",
+    };
+    await driver.spawn(agentConfig);
+
+    // Send exactly enough messages to reach the limit (3 sends = 6 messages)
+    for (let i = 0; i < 3; i++) {
+      await driver.send("agent-at-limit", `Message ${i}`);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+
+    const checkpoint = await driver.createCheckpoint("agent-at-limit", "test");
+    const fullCheckpoint = await driver.getCheckpoint("agent-at-limit", checkpoint.id);
+
+    const history = fullCheckpoint.conversationHistory as unknown[];
+    // Exactly at limit - no pruning should occur
+    expect(history.length).toBe(6);
+  });
+
+  it("should isolate pruning between multiple sessions", async () => {
+    const config = createDriverOptions("sdk", { driverId: "test-claude-multi-session" });
+    const driver = new ClaudeSDKDriver(config, {
+      apiKey: "",
+      maxHistoryMessages: 4,
+    });
+
+    // Spawn two agents (separate sessions)
+    const agentConfig1: AgentConfig = {
+      id: "agent-session-1",
+      provider: "claude",
+      model: "claude-3-sonnet",
+      workingDirectory: "/tmp",
+    };
+    const agentConfig2: AgentConfig = {
+      id: "agent-session-2",
+      provider: "claude",
+      model: "claude-3-sonnet",
+      workingDirectory: "/tmp",
+    };
+    await driver.spawn(agentConfig1);
+    await driver.spawn(agentConfig2);
+
+    // Send messages to session 1 to trigger pruning (3 sends = 6 messages > 4 limit)
+    for (let i = 0; i < 3; i++) {
+      await driver.send("agent-session-1", `Session1 Message ${i}`);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+
+    // Send only 1 message to session 2 (2 messages < 4 limit, no pruning)
+    await driver.send("agent-session-2", "Session2 Message 0");
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    // Check session 1 - should be pruned to 4 messages
+    const checkpoint1 = await driver.createCheckpoint("agent-session-1", "test");
+    const fullCheckpoint1 = await driver.getCheckpoint("agent-session-1", checkpoint1.id);
+    const history1 = fullCheckpoint1.conversationHistory as unknown[];
+    expect(history1.length).toBe(4);
+
+    // Check session 2 - should still have 2 messages (no pruning)
+    const checkpoint2 = await driver.createCheckpoint("agent-session-2", "test");
+    const fullCheckpoint2 = await driver.getCheckpoint("agent-session-2", checkpoint2.id);
+    const history2 = fullCheckpoint2.conversationHistory as unknown[];
+    expect(history2.length).toBe(2);
+  });
+
+  it("should handle agent with initial conversation history from providerOptions", async () => {
+    const config = createDriverOptions("sdk", { driverId: "test-claude-initial-history" });
+    const driver = new ClaudeSDKDriver(config, {
+      apiKey: "",
+      maxHistoryMessages: 5,
+    });
+
+    // Spawn with pre-existing conversation history
+    const agentConfig: AgentConfig = {
+      id: "agent-initial-history",
+      provider: "claude",
+      model: "claude-3-sonnet",
+      workingDirectory: "/tmp",
+      providerOptions: {
+        conversationHistory: [
+          { role: "user", content: "Initial message", timestamp: new Date() },
+          { role: "assistant", content: "Initial response", timestamp: new Date() },
+        ],
+      },
+    };
+    await driver.spawn(agentConfig);
+
+    // Send more messages to trigger pruning (2 initial + 4 new = 6 > 5)
+    for (let i = 0; i < 2; i++) {
+      await driver.send("agent-initial-history", `New message ${i}`);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+
+    const checkpoint = await driver.createCheckpoint("agent-initial-history", "test");
+    const fullCheckpoint = await driver.getCheckpoint("agent-initial-history", checkpoint.id);
+    const history = fullCheckpoint.conversationHistory as Array<{ content: string }>;
+
+    // Should be pruned to 5 messages
+    expect(history.length).toBe(5);
+    // First message should be the initial "Initial message"
+    expect(history[0]!.content).toBe("Initial message");
+  });
 });
