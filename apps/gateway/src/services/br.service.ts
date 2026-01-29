@@ -184,6 +184,16 @@ export function getBrClient(): BrClient {
   return cachedClient;
 }
 
+/**
+ * Test-only escape hatch to avoid cross-file mock.module() pollution.
+ *
+ * Prefer dependency injection where possible, but this keeps unit tests fast and
+ * isolated without mocking the shared @flywheel/flywheel-clients module.
+ */
+export function setBrClientForTesting(client: BrClient | undefined): void {
+  cachedClient = client;
+}
+
 export function clearBrCache(): void {
   cachedClient = undefined;
 }

@@ -188,6 +188,11 @@ export interface WaitConfig {
 
 /**
  * Transform operation types for data manipulation.
+ *
+ * Notes on expressions (`map.expression`, `filter.condition`, `reduce.expression`):
+ * - Uses a small, safe expression language (no `eval` / `new Function`)
+ * - Allowed identifiers: `$item`, `$index` (and `$acc` for `reduce`)
+ * - No function calls; blocks prototype/pollution keys like `__proto__`/`constructor`
  */
 export type TransformOperation =
   | { op: "set"; path: string; value: unknown }

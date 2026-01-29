@@ -2,7 +2,11 @@
  * Context Pack Builder Tests
  */
 
-import { describe, expect, it, mock } from "bun:test";
+import { afterAll, describe, expect, it, mock } from "bun:test";
+import {
+  restoreBvService,
+  restoreCassService,
+} from "./test-utils/db-mock-restore";
 
 // Mock BV service to avoid spawning external commands
 mock.module("../services/bv.service", () => ({
@@ -48,20 +52,6 @@ mock.module("../services/cass.service", () => ({
   }),
 }));
 
-const mockLogger = {
-  info: () => {},
-  error: () => {},
-  warn: () => {},
-  debug: () => {},
-  child: () => mockLogger,
-};
-
-// Mock correlation middleware
-mock.module("../middleware/correlation", () => ({
-  getCorrelationId: () => "test-correlation-id",
-  getLogger: () => mockLogger,
-}));
-
 import {
   buildContextPack,
   getContextPackSummary,
@@ -89,6 +79,11 @@ import {
   DEFAULT_BUDGET_STRATEGY,
   DEFAULT_CONTEXT_BUILDER_CONFIG,
 } from "../types/context.types";
+
+afterAll(() => {
+  restoreBvService();
+  restoreCassService();
+});
 
 // ============================================================================
 // Token Budget Tests

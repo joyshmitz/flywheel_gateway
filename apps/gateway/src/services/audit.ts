@@ -1,7 +1,13 @@
-import { db } from "../db";
+import { db as realDb } from "../db";
 import { auditLogs } from "../db/schema";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
 import { redactSensitiveData } from "./audit-redaction.service";
+
+let auditDb = realDb;
+
+export function setAuditDbForTesting(dbOverride: typeof realDb | undefined): void {
+  auditDb = dbOverride ?? realDb;
+}
 
 /**
  * Auditable actions in the system.
@@ -121,7 +127,7 @@ export function audit(options: AuditEventOptions): AuditEvent {
   );
 
   // Persist to audit table (fire-and-forget to avoid blocking the request)
-  void db
+  void auditDb
     .insert(auditLogs)
     .values({
       id: event.id,

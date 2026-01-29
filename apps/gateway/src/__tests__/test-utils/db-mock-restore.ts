@@ -28,11 +28,18 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import * as drizzleOrmExports from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
+import * as flywheelClientsExports from "@flywheel/flywheel-clients";
 import * as schema from "../../db/schema";
+import * as agentDetectionServiceExports from "../../services/agent-detection.service";
+import * as bvServiceExports from "../../services/bv.service";
+import * as cassServiceExports from "../../services/cass.service";
+import * as toolRegistryServiceExports from "../../services/tool-registry.service";
 
 // Create a fresh connection to the real database
 // This is created at import time, before any mocks are applied
-const dbFile = process.env["DB_FILE_NAME"] ?? "./data/gateway.db";
+// Default to an in-memory DB to avoid touching any on-disk dev database when a
+// test file is run without DB_FILE_NAME configured.
+const dbFile = process.env["DB_FILE_NAME"] ?? ":memory:";
 
 function runMigrations(sqliteDb: Database): void {
   const migrationsFolder = join(import.meta.dir, "../../db/migrations");
@@ -112,6 +119,14 @@ export function restoreDrizzleOrm(): void {
 }
 
 /**
+ * Restore the real @flywheel/flywheel-clients module after tests that mock it.
+ * Call this in afterAll() for any test file that uses mock.module("@flywheel/flywheel-clients", ...).
+ */
+export function restoreFlywheelClients(): void {
+  mock.module("@flywheel/flywheel-clients", () => flywheelClientsExports);
+}
+
+/**
  * Restore the real utils/response module after tests that mock it.
  * Call this in afterAll() for any test file that uses mock.module("../utils/response", ...).
  */
@@ -130,4 +145,80 @@ export function restoreCorrelation(): void {
   const realCorrelation = require("../../middleware/correlation");
   mock.module("../middleware/correlation", () => realCorrelation);
   mock.module("../../middleware/correlation", () => realCorrelation);
+}
+
+/**
+ * Restore the real tool-registry.service module after tests that mock it.
+ * Call this in afterAll() for any test file that uses mock.module("../services/tool-registry.service", ...).
+ */
+export function restoreToolRegistryService(): void {
+  mock.module("../services/tool-registry.service", () => toolRegistryServiceExports);
+  mock.module(
+    "../../services/tool-registry.service",
+    () => toolRegistryServiceExports,
+  );
+  mock.module("./tool-registry.service", () => toolRegistryServiceExports);
+  mock.module(
+    "../../services/tool-registry.service.ts",
+    () => toolRegistryServiceExports,
+  );
+  mock.module(
+    "../services/tool-registry.service.ts",
+    () => toolRegistryServiceExports,
+  );
+  mock.module("./tool-registry.service.ts", () => toolRegistryServiceExports);
+}
+
+/**
+ * Restore the real agent-detection.service module after tests that mock it.
+ * Call this in afterAll() for any test file that uses mock.module("../services/agent-detection.service", ...).
+ */
+export function restoreAgentDetectionService(): void {
+  mock.module(
+    "../services/agent-detection.service",
+    () => agentDetectionServiceExports,
+  );
+  mock.module(
+    "../../services/agent-detection.service",
+    () => agentDetectionServiceExports,
+  );
+  mock.module("./agent-detection.service", () => agentDetectionServiceExports);
+  mock.module(
+    "../../services/agent-detection.service.ts",
+    () => agentDetectionServiceExports,
+  );
+  mock.module(
+    "../services/agent-detection.service.ts",
+    () => agentDetectionServiceExports,
+  );
+  mock.module(
+    "./agent-detection.service.ts",
+    () => agentDetectionServiceExports,
+  );
+}
+
+/**
+ * Restore the real bv.service module after tests that mock it.
+ * Call this in afterAll() for any test file that uses mock.module("../services/bv.service", ...).
+ */
+export function restoreBvService(): void {
+  mock.module("../services/bv.service", () => bvServiceExports);
+  mock.module("../../services/bv.service", () => bvServiceExports);
+  mock.module("./bv.service", () => bvServiceExports);
+  mock.module("../services/bv.service.ts", () => bvServiceExports);
+  mock.module("../../services/bv.service.ts", () => bvServiceExports);
+  mock.module("./bv.service.ts", () => bvServiceExports);
+}
+
+/**
+ * Restore the real cass.service module after tests that mock it.
+ * Call this in afterAll() for any test file that uses mock.module("../services/cass.service", ...).
+ */
+export function restoreCassService(): void {
+  mock.module("../services/cass.service", () => cassServiceExports);
+  mock.module("../../services/cass.service", () => cassServiceExports);
+  mock.module("./cass.service", () => cassServiceExports);
+  mock.module("../services/cass.service.ts", () => cassServiceExports);
+  mock.module("../../services/cass.service.ts", () => cassServiceExports);
+  mock.module("./cass.service.ts", () => cassServiceExports);
 }

@@ -6,10 +6,23 @@
  * To run these tests, set RUN_SLOW_TESTS=1 environment variable.
  */
 
-import { describe, expect, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
 import { Hono } from "hono";
-import { setup } from "../routes/setup";
-import { clearDetectionCache } from "../services/agent-detection.service";
+import {
+  restoreAgentDetectionService,
+  restoreToolRegistryService,
+} from "./test-utils/db-mock-restore";
+
+let app: Hono;
+
+beforeAll(async () => {
+  // Defensive: other test files mock these modules and Bun persists mock.module across files.
+  restoreToolRegistryService();
+  restoreAgentDetectionService();
+
+  const { setup } = await import("../routes/setup?setup-routes-test");
+  app = new Hono().route("/setup", setup);
+});
 
 type Envelope<T> = {
   object: string;
@@ -101,8 +114,6 @@ type ToolRegistryData = {
 };
 
 describe("Setup Routes", () => {
-  const app = new Hono().route("/setup", setup);
-
   // Note: Readiness tests require full CLI detection which can take 30-60+ seconds
   const runSlowTests = process.env["RUN_SLOW_TESTS"] === "1";
 

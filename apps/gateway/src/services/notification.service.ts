@@ -592,17 +592,53 @@ export function executeAction(
 // Preferences Management
 // ============================================================================
 
+function createDefaultPreferences(userId: string): NotificationPreferences {
+  const categories = Object.fromEntries(
+    Object.entries(DEFAULT_PREFERENCES.categories).map(([category, pref]) => [
+      category,
+      { ...pref, channels: [...pref.channels] },
+    ]),
+  ) as NotificationPreferences["categories"];
+
+  const prefs: NotificationPreferences = {
+    userId,
+    enabled: DEFAULT_PREFERENCES.enabled,
+    defaultChannels: [...DEFAULT_PREFERENCES.defaultChannels],
+    categories,
+    updatedAt: new Date(),
+  };
+
+  if (DEFAULT_PREFERENCES.quietHours) {
+    prefs.quietHours = { ...DEFAULT_PREFERENCES.quietHours };
+  }
+  if (DEFAULT_PREFERENCES.digest) {
+    prefs.digest = { ...DEFAULT_PREFERENCES.digest };
+  }
+  if (DEFAULT_PREFERENCES.channelConfig) {
+    prefs.channelConfig = {
+      ...DEFAULT_PREFERENCES.channelConfig,
+      ...(DEFAULT_PREFERENCES.channelConfig.email
+        ? { email: { ...DEFAULT_PREFERENCES.channelConfig.email } }
+        : {}),
+      ...(DEFAULT_PREFERENCES.channelConfig.slack
+        ? { slack: { ...DEFAULT_PREFERENCES.channelConfig.slack } }
+        : {}),
+      ...(DEFAULT_PREFERENCES.channelConfig.webhook
+        ? { webhook: { ...DEFAULT_PREFERENCES.channelConfig.webhook } }
+        : {}),
+    };
+  }
+
+  return prefs;
+}
+
 /**
  * Get user preferences, creating defaults if needed.
  */
 export function getPreferences(userId: string): NotificationPreferences {
   let prefs = preferencesByUser.get(userId);
   if (!prefs) {
-    prefs = {
-      userId,
-      ...DEFAULT_PREFERENCES,
-      updatedAt: new Date(),
-    };
+    prefs = createDefaultPreferences(userId);
     preferencesByUser.set(userId, prefs);
   }
   return prefs;

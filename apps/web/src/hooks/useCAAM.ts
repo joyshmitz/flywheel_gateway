@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useMountedRef } from "./useMountedRef";
 import { useUiStore } from "../stores/ui";
 
 // ============================================================================
@@ -672,6 +673,9 @@ export function useDeviceCodeFlow(): UseDeviceCodeFlowResult {
   const [error, setError] = useState<Error | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
 
+  // Track mount status to prevent setState after unmount
+  const isMounted = useMountedRef();
+
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
@@ -731,10 +735,13 @@ export function useDeviceCodeFlow(): UseDeviceCodeFlowResult {
 
         // Start countdown
         countdownIntervalRef.current = setInterval(() => {
+          // Guard against setState after unmount
+          if (!isMounted.current) return;
+
           setRemainingSeconds((prev) => {
             if (prev <= 1) {
               clearIntervals();
-              setStatus("expired");
+              if (isMounted.current) setStatus("expired");
               return 0;
             }
             return prev - 1;
@@ -770,10 +777,13 @@ export function useDeviceCodeFlow(): UseDeviceCodeFlowResult {
         setStatus("awaiting_user");
 
         countdownIntervalRef.current = setInterval(() => {
+          // Guard against setState after unmount
+          if (!isMounted.current) return;
+
           setRemainingSeconds((prev) => {
             if (prev <= 1) {
               clearIntervals();
-              setStatus("expired");
+              if (isMounted.current) setStatus("expired");
               return 0;
             }
             return prev - 1;

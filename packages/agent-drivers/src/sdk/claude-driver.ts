@@ -38,6 +38,8 @@ export interface ClaudeDriverOptions extends DriverOptions {
   defaultMaxTokens?: number;
   /** Enable streaming by default */
   streaming?: boolean;
+  /** Maximum number of messages to retain in conversation history (default: 100) */
+  maxHistoryMessages?: number;
 }
 
 /**
@@ -65,6 +67,7 @@ export class ClaudeSDKDriver extends BaseDriver {
   private baseUrl: string;
   private defaultMaxTokens: number;
   private streaming: boolean;
+  private maxHistoryMessages: number;
   private sessions = new Map<string, ClaudeAgentSession>();
 
   constructor(config: BaseDriverConfig, options: ClaudeDriverOptions = {}) {
@@ -73,6 +76,7 @@ export class ClaudeSDKDriver extends BaseDriver {
     this.baseUrl = options.baseUrl ?? "https://api.anthropic.com";
     this.defaultMaxTokens = options.defaultMaxTokens ?? 4096;
     this.streaming = options.streaming ?? true;
+    this.maxHistoryMessages = options.maxHistoryMessages ?? 100;
   }
 
   // ============================================================================
@@ -155,6 +159,9 @@ export class ClaudeSDKDriver extends BaseDriver {
       content: message,
       timestamp: new Date(),
     });
+
+    // Prune history to prevent unbounded growth
+    this.pruneConversationHistory(session);
 
     // Create abort controller for interruption
     const controller = new AbortController();
@@ -412,6 +419,9 @@ export class ClaudeSDKDriver extends BaseDriver {
           },
         });
 
+        // Prune history to prevent unbounded growth
+        this.pruneConversationHistory(session);
+
         // Update token usage
         this.updateTokenUsage(agentId, {
           promptTokens: data.usage?.input_tokens ?? 0,
@@ -440,6 +450,9 @@ export class ClaudeSDKDriver extends BaseDriver {
           timestamp: new Date(),
           tokenUsage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
         });
+
+        // Prune history to prevent unbounded growth
+        this.pruneConversationHistory(session);
 
         this.updateTokenUsage(agentId, { promptTokens: 100, completionTokens: 50, totalTokens: 150 });
       }
@@ -473,6 +486,35 @@ export class ClaudeSDKDriver extends BaseDriver {
       }, ms);
 
       signal.addEventListener("abort", abortHandler);
+    });
+  }
+
+  /**
+   * Prune conversation history to prevent unbounded memory growth.
+   * Preserves the first message (typically system prompt) and keeps
+   * the most recent messages up to maxHistoryMessages.
+   */
+  private pruneConversationHistory(session: ClaudeAgentSession): void {
+    const history = session.conversationHistory;
+    const max = this.maxHistoryMessages;
+
+    if (history.length <= max) {
+      return;
+    }
+
+    // Keep first message (system prompt) + most recent (max - 1) messages
+    const firstMessage = history[0];
+    if (!firstMessage) {
+      // Edge case: empty history, nothing to prune
+      return;
+    }
+    const recentMessages = history.slice(-(max - 1));
+    session.conversationHistory = [firstMessage, ...recentMessages];
+
+    logDriver("debug", this.driverType, "history_pruned", {
+      previousLength: history.length,
+      newLength: session.conversationHistory.length,
+      maxHistoryMessages: max,
     });
   }
 }

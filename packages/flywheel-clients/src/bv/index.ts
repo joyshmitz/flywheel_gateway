@@ -11,11 +11,17 @@ export interface BvCommandResult {
   exitCode: number;
 }
 
+export interface BvCommandOptions {
+  cwd?: string;
+  timeoutMs?: number;
+  maxOutputBytes?: number;
+}
+
 export interface BvCommandRunner {
   run: (
     command: string,
     args: string[],
-    options?: { cwd?: string },
+    options?: BvCommandOptions,
   ) => Promise<BvCommandResult>;
 }
 
@@ -128,6 +134,10 @@ export type BvGraphResult = z.infer<typeof BvGraphResultSchema>;
 export interface BvGraphOptions {
   /** Working directory */
   cwd?: string;
+  /** Command timeout in milliseconds */
+  timeoutMs?: number;
+  /** Maximum bytes to read from stdout/stderr */
+  maxOutputBytes?: number;
   /** Output format: json, dot, or mermaid */
   format?: "json" | "dot" | "mermaid";
   /** Root issue ID for subgraph (optional) */
@@ -137,20 +147,18 @@ export interface BvGraphOptions {
 }
 
 export interface BvClient {
-  getTriage: (options?: { cwd?: string }) => Promise<BvTriageResult>;
-  getInsights: (options?: { cwd?: string }) => Promise<BvInsightsResult>;
-  getPlan: (options?: { cwd?: string }) => Promise<BvPlanResult>;
+  getTriage: (options?: BvCommandOptions) => Promise<BvTriageResult>;
+  getInsights: (options?: BvCommandOptions) => Promise<BvInsightsResult>;
+  getPlan: (options?: BvCommandOptions) => Promise<BvPlanResult>;
   getGraph: (options?: BvGraphOptions) => Promise<BvGraphResult>;
 }
 
 async function runBvCommand(
   runner: BvCommandRunner,
   args: string[],
-  cwd?: string,
+  options?: BvCommandOptions,
 ): Promise<string> {
-  const runOptions: { cwd?: string } = {};
-  if (cwd !== undefined) runOptions.cwd = cwd;
-  const result = await runner.run("bv", args, runOptions);
+  const result = await runner.run("bv", args, options);
   if (result.exitCode !== 0) {
     throw new BvClientError("command_failed", "BV command failed", {
       exitCode: result.exitCode,
@@ -166,11 +174,13 @@ export function createBvClient(options: BvClientOptions): BvClient {
   return {
     getTriage: async (opts) => {
       const cwd = opts?.cwd ?? baseCwd;
-      const stdout = await runBvCommand(
-        options.runner,
-        ["--robot-triage"],
+      const timeoutMs = opts?.timeoutMs;
+      const maxOutputBytes = opts?.maxOutputBytes;
+      const stdout = await runBvCommand(options.runner, ["--robot-triage"], {
         cwd,
-      );
+        timeoutMs,
+        maxOutputBytes,
+      });
       let parsed: unknown;
       try {
         parsed = JSON.parse(stdout);
@@ -191,11 +201,13 @@ export function createBvClient(options: BvClientOptions): BvClient {
     },
     getInsights: async (opts) => {
       const cwd = opts?.cwd ?? baseCwd;
-      const stdout = await runBvCommand(
-        options.runner,
-        ["--robot-insights"],
+      const timeoutMs = opts?.timeoutMs;
+      const maxOutputBytes = opts?.maxOutputBytes;
+      const stdout = await runBvCommand(options.runner, ["--robot-insights"], {
         cwd,
-      );
+        timeoutMs,
+        maxOutputBytes,
+      });
       let parsed: unknown;
       try {
         parsed = JSON.parse(stdout);
@@ -216,7 +228,13 @@ export function createBvClient(options: BvClientOptions): BvClient {
     },
     getPlan: async (opts) => {
       const cwd = opts?.cwd ?? baseCwd;
-      const stdout = await runBvCommand(options.runner, ["--robot-plan"], cwd);
+      const timeoutMs = opts?.timeoutMs;
+      const maxOutputBytes = opts?.maxOutputBytes;
+      const stdout = await runBvCommand(options.runner, ["--robot-plan"], {
+        cwd,
+        timeoutMs,
+        maxOutputBytes,
+      });
       let parsed: unknown;
       try {
         parsed = JSON.parse(stdout);
@@ -238,6 +256,8 @@ export function createBvClient(options: BvClientOptions): BvClient {
     getGraph: async (opts) => {
       const cwd = opts?.cwd ?? baseCwd;
       const format = opts?.format ?? "json";
+      const timeoutMs = opts?.timeoutMs;
+      const maxOutputBytes = opts?.maxOutputBytes;
 
       // Build command arguments
       const args = ["--robot-graph", "--graph-format", format];
@@ -250,7 +270,11 @@ export function createBvClient(options: BvClientOptions): BvClient {
         args.push("--graph-depth", String(opts.depth));
       }
 
-      const stdout = await runBvCommand(options.runner, args, cwd);
+      const stdout = await runBvCommand(options.runner, args, {
+        cwd,
+        timeoutMs,
+        maxOutputBytes,
+      });
 
       // For non-JSON formats, return raw output
       if (format !== "json") {

@@ -2,7 +2,7 @@
  * Tests for system routes.
  */
 
-import { describe, expect, test, beforeEach, afterEach } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 import { system } from "../routes/system";
 import { clearSnapshotServiceInstance } from "../services/snapshot.service";
@@ -282,9 +282,9 @@ describe("System Routes", () => {
 
 import { z } from "zod";
 import {
-  SystemSnapshotDataSchema,
-  SnapshotCacheStatusSchema,
   SnapshotCacheClearedSchema,
+  SnapshotCacheStatusSchema,
+  SystemSnapshotDataSchema,
 } from "../api/schemas";
 
 /**
@@ -326,8 +326,8 @@ function validateSchemaWithLog<T extends z.ZodTypeAny>(
   };
 
   if (!result.success) {
-    log.errorCount = result.error.errors.length;
-    log.errors = result.error.errors.map((e) => ({
+    log.errorCount = result.error.issues.length;
+    log.errors = result.error.issues.map((e) => ({
       path: e.path.join("."),
       code: e.code,
       message: e.message,

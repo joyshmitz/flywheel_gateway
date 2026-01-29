@@ -12,61 +12,57 @@
  * - Detailed logging for observability
  */
 
-import type {
-  NtmClient,
-  NtmStatusOutput,
-  NtmSnapshotOutput,
-  BvTriageResult,
-} from "@flywheel/flywheel-clients";
-import {
-  createNtmClient,
-  createBunNtmCommandRunner,
-} from "@flywheel/flywheel-clients";
-import type {
-  SystemSnapshot,
-  SystemSnapshotMeta,
-  SystemHealthSummary,
-  SystemHealthStatus,
-  NtmSnapshot,
-  NtmSessionSnapshot,
-  NtmAgentSnapshot,
-  NtmStatusSummary,
-  BeadsSnapshot,
-  BeadsStatusCounts,
-  BeadsTypeCounts,
-  BeadsPriorityCounts,
-  BeadsTriageRecommendation,
-  BeadsSyncStatus,
-  ToolHealthSnapshot,
-  ToolHealthStatus,
-  ToolChecksumStatus,
-  AgentMailSnapshot,
-  AgentMailAgentSnapshot,
-  AgentMailMessageSummary,
-} from "@flywheel/shared";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import type { BvTriageResult, NtmClient } from "@flywheel/flywheel-clients";
+import {
+  createBunNtmCommandRunner,
+  createNtmClient,
+} from "@flywheel/flywheel-clients";
+import type {
+  AgentMailAgentSnapshot,
+  AgentMailMessageSummary,
+  AgentMailSnapshot,
+  BeadsPriorityCounts,
+  BeadsSnapshot,
+  BeadsStatusCounts,
+  BeadsSyncStatus,
+  BeadsTriageRecommendation,
+  BeadsTypeCounts,
+  DetectedToolSummary,
+  NtmAgentSnapshot,
+  NtmSessionSnapshot,
+  NtmSnapshot,
+  NtmStatusSummary,
+  SystemHealthStatus,
+  SystemHealthSummary,
+  SystemSnapshot,
+  SystemSnapshotMeta,
+  ToolChecksumStatus,
+  ToolEcosystemSummary,
+  ToolHealthSnapshot,
+  ToolHealthStatus,
+} from "@flywheel/shared";
 import { getLogger } from "../middleware/correlation";
-import { incrementCounter, setGauge, recordHistogram } from "./metrics";
-import { getBvTriage, getBvClient } from "./bv.service";
-import { getBrList, getBrSyncStatus, getBrClient } from "./br.service";
+import { detectAllCLIs } from "./agent-detection.service";
+import { getBrList, getBrSyncStatus } from "./br.service";
+import { getBvTriage } from "./bv.service";
 import * as dcgService from "./dcg.service";
+import { incrementCounter, recordHistogram, setGauge } from "./metrics";
 import * as slbService from "./slb.service";
+import { loadToolRegistry } from "./tool-registry.service";
 import { getUBSService } from "./ubs.service";
 import {
   getChecksumAge,
   listToolsWithChecksums,
 } from "./update-checker.service";
-import { loadToolRegistry } from "./tool-registry.service";
-import { detectAllCLIs } from "./agent-detection.service";
-import type { DetectedToolSummary, ToolEcosystemSummary } from "@flywheel/shared";
 
 // ============================================================================
 // Constants
 // ============================================================================
 
 const DEFAULT_CACHE_TTL_MS = 10000; // 10 seconds
-const DEFAULT_COLLECTION_TIMEOUT_MS = 5000; // 5 seconds per source
+const DEFAULT_COLLECTION_TIMEOUT_MS = 2500; // 2.5 seconds per source
 const STALE_CHECKSUM_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const SAFETY_TOOLS = ["safety.dcg", "safety.slb", "safety.ubs"] as const;
 
@@ -292,7 +288,6 @@ function createEmptyNtmSnapshot(available: boolean): NtmSnapshot {
 async function collectBeadsSnapshot(
   timeoutMs: number,
 ): Promise<CollectionResult<BeadsSnapshot>> {
-  const log = getLogger();
   const start = performance.now();
 
   const result = await withTimeout(
@@ -303,13 +298,13 @@ async function collectBeadsSnapshot(
       let bvAvailable = false;
 
       try {
-        triageData = await getBvTriage();
+        triageData = await getBvTriage({ timeoutMs });
         bvAvailable = true;
         brAvailable = true; // bv implies br is working
       } catch {
         // bv failed, try br directly
         try {
-          await getBrList({ limit: 1 });
+          await getBrList({ limit: 1, timeout: timeoutMs });
           brAvailable = true;
         } catch {
           // br also unavailable
@@ -320,7 +315,7 @@ async function collectBeadsSnapshot(
       let syncStatus: BeadsSyncStatus | undefined;
       if (brAvailable) {
         try {
-          const brStatus = await getBrSyncStatus();
+          const brStatus = await getBrSyncStatus({ timeout: timeoutMs });
           const syncBase: BeadsSyncStatus = {
             dirtyCount: brStatus.dirty_count ?? 0,
             jsonlExists: brStatus.jsonl_exists ?? false,
@@ -562,8 +557,14 @@ async function collectToolHealthSnapshot(
             tool: tool.name,
           });
         }
-        setGauge("flywheel_ecosystem_agents_available", ecosystem.agentsAvailable);
-        setGauge("flywheel_ecosystem_tools_available", ecosystem.toolsAvailable);
+        setGauge(
+          "flywheel_ecosystem_agents_available",
+          ecosystem.agentsAvailable,
+        );
+        setGauge(
+          "flywheel_ecosystem_tools_available",
+          ecosystem.toolsAvailable,
+        );
       }
 
       return {
@@ -737,7 +738,16 @@ async function collectEcosystemDetection(): Promise<ToolEcosystemSummary | null>
   try {
     const result = await detectAllCLIs();
 
-    const mapTool = (cli: { name: string; available: boolean; version?: string; path?: string; authenticated?: boolean; authError?: string; unavailabilityReason?: string; durationMs: number }): DetectedToolSummary => {
+    const mapTool = (cli: {
+      name: string;
+      available: boolean;
+      version?: string;
+      path?: string;
+      authenticated?: boolean;
+      authError?: string;
+      unavailabilityReason?: string;
+      durationMs: number;
+    }): DetectedToolSummary => {
       const summary: DetectedToolSummary = {
         name: cli.name,
         available: cli.available,
@@ -747,7 +757,8 @@ async function collectEcosystemDetection(): Promise<ToolEcosystemSummary | null>
       if (cli.path != null) summary.path = cli.path;
       if (cli.authenticated != null) summary.authenticated = cli.authenticated;
       if (cli.authError != null) summary.authError = cli.authError;
-      if (cli.unavailabilityReason != null) summary.unavailabilityReason = cli.unavailabilityReason;
+      if (cli.unavailabilityReason != null)
+        summary.unavailabilityReason = cli.unavailabilityReason;
       return summary;
     };
 
@@ -881,11 +892,25 @@ function createEmptyToolHealthSnapshot(): ToolHealthSnapshot {
 // ============================================================================
 
 interface AgentMailFileAgent {
-  id: string;
+  id?: string;
+  agent_name?: string;
+  agentName?: string;
   name?: string;
-  capabilities?: string[];
-  metadata?: Record<string, unknown>;
+  mailbox_id?: string;
+  mailboxId?: string;
+  capabilities?: unknown;
+  metadata?: unknown;
+  registered_at?: string;
   registeredAt?: string;
+  timestamp?: string;
+  project_key?: string;
+  projectKey?: string;
+  display_name?: string;
+  displayName?: string;
+  agent_type?: string;
+  agentType?: string;
+  status?: string;
+  event?: string;
 }
 
 interface AgentMailFileMessage {
@@ -899,6 +924,94 @@ interface AgentMailFileMessage {
   read?: boolean;
 }
 
+function parseAgentMailAgentSnapshot(
+  value: AgentMailFileAgent,
+  projectKey: string,
+): AgentMailAgentSnapshot | null {
+  const lineProjectKey =
+    typeof value.project_key === "string"
+      ? value.project_key
+      : typeof value.projectKey === "string"
+        ? value.projectKey
+        : undefined;
+
+  if (lineProjectKey && lineProjectKey !== projectKey) return null;
+
+  const agentId =
+    typeof value.id === "string"
+      ? value.id
+      : typeof value.agent_name === "string"
+        ? value.agent_name
+        : typeof value.agentName === "string"
+          ? value.agentName
+          : typeof value.name === "string"
+            ? value.name
+            : undefined;
+
+  if (!agentId) return null;
+
+  const capabilities = Array.isArray(value.capabilities)
+    ? value.capabilities.filter((cap): cap is string => typeof cap === "string")
+    : [];
+
+  const snapshot: AgentMailAgentSnapshot = {
+    agentId,
+    capabilities,
+  };
+
+  const mailboxId =
+    typeof value.mailbox_id === "string"
+      ? value.mailbox_id
+      : typeof value.mailboxId === "string"
+        ? value.mailboxId
+        : undefined;
+  if (mailboxId) snapshot.mailboxId = mailboxId;
+
+  const registeredAt =
+    typeof value.registered_at === "string"
+      ? value.registered_at
+      : typeof value.registeredAt === "string"
+        ? value.registeredAt
+        : typeof value.timestamp === "string"
+          ? value.timestamp
+          : undefined;
+  if (registeredAt) snapshot.registeredAt = registeredAt;
+
+  const metadata =
+    value.metadata && typeof value.metadata === "object"
+      ? (value.metadata as Record<string, unknown>)
+      : undefined;
+
+  if (metadata) {
+    snapshot.metadata = metadata;
+  } else {
+    const derived: Record<string, unknown> = {};
+
+    const displayName =
+      typeof value.display_name === "string"
+        ? value.display_name
+        : typeof value.displayName === "string"
+          ? value.displayName
+          : undefined;
+    if (displayName) derived.displayName = displayName;
+
+    const agentType =
+      typeof value.agent_type === "string"
+        ? value.agent_type
+        : typeof value.agentType === "string"
+          ? value.agentType
+          : undefined;
+    if (agentType) derived.agentType = agentType;
+
+    if (typeof value.status === "string") derived.status = value.status;
+    if (typeof value.event === "string") derived.event = value.event;
+
+    if (Object.keys(derived).length > 0) snapshot.metadata = derived;
+  }
+
+  return snapshot;
+}
+
 /**
  * Collect Agent Mail snapshot from local .agentmail directory.
  */
@@ -906,7 +1019,6 @@ async function collectAgentMailSnapshot(
   cwd: string,
   timeoutMs: number,
 ): Promise<CollectionResult<AgentMailSnapshot>> {
-  const log = getLogger();
   const start = performance.now();
 
   const result = await withTimeout(
@@ -921,7 +1033,8 @@ async function collectAgentMailSnapshot(
       }
 
       // Read agents.jsonl
-      const agents: AgentMailAgentSnapshot[] = [];
+      const projectKey = cwd;
+      const agentsById = new Map<string, AgentMailAgentSnapshot>();
       try {
         const agentsPath = path.join(agentMailDir, "agents.jsonl");
         const agentsContent = await fs.readFile(agentsPath, "utf-8");
@@ -930,15 +1043,9 @@ async function collectAgentMailSnapshot(
         for (const line of agentLines) {
           try {
             const agent = JSON.parse(line) as AgentMailFileAgent;
-            const agentSnapshot: AgentMailAgentSnapshot = {
-              agentId: agent.id,
-              capabilities: agent.capabilities ?? [],
-            };
-            if (agent.metadata !== undefined)
-              agentSnapshot.metadata = agent.metadata;
-            if (agent.registeredAt !== undefined)
-              agentSnapshot.registeredAt = agent.registeredAt;
-            agents.push(agentSnapshot);
+            const snapshot = parseAgentMailAgentSnapshot(agent, projectKey);
+            if (!snapshot) continue;
+            agentsById.set(snapshot.agentId, snapshot);
           } catch {
             // Skip malformed lines
           }
@@ -946,6 +1053,7 @@ async function collectAgentMailSnapshot(
       } catch {
         // agents.jsonl doesn't exist or can't be read
       }
+      const agents = Array.from(agentsById.values());
 
       // Read messages.jsonl and compute summary
       const messages: AgentMailMessageSummary = {

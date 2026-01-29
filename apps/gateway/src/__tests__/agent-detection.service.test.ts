@@ -17,7 +17,10 @@ import {
   it,
   mock,
 } from "bun:test";
-import { restoreCorrelation } from "./test-utils/db-mock-restore";
+import {
+  restoreToolRegistryService,
+} from "./test-utils/db-mock-restore";
+import { requestContextStorage } from "../middleware/correlation";
 
 // ============================================================================
 // Mock State
@@ -53,11 +56,6 @@ const mockLogger = {
   error: (...args: unknown[]) => logEvents.push({ level: "error", args }),
   child: () => mockLogger,
 };
-
-mock.module("../middleware/correlation", () => ({
-  getLogger: () => mockLogger,
-  getCorrelationId: () => "test-corr",
-}));
 
 // Mock the tool registry service
 mock.module("../services/tool-registry.service", () => ({
@@ -118,6 +116,11 @@ import {
   type DetectedCLI,
 } from "../services/agent-detection.service";
 
+// IMPORTANT: Bun's mock.module() persists across test files.
+// Restore the real modules immediately after importing the module under test
+// so later test files don't load with these mocks still installed.
+restoreToolRegistryService();
+
 // ============================================================================
 // Test Lifecycle
 // ============================================================================
@@ -135,6 +138,12 @@ function resetState() {
 beforeEach(() => {
   resetState();
   setupSpawnMock();
+  requestContextStorage.enterWith({
+    correlationId: "test-corr",
+    requestId: "test-request-id",
+    startTime: performance.now(),
+    logger: mockLogger,
+  });
 });
 
 afterEach(() => {
@@ -146,7 +155,7 @@ afterAll(() => {
   // @ts-expect-error - Restoring global
   Bun.spawn = originalSpawn;
   mock.restore();
-  restoreCorrelation();
+  restoreToolRegistryService();
 });
 
 // ============================================================================

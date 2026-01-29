@@ -20,7 +20,11 @@ import {
   mock,
 } from "bun:test";
 import { Hono } from "hono";
-import { restoreCorrelation } from "./test-utils/db-mock-restore";
+import {
+  restoreAgentDetectionService,
+  restoreToolRegistryService,
+} from "./test-utils/db-mock-restore";
+import { requestContextStorage } from "../middleware/correlation";
 
 // ============================================================================
 // Mock Infrastructure
@@ -112,12 +116,6 @@ const DEFAULT_TEST_TOOLS = [
     phase: 2,
   },
 ];
-
-// Mock correlation middleware
-mock.module("../middleware/correlation", () => ({
-  getLogger: () => mockLogger,
-  getCorrelationId: () => "test-harness-corr",
-}));
 
 // Mock tool registry service
 mock.module("../services/tool-registry.service", () => ({
@@ -395,6 +393,12 @@ describe("Setup Readiness Test Harness (bd-a1jg)", () => {
 
   beforeEach(() => {
     resetMockState();
+    requestContextStorage.enterWith({
+      correlationId: "test-harness-corr",
+      requestId: "test-request-id",
+      startTime: performance.now(),
+      logger: mockLogger,
+    });
   });
 
   afterEach(() => {
@@ -403,7 +407,8 @@ describe("Setup Readiness Test Harness (bd-a1jg)", () => {
 
   afterAll(() => {
     mock.restore();
-    restoreCorrelation();
+    restoreAgentDetectionService();
+    restoreToolRegistryService();
   });
 
   // ==========================================================================

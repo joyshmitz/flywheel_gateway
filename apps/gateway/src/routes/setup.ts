@@ -23,6 +23,7 @@ import {
   clearToolRegistryCache,
   getToolRegistryMetadata,
   loadToolRegistry,
+  loadToolRegistryWithMetadata,
 } from "../services/tool-registry.service";
 import {
   sendError,
@@ -406,21 +407,21 @@ setup.post("/registry/refresh", async (c) => {
 setup.get("/registry", async (c) => {
   try {
     const bypassCache = c.req.query("bypass_cache") === "true";
-    const registry = await loadToolRegistry({ bypassCache });
+    const result = await loadToolRegistryWithMetadata({ bypassCache });
     const meta = getToolRegistryMetadata();
 
     return sendResource(c, "tool_registry", {
-      schemaVersion: registry.schemaVersion,
-      source: registry.source ?? null,
-      generatedAt: registry.generatedAt ?? null,
-      tools: registry.tools,
+      schemaVersion: result.registry.schemaVersion,
+      source: result.registry.source ?? null,
+      generatedAt: result.registry.generatedAt ?? null,
+      tools: result.registry.tools,
       metadata: {
         manifestPath: meta?.manifestPath ?? null,
         manifestHash: meta?.manifestHash ?? null,
-        registrySource: meta?.registrySource ?? null,
+        registrySource: meta?.registrySource ?? result.source,
         loadedAt: meta?.loadedAt ?? null,
-        errorCategory: meta?.errorCategory ?? null,
-        userMessage: meta?.userMessage ?? null,
+        errorCategory: meta?.errorCategory ?? result.errorCategory ?? null,
+        userMessage: meta?.userMessage ?? result.userMessage ?? null,
       },
     });
   } catch (error) {

@@ -11,9 +11,9 @@
  * - Timeout behavior and error handling
  */
 
-import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import type { SystemHealthStatus, SystemSnapshot } from "@flywheel/shared";
-import { restoreCorrelation } from "./test-utils/db-mock-restore";
+import { requestContextStorage } from "../middleware/correlation";
 
 // ============================================================================
 // Mock Logger for Logging Assertions
@@ -71,11 +71,6 @@ const mockLogger = {
   child: () => mockLogger,
 };
 
-// Mock the correlation middleware to return our mock logger
-mock.module("../middleware/correlation", () => ({
-  getLogger: () => mockLogger,
-}));
-
 import {
   clearSnapshotServiceInstance,
   createSnapshotService,
@@ -88,14 +83,15 @@ import {
 // ============================================================================
 
 describe("SnapshotService", () => {
-  afterAll(() => {
-    // Restore for other test files (mock.restore doesn't restore mock.module)
-    restoreCorrelation();
-  });
-
   beforeEach(() => {
     clearSnapshotServiceInstance();
     logCalls.length = 0; // Clear log calls between tests
+    requestContextStorage.enterWith({
+      correlationId: "test-corr",
+      requestId: "test-request-id",
+      startTime: performance.now(),
+      logger: mockLogger,
+    });
   });
 
   afterEach(() => {

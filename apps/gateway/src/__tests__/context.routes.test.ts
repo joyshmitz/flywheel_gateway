@@ -2,7 +2,11 @@
  * Tests for context routes.
  */
 
-import { describe, expect, mock, test } from "bun:test";
+import { afterAll, describe, expect, mock, test } from "bun:test";
+import {
+  restoreBvService,
+  restoreCassService,
+} from "./test-utils/db-mock-restore";
 
 // Mock BV service to avoid spawning external commands
 mock.module("../services/bv.service", () => ({
@@ -40,22 +44,13 @@ mock.module("../services/cass.service", () => ({
   }),
 }));
 
-const mockLogger = {
-  info: () => {},
-  error: () => {},
-  warn: () => {},
-  debug: () => {},
-  child: () => mockLogger,
-};
-
-// Mock correlation middleware
-mock.module("../middleware/correlation", () => ({
-  getCorrelationId: () => "test-correlation-id",
-  getLogger: () => mockLogger,
-}));
-
 import { Hono } from "hono";
 import { context } from "../routes/context";
+
+afterAll(() => {
+  restoreBvService();
+  restoreCassService();
+});
 
 describe("Context Routes", () => {
   const app = new Hono().route("/sessions", context);

@@ -5,7 +5,6 @@
  * Covers CRUD and list/ready flows, error propagation, input validation.
  * Structured log assertions include action, bead id, and br error kind.
  */
-
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import type {
   BrClient,
@@ -21,6 +20,7 @@ import type {
   BrUpdateInput,
 } from "@flywheel/flywheel-clients";
 import { BrClientError } from "@flywheel/flywheel-clients";
+import { requestContextStorage } from "../middleware/correlation";
 import {
   clearBrCache,
   closeBrIssues,
@@ -33,6 +33,7 @@ import {
   getBrShow,
   getBrSyncStatus,
   runBrCommand,
+  setBrClientForTesting,
   syncBr,
   updateBrIssues,
 } from "../services/br.service";
@@ -102,10 +103,28 @@ const mockLogger = {
   child: () => mockLogger,
 };
 
-// Mock the correlation middleware to return our mock logger
-mock.module("../middleware/correlation", () => ({
-  getLogger: () => mockLogger,
-}));
+function createMockBrClient(overrides: Partial<BrClient>): BrClient {
+  return {
+    ready: mock(async () => []),
+    list: mock(async () => []),
+    show: mock(async () => []),
+    create: mock(async () => ({})),
+    update: mock(async () => []),
+    close: mock(async () => []),
+    syncStatus: mock(async () => ({})),
+    sync: mock(async () => ({})),
+    ...overrides,
+  } as unknown as BrClient;
+}
+
+beforeEach(() => {
+  requestContextStorage.enterWith({
+    correlationId: "test-correlation-id",
+    requestId: "test-request-id",
+    startTime: performance.now(),
+    logger: mockLogger,
+  });
+});
 
 // ============================================================================
 // Tests
@@ -290,20 +309,7 @@ describe("br.service CRUD operations with mocked client", () => {
       sync: syncMock,
     };
 
-    // Mock the flywheel-clients module
-    mock.module("@flywheel/flywheel-clients", () => ({
-      createBrClient: () => mockClient,
-      BrClientError: class extends Error {
-        constructor(
-          public kind: string,
-          message: string,
-          public details?: Record<string, unknown>,
-        ) {
-          super(message);
-          this.name = "BrClientError";
-        }
-      },
-    }));
+    setBrClientForTesting(mockClient);
   });
 
   afterEach(() => {
@@ -556,19 +562,7 @@ describe("br.service error handling", () => {
       });
     });
 
-    mock.module("@flywheel/flywheel-clients", () => ({
-      createBrClient: () => ({
-        ready: mockReadyError,
-        list: mock(async () => []),
-        show: mock(async () => []),
-        create: mock(async () => ({})),
-        update: mock(async () => []),
-        close: mock(async () => []),
-        syncStatus: mock(async () => ({})),
-        sync: mock(async () => ({})),
-      }),
-      BrClientError,
-    }));
+    setBrClientForTesting(createMockBrClient({ ready: mockReadyError }));
 
     await expect(getBrReady()).rejects.toThrow("br not found");
   });
@@ -580,19 +574,7 @@ describe("br.service error handling", () => {
       });
     });
 
-    mock.module("@flywheel/flywheel-clients", () => ({
-      createBrClient: () => ({
-        ready: mock(async () => []),
-        list: mock(async () => []),
-        show: mock(async () => []),
-        create: mockCreateError,
-        update: mock(async () => []),
-        close: mock(async () => []),
-        syncStatus: mock(async () => ({})),
-        sync: mock(async () => ({})),
-      }),
-      BrClientError,
-    }));
+    setBrClientForTesting(createMockBrClient({ create: mockCreateError }));
 
     await expect(createBrIssue({ title: "" })).rejects.toThrow("Invalid input");
   });
@@ -604,19 +586,7 @@ describe("br.service error handling", () => {
       });
     });
 
-    mock.module("@flywheel/flywheel-clients", () => ({
-      createBrClient: () => ({
-        ready: mock(async () => []),
-        list: mockTimeoutError,
-        show: mock(async () => []),
-        create: mock(async () => ({})),
-        update: mock(async () => []),
-        close: mock(async () => []),
-        syncStatus: mock(async () => ({})),
-        sync: mock(async () => ({})),
-      }),
-      BrClientError,
-    }));
+    setBrClientForTesting(createMockBrClient({ list: mockTimeoutError }));
 
     await expect(getBrList()).rejects.toThrow("Command timed out");
   });
@@ -647,19 +617,12 @@ describe("br.service input validation", () => {
       },
     ]);
 
-    mock.module("@flywheel/flywheel-clients", () => ({
-      createBrClient: () => ({
-        ready: mock(async () => []),
-        list: mock(async () => []),
-        show: mock(async () => []),
+    setBrClientForTesting(
+      createMockBrClient({
         create: createMock,
         update: updateMock,
-        close: mock(async () => []),
-        syncStatus: mock(async () => ({})),
-        sync: mock(async () => ({})),
       }),
-      BrClientError,
-    }));
+    );
   });
 
   afterEach(() => {

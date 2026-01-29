@@ -36,6 +36,15 @@ import {
 } from "../models/pipeline";
 import { sendMessage, spawnAgent, terminateAgent } from "./agent";
 
+const UNSAFE_CONTEXT_KEYS = new Set(["__proto__", "prototype", "constructor"]);
+
+export const TRANSFORM_MAP_ALLOWED_IDENTIFIERS = ["$item", "$index"] as const;
+export const TRANSFORM_REDUCE_ALLOWED_IDENTIFIERS = [
+  "$acc",
+  "$item",
+  "$index",
+] as const;
+
 // ============================================================================
 // In-Memory Storage
 // ============================================================================
@@ -593,7 +602,7 @@ async function executeLoop(
   // Track loop nesting depth - allows nested loops and enables step re-execution
   // inside loops (normally steps are skipped if already in executedStepIds)
   const previousLoopDepth = (context["__loopDepth"] as number) ?? 0;
-  context["__loopDepth"] = previousLoopDepth + 1;
+  setContextKey(context, "__loopDepth", previousLoopDepth + 1);
 
   // Get iterator based on mode
   const getIterator = (): IterableIterator<unknown> | undefined => {
@@ -655,14 +664,14 @@ async function executeLoop(
       ? `${config.indexVariable}_${index}`
       : config.indexVariable;
 
-    context[itemKey] = item;
-    context[indexKey] = index;
+    setContextKey(context, itemKey, item);
+    setContextKey(context, indexKey, index);
 
     // Also set the standard keys for step access (last write wins in parallel, but steps
     // can use the indexed keys for isolation)
     if (isolated) {
-      context[config.itemVariable] = item;
-      context[config.indexVariable] = index;
+      setContextKey(context, config.itemVariable, item);
+      setContextKey(context, config.indexVariable, index);
     }
 
     await executeSteps(config.steps);
@@ -678,8 +687,8 @@ async function executeLoop(
 
     // Clean up isolated keys
     if (isolated) {
-      delete context[itemKey];
-      delete context[indexKey];
+      deleteContextKey(context, itemKey);
+      deleteContextKey(context, indexKey);
     }
 
     return result;
@@ -720,10 +729,10 @@ async function executeLoop(
     }
 
     // Store results in output variable
-    context[config.outputVariable] = results;
+    setContextKey(context, config.outputVariable, results);
   } finally {
     // Always restore loop depth, even on error (enables proper nesting)
-    context["__loopDepth"] = previousLoopDepth;
+    setContextKey(context, "__loopDepth", previousLoopDepth);
   }
 
   log.info(
@@ -824,6 +833,734 @@ async function executeWait(
   }
 }
 
+// ============================================================================
+// Safe transform expression evaluation
+// ============================================================================
+
+const MAX_SAFE_TRANSFORM_EXPRESSION_LENGTH = 512;
+const MAX_SAFE_TRANSFORM_EXPRESSION_TOKENS = 256;
+const MAX_SAFE_TRANSFORM_EXPRESSION_DEPTH = 32;
+
+type SafeExprNode =
+  | { type: "literal"; value: unknown }
+  | { type: "identifier"; name: string }
+  | { type: "member"; object: SafeExprNode; property: string }
+  | { type: "unary"; operator: "!" | "+" | "-"; argument: SafeExprNode }
+  | {
+      type: "binary";
+      operator:
+        | "+"
+        | "-"
+        | "*"
+        | "/"
+        | "%"
+        | "=="
+        | "!="
+        | "==="
+        | "!=="
+        | "<"
+        | "<="
+        | ">"
+        | ">="
+        | "&&"
+        | "||"
+        | "??";
+      left: SafeExprNode;
+      right: SafeExprNode;
+    }
+  | {
+      type: "conditional";
+      test: SafeExprNode;
+      consequent: SafeExprNode;
+      alternate: SafeExprNode;
+    }
+  | { type: "object"; properties: Array<{ key: string; value: SafeExprNode }> };
+
+type SafeExprToken =
+  | { type: "number"; value: number; pos: number }
+  | { type: "string"; value: string; pos: number }
+  | { type: "identifier"; value: string; pos: number }
+  | { type: "operator"; value: string; pos: number }
+  | { type: "punctuation"; value: string; pos: number }
+  | { type: "eof"; pos: number };
+
+function formatSafeExpressionError(
+  message: string,
+  expression: string,
+  pos: number,
+): string {
+  const prefix = expression.slice(0, pos);
+  const line = expression;
+  const caret = `${" ".repeat(prefix.length)}^`;
+  return `${message} at ${pos}:\n${line}\n${caret}`;
+}
+
+function tokenizeSafeExpression(expression: string): SafeExprToken[] {
+  const trimmed = expression.trim();
+  if (trimmed.length === 0) {
+    throw new Error("Expression is empty");
+  }
+  if (trimmed.length > MAX_SAFE_TRANSFORM_EXPRESSION_LENGTH) {
+    throw new Error(
+      `Expression too long (max ${MAX_SAFE_TRANSFORM_EXPRESSION_LENGTH} chars)`,
+    );
+  }
+
+  const tokens: SafeExprToken[] = [];
+  let index = 0;
+
+  const peek = () => trimmed[index];
+  const consume = () => trimmed[index++];
+
+  while (index < trimmed.length) {
+    const ch = peek();
+    if (ch === undefined) break;
+
+    if (/\s/.test(ch)) {
+      index++;
+      continue;
+    }
+
+    if (ch === "`") {
+      throw new Error(
+        formatSafeExpressionError(
+          "Backticks are not allowed in transform expressions",
+          trimmed,
+          index,
+        ),
+      );
+    }
+
+    // Strings
+    if (ch === "'" || ch === '"') {
+      const start = index;
+      const quote = consume();
+      let value = "";
+      while (index < trimmed.length) {
+        const c = consume();
+        if (c === "\\") {
+          const next = consume();
+          if (next === undefined) {
+            throw new Error(
+              formatSafeExpressionError("Unterminated string", trimmed, start),
+            );
+          }
+          switch (next) {
+            case "n":
+              value += "\n";
+              break;
+            case "r":
+              value += "\r";
+              break;
+            case "t":
+              value += "\t";
+              break;
+            case "\\":
+            case "'":
+            case '"':
+              value += next;
+              break;
+            default:
+              value += next;
+              break;
+          }
+          continue;
+        }
+        if (c === quote) {
+          tokens.push({ type: "string", value, pos: start });
+          break;
+        }
+        value += c;
+      }
+
+      if (tokens.length === 0 || tokens[tokens.length - 1]?.pos !== start) {
+        throw new Error(
+          formatSafeExpressionError("Unterminated string", trimmed, start),
+        );
+      }
+      continue;
+    }
+
+    // Numbers
+    if (/\d/.test(ch) || (ch === "." && /\d/.test(trimmed[index + 1] ?? ""))) {
+      const start = index;
+      let numStr = "";
+      let sawDot = false;
+
+      while (index < trimmed.length) {
+        const c = peek();
+        if (c === undefined) break;
+        if (c === ".") {
+          if (sawDot) break;
+          sawDot = true;
+          numStr += consume();
+          continue;
+        }
+        if (!/\d/.test(c)) break;
+        numStr += consume();
+      }
+
+      const parsed = Number(numStr);
+      if (!Number.isFinite(parsed)) {
+        throw new Error(
+          formatSafeExpressionError("Invalid number literal", trimmed, start),
+        );
+      }
+      tokens.push({ type: "number", value: parsed, pos: start });
+      continue;
+    }
+
+    // Identifiers
+    if (/[A-Za-z_$]/.test(ch)) {
+      const start = index;
+      let ident = "";
+      while (index < trimmed.length) {
+        const c = peek();
+        if (c === undefined) break;
+        if (!/[A-Za-z0-9_$]/.test(c)) break;
+        ident += consume();
+      }
+      tokens.push({ type: "identifier", value: ident, pos: start });
+      continue;
+    }
+
+    // Multi-char operators (longest first)
+    const start = index;
+    const rest = trimmed.slice(index);
+    const multi =
+      rest.startsWith("!==")
+        ? "!=="
+        : rest.startsWith("===")
+          ? "==="
+          : rest.startsWith("&&")
+            ? "&&"
+            : rest.startsWith("||")
+              ? "||"
+              : rest.startsWith("<=")
+                ? "<="
+                : rest.startsWith(">=")
+                  ? ">="
+                  : rest.startsWith("==")
+                    ? "=="
+                    : rest.startsWith("!=")
+                      ? "!="
+                      : rest.startsWith("??")
+                        ? "??"
+                        : undefined;
+
+    if (multi) {
+      index += multi.length;
+      tokens.push({ type: "operator", value: multi, pos: start });
+      continue;
+    }
+
+    // Single-char operators / punctuation
+    switch (ch) {
+      case "+":
+      case "-":
+      case "*":
+      case "/":
+      case "%":
+      case "<":
+      case ">":
+      case "!":
+        consume();
+        tokens.push({ type: "operator", value: ch, pos: start });
+        continue;
+      case "(":
+      case ")":
+      case "{":
+      case "}":
+      case ":":
+      case ",":
+      case ".":
+      case "?":
+        consume();
+        tokens.push({ type: "punctuation", value: ch, pos: start });
+        continue;
+      case "=":
+      case ";":
+      default:
+        throw new Error(
+          formatSafeExpressionError(`Unexpected character "${ch}"`, trimmed, start),
+        );
+    }
+  }
+
+  if (tokens.length > MAX_SAFE_TRANSFORM_EXPRESSION_TOKENS) {
+    throw new Error(
+      `Expression too complex (max ${MAX_SAFE_TRANSFORM_EXPRESSION_TOKENS} tokens)`,
+    );
+  }
+
+  tokens.push({ type: "eof", pos: trimmed.length });
+  return tokens;
+}
+
+class SafeExpressionParser {
+  private index = 0;
+
+  constructor(private readonly tokens: SafeExprToken[]) {}
+
+  currentToken(): SafeExprToken {
+    return this.peek();
+  }
+
+  private peek(): SafeExprToken {
+    return this.tokens[this.index] ?? { type: "eof", pos: 0 };
+  }
+
+  private consume(): SafeExprToken {
+    const tok = this.peek();
+    this.index++;
+    return tok;
+  }
+
+  private matchPunct(value: string): boolean {
+    const tok = this.peek();
+    if (tok.type === "punctuation" && tok.value === value) {
+      this.consume();
+      return true;
+    }
+    return false;
+  }
+
+  private expectPunct(value: string): void {
+    const tok = this.peek();
+    if (tok.type === "punctuation" && tok.value === value) {
+      this.consume();
+      return;
+    }
+    throw new Error(`Expected "${value}"`);
+  }
+
+  private matchOperator(value: string): boolean {
+    const tok = this.peek();
+    if (tok.type === "operator" && tok.value === value) {
+      this.consume();
+      return true;
+    }
+    return false;
+  }
+
+  parseExpression(): SafeExprNode {
+    return this.parseTernary();
+  }
+
+  private parseTernary(): SafeExprNode {
+    const test = this.parseLogicalOr();
+    if (this.matchPunct("?")) {
+      const consequent = this.parseExpression();
+      this.expectPunct(":");
+      const alternate = this.parseExpression();
+      return { type: "conditional", test, consequent, alternate };
+    }
+    return test;
+  }
+
+  private parseLogicalOr(): SafeExprNode {
+    let node = this.parseLogicalAnd();
+    while (this.matchOperator("||")) {
+      const right = this.parseLogicalAnd();
+      node = { type: "binary", operator: "||", left: node, right };
+    }
+    return node;
+  }
+
+  private parseLogicalAnd(): SafeExprNode {
+    let node = this.parseNullish();
+    while (this.matchOperator("&&")) {
+      const right = this.parseNullish();
+      node = { type: "binary", operator: "&&", left: node, right };
+    }
+    return node;
+  }
+
+  private parseNullish(): SafeExprNode {
+    let node = this.parseEquality();
+    while (this.matchOperator("??")) {
+      const right = this.parseEquality();
+      node = { type: "binary", operator: "??", left: node, right };
+    }
+    return node;
+  }
+
+  private parseEquality(): SafeExprNode {
+    let node = this.parseComparison();
+    while (true) {
+      if (this.matchOperator("===")) {
+        const right = this.parseComparison();
+        node = { type: "binary", operator: "===", left: node, right };
+        continue;
+      }
+      if (this.matchOperator("!==")) {
+        const right = this.parseComparison();
+        node = { type: "binary", operator: "!==", left: node, right };
+        continue;
+      }
+      if (this.matchOperator("==")) {
+        const right = this.parseComparison();
+        node = { type: "binary", operator: "==", left: node, right };
+        continue;
+      }
+      if (this.matchOperator("!=")) {
+        const right = this.parseComparison();
+        node = { type: "binary", operator: "!=", left: node, right };
+        continue;
+      }
+      break;
+    }
+    return node;
+  }
+
+  private parseComparison(): SafeExprNode {
+    let node = this.parseAdditive();
+    while (true) {
+      if (this.matchOperator("<=")) {
+        const right = this.parseAdditive();
+        node = { type: "binary", operator: "<=", left: node, right };
+        continue;
+      }
+      if (this.matchOperator(">=")) {
+        const right = this.parseAdditive();
+        node = { type: "binary", operator: ">=", left: node, right };
+        continue;
+      }
+      if (this.matchOperator("<")) {
+        const right = this.parseAdditive();
+        node = { type: "binary", operator: "<", left: node, right };
+        continue;
+      }
+      if (this.matchOperator(">")) {
+        const right = this.parseAdditive();
+        node = { type: "binary", operator: ">", left: node, right };
+        continue;
+      }
+      break;
+    }
+    return node;
+  }
+
+  private parseAdditive(): SafeExprNode {
+    let node = this.parseMultiplicative();
+    while (true) {
+      if (this.matchOperator("+")) {
+        const right = this.parseMultiplicative();
+        node = { type: "binary", operator: "+", left: node, right };
+        continue;
+      }
+      if (this.matchOperator("-")) {
+        const right = this.parseMultiplicative();
+        node = { type: "binary", operator: "-", left: node, right };
+        continue;
+      }
+      break;
+    }
+    return node;
+  }
+
+  private parseMultiplicative(): SafeExprNode {
+    let node = this.parseUnary();
+    while (true) {
+      if (this.matchOperator("*")) {
+        const right = this.parseUnary();
+        node = { type: "binary", operator: "*", left: node, right };
+        continue;
+      }
+      if (this.matchOperator("/")) {
+        const right = this.parseUnary();
+        node = { type: "binary", operator: "/", left: node, right };
+        continue;
+      }
+      if (this.matchOperator("%")) {
+        const right = this.parseUnary();
+        node = { type: "binary", operator: "%", left: node, right };
+        continue;
+      }
+      break;
+    }
+    return node;
+  }
+
+  private parseUnary(): SafeExprNode {
+    if (this.matchOperator("!")) {
+      return { type: "unary", operator: "!", argument: this.parseUnary() };
+    }
+    if (this.matchOperator("+")) {
+      return { type: "unary", operator: "+", argument: this.parseUnary() };
+    }
+    if (this.matchOperator("-")) {
+      return { type: "unary", operator: "-", argument: this.parseUnary() };
+    }
+    return this.parseMember();
+  }
+
+  private parseMember(): SafeExprNode {
+    let node = this.parsePrimary();
+    while (this.matchPunct(".")) {
+      const tok = this.peek();
+      if (tok.type !== "identifier") {
+        throw new Error("Expected property identifier after '.'");
+      }
+      const prop = tok.value;
+      if (UNSAFE_CONTEXT_KEYS.has(prop)) {
+        throw new Error(`Property access is not allowed: ${prop}`);
+      }
+      this.consume();
+      node = { type: "member", object: node, property: prop };
+    }
+    return node;
+  }
+
+  private parsePrimary(): SafeExprNode {
+    const tok = this.peek();
+
+    if (tok.type === "number") {
+      this.consume();
+      return { type: "literal", value: tok.value };
+    }
+
+    if (tok.type === "string") {
+      this.consume();
+      return { type: "literal", value: tok.value };
+    }
+
+    if (tok.type === "identifier") {
+      this.consume();
+      if (tok.value === "true") return { type: "literal", value: true };
+      if (tok.value === "false") return { type: "literal", value: false };
+      if (tok.value === "null") return { type: "literal", value: null };
+      return { type: "identifier", name: tok.value };
+    }
+
+    if (tok.type === "punctuation" && tok.value === "(") {
+      this.consume();
+      const expr = this.parseExpression();
+      this.expectPunct(")");
+      return expr;
+    }
+
+    if (tok.type === "punctuation" && tok.value === "{") {
+      this.consume();
+      const properties: Array<{ key: string; value: SafeExprNode }> = [];
+
+      if (this.matchPunct("}")) {
+        return { type: "object", properties };
+      }
+
+      while (true) {
+        const keyTok = this.peek();
+        if (keyTok.type !== "identifier" && keyTok.type !== "string") {
+          throw new Error("Expected object key");
+        }
+        const key = keyTok.value;
+        if (UNSAFE_CONTEXT_KEYS.has(key)) {
+          throw new Error(`Object keys are not allowed: ${key}`);
+        }
+        this.consume();
+        this.expectPunct(":");
+        const value = this.parseExpression();
+        properties.push({ key, value });
+        if (this.matchPunct(",")) {
+          if (this.peek().type === "punctuation" && this.peek().value === "}") {
+            this.consume();
+            break;
+          }
+          continue;
+        }
+        this.expectPunct("}");
+        break;
+      }
+
+      return { type: "object", properties };
+    }
+
+    throw new Error("Unexpected token");
+  }
+
+  isAtEnd(): boolean {
+    return this.peek().type === "eof";
+  }
+}
+
+function validateIdentifiersInAst(
+  node: SafeExprNode,
+  allowed: ReadonlySet<string>,
+): void {
+  switch (node.type) {
+    case "literal":
+      return;
+    case "identifier":
+      if (!allowed.has(node.name)) {
+        throw new Error(`Unknown identifier: ${node.name}`);
+      }
+      return;
+    case "member":
+      validateIdentifiersInAst(node.object, allowed);
+      return;
+    case "unary":
+      validateIdentifiersInAst(node.argument, allowed);
+      return;
+    case "binary":
+      validateIdentifiersInAst(node.left, allowed);
+      validateIdentifiersInAst(node.right, allowed);
+      return;
+    case "conditional":
+      validateIdentifiersInAst(node.test, allowed);
+      validateIdentifiersInAst(node.consequent, allowed);
+      validateIdentifiersInAst(node.alternate, allowed);
+      return;
+    case "object":
+      for (const prop of node.properties) {
+        validateIdentifiersInAst(prop.value, allowed);
+      }
+      return;
+  }
+}
+
+function compileSafeTransformExpression(
+  expression: string,
+  allowedIdentifiers: readonly string[],
+): SafeExprNode {
+  const tokens = tokenizeSafeExpression(expression);
+  const parser = new SafeExpressionParser(tokens);
+  const ast = parser.parseExpression();
+  if (!parser.isAtEnd()) {
+    const tok = parser.currentToken();
+    throw new Error(
+      formatSafeExpressionError("Unexpected token", expression, tok.pos),
+    );
+  }
+  validateIdentifiersInAst(ast, new Set(allowedIdentifiers));
+  return ast;
+}
+
+export function isSafeTransformExpression(
+  expression: string,
+  allowedIdentifiers: readonly string[],
+): boolean {
+  try {
+    compileSafeTransformExpression(expression, allowedIdentifiers);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function evaluateSafeExpression(
+  node: SafeExprNode,
+  env: Record<string, unknown>,
+  depth = 0,
+): unknown {
+  if (depth > MAX_SAFE_TRANSFORM_EXPRESSION_DEPTH) {
+    throw new Error("Expression too deep");
+  }
+
+  switch (node.type) {
+    case "literal":
+      return node.value;
+
+    case "identifier":
+      return env[node.name];
+
+    case "member": {
+      const obj = evaluateSafeExpression(node.object, env, depth + 1);
+      if (obj === null || obj === undefined) return undefined;
+      if (typeof obj !== "object" && typeof obj !== "function") return undefined;
+      if (UNSAFE_CONTEXT_KEYS.has(node.property)) {
+        throw new Error(`Property access is not allowed: ${node.property}`);
+      }
+      return (obj as Record<string, unknown>)[node.property];
+    }
+
+    case "unary": {
+      const val = evaluateSafeExpression(node.argument, env, depth + 1);
+      switch (node.operator) {
+        case "!":
+          return !val;
+        case "+":
+          return Number(val);
+        case "-":
+          return -Number(val);
+      }
+      return undefined;
+    }
+
+    case "binary": {
+      // Short-circuit ops first
+      if (node.operator === "&&") {
+        const left = evaluateSafeExpression(node.left, env, depth + 1);
+        return left ? evaluateSafeExpression(node.right, env, depth + 1) : left;
+      }
+      if (node.operator === "||") {
+        const left = evaluateSafeExpression(node.left, env, depth + 1);
+        return left ? left : evaluateSafeExpression(node.right, env, depth + 1);
+      }
+      if (node.operator === "??") {
+        const left = evaluateSafeExpression(node.left, env, depth + 1);
+        return left === null || left === undefined
+          ? evaluateSafeExpression(node.right, env, depth + 1)
+          : left;
+      }
+
+      const left = evaluateSafeExpression(node.left, env, depth + 1);
+      const right = evaluateSafeExpression(node.right, env, depth + 1);
+
+      switch (node.operator) {
+        case "+":
+          return typeof left === "string" || typeof right === "string"
+            ? `${String(left ?? "")}${String(right ?? "")}`
+            : Number(left) + Number(right);
+        case "-":
+          return Number(left) - Number(right);
+        case "*":
+          return Number(left) * Number(right);
+        case "/":
+          return Number(left) / Number(right);
+        case "%":
+          return Number(left) % Number(right);
+        case "==":
+          // biome-ignore lint/suspicious/noDoubleEquals: transform expressions can use JS loose equality
+          return left == right;
+        case "!=":
+          // biome-ignore lint/suspicious/noDoubleEquals: transform expressions can use JS loose inequality
+          return left != right;
+        case "===":
+          return left === right;
+        case "!==":
+          return left !== right;
+        case "<":
+          return Number(left) < Number(right);
+        case "<=":
+          return Number(left) <= Number(right);
+        case ">":
+          return Number(left) > Number(right);
+        case ">=":
+          return Number(left) >= Number(right);
+      }
+      return undefined;
+    }
+
+    case "conditional": {
+      const test = evaluateSafeExpression(node.test, env, depth + 1);
+      return test
+        ? evaluateSafeExpression(node.consequent, env, depth + 1)
+        : evaluateSafeExpression(node.alternate, env, depth + 1);
+    }
+
+    case "object": {
+      const obj = Object.create(null) as Record<string, unknown>;
+      for (const prop of node.properties) {
+        if (UNSAFE_CONTEXT_KEYS.has(prop.key)) {
+          throw new Error(`Object keys are not allowed: ${prop.key}`);
+        }
+        obj[prop.key] = evaluateSafeExpression(prop.value, env, depth + 1);
+      }
+      return obj;
+    }
+  }
+}
+
 /**
  * Execute a transform step.
  */
@@ -838,10 +1575,6 @@ async function executeTransform(
     { operationsCount: config.operations.length },
     "[PIPELINE] Starting transform step",
   );
-
-  // Validate expressions used in map/filter/reduce to block dangerous globals
-  const BLOCKED_EXPR_PATTERN =
-    /\b(process|require|import|eval|Function|globalThis|Bun|Deno|__dirname|__filename|fetch|XMLHttpRequest)\b/;
 
   for (const operation of config.operations) {
     switch (operation.op) {
@@ -876,23 +1609,13 @@ async function executeTransform(
       case "map": {
         const sourceArray = getValueByPath(context, operation.source);
         if (Array.isArray(sourceArray)) {
-          if (BLOCKED_EXPR_PATTERN.test(operation.expression)) {
-            throw new Error(
-              `Transform map expression contains blocked keyword: ${operation.expression}`,
-            );
-          }
-          const mapped = sourceArray.map((item, index) => {
-            try {
-              const fn = new Function(
-                "$item",
-                "$index",
-                `return ${operation.expression}`,
-              );
-              return fn(item, index);
-            } catch {
-              return item;
-            }
-          });
+          const ast = compileSafeTransformExpression(
+            operation.expression,
+            TRANSFORM_MAP_ALLOWED_IDENTIFIERS,
+          );
+          const mapped = sourceArray.map((item, index) =>
+            evaluateSafeExpression(ast, { $item: item, $index: index }),
+          );
           setValueByPath(context, operation.target, mapped);
           transformedCount++;
         }
@@ -902,23 +1625,13 @@ async function executeTransform(
       case "filter": {
         const filterSource = getValueByPath(context, operation.source);
         if (Array.isArray(filterSource)) {
-          if (BLOCKED_EXPR_PATTERN.test(operation.condition)) {
-            throw new Error(
-              `Transform filter condition contains blocked keyword: ${operation.condition}`,
-            );
-          }
-          const filtered = filterSource.filter((item, index) => {
-            try {
-              const fn = new Function(
-                "$item",
-                "$index",
-                `return ${operation.condition}`,
-              );
-              return fn(item, index);
-            } catch {
-              return true;
-            }
-          });
+          const ast = compileSafeTransformExpression(
+            operation.condition,
+            TRANSFORM_MAP_ALLOWED_IDENTIFIERS,
+          );
+          const filtered = filterSource.filter((item, index) =>
+            Boolean(evaluateSafeExpression(ast, { $item: item, $index: index })),
+          );
           setValueByPath(context, operation.target, filtered);
           transformedCount++;
         }
@@ -928,24 +1641,15 @@ async function executeTransform(
       case "reduce": {
         const reduceSource = getValueByPath(context, operation.source);
         if (Array.isArray(reduceSource)) {
-          if (BLOCKED_EXPR_PATTERN.test(operation.expression)) {
-            throw new Error(
-              `Transform reduce expression contains blocked keyword: ${operation.expression}`,
-            );
-          }
-          const reduced = reduceSource.reduce((acc, item, index) => {
-            try {
-              const fn = new Function(
-                "$acc",
-                "$item",
-                "$index",
-                `return ${operation.expression}`,
-              );
-              return fn(acc, item, index);
-            } catch {
-              return acc;
-            }
-          }, operation.initial);
+          const ast = compileSafeTransformExpression(
+            operation.expression,
+            TRANSFORM_REDUCE_ALLOWED_IDENTIFIERS,
+          );
+          const reduced = reduceSource.reduce(
+            (acc, item, index) =>
+              evaluateSafeExpression(ast, { $acc: acc, $item: item, $index: index }),
+            operation.initial,
+          );
           setValueByPath(context, operation.target, reduced);
           transformedCount++;
         }
@@ -1096,7 +1800,7 @@ async function executeWebhook(
     }
 
     // Store in output variable
-    context[config.outputVariable] = result;
+    setContextKey(context, config.outputVariable, result);
 
     log.info({ status: response.status }, "[PIPELINE] Webhook step completed");
 
@@ -1158,7 +1862,7 @@ async function executeSubPipeline(
       pipelineId: config.pipelineId,
       status: run.status,
     };
-    context[config.outputVariable] = result;
+    setContextKey(context, config.outputVariable, result);
     return result;
   }
 
@@ -1187,7 +1891,7 @@ async function executeSubPipeline(
         status: currentRun.status,
         context: currentRun.context,
       };
-      context[config.outputVariable] = result;
+      setContextKey(context, config.outputVariable, result);
 
       if (currentRun.status === "failed") {
         throw new Error(`Sub-pipeline failed: ${currentRun.error?.message}`);
@@ -1211,10 +1915,64 @@ async function executeSubPipeline(
 // Helper functions for path-based context manipulation
 // ============================================================================
 
+export function isSafePipelineContextKey(key: string): boolean {
+  const trimmed = key.trim();
+  if (trimmed.length === 0) return false;
+  return !UNSAFE_CONTEXT_KEYS.has(trimmed);
+}
+
+export function isSafePipelineContextPath(path: string): boolean {
+  const trimmed = path.trim();
+  if (trimmed.length === 0) return false;
+
+  const parts = trimmed.split(".");
+  for (const part of parts) {
+    if (!part) return false;
+    if (UNSAFE_CONTEXT_KEYS.has(part)) return false;
+  }
+  return true;
+}
+
+function assertSafePipelineContextKey(key: string, purpose: string): void {
+  if (!isSafePipelineContextKey(key)) {
+    throw new Error(`Unsafe ${purpose}: ${key}`);
+  }
+}
+
+function assertSafePipelineContextPath(path: string, purpose: string): void {
+  const trimmed = path.trim();
+  if (trimmed.length === 0) return;
+
+  const parts = trimmed.split(".");
+  for (const part of parts) {
+    if (!part) {
+      throw new Error(`Invalid ${purpose}: ${path}`);
+    }
+    if (UNSAFE_CONTEXT_KEYS.has(part)) {
+      throw new Error(`Unsafe ${purpose}: ${path}`);
+    }
+  }
+}
+
+function setContextKey(
+  context: Record<string, unknown>,
+  key: string,
+  value: unknown,
+): void {
+  assertSafePipelineContextKey(key, "context key");
+  context[key] = value;
+}
+
+function deleteContextKey(context: Record<string, unknown>, key: string): void {
+  assertSafePipelineContextKey(key, "context key");
+  delete context[key];
+}
+
 /**
  * Get a value from context by dot-notation path.
  */
 function getValueByPath(obj: Record<string, unknown>, path: string): unknown {
+  assertSafePipelineContextPath(path, "path");
   const parts = path.split(".");
   let current: unknown = obj;
 
@@ -1235,6 +1993,7 @@ function setValueByPath(
   path: string,
   value: unknown,
 ): void {
+  assertSafePipelineContextPath(path, "path");
   const parts = path.split(".");
   let current: Record<string, unknown> = obj;
 
@@ -1257,6 +2016,7 @@ function setValueByPath(
  * Delete a value from context by dot-notation path.
  */
 function deleteValueByPath(obj: Record<string, unknown>, path: string): void {
+  assertSafePipelineContextPath(path, "path");
   const parts = path.split(".");
   let current: Record<string, unknown> = obj;
 

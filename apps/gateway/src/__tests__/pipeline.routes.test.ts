@@ -13,6 +13,7 @@ import {
   clearAll,
   createPipeline,
   getPipeline,
+  getRun,
   pauseRun,
   runPipeline,
 } from "../services/pipeline.service";
@@ -225,6 +226,19 @@ describe("Pipeline Service", () => {
   });
 
   describe("runPipeline", () => {
+    async function waitForRunToFinish(
+      runId: string,
+      timeoutMs = 10_000,
+    ): Promise<ReturnType<typeof getRun>> {
+      const start = Date.now();
+      while (Date.now() - start < timeoutMs) {
+        const current = getRun(runId);
+        if (current && current.status !== "running") return current;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      throw new Error(`Timed out waiting for run to finish: ${runId}`);
+    }
+
     test("creates a new run", async () => {
       const input = createTestPipelineInput();
       const pipeline = createPipeline(input);
@@ -252,6 +266,97 @@ describe("Pipeline Service", () => {
       pipeline.enabled = false;
 
       await expect(runPipeline(pipeline.id)).rejects.toThrow("disabled");
+    });
+
+    test("executes transform expressions without eval/new Function", async () => {
+      const input: CreatePipelineInput = {
+        name: "Transform Pipeline",
+        trigger: {
+          type: "manual",
+          config: { type: "manual", config: {} },
+          enabled: true,
+        },
+        steps: [
+          {
+            id: "transform",
+            name: "Transform",
+            type: "transform",
+            config: {
+              type: "transform",
+              config: {
+                operations: [
+                  {
+                    op: "map",
+                    source: "items",
+                    expression: "$item.value",
+                    target: "values",
+                  },
+                  {
+                    op: "filter",
+                    source: "items",
+                    condition: "$item.value > 1",
+                    target: "filtered",
+                  },
+                  {
+                    op: "reduce",
+                    source: "values",
+                    expression: "$acc + $item",
+                    initial: 0,
+                    target: "sum",
+                  },
+                ],
+                outputVariable: "out",
+              },
+            },
+          },
+        ],
+      };
+
+      const pipeline = createPipeline(input);
+      const run = await runPipeline(pipeline.id, {
+        params: { items: [{ value: 1 }, { value: 2 }, { value: 3 }] },
+      });
+
+      const finished = await waitForRunToFinish(run.id);
+      expect(finished?.status).toBe("completed");
+      expect(finished?.context["values"]).toEqual([1, 2, 3]);
+      expect(finished?.context["filtered"]).toEqual([{ value: 2 }, { value: 3 }]);
+      expect(finished?.context["sum"]).toBe(6);
+    });
+
+    test("blocks prototype-pollution paths in transform operations", async () => {
+      const input: CreatePipelineInput = {
+        name: "Unsafe Path Pipeline",
+        retryPolicy: { maxRetries: 0, initialDelay: 0, maxDelay: 0 },
+        trigger: {
+          type: "manual",
+          config: { type: "manual", config: {} },
+          enabled: true,
+        },
+        steps: [
+          {
+            id: "transform",
+            name: "Transform",
+            type: "transform",
+            config: {
+              type: "transform",
+              config: {
+                operations: [
+                  { op: "set", path: "__proto__.polluted", value: "yes" },
+                ],
+                outputVariable: "out",
+              },
+            },
+          },
+        ],
+      };
+
+      const pipeline = createPipeline(input);
+      const run = await runPipeline(pipeline.id);
+
+      const finished = await waitForRunToFinish(run.id);
+      expect(finished?.status).toBe("failed");
+      expect(finished?.error?.message).toContain("Unsafe path");
     });
   });
 
@@ -373,6 +478,48 @@ describe("Pipeline Routes", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: "" }), // Invalid: empty name
+      });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error.code).toBe("VALIDATION_FAILED");
+    });
+
+    test("rejects unsafe transform expressions", async () => {
+      const input: CreatePipelineInput = {
+        name: "Unsafe Transform Pipeline",
+        trigger: {
+          type: "manual",
+          config: { type: "manual", config: {} },
+          enabled: true,
+        },
+        steps: [
+          {
+            id: "transform",
+            name: "Transform",
+            type: "transform",
+            config: {
+              type: "transform",
+              config: {
+                operations: [
+                  {
+                    op: "map",
+                    source: "items",
+                    expression: "$item.constructor.constructor('return 1')()",
+                    target: "values",
+                  },
+                ],
+                outputVariable: "out",
+              },
+            },
+          },
+        ],
+      };
+
+      const res = await app.request("/pipelines", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
       });
 
       expect(res.status).toBe(400);

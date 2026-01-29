@@ -13,7 +13,7 @@ import {
 } from "bun:test";
 import { createHash } from "node:crypto";
 import { isGatewayError } from "@flywheel/shared/errors";
-import { restoreCorrelation } from "./test-utils/db-mock-restore";
+import { requestContextStorage } from "../middleware/correlation";
 
 const realFs = require("node:fs");
 const realFsPromises = require("node:fs/promises");
@@ -76,17 +76,9 @@ mock.module("yaml", () => ({
   },
 }));
 
-mock.module("../middleware/correlation", () => ({
-  getLogger: () => mockLogger,
-  getCorrelationId: () => "test-corr",
-}));
-
 // Import after mocks are defined
-import {
-  clearToolRegistryCache,
-  getToolRegistryMetadata,
-  loadToolRegistry,
-} from "../services/tool-registry.service";
+const { clearToolRegistryCache, getToolRegistryMetadata, loadToolRegistry } =
+  await import("../services/tool-registry.service?tool-registry-service-test");
 
 const validManifest = `schemaVersion: "1.0.0"
 source: "acfs"
@@ -120,6 +112,12 @@ function resetState() {
 
 beforeEach(() => {
   resetState();
+  requestContextStorage.enterWith({
+    correlationId: "test-corr",
+    requestId: "test-request-id",
+    startTime: performance.now(),
+    logger: mockLogger,
+  });
 });
 
 afterEach(() => {
@@ -139,7 +137,6 @@ afterAll(() => {
   mock.module("node:fs", () => realFs);
   mock.module("node:fs/promises", () => realFsPromises);
   mock.module("yaml", () => realYaml);
-  restoreCorrelation();
 });
 
 describe("ToolRegistry cache behavior", () => {

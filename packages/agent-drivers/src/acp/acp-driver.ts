@@ -125,6 +125,8 @@ export interface AcpDriverOptions extends DriverOptions {
   rpcTimeoutMs?: number;
   /** Enable verbose logging of ACP protocol messages */
   verboseProtocol?: boolean;
+  /** Maximum number of messages to retain in conversation history (default: 100) */
+  maxHistoryMessages?: number;
 }
 
 /**
@@ -167,6 +169,7 @@ export class AcpDriver extends BaseDriver {
   private agentEnv: Record<string, string>;
   private rpcTimeoutMs: number;
   private verboseProtocol: boolean;
+  private maxHistoryMessages: number;
   private sessions = new Map<string, AcpAgentSession>();
 
   constructor(config: BaseDriverConfig, options: AcpDriverOptions = {}) {
@@ -180,6 +183,7 @@ export class AcpDriver extends BaseDriver {
     this.agentEnv = options.agentEnv ?? {};
     this.rpcTimeoutMs = options.rpcTimeoutMs ?? 60000;
     this.verboseProtocol = options.verboseProtocol ?? false;
+    this.maxHistoryMessages = options.maxHistoryMessages ?? 100;
   }
 
   // ============================================================================
@@ -292,6 +296,9 @@ export class AcpDriver extends BaseDriver {
       content: [{ type: "text", text: message }],
       timestamp: new Date(),
     });
+
+    // Prune history to prevent unbounded growth
+    this.pruneConversationHistory(session);
 
     // Send message to agent process via stdin
     // The message format depends on the agent's protocol
@@ -996,6 +1003,35 @@ export class AcpDriver extends BaseDriver {
     } catch {
       return "[unserializable output]";
     }
+  }
+
+  /**
+   * Prune conversation history to prevent unbounded memory growth.
+   * Preserves the first message (typically system prompt) and keeps
+   * the most recent messages up to maxHistoryMessages.
+   */
+  private pruneConversationHistory(session: AcpAgentSession): void {
+    const history = session.conversationHistory;
+    const max = this.maxHistoryMessages;
+
+    if (history.length <= max) {
+      return;
+    }
+
+    // Keep first message (system prompt) + most recent (max - 1) messages
+    const firstMessage = history[0];
+    if (!firstMessage) {
+      // Edge case: empty history, nothing to prune
+      return;
+    }
+    const recentMessages = history.slice(-(max - 1));
+    session.conversationHistory = [firstMessage, ...recentMessages];
+
+    logDriver("debug", this.driverType, "history_pruned", {
+      previousLength: history.length,
+      newLength: session.conversationHistory.length,
+      maxHistoryMessages: max,
+    });
   }
 }
 

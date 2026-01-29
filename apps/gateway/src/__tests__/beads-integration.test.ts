@@ -99,44 +99,87 @@ describe.skipIf(!BR_AVAILABLE)("BR Endpoints Integration Tests", () => {
     logTest({ test: "setup", action: "test_suite_initialized" });
   });
 
-  afterAll(async () => {
-    // Clean up any test beads we created
-    logTest({
-      test: "cleanup",
-      action: "cleaning_up_test_beads",
-      payload: { beadIds: createdBeadIds },
-    });
+  afterAll(
+    async () => {
+      const uniqueBeadIds = Array.from(new Set(createdBeadIds));
 
-    for (const beadId of createdBeadIds) {
-      try {
-        await service.close(beadId, { force: true });
-        logTest({
-          test: "cleanup",
-          action: "closed_test_bead",
-          payload: { beadId },
-        });
-      } catch (error) {
-        // Bead may already be closed or not exist
-        logTest({
-          test: "cleanup",
-          action: "cleanup_warning",
-          payload: { beadId },
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
+      // Clean up any test beads we created
+      logTest({
+        test: "cleanup",
+        action: "cleaning_up_test_beads",
+        payload: { beadIds: uniqueBeadIds },
+      });
 
-    // Output test log summary
-    console.log("\n=== Test Log Summary ===");
-    console.log(`Total log entries: ${testLogs.length}`);
-    const errors = testLogs.filter((l) => l.error);
-    if (errors.length > 0) {
-      console.log(`Errors encountered: ${errors.length}`);
-      for (const e of errors) {
-        console.log(`  - ${e.test}: ${e.error}`);
+      if (uniqueBeadIds.length > 0) {
+        try {
+          // Prefer closing in one command to avoid hook timeouts (br CLI can be slow to start).
+          const closed = await service.close(uniqueBeadIds, { force: true });
+          const closedIds = new Set(closed.map((issue) => issue.id));
+
+          for (const issue of closed) {
+            logTest({
+              test: "cleanup",
+              action: "closed_test_bead",
+              payload: { beadId: issue.id },
+            });
+          }
+
+          for (const beadId of uniqueBeadIds) {
+            if (closedIds.has(beadId)) continue;
+            logTest({
+              test: "cleanup",
+              action: "cleanup_warning",
+              payload: { beadId },
+              error: "bulk close did not return bead id",
+            });
+          }
+        } catch (error) {
+          // Best-effort fallback: attempt individually (parallel) to finish within hook timeout.
+          logTest({
+            test: "cleanup",
+            action: "cleanup_warning",
+            payload: { beadIds: uniqueBeadIds },
+            error: error instanceof Error ? error.message : String(error),
+          });
+
+          await Promise.allSettled(
+            uniqueBeadIds.map(async (beadId) => {
+              try {
+                await service.close(beadId, { force: true });
+                logTest({
+                  test: "cleanup",
+                  action: "closed_test_bead",
+                  payload: { beadId },
+                });
+              } catch (closeError) {
+                logTest({
+                  test: "cleanup",
+                  action: "cleanup_warning",
+                  payload: { beadId },
+                  error:
+                    closeError instanceof Error
+                      ? closeError.message
+                      : String(closeError),
+                });
+              }
+            }),
+          );
+        }
       }
-    }
-  });
+
+      // Output test log summary
+      console.log("\n=== Test Log Summary ===");
+      console.log(`Total log entries: ${testLogs.length}`);
+      const errors = testLogs.filter((l) => l.error);
+      if (errors.length > 0) {
+        console.log(`Errors encountered: ${errors.length}`);
+        for (const e of errors) {
+          console.log(`  - ${e.test}: ${e.error}`);
+        }
+      }
+    },
+    { timeout: TEST_TIMEOUT * 2 },
+  );
 
   describe("GET /beads (list)", () => {
     test(
@@ -459,18 +502,21 @@ describe.skipIf(!BR_AVAILABLE)("BR Endpoints Integration Tests", () => {
   describe("GET /beads/:id (show)", () => {
     let testBeadId: string;
 
-    beforeEach(async () => {
-      // Create a test bead to show
-      const title = getTestBeadTitle();
-      const bead = await service.create({
-        title,
-        type: "task",
-        priority: 4,
-        description: "Test bead for show endpoint",
-      });
-      testBeadId = bead.id;
-      createdBeadIds.push(testBeadId);
-    });
+    beforeEach(
+      async () => {
+        // Create a test bead to show
+        const title = getTestBeadTitle();
+        const bead = await service.create({
+          title,
+          type: "task",
+          priority: 4,
+          description: "Test bead for show endpoint",
+        });
+        testBeadId = bead.id;
+        createdBeadIds.push(testBeadId);
+      },
+      { timeout: TEST_TIMEOUT },
+    );
 
     test(
       "should return single bead by ID",
@@ -538,18 +584,21 @@ describe.skipIf(!BR_AVAILABLE)("BR Endpoints Integration Tests", () => {
   describe("PATCH /beads/:id (update)", () => {
     let testBeadId: string;
 
-    beforeEach(async () => {
-      // Create a test bead to update
-      const title = getTestBeadTitle();
-      const bead = await service.create({
-        title,
-        type: "task",
-        priority: 4,
-        description: "Test bead for update endpoint",
-      });
-      testBeadId = bead.id;
-      createdBeadIds.push(testBeadId);
-    });
+    beforeEach(
+      async () => {
+        // Create a test bead to update
+        const title = getTestBeadTitle();
+        const bead = await service.create({
+          title,
+          type: "task",
+          priority: 4,
+          description: "Test bead for update endpoint",
+        });
+        testBeadId = bead.id;
+        createdBeadIds.push(testBeadId);
+      },
+      { timeout: TEST_TIMEOUT },
+    );
 
     test(
       "should update bead title",
@@ -699,18 +748,21 @@ describe.skipIf(!BR_AVAILABLE)("BR Endpoints Integration Tests", () => {
   describe("POST /beads/:id/claim", () => {
     let testBeadId: string;
 
-    beforeEach(async () => {
-      // Create a test bead to claim
-      const title = getTestBeadTitle();
-      const bead = await service.create({
-        title,
-        type: "task",
-        priority: 4,
-        description: "Test bead for claim endpoint",
-      });
-      testBeadId = bead.id;
-      createdBeadIds.push(testBeadId);
-    });
+    beforeEach(
+      async () => {
+        // Create a test bead to claim
+        const title = getTestBeadTitle();
+        const bead = await service.create({
+          title,
+          type: "task",
+          priority: 4,
+          description: "Test bead for claim endpoint",
+        });
+        testBeadId = bead.id;
+        createdBeadIds.push(testBeadId);
+      },
+      { timeout: TEST_TIMEOUT },
+    );
 
     test(
       "should claim bead and set status to in_progress",
@@ -749,18 +801,21 @@ describe.skipIf(!BR_AVAILABLE)("BR Endpoints Integration Tests", () => {
   describe("DELETE /beads/:id (close)", () => {
     let testBeadId: string;
 
-    beforeEach(async () => {
-      // Create a test bead to close
-      const title = getTestBeadTitle();
-      const bead = await service.create({
-        title,
-        type: "task",
-        priority: 4,
-        description: "Test bead for close endpoint",
-      });
-      testBeadId = bead.id;
-      // Don't add to cleanup list since we're closing it in the test
-    });
+    beforeEach(
+      async () => {
+        // Create a test bead to close
+        const title = getTestBeadTitle();
+        const bead = await service.create({
+          title,
+          type: "task",
+          priority: 4,
+          description: "Test bead for close endpoint",
+        });
+        testBeadId = bead.id;
+        // Don't add to cleanup list since we're closing it in the test
+      },
+      { timeout: TEST_TIMEOUT },
+    );
 
     test(
       "should close bead",

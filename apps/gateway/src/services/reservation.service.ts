@@ -795,9 +795,19 @@ export async function listReservations(
       }
     }
 
-    hasMore = beforeCursor.length > limit;
     const startIndex = Math.max(0, beforeCursor.length - limit);
     resultItems = beforeCursor.slice(startIndex);
+    if (resultItems.length > 0) {
+      const lastItem = resultItems[resultItems.length - 1]!;
+      hasMore = reservations.some(
+        (r) =>
+          r.createdAt.getTime() < lastItem.createdAt.getTime() ||
+          (r.createdAt.getTime() === lastItem.createdAt.getTime() &&
+            r.id < lastItem.id),
+      );
+    } else {
+      hasMore = false;
+    }
   }
 
   const result: ListReservationsResult = { reservations: resultItems, hasMore };
@@ -819,11 +829,25 @@ export async function listReservations(
           firstItem.createdAt.getTime(),
         );
       }
-    } else if (hasMore) {
-      result.prevCursor = createCursor(
-        firstItem.id,
-        firstItem.createdAt.getTime(),
+    } else {
+      const hasPrev = reservations.some(
+        (r) =>
+          r.createdAt.getTime() > firstItem.createdAt.getTime() ||
+          (r.createdAt.getTime() === firstItem.createdAt.getTime() &&
+            r.id > firstItem.id),
       );
+      if (hasPrev) {
+        result.prevCursor = createCursor(
+          firstItem.id,
+          firstItem.createdAt.getTime(),
+        );
+      }
+      if (hasMore) {
+        result.nextCursor = createCursor(
+          lastItem.id,
+          lastItem.createdAt.getTime(),
+        );
+      }
     }
   }
 
@@ -891,9 +915,19 @@ export async function listConflicts(
       }
     }
 
-    hasMore = beforeCursor.length > limit;
     const startIndex = Math.max(0, beforeCursor.length - limit);
     resultItems = beforeCursor.slice(startIndex);
+    if (resultItems.length > 0) {
+      const lastItem = resultItems[resultItems.length - 1]!;
+      hasMore = conflicts.some(
+        (c) =>
+          c.detectedAt.getTime() < lastItem.detectedAt.getTime() ||
+          (c.detectedAt.getTime() === lastItem.detectedAt.getTime() &&
+            c.conflictId < lastItem.conflictId),
+      );
+    } else {
+      hasMore = false;
+    }
   }
 
   const result: ListConflictsResult = { conflicts: resultItems, hasMore };
@@ -915,11 +949,25 @@ export async function listConflicts(
           firstItem.detectedAt.getTime(),
         );
       }
-    } else if (hasMore) {
-      result.prevCursor = createCursor(
-        firstItem.conflictId,
-        firstItem.detectedAt.getTime(),
+    } else {
+      const hasPrev = conflicts.some(
+        (c) =>
+          c.detectedAt.getTime() > firstItem.detectedAt.getTime() ||
+          (c.detectedAt.getTime() === firstItem.detectedAt.getTime() &&
+            c.conflictId > firstItem.conflictId),
       );
+      if (hasPrev) {
+        result.prevCursor = createCursor(
+          firstItem.conflictId,
+          firstItem.detectedAt.getTime(),
+        );
+      }
+      if (hasMore) {
+        result.nextCursor = createCursor(
+          lastItem.conflictId,
+          lastItem.detectedAt.getTime(),
+        );
+      }
     }
   }
 

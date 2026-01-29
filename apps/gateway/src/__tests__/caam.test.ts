@@ -32,10 +32,59 @@ mock.module("../services/logger", () => ({
 // This prevents other test files' db mocks from affecting these tests
 import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import * as schema from "../db/schema";
 
 const dbFile = process.env["DB_FILE_NAME"] ?? "./data/gateway.db";
 const realSqlite = new Database(dbFile);
+
+function runMigrations(sqliteDb: Database): void {
+  const migrationsFolder = join(import.meta.dir, "../db/migrations");
+  const migrationFiles = readdirSync(migrationsFolder)
+    .filter((f) => f.endsWith(".sql"))
+    .sort();
+
+  sqliteDb.exec(`
+    CREATE TABLE IF NOT EXISTS "__drizzle_migrations" (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      hash TEXT NOT NULL,
+      created_at INTEGER
+    )
+  `);
+
+  const appliedMigrations = new Set(
+    (sqliteDb
+      .query(`SELECT hash FROM "__drizzle_migrations"`)
+      .all() as { hash: string }[]).map((row) => row.hash),
+  );
+
+  for (const file of migrationFiles) {
+    if (appliedMigrations.has(file)) continue;
+
+    const raw = readFileSync(join(migrationsFolder, file), "utf-8");
+    const statements = raw
+      .split("--> statement-breakpoint")
+      .map((statement) => statement.trim())
+      .filter(Boolean);
+
+    for (const stmt of statements) {
+      sqliteDb.exec(stmt);
+    }
+
+    sqliteDb
+      .query(
+        `INSERT INTO "__drizzle_migrations" (hash, created_at) VALUES (?, ?)`,
+      )
+      .run(file, Date.now());
+  }
+}
+
+realSqlite.exec("PRAGMA journal_mode = WAL");
+realSqlite.exec("PRAGMA synchronous = NORMAL");
+realSqlite.exec("PRAGMA foreign_keys = ON");
+runMigrations(realSqlite);
+
 const realDb = drizzle(realSqlite, { schema });
 
 mock.module("../db", () => ({

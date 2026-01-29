@@ -568,7 +568,7 @@ function deriveCapabilities(
   }
 
   // Derive MCP info from manifest
-  if (tool.mcp && tool.mcp.available) {
+  if (tool.mcp?.available) {
     result.mcp = {
       available: true,
       capabilities: tool.mcp.capabilities,
@@ -687,7 +687,7 @@ async function getRegistryDefinitions(): Promise<{
 // ============================================================================
 
 // Default limits for safe execution
-const DEFAULT_CHECK_TIMEOUT_MS = 5000;
+const DEFAULT_CHECK_TIMEOUT_MS = 1500;
 const DEFAULT_OUTPUT_CAP_BYTES = 4096;
 const MAX_SAFE_OUTPUT_BYTES = 1024 * 1024; // 1MB limit for internal checks
 
@@ -794,6 +794,58 @@ function buildSafeEnv(): Record<string, string> {
   return safeEnv;
 }
 
+interface SpawnCaptureResult {
+  exitCode: number | null;
+  stdout: string;
+  stderr: string;
+  timedOut: boolean;
+}
+
+async function spawnCapture(
+  command: string[],
+  options?: { timeoutMs?: number; outputCapBytes?: number },
+): Promise<SpawnCaptureResult> {
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_CHECK_TIMEOUT_MS;
+  const outputCapBytes = options?.outputCapBytes ?? DEFAULT_OUTPUT_CAP_BYTES;
+
+  const proc = Bun.spawn(command, {
+    stdout: "pipe",
+    stderr: "pipe",
+    env: buildSafeEnv(),
+  });
+
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<"timeout">((resolve) => {
+    timeoutId = setTimeout(() => resolve("timeout"), timeoutMs);
+  });
+
+  const raceResult = await Promise.race([proc.exited, timeoutPromise]);
+
+  if (raceResult === "timeout") {
+    proc.kill();
+    return {
+      exitCode: null,
+      stdout: "",
+      stderr: "",
+      timedOut: true,
+    };
+  }
+
+  clearTimeout(timeoutId);
+  const exitCode = raceResult;
+  const [stdout, stderr] = await Promise.all([
+    readStreamSafe(proc.stdout, outputCapBytes),
+    readStreamSafe(proc.stderr, outputCapBytes),
+  ]);
+
+  return {
+    exitCode,
+    stdout,
+    stderr,
+    timedOut: false,
+  };
+}
+
 /**
  * Run manifest-defined installed_check command with safety limits.
  * Returns the path/output on success, null on failure.
@@ -805,7 +857,7 @@ function buildSafeEnv(): Record<string, string> {
  * 1. **No shell interpolation**: Commands are passed as arrays to `Bun.spawn()`,
  *    preventing shell metacharacter injection (e.g., `; rm -rf /`).
  *
- * 2. **Timeout enforcement**: Commands are killed after `timeoutMs` (default 5s)
+ * 2. **Timeout enforcement**: Commands are killed after `timeoutMs` (default 1.5s)
  *    to prevent hangs or resource exhaustion attacks.
  *
  * 3. **Output capping**: Only `outputCapBytes` (default 4KB) are captured to
@@ -822,7 +874,7 @@ function buildSafeEnv(): Record<string, string> {
  *
  * - Use simple, idiomatic checks like `["command", "-v", "toolname"]`
  * - Avoid shell features (pipes, redirects, subshells) - they won't work
- * - Keep commands fast (< 5s) and output minimal (< 4KB)
+ * - Keep commands fast (< 1.5s by default; or set timeoutMs explicitly) and output minimal (< 4KB)
  * - Don't rely on environment variables beyond PATH/HOME
  * - Test that the command works with minimal privileges
  */
@@ -876,7 +928,9 @@ async function runInstalledCheck(
     const exitCode = raceResult;
 
     // Read output with cap
-    const cappedOutput = (await readStreamSafe(proc.stdout, outputCapBytes)).trim();
+    const cappedOutput = (
+      await readStreamSafe(proc.stdout, outputCapBytes)
+    ).trim();
 
     if (exitCode === 0) {
       return { success: true, output: cappedOutput };
@@ -901,18 +955,14 @@ async function findExecutable(command: string): Promise<string | null> {
   const findCmd = isWindows ? "where" : "which";
 
   try {
-    const proc = Bun.spawn([findCmd, command], {
-      stdout: "pipe",
-      stderr: "pipe",
-      env: buildSafeEnv(),
+    const result = await spawnCapture([findCmd, command], {
+      timeoutMs: DEFAULT_CHECK_TIMEOUT_MS,
+      outputCapBytes: MAX_SAFE_OUTPUT_BYTES,
     });
 
-    const stdout = await readStreamSafe(proc.stdout, MAX_SAFE_OUTPUT_BYTES);
-    const exitCode = await proc.exited;
-
-    if (exitCode === 0 && stdout.trim()) {
+    if (!result.timedOut && result.exitCode === 0 && result.stdout.trim()) {
       // Return first line (in case of multiple matches)
-      return stdout.trim().split("\n")[0]!;
+      return result.stdout.trim().split("\n")[0]!;
     }
     return null;
   } catch {
@@ -930,20 +980,16 @@ async function getVersion(
 ): Promise<string | null> {
   try {
     const args = [...commands, versionFlag];
-    const proc = Bun.spawn(args, {
-      stdout: "pipe",
-      stderr: "pipe",
-      env: buildSafeEnv(),
+    const result = await spawnCapture(args, {
+      timeoutMs: DEFAULT_CHECK_TIMEOUT_MS,
+      outputCapBytes: MAX_SAFE_OUTPUT_BYTES,
     });
-
-    const stdout = await readStreamSafe(proc.stdout, MAX_SAFE_OUTPUT_BYTES);
-    const stderr = await readStreamSafe(proc.stderr, MAX_SAFE_OUTPUT_BYTES);
-    const exitCode = await proc.exited;
+    if (result.timedOut) return null;
 
     // Some CLIs output version to stderr
-    const output = stdout.trim() || stderr.trim();
+    const output = result.stdout.trim() || result.stderr.trim();
 
-    if (exitCode === 0 && output) {
+    if (result.exitCode === 0 && output) {
       // Extract version pattern (e.g., "v1.2.3" or "1.2.3")
       const versionMatch = output.match(/v?(\d+\.\d+(?:\.\d+)?(?:-[\w.]+)?)/);
       return versionMatch ? versionMatch[0] : output.slice(0, 50);
@@ -962,23 +1008,24 @@ async function checkAuth(
   authCmd: string[],
 ): Promise<{ authenticated: boolean; error?: string }> {
   try {
-    const proc = Bun.spawn(authCmd, {
-      stdout: "pipe",
-      stderr: "pipe",
-      env: buildSafeEnv(),
+    const result = await spawnCapture(authCmd, {
+      timeoutMs: DEFAULT_CHECK_TIMEOUT_MS,
+      outputCapBytes: MAX_SAFE_OUTPUT_BYTES,
     });
-
-    const stdout = await readStreamSafe(proc.stdout, MAX_SAFE_OUTPUT_BYTES);
-    const stderr = await readStreamSafe(proc.stderr, MAX_SAFE_OUTPUT_BYTES);
-    const exitCode = await proc.exited;
+    if (result.timedOut) {
+      return {
+        authenticated: false,
+        error: "Auth check timed out",
+      };
+    }
 
     // Exit code 0 typically means authenticated
-    if (exitCode === 0) {
+    if (result.exitCode === 0) {
       return { authenticated: true };
     }
 
     // Check for common auth error patterns
-    const output = (stdout + stderr).toLowerCase();
+    const output = (result.stdout + result.stderr).toLowerCase();
     if (
       output.includes("not logged in") ||
       output.includes("not authenticated") ||
@@ -994,7 +1041,7 @@ async function checkAuth(
 
     return {
       authenticated: false,
-      error: stderr.trim() || "Auth check failed",
+      error: result.stderr.trim() || "Auth check failed",
     };
   } catch (error) {
     return {
@@ -1131,6 +1178,7 @@ interface DetectionCache {
 }
 
 let cache: DetectionCache | null = null;
+let inFlightDetection: Promise<DetectionResult> | null = null;
 const CACHE_TTL_MS = 60_000; // 1 minute
 
 /**
@@ -1174,55 +1222,69 @@ export async function detectAllCLIs(
     return cache.result;
   }
 
-  const startTime = performance.now();
-  log.info("Starting CLI detection");
-
-  // Detect agents and tools in parallel
-  const { agents: agentDefs, tools: toolDefs } = await getRegistryDefinitions();
-  const [agents, tools] = await Promise.all([
-    Promise.all(agentDefs.map(detectCLI)),
-    Promise.all(toolDefs.map(detectCLI)),
-  ]);
-
-  // Collect auth issues
-  const authIssues: string[] = [];
-  for (const cli of [...agents, ...tools]) {
-    if (cli.available && cli.authenticated === false && cli.authError) {
-      authIssues.push(`${cli.name}: ${cli.authError}`);
-    }
+  if (inFlightDetection) {
+    log.debug("Awaiting in-flight CLI detection");
+    return inFlightDetection;
   }
 
-  const result: DetectionResult = {
-    agents,
-    tools,
-    summary: {
-      agentsAvailable: agents.filter((a) => a.available).length,
-      agentsTotal: agents.length,
-      toolsAvailable: tools.filter((t) => t.available).length,
-      toolsTotal: tools.length,
-      authIssues,
-    },
-    detectedAt: new Date(),
-    durationMs: Math.round(performance.now() - startTime),
-  };
+  inFlightDetection = (async () => {
+    const startTime = performance.now();
+    log.info({ bypassCache }, "Starting CLI detection");
 
-  // Update cache
-  cache = {
-    result,
-    expiresAt: Date.now() + CACHE_TTL_MS,
-  };
+    // Detect agents and tools in parallel
+    const { agents: agentDefs, tools: toolDefs } =
+      await getRegistryDefinitions();
+    const [agents, tools] = await Promise.all([
+      Promise.all(agentDefs.map(detectCLI)),
+      Promise.all(toolDefs.map(detectCLI)),
+    ]);
 
-  log.info(
-    {
-      agentsAvailable: result.summary.agentsAvailable,
-      toolsAvailable: result.summary.toolsAvailable,
-      authIssues: authIssues.length,
-      durationMs: result.durationMs,
-    },
-    "CLI detection complete",
-  );
+    // Collect auth issues
+    const authIssues: string[] = [];
+    for (const cli of [...agents, ...tools]) {
+      if (cli.available && cli.authenticated === false && cli.authError) {
+        authIssues.push(`${cli.name}: ${cli.authError}`);
+      }
+    }
 
-  return result;
+    const result: DetectionResult = {
+      agents,
+      tools,
+      summary: {
+        agentsAvailable: agents.filter((a) => a.available).length,
+        agentsTotal: agents.length,
+        toolsAvailable: tools.filter((t) => t.available).length,
+        toolsTotal: tools.length,
+        authIssues,
+      },
+      detectedAt: new Date(),
+      durationMs: Math.round(performance.now() - startTime),
+    };
+
+    // Update cache
+    cache = {
+      result,
+      expiresAt: Date.now() + CACHE_TTL_MS,
+    };
+
+    log.info(
+      {
+        agentsAvailable: result.summary.agentsAvailable,
+        toolsAvailable: result.summary.toolsAvailable,
+        authIssues: authIssues.length,
+        durationMs: result.durationMs,
+      },
+      "CLI detection complete",
+    );
+
+    return result;
+  })();
+
+  try {
+    return await inFlightDetection;
+  } finally {
+    inFlightDetection = null;
+  }
 }
 
 /**

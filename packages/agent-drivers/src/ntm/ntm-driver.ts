@@ -45,6 +45,10 @@ export interface NtmDriverOptions extends DriverOptions {
   tailLines?: number;
   /** Default timeout for NTM commands in ms (default: 30000) */
   commandTimeoutMs?: number;
+  /** Max consecutive poll errors before marking agent as failed (default: 5) */
+  maxConsecutivePollErrors?: number;
+  /** Max time in ms without successful poll before marking agent as failed (default: 60000) */
+  maxPollStaleMs?: number;
 }
 
 /**
@@ -56,6 +60,10 @@ interface NtmAgentSession {
   paneId: string;
   pollInterval?: ReturnType<typeof setInterval>;
   lastSnapshotTs?: string;
+  /** Count of consecutive poll errors for zombie detection */
+  consecutiveErrors: number;
+  /** Timestamp of last successful poll for staleness detection */
+  lastSuccessfulPoll: Date;
 }
 
 /**
@@ -69,6 +77,8 @@ export class NtmDriver extends BaseDriver {
   private cwd: string | undefined;
   private pollIntervalMs: number;
   private tailLines: number;
+  private maxConsecutivePollErrors: number;
+  private maxPollStaleMs: number;
   private sessions = new Map<string, NtmAgentSession>();
 
   constructor(config: BaseDriverConfig, options: NtmDriverOptions = {}) {
@@ -90,6 +100,8 @@ export class NtmDriver extends BaseDriver {
     this.cwd = options.cwd;
     this.pollIntervalMs = options.pollIntervalMs ?? 1000;
     this.tailLines = options.tailLines ?? 50;
+    this.maxConsecutivePollErrors = options.maxConsecutivePollErrors ?? 5;
+    this.maxPollStaleMs = options.maxPollStaleMs ?? 60000; // 1 minute
   }
 
   // ============================================================================
@@ -148,7 +160,10 @@ export class NtmDriver extends BaseDriver {
         existingSession.agents.length > 0
       ) {
         // Use existing agent's pane
-        paneId = existingSession.agents[0]!.pane;
+        const firstAgent = existingSession.agents[0];
+        if (firstAgent) {
+          paneId = firstAgent.pane;
+        }
         logDriver("info", this.driverType, "action=spawn found_existing", {
           agentId: config.id,
           sessionName,
@@ -175,6 +190,8 @@ export class NtmDriver extends BaseDriver {
       config,
       sessionName,
       paneId,
+      consecutiveErrors: 0,
+      lastSuccessfulPoll: new Date(),
     };
 
     this.sessions.set(config.id, session);
@@ -316,6 +333,7 @@ export class NtmDriver extends BaseDriver {
 
   /**
    * Poll NTM for output updates.
+   * Tracks consecutive errors and marks agent as failed when threshold is exceeded.
    */
   private async pollOutput(agentId: string): Promise<void> {
     const session = this.sessions.get(agentId);
@@ -355,13 +373,103 @@ export class NtmDriver extends BaseDriver {
       if ("ts" in snapshot) {
         session.lastSnapshotTs = snapshot.ts;
       }
+
+      // Reset error tracking on successful poll
+      session.consecutiveErrors = 0;
+      session.lastSuccessfulPoll = new Date();
     } catch (err) {
-      // Don't throw - polling errors are non-fatal
-      logDriver("debug", this.driverType, "poll_output_skipped", {
+      // Track consecutive errors for zombie detection
+      session.consecutiveErrors++;
+
+      // Log at warn level so operators can see issues (not debug which is often hidden)
+      logDriver("warn", this.driverType, "poll_output_error", {
         agentId,
+        sessionName: session.sessionName,
         error: String(err),
+        consecutiveErrors: session.consecutiveErrors,
+        maxConsecutivePollErrors: this.maxConsecutivePollErrors,
       });
+
+      // Check if we've exceeded the error threshold
+      if (session.consecutiveErrors >= this.maxConsecutivePollErrors) {
+        logDriver("error", this.driverType, "poll_failure_threshold_exceeded", {
+          agentId,
+          sessionName: session.sessionName,
+          consecutiveErrors: session.consecutiveErrors,
+          lastSuccessfulPoll: session.lastSuccessfulPoll.toISOString(),
+        });
+
+        await this.markAgentFailed(
+          agentId,
+          `NTM poll failures exceeded threshold (${session.consecutiveErrors} consecutive errors)`,
+        );
+        return;
+      }
+
+      // Also check for staleness (no successful poll for too long)
+      const staleMs = Date.now() - session.lastSuccessfulPoll.getTime();
+      if (staleMs > this.maxPollStaleMs) {
+        logDriver("error", this.driverType, "poll_stale_threshold_exceeded", {
+          agentId,
+          sessionName: session.sessionName,
+          staleMs,
+          maxPollStaleMs: this.maxPollStaleMs,
+          lastSuccessfulPoll: session.lastSuccessfulPoll.toISOString(),
+        });
+
+        await this.markAgentFailed(
+          agentId,
+          `NTM agent stale - no successful poll for ${Math.round(staleMs / 1000)}s`,
+        );
+      }
     }
+  }
+
+  /**
+   * Mark an agent as failed due to persistent poll failures.
+   * Cleans up resources and emits terminated event.
+   */
+  private async markAgentFailed(agentId: string, reason: string): Promise<void> {
+    const session = this.sessions.get(agentId);
+    if (!session) return;
+
+    logDriver("warn", this.driverType, "marking_agent_failed", {
+      agentId,
+      sessionName: session.sessionName,
+      reason,
+    });
+
+    // Clear poll interval to stop further polling
+    if (session.pollInterval) {
+      clearInterval(session.pollInterval);
+      delete session.pollInterval;
+    }
+
+    // Emit error event for observability
+    this.emitEvent(agentId, {
+      type: "error",
+      agentId,
+      timestamp: new Date(),
+      error: new Error(reason),
+      recoverable: false,
+    });
+
+    // Emit terminated event with error reason
+    // Note: The error details are in the preceding error event
+    this.emitEvent(agentId, {
+      type: "terminated",
+      agentId,
+      timestamp: new Date(),
+      reason: "error",
+      exitCode: 1,
+    });
+
+    // Update state to reflect failure
+    this.updateState(agentId, { activityState: "error" });
+
+    // Clean up session from our tracking
+    // Note: We don't call doTerminate here as the NTM session may already be gone
+    this.sessions.delete(agentId);
   }
 
   /**

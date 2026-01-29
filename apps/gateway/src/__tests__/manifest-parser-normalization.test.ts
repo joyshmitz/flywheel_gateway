@@ -16,7 +16,7 @@ import {
   it,
   mock,
 } from "bun:test";
-import { restoreCorrelation } from "./test-utils/db-mock-restore";
+import { requestContextStorage } from "../middleware/correlation";
 
 const realFs = require("node:fs");
 const realFsPromises = require("node:fs/promises");
@@ -50,24 +50,21 @@ mock.module("yaml", () => ({
   parse: (content: string) => realYaml.parse(content),
 }));
 
-mock.module("../middleware/correlation", () => ({
-  getLogger: () => mockLogger,
-  getCorrelationId: () => "test-corr",
-}));
-
-import {
-  clearToolRegistryCache,
-  loadToolRegistry,
+const {
   categorizeTools,
-  getToolsByPhase,
-  listAllTools,
-  listAgentTools,
-  listSetupTools,
-  getRequiredTools,
-  getRecommendedTools,
-  getOptionalTools,
+  clearToolRegistryCache,
   getFallbackRegistry,
-} from "../services/tool-registry.service";
+  getOptionalTools,
+  getRecommendedTools,
+  getRequiredTools,
+  getToolsByPhase,
+  listAgentTools,
+  listAllTools,
+  listSetupTools,
+  loadToolRegistry,
+} = await import(
+  "../services/tool-registry.service?manifest-parser-normalization-test",
+);
 import type { ToolDefinition } from "@flywheel/shared/types/tool-registry.types";
 
 const MANIFEST_PATH = "/tmp/norm-test.yaml";
@@ -88,6 +85,12 @@ beforeEach(() => {
   manifestContents = new Map();
   existsOverrides = new Map();
   clearToolRegistryCache();
+  requestContextStorage.enterWith({
+    correlationId: "test-corr",
+    requestId: "test-request-id",
+    startTime: performance.now(),
+    logger: mockLogger,
+  });
 });
 
 afterEach(() => {
@@ -103,7 +106,6 @@ afterAll(() => {
   mock.module("node:fs", () => realFs);
   mock.module("node:fs/promises", () => realFsPromises);
   mock.module("yaml", () => realYaml);
-  restoreCorrelation();
 });
 
 // ============================================================================

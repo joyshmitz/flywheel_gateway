@@ -485,10 +485,10 @@ export class ContextHealthService {
     const messages = state.messages;
     const preserveCount = preserveConfig.lastNMessages;
 
-    for (let i = 0; i < messages.length; i++) {
-      const msg = messages[i]!;
+    for (const [index, msg] of messages.entries()) {
       const isRecent =
-        i >= messages.length - preserveCount || msg.timestamp >= recentCutoff;
+        index >= messages.length - preserveCount ||
+        msg.timestamp >= recentCutoff;
 
       if (isRecent) {
         messagesToPreserve.push(msg);
@@ -846,7 +846,9 @@ export class ContextHealthService {
 
     const avgDelta =
       messageDeltas.reduce((a, b) => a + b, 0) / messageDeltas.length;
-    const currentTokens = history[history.length - 1]!.tokens;
+    const lastEntry = history[history.length - 1];
+    if (!lastEntry) return null;
+    const currentTokens = lastEntry.tokens;
     const remaining = maxTokens - currentTokens;
 
     if (avgDelta <= 0) return null;
@@ -873,12 +875,13 @@ export class ContextHealthService {
     const recentHistory = history.slice(-10);
     if (recentHistory.length < 2) return null;
 
+    const firstEntry = recentHistory[0];
+    const lastEntry = recentHistory[recentHistory.length - 1];
+    if (!firstEntry || !lastEntry) return null;
+
     const timeSpan =
-      recentHistory[recentHistory.length - 1]!.timestamp.getTime() -
-      recentHistory[0]!.timestamp.getTime();
-    const tokenIncrease =
-      recentHistory[recentHistory.length - 1]!.tokens -
-      recentHistory[0]!.tokens;
+      lastEntry.timestamp.getTime() - firstEntry.timestamp.getTime();
+    const tokenIncrease = lastEntry.tokens - firstEntry.tokens;
 
     if (timeSpan <= 0 || tokenIncrease <= 0) return null;
 

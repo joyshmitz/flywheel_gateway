@@ -2,10 +2,15 @@
  * Tests for audit service.
  */
 
-import { afterAll, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import type { AuditEventOptions } from "../services/audit";
-import { audit, auditFailure, auditSuccess } from "../services/audit";
-import { restoreRealDb } from "./test-utils/db-mock-restore";
+import {
+  audit,
+  auditFailure,
+  auditSuccess,
+  setAuditDbForTesting,
+} from "../services/audit";
+import { requestContextStorage } from "../middleware/correlation";
 
 const mockLogger = {
   info: () => {},
@@ -15,30 +20,27 @@ const mockLogger = {
   child: () => mockLogger,
 };
 
-// Mock the correlation middleware
-mock.module("../middleware/correlation", () => ({
-  getCorrelationId: () => "test-correlation-id",
-  getLogger: () => mockLogger,
-}));
-
-// Mock the database to avoid actual writes during tests
-mock.module("../db", () => ({
-  db: {
-    insert: () => ({
-      values: () => ({
-        catch: () => Promise.resolve(),
-      }),
-    }),
-  },
-}));
-
-afterAll(() => {
-  mock.restore();
-  // Restore real db module for other test files (mock.restore doesn't restore mock.module)
-  restoreRealDb();
-});
+const stubDb = {
+  insert: () => ({
+    values: () => Promise.resolve(),
+  }),
+};
 
 describe("Audit Service", () => {
+  beforeEach(() => {
+    setAuditDbForTesting(stubDb as any);
+    requestContextStorage.enterWith({
+      correlationId: "test-correlation-id",
+      requestId: "test-request-id",
+      startTime: performance.now(),
+      logger: mockLogger,
+    });
+  });
+
+  afterEach(() => {
+    setAuditDbForTesting(undefined);
+  });
+
   describe("audit", () => {
     test("creates audit event with required fields", () => {
       const options: AuditEventOptions = {

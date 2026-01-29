@@ -7,7 +7,8 @@ import {
   expect,
   test,
 } from "bun:test";
-import { sqlite } from "../db/connection";
+import { eq } from "drizzle-orm";
+import { agents, db, safetyConfigs, safetyRules } from "../db";
 import {
   _clearAllApprovalData,
   _setApprovalExpiration,
@@ -24,35 +25,16 @@ import {
 } from "../services/approval.service";
 import type { SafetyRule } from "../services/safety-rules.engine";
 
-// SQL to create the approval_requests table for tests
-const CREATE_TABLE_SQL = `
-CREATE TABLE IF NOT EXISTS approval_requests (
-  id TEXT PRIMARY KEY,
-  workspace_id TEXT NOT NULL,
-  agent_id TEXT,
-  session_id TEXT,
-  rule_id TEXT,
-  rule_name TEXT NOT NULL,
-  operation_type TEXT NOT NULL,
-  operation_command TEXT,
-  operation_path TEXT,
-  operation_description TEXT NOT NULL,
-  operation_details BLOB,
-  task_description TEXT,
-  recent_actions TEXT,
-  status TEXT NOT NULL DEFAULT 'pending',
-  priority TEXT NOT NULL DEFAULT 'normal',
-  requested_at INTEGER NOT NULL,
-  expires_at INTEGER NOT NULL,
-  decided_by TEXT,
-  decided_at INTEGER,
-  decision_reason TEXT,
-  correlation_id TEXT
-)`;
+const TEST_WORKSPACE_ID = "approval-test-workspace-1";
+const TEST_WORKSPACE_ID_2 = "approval-test-workspace-2";
+const TEST_AGENT_ID = "approval-test-agent-1";
+const TEST_SESSION_ID = "approval-test-session-1";
+const TEST_SAFETY_CONFIG_ID = "approval-test-safety-config-1";
+const TEST_RULE_ID = "approval-test-rule-1";
 
 describe("Approval Service", () => {
   const mockRule: SafetyRule = {
-    id: "rule-1",
+    id: TEST_RULE_ID,
     name: "Force Push Approval",
     description: "Force push requires approval",
     category: "git",
@@ -66,14 +48,62 @@ describe("Approval Service", () => {
     enabled: true,
   };
 
-  // Set up test database before all tests
-  beforeAll(() => {
-    sqlite.exec(CREATE_TABLE_SQL);
+  // Set up prerequisite rows for FK constraints (agents.id, safety_rules.id)
+  beforeAll(async () => {
+    const now = new Date();
+
+    await db.insert(agents).values({
+      id: TEST_AGENT_ID,
+      repoUrl: "https://example.com/repo.git",
+      task: "Approval service test agent",
+      status: "idle",
+      model: "sonnet-4",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await db.insert(safetyConfigs).values({
+      id: TEST_SAFETY_CONFIG_ID,
+      workspaceId: TEST_WORKSPACE_ID,
+      name: "Approval service test safety config",
+      description: "Test config for approval service",
+      enabled: true,
+      categoryEnables: JSON.stringify({ git: true }),
+      rateLimits: JSON.stringify({}),
+      budget: JSON.stringify({}),
+      approvalWorkflow: JSON.stringify({}),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await db.insert(safetyRules).values({
+      id: TEST_RULE_ID,
+      configId: TEST_SAFETY_CONFIG_ID,
+      workspaceId: TEST_WORKSPACE_ID,
+      name: mockRule.name,
+      description: mockRule.description,
+      category: mockRule.category,
+      conditions: JSON.stringify(mockRule.conditions),
+      conditionLogic: mockRule.conditionLogic,
+      action: mockRule.action,
+      severity: mockRule.severity,
+      message: mockRule.message,
+      enabled: true,
+      alternatives: null,
+      priority: 100,
+      metadata: null,
+      createdAt: now,
+      updatedAt: now,
+    });
   });
 
   // Clean up after all tests
   afterAll(async () => {
     await _clearAllApprovalData();
+    await db
+      .delete(safetyConfigs)
+      .where(eq(safetyConfigs.id, TEST_SAFETY_CONFIG_ID));
+    await db.delete(agents).where(eq(agents.id, TEST_AGENT_ID));
   });
 
   beforeEach(async () => {
@@ -87,9 +117,9 @@ describe("Approval Service", () => {
   describe("Creating Approvals", () => {
     test("creates approval request", async () => {
       const approval = await createApprovalRequest({
-        agentId: "agent-1",
-        sessionId: "session-1",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: {
           type: "git",
           command: "git push --force origin main",
@@ -100,16 +130,16 @@ describe("Approval Service", () => {
 
       expect(approval.id).toMatch(/^appr_/);
       expect(approval.status).toBe("pending");
-      expect(approval.agentId).toBe("agent-1");
+      expect(approval.agentId).toBe(TEST_AGENT_ID);
       expect(approval.operation.type).toBe("git");
       expect(approval.priority).toBe("normal");
     });
 
     test("creates with custom timeout", async () => {
       const approval = await createApprovalRequest({
-        agentId: "agent-1",
-        sessionId: "session-1",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: {
           type: "git",
           description: "Test operation",
@@ -125,9 +155,9 @@ describe("Approval Service", () => {
 
     test("creates with priority", async () => {
       const approval = await createApprovalRequest({
-        agentId: "agent-1",
-        sessionId: "session-1",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: {
           type: "git",
           description: "Urgent operation",
@@ -143,9 +173,9 @@ describe("Approval Service", () => {
   describe("Making Decisions", () => {
     test("approves request", async () => {
       const approval = await createApprovalRequest({
-        agentId: "agent-1",
-        sessionId: "session-1",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "git", description: "Test" },
         rule: mockRule,
       });
@@ -165,9 +195,9 @@ describe("Approval Service", () => {
 
     test("denies request", async () => {
       const approval = await createApprovalRequest({
-        agentId: "agent-1",
-        sessionId: "session-1",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "git", description: "Test" },
         rule: mockRule,
       });
@@ -196,9 +226,9 @@ describe("Approval Service", () => {
 
     test("fails for already decided request", async () => {
       const approval = await createApprovalRequest({
-        agentId: "agent-1",
-        sessionId: "session-1",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "git", description: "Test" },
         rule: mockRule,
       });
@@ -223,16 +253,16 @@ describe("Approval Service", () => {
   describe("Cancelling Approvals", () => {
     test("cancels pending approval", async () => {
       const approval = await createApprovalRequest({
-        agentId: "agent-1",
-        sessionId: "session-1",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "git", description: "Test" },
         rule: mockRule,
       });
 
       const result = await cancelApproval(
         approval.id,
-        "agent-1",
+        TEST_AGENT_ID,
         "No longer needed",
       );
 
@@ -242,9 +272,9 @@ describe("Approval Service", () => {
 
     test("cannot cancel non-pending approval", async () => {
       const approval = await createApprovalRequest({
-        agentId: "agent-1",
-        sessionId: "session-1",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "git", description: "Test" },
         rule: mockRule,
       });
@@ -255,7 +285,7 @@ describe("Approval Service", () => {
         decidedBy: "admin@example.com",
       });
 
-      const result = await cancelApproval(approval.id, "agent-1");
+      const result = await cancelApproval(approval.id, TEST_AGENT_ID);
 
       expect(result.success).toBe(false);
     });
@@ -264,9 +294,9 @@ describe("Approval Service", () => {
   describe("Querying Approvals", () => {
     test("gets approval by ID", async () => {
       const created = await createApprovalRequest({
-        agentId: "agent-1",
-        sessionId: "session-1",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "git", description: "Test" },
         rule: mockRule,
       });
@@ -279,40 +309,40 @@ describe("Approval Service", () => {
 
     test("lists approvals by workspace", async () => {
       await createApprovalRequest({
-        agentId: "agent-1",
-        sessionId: "session-1",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "git", description: "Test 1" },
         rule: mockRule,
       });
 
       await createApprovalRequest({
-        agentId: "agent-2",
-        sessionId: "session-2",
-        workspaceId: "workspace-2",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID_2,
         operation: { type: "git", description: "Test 2" },
         rule: mockRule,
       });
 
-      const approvals = await listApprovals({ workspaceId: "workspace-1" });
+      const approvals = await listApprovals({ workspaceId: TEST_WORKSPACE_ID });
 
       expect(approvals.length).toBe(1);
-      expect(approvals[0]?.workspaceId).toBe("workspace-1");
+      expect(approvals[0]?.workspaceId).toBe(TEST_WORKSPACE_ID);
     });
 
     test("lists approvals by status", async () => {
       const approval1 = await createApprovalRequest({
-        agentId: "agent-1",
-        sessionId: "session-1",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "git", description: "Test 1" },
         rule: mockRule,
       });
 
       await createApprovalRequest({
-        agentId: "agent-2",
-        sessionId: "session-2",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "git", description: "Test 2" },
         rule: mockRule,
       });
@@ -324,7 +354,7 @@ describe("Approval Service", () => {
       });
 
       const pending = await listApprovals({
-        workspaceId: "workspace-1",
+        workspaceId: TEST_WORKSPACE_ID,
         status: "pending",
       });
 
@@ -333,33 +363,33 @@ describe("Approval Service", () => {
 
     test("sorts by priority", async () => {
       await createApprovalRequest({
-        agentId: "agent-1",
-        sessionId: "session-1",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "git", description: "Low priority" },
         rule: mockRule,
         priority: "low",
       });
 
       await createApprovalRequest({
-        agentId: "agent-2",
-        sessionId: "session-2",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "git", description: "Urgent" },
         rule: mockRule,
         priority: "urgent",
       });
 
       await createApprovalRequest({
-        agentId: "agent-3",
-        sessionId: "session-3",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "git", description: "Normal" },
         rule: mockRule,
         priority: "normal",
       });
 
-      const approvals = await listApprovals({ workspaceId: "workspace-1" });
+      const approvals = await listApprovals({ workspaceId: TEST_WORKSPACE_ID });
 
       expect(approvals[0]?.priority).toBe("urgent");
       expect(approvals[1]?.priority).toBe("normal");
@@ -370,14 +400,14 @@ describe("Approval Service", () => {
   describe("Pending Approvals Queue", () => {
     test("gets pending approvals", async () => {
       await createApprovalRequest({
-        agentId: "agent-1",
-        sessionId: "session-1",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "git", description: "Test" },
         rule: mockRule,
       });
 
-      const pending = await getPendingApprovals("workspace-1");
+      const pending = await getPendingApprovals(TEST_WORKSPACE_ID);
 
       expect(pending.length).toBe(1);
       expect(pending[0]?.status).toBe("pending");
@@ -385,22 +415,22 @@ describe("Approval Service", () => {
 
     test("gets queue depth", async () => {
       await createApprovalRequest({
-        agentId: "agent-1",
-        sessionId: "session-1",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "git", description: "Test 1" },
         rule: mockRule,
       });
 
       await createApprovalRequest({
-        agentId: "agent-2",
-        sessionId: "session-2",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "git", description: "Test 2" },
         rule: mockRule,
       });
 
-      const depth = await getQueueDepth("workspace-1");
+      const depth = await getQueueDepth(TEST_WORKSPACE_ID);
 
       expect(depth).toBe(2);
     });
@@ -409,9 +439,9 @@ describe("Approval Service", () => {
   describe("Expiration", () => {
     test("marks expired approvals", async () => {
       const approval = await createApprovalRequest({
-        agentId: "agent-1",
-        sessionId: "session-1",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "git", description: "Test" },
         rule: mockRule,
         timeoutMinutes: 1,
@@ -430,9 +460,9 @@ describe("Approval Service", () => {
 
     test("cannot decide on expired approval", async () => {
       const approval = await createApprovalRequest({
-        agentId: "agent-1",
-        sessionId: "session-1",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "git", description: "Test" },
         rule: mockRule,
       });
@@ -454,18 +484,18 @@ describe("Approval Service", () => {
   describe("Statistics", () => {
     test("calculates statistics", async () => {
       const approval1 = await createApprovalRequest({
-        agentId: "agent-1",
-        sessionId: "session-1",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "git", description: "Test 1" },
         rule: mockRule,
         priority: "high",
       });
 
       await createApprovalRequest({
-        agentId: "agent-2",
-        sessionId: "session-2",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "filesystem", description: "Test 2" },
         rule: { ...mockRule, category: "filesystem" },
         priority: "low",
@@ -477,7 +507,7 @@ describe("Approval Service", () => {
         decidedBy: "admin",
       });
 
-      const stats = await getApprovalStats("workspace-1");
+      const stats = await getApprovalStats(TEST_WORKSPACE_ID);
 
       expect(stats.pending).toBe(1);
       expect(stats.approved).toBe(1);
@@ -489,9 +519,9 @@ describe("Approval Service", () => {
 
     test("calculates average decision time", async () => {
       const approval = await createApprovalRequest({
-        agentId: "agent-1",
-        sessionId: "session-1",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "git", description: "Test" },
         rule: mockRule,
       });
@@ -505,7 +535,7 @@ describe("Approval Service", () => {
         decidedBy: "admin",
       });
 
-      const stats = await getApprovalStats("workspace-1");
+      const stats = await getApprovalStats(TEST_WORKSPACE_ID);
 
       expect(stats.averageDecisionTimeMs).toBeGreaterThan(0);
     });
@@ -516,15 +546,15 @@ describe("Approval Service", () => {
       // Create multiple pending approvals
       for (let i = 0; i < 5; i++) {
         await createApprovalRequest({
-          agentId: `agent-${i}`,
-          sessionId: `session-${i}`,
-          workspaceId: "workspace-1",
+          agentId: TEST_AGENT_ID,
+          sessionId: `${TEST_SESSION_ID}-${i}`,
+          workspaceId: TEST_WORKSPACE_ID,
           operation: { type: "git", description: `Test ${i}` },
           rule: mockRule,
         });
       }
 
-      const result = await checkEscalation("workspace-1", {
+      const result = await checkEscalation(TEST_WORKSPACE_ID, {
         enabled: true,
         thresholds: {
           pendingCount: 3,
@@ -540,15 +570,15 @@ describe("Approval Service", () => {
     test("does not escalate when disabled", async () => {
       for (let i = 0; i < 5; i++) {
         await createApprovalRequest({
-          agentId: `agent-${i}`,
-          sessionId: `session-${i}`,
-          workspaceId: "workspace-1",
+          agentId: TEST_AGENT_ID,
+          sessionId: `${TEST_SESSION_ID}-${i}`,
+          workspaceId: TEST_WORKSPACE_ID,
           operation: { type: "git", description: `Test ${i}` },
           rule: mockRule,
         });
       }
 
-      const result = await checkEscalation("workspace-1", {
+      const result = await checkEscalation(TEST_WORKSPACE_ID, {
         enabled: false,
         thresholds: {
           pendingCount: 3,
@@ -562,14 +592,14 @@ describe("Approval Service", () => {
 
     test("does not escalate when below thresholds", async () => {
       await createApprovalRequest({
-        agentId: "agent-1",
-        sessionId: "session-1",
-        workspaceId: "workspace-1",
+        agentId: TEST_AGENT_ID,
+        sessionId: TEST_SESSION_ID,
+        workspaceId: TEST_WORKSPACE_ID,
         operation: { type: "git", description: "Test" },
         rule: mockRule,
       });
 
-      const result = await checkEscalation("workspace-1", {
+      const result = await checkEscalation(TEST_WORKSPACE_ID, {
         enabled: true,
         thresholds: {
           pendingCount: 10,

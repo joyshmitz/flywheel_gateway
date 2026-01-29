@@ -24,12 +24,17 @@ import {
   deletePipeline,
   getPipeline,
   getRun,
+  isSafePipelineContextKey,
+  isSafePipelineContextPath,
+  isSafeTransformExpression,
   listPipelines,
   listRuns,
   pauseRun,
   resumeRun,
   runPipeline,
   submitApproval,
+  TRANSFORM_MAP_ALLOWED_IDENTIFIERS,
+  TRANSFORM_REDUCE_ALLOWED_IDENTIFIERS,
   updatePipeline,
 } from "../services/pipeline.service";
 import {
@@ -107,10 +112,16 @@ const StepConfigSchema = z.discriminatedUnion("type", [
       maxIterations: z.number().positive(),
       parallel: z.boolean().optional(),
       parallelLimit: z.number().positive().optional(),
-      itemVariable: z.string().min(1),
-      indexVariable: z.string().min(1),
+      itemVariable: z.string().min(1).refine(isSafePipelineContextKey, {
+        message: "Unsafe itemVariable",
+      }),
+      indexVariable: z.string().min(1).refine(isSafePipelineContextKey, {
+        message: "Unsafe indexVariable",
+      }),
       steps: z.array(z.string().min(1)).min(1),
-      outputVariable: z.string().min(1),
+      outputVariable: z.string().min(1).refine(isSafePipelineContextKey, {
+        message: "Unsafe outputVariable",
+      }),
     }),
   }),
   z.object({
@@ -131,44 +142,106 @@ const StepConfigSchema = z.discriminatedUnion("type", [
           z.union([
             z.object({
               op: z.literal("set"),
-              path: z.string().min(1),
+              path: z.string().min(1).refine(isSafePipelineContextPath, {
+                message: "Unsafe path",
+              }),
               value: z.unknown(),
             }),
-            z.object({ op: z.literal("delete"), path: z.string().min(1) }),
+            z.object({
+              op: z.literal("delete"),
+              path: z.string().min(1).refine(isSafePipelineContextPath, {
+                message: "Unsafe path",
+              }),
+            }),
             z.object({
               op: z.literal("merge"),
-              source: z.string().min(1),
-              target: z.string().min(1),
+              source: z.string().min(1).refine(isSafePipelineContextPath, {
+                message: "Unsafe source path",
+              }),
+              target: z.string().min(1).refine(isSafePipelineContextPath, {
+                message: "Unsafe target path",
+              }),
             }),
             z.object({
               op: z.literal("map"),
-              source: z.string().min(1),
-              expression: z.string().min(1),
-              target: z.string().min(1),
+              source: z.string().min(1).refine(isSafePipelineContextPath, {
+                message: "Unsafe source path",
+              }),
+              expression: z
+                .string()
+                .min(1)
+                .max(512)
+                .refine(
+                  (expr) =>
+                    isSafeTransformExpression(
+                      expr,
+                      TRANSFORM_MAP_ALLOWED_IDENTIFIERS,
+                    ),
+                  { message: "Invalid transform expression" },
+                ),
+              target: z.string().min(1).refine(isSafePipelineContextPath, {
+                message: "Unsafe target path",
+              }),
             }),
             z.object({
               op: z.literal("filter"),
-              source: z.string().min(1),
-              condition: z.string().min(1),
-              target: z.string().min(1),
+              source: z.string().min(1).refine(isSafePipelineContextPath, {
+                message: "Unsafe source path",
+              }),
+              condition: z
+                .string()
+                .min(1)
+                .max(512)
+                .refine(
+                  (expr) =>
+                    isSafeTransformExpression(
+                      expr,
+                      TRANSFORM_MAP_ALLOWED_IDENTIFIERS,
+                    ),
+                  { message: "Invalid transform condition" },
+                ),
+              target: z.string().min(1).refine(isSafePipelineContextPath, {
+                message: "Unsafe target path",
+              }),
             }),
             z.object({
               op: z.literal("reduce"),
-              source: z.string().min(1),
-              expression: z.string().min(1),
+              source: z.string().min(1).refine(isSafePipelineContextPath, {
+                message: "Unsafe source path",
+              }),
+              expression: z
+                .string()
+                .min(1)
+                .max(512)
+                .refine(
+                  (expr) =>
+                    isSafeTransformExpression(
+                      expr,
+                      TRANSFORM_REDUCE_ALLOWED_IDENTIFIERS,
+                    ),
+                  { message: "Invalid transform expression" },
+                ),
               initial: z.unknown(),
-              target: z.string().min(1),
+              target: z.string().min(1).refine(isSafePipelineContextPath, {
+                message: "Unsafe target path",
+              }),
             }),
             z.object({
               op: z.literal("extract"),
-              source: z.string().min(1),
+              source: z.string().min(1).refine(isSafePipelineContextPath, {
+                message: "Unsafe source path",
+              }),
               query: z.string().min(1),
-              target: z.string().min(1),
+              target: z.string().min(1).refine(isSafePipelineContextPath, {
+                message: "Unsafe target path",
+              }),
             }),
           ]),
         )
         .min(1),
-      outputVariable: z.string().min(1),
+      outputVariable: z.string().min(1).refine(isSafePipelineContextPath, {
+        message: "Unsafe outputVariable",
+      }),
     }),
   }),
   z.object({
@@ -190,7 +263,9 @@ const StepConfigSchema = z.discriminatedUnion("type", [
         .optional(),
       validateStatus: z.array(z.number()).optional(),
       timeout: z.number().positive().optional(),
-      outputVariable: z.string().min(1),
+      outputVariable: z.string().min(1).refine(isSafePipelineContextKey, {
+        message: "Unsafe outputVariable",
+      }),
       extractFields: z.record(z.string(), z.string()).optional(),
     }),
   }),
@@ -202,7 +277,9 @@ const StepConfigSchema = z.discriminatedUnion("type", [
       inputs: z.record(z.string(), z.unknown()),
       waitForCompletion: z.boolean().optional(),
       timeout: z.number().positive().optional(),
-      outputVariable: z.string().min(1),
+      outputVariable: z.string().min(1).refine(isSafePipelineContextKey, {
+        message: "Unsafe outputVariable",
+      }),
     }),
   }),
 ]);

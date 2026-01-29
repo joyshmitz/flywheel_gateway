@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useMountedRef } from "../hooks/useMountedRef";
 import { useUiStore } from "../stores/ui";
 import {
   type ConnectionState,
@@ -66,6 +67,9 @@ export function WebSocketProvider({ children, url }: WebSocketProviderProps) {
   const mockMode = useUiStore((state) => state.mockMode);
   const [status, setStatus] = useState<ConnectionStatus>(createInitialStatus());
 
+  // Track component mount status to prevent setState after unmount
+  const isMounted = useMountedRef();
+
   // Refs for mutable state that shouldn't trigger re-renders
   const wsRef = useRef<WebSocket | null>(null);
   const attemptRef = useRef(0);
@@ -84,9 +88,12 @@ export function WebSocketProvider({ children, url }: WebSocketProviderProps) {
       ? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`
       : "ws://localhost:3000/ws");
 
-  // Update status helper
+  // Update status helper (guarded against unmount)
   const updateStatus = useCallback(
     (state: ConnectionState, attempt: number = attemptRef.current) => {
+      // Guard against setState after unmount
+      if (!isMounted.current) return;
+
       setStatus((prev) => {
         const now = Date.now();
         const nextRetryInMs =
@@ -111,7 +118,7 @@ export function WebSocketProvider({ children, url }: WebSocketProviderProps) {
         };
       });
     },
-    [],
+    [isMounted],
   );
 
   // Flush queued messages when connected
@@ -146,6 +153,9 @@ export function WebSocketProvider({ children, url }: WebSocketProviderProps) {
 
   // Connect function
   const connect = useCallback(() => {
+    // Guard against connecting after unmount
+    if (!isMounted.current) return;
+
     if (mockMode) {
       updateStatus("connected", 0);
       return;
@@ -171,6 +181,9 @@ export function WebSocketProvider({ children, url }: WebSocketProviderProps) {
       wsRef.current = ws;
 
       ws.onopen = () => {
+        // Guard against setState after unmount
+        if (!isMounted.current) return;
+
         attemptRef.current = 0;
         updateStatus("connected", 0);
 
@@ -180,6 +193,9 @@ export function WebSocketProvider({ children, url }: WebSocketProviderProps) {
       };
 
       ws.onmessage = (event) => {
+        // Guard against callbacks after unmount
+        if (!isMounted.current) return;
+
         try {
           const data = JSON.parse(event.data);
 
@@ -212,6 +228,9 @@ export function WebSocketProvider({ children, url }: WebSocketProviderProps) {
       ws.onclose = (event) => {
         wsRef.current = null;
 
+        // Guard against callbacks after unmount
+        if (!isMounted.current) return;
+
         // Don't reconnect on clean close
         if (event.code === 1000) {
           updateStatus("disconnected", 0);
@@ -241,7 +260,7 @@ export function WebSocketProvider({ children, url }: WebSocketProviderProps) {
     } catch {
       updateStatus("failed", attemptRef.current);
     }
-  }, [mockMode, wsUrl, updateStatus, resubscribeAll, flushQueue]);
+  }, [isMounted, mockMode, wsUrl, updateStatus, resubscribeAll, flushQueue]);
 
   // Manual reconnect (from failed state)
   const reconnect = useCallback(() => {

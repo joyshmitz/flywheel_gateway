@@ -5,7 +5,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { Hono } from "hono";
 import {
-  restoreCorrelation,
   restoreRealDb,
 } from "./test-utils/db-mock-restore";
 
@@ -14,19 +13,6 @@ let auditRoutes: typeof import("../routes/audit").default;
 beforeAll(async () => {
   // NOTE: These mocks must run before importing routes/services so they don't
   // pollute other test files via Bun's persistent mock.module behavior.
-
-  // Mock the correlation middleware
-  const mockLogger = {
-    info: () => {},
-    error: () => {},
-    warn: () => {},
-    debug: () => {},
-    child: () => mockLogger,
-  };
-  mock.module("../middleware/correlation", () => ({
-    getCorrelationId: () => "test-correlation-id",
-    getLogger: () => mockLogger,
-  }));
 
   // Mock the database
   const mockEvents = [
@@ -94,7 +80,6 @@ beforeAll(async () => {
 afterAll(() => {
   mock.restore();
   // Restore real modules for other test files (mock.restore doesn't restore mock.module)
-  restoreCorrelation();
   restoreRealDb();
 });
 

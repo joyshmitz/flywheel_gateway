@@ -10,12 +10,12 @@ import type {
   BvTriageResult,
 } from "@flywheel/flywheel-clients";
 import { createBvClient } from "@flywheel/flywheel-clients";
+import { getLogger } from "../middleware/correlation";
 import {
   createToolLogger,
   logCliCommand,
   logCliWarning,
 } from "../utils/cli-logging";
-import { getLogger } from "../middleware/correlation";
 
 interface RunOptions {
   cwd?: string;
@@ -171,7 +171,10 @@ export function clearBvCache(): void {
   cachedTriage = undefined;
 }
 
-export async function getBvTriage(): Promise<BvTriageResult> {
+export async function getBvTriage(options?: {
+  timeoutMs?: number;
+  maxOutputBytes?: number;
+}): Promise<BvTriageResult> {
   const log = getLogger();
   const ttlMs = Number(
     process.env["BV_TRIAGE_TTL_MS"] ?? DEFAULT_TRIAGE_TTL_MS,
@@ -185,7 +188,10 @@ export async function getBvTriage(): Promise<BvTriageResult> {
   }
 
   const start = performance.now();
-  const data = await getBvClient().getTriage();
+  const data = await getBvClient().getTriage({
+    timeoutMs: options?.timeoutMs,
+    maxOutputBytes: options?.maxOutputBytes,
+  });
   const latencyMs = Math.round(performance.now() - start);
   bvLogger.result("bv --robot-triage", latencyMs, "bv triage fetched", {
     dataHash: data.data_hash,
