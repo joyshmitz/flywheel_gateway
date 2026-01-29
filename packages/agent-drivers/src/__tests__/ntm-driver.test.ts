@@ -102,6 +102,14 @@ class TestableNtmDriver extends NtmDriver {
     // @ts-expect-error - accessing private field for testing
     return this.maxPollStaleMs;
   }
+
+  // Set lastSuccessfulPoll for testing staleness detection
+  setLastSuccessfulPoll(agentId: string, date: Date) {
+    const session = this.getSessions().get(agentId);
+    if (session) {
+      session.lastSuccessfulPoll = date;
+    }
+  }
 }
 
 describe("NtmDriver", () => {
@@ -283,6 +291,92 @@ describe("NtmDriver", () => {
       const eventTypes = events.map((e) => e.type);
       expect(eventTypes).toContain("error");
       expect(eventTypes).toContain("terminated");
+    });
+  });
+
+  describe("zombie detection - staleness detection", () => {
+    it("should mark agent as failed when lastSuccessfulPoll exceeds maxPollStaleMs", async () => {
+      const mockClient = createMockNtmClient({
+        tail: mock(() => Promise.reject(new Error("NTM unavailable"))),
+      });
+      const driver = new TestableNtmDriver(mockClient, {
+        maxConsecutivePollErrors: 10, // High threshold so we don't hit error count limit
+        maxPollStaleMs: 5000, // 5 seconds for testing
+      });
+
+      const config = createTestConfig();
+      await driver.spawn(config);
+
+      // Clear auto-started poll interval
+      const sessions = driver.getSessions();
+      const session = sessions.get(config.id);
+      if (session?.pollInterval) {
+        clearInterval(session.pollInterval);
+        delete session.pollInterval;
+      }
+
+      // Verify agent exists
+      expect(sessions.has(config.id)).toBe(true);
+
+      // Set lastSuccessfulPoll to 10 seconds ago (exceeds maxPollStaleMs of 5s)
+      const tenSecondsAgo = new Date(Date.now() - 10000);
+      driver.setLastSuccessfulPoll(config.id, tenSecondsAgo);
+
+      // Trigger a poll error (won't hit consecutive error threshold but will check staleness)
+      await driver.testPollOutput(config.id);
+
+      // Session should be removed due to staleness
+      expect(sessions.has(config.id)).toBe(false);
+    });
+
+    it("should not mark agent as stale when poll succeeds within threshold", async () => {
+      let shouldFail = true;
+      const mockClient = createMockNtmClient({
+        tail: mock(() => {
+          if (shouldFail) {
+            return Promise.reject(new Error("NTM unavailable"));
+          }
+          return Promise.resolve({
+            session_name: "test-session",
+            panes: {},
+          } as NtmTailOutput);
+        }),
+      });
+      const driver = new TestableNtmDriver(mockClient, {
+        maxConsecutivePollErrors: 10,
+        maxPollStaleMs: 60000, // 60 seconds
+      });
+
+      const config = createTestConfig();
+      await driver.spawn(config);
+
+      // Clear auto-started poll interval
+      const sessions = driver.getSessions();
+      const session = sessions.get(config.id);
+      if (session?.pollInterval) {
+        clearInterval(session.pollInterval);
+        delete session.pollInterval;
+      }
+
+      // Set lastSuccessfulPoll to 30 seconds ago (within 60s threshold)
+      const thirtySecondsAgo = new Date(Date.now() - 30000);
+      driver.setLastSuccessfulPoll(config.id, thirtySecondsAgo);
+
+      // Trigger a poll error - should NOT mark as stale yet
+      await driver.testPollOutput(config.id);
+      expect(sessions.has(config.id)).toBe(true);
+      expect(sessions.get(config.id)?.consecutiveErrors).toBe(1);
+
+      // Now succeed - this should reset lastSuccessfulPoll
+      shouldFail = false;
+      await driver.testPollOutput(config.id);
+      expect(sessions.has(config.id)).toBe(true);
+      expect(sessions.get(config.id)?.consecutiveErrors).toBe(0);
+
+      // lastSuccessfulPoll should be recent (within last second)
+      const timeSinceSuccess =
+        Date.now() - (sessions.get(config.id)?.lastSuccessfulPoll.getTime() ?? 0);
+      expect(timeSinceSuccess).toBeLessThan(1000);
     });
   });
 
