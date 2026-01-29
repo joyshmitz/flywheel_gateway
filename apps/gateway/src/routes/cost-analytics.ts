@@ -202,9 +202,9 @@ costAnalytics.get("/records", async (c) => {
       ...(agentId && { agentId }),
       ...(model && { model }),
       ...(provider && { provider }),
-      ...(since && { since: new Date(since) }),
-      ...(until && { until: new Date(until) }),
-      ...(limit && { limit: parseInt(limit, 10) }),
+      ...(since && !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
+      ...(until && !Number.isNaN(new Date(until).getTime()) && { until: new Date(until) }),
+      ...(limit && !Number.isNaN(parseInt(limit, 10)) && { limit: parseInt(limit, 10) }),
       ...(startingAfter && { startingAfter }),
     };
 
@@ -250,8 +250,8 @@ costAnalytics.get("/summary", async (c) => {
       ...(organizationId && { organizationId }),
       ...(projectId && { projectId }),
       ...(agentId && { agentId }),
-      ...(since && { since: new Date(since) }),
-      ...(until && { until: new Date(until) }),
+      ...(since && !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
+      ...(until && !Number.isNaN(new Date(until).getTime()) && { until: new Date(until) }),
     };
 
     const summary = await getCostSummary(filter);
@@ -294,8 +294,8 @@ costAnalytics.get("/breakdown/:dimension", async (c) => {
     const filter: CostFilter = {
       ...(organizationId && { organizationId }),
       ...(projectId && { projectId }),
-      ...(since && { since: new Date(since) }),
-      ...(until && { until: new Date(until) }),
+      ...(since && !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
+      ...(until && !Number.isNaN(new Date(until).getTime()) && { until: new Date(until) }),
     };
 
     const breakdown = await getCostBreakdown(dimension, filter);
@@ -332,8 +332,8 @@ costAnalytics.get("/trends/hourly", async (c) => {
     const filter: CostFilter = {
       ...(organizationId && { organizationId }),
       ...(projectId && { projectId }),
-      ...(since && { since: new Date(since) }),
-      ...(until && { until: new Date(until) }),
+      ...(since && !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
+      ...(until && !Number.isNaN(new Date(until).getTime()) && { until: new Date(until) }),
     };
     const hours = hoursParam ? parseInt(hoursParam, 10) : 24;
 
@@ -368,8 +368,8 @@ costAnalytics.get("/trends/daily", async (c) => {
     const filter: CostFilter = {
       ...(organizationId && { organizationId }),
       ...(projectId && { projectId }),
-      ...(since && { since: new Date(since) }),
-      ...(until && { until: new Date(until) }),
+      ...(since && !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
+      ...(until && !Number.isNaN(new Date(until).getTime()) && { until: new Date(until) }),
     };
     const days = daysParam ? parseInt(daysParam, 10) : 30;
 
@@ -404,8 +404,8 @@ costAnalytics.get("/top-agents", async (c) => {
     const filter: CostFilter = {
       ...(organizationId && { organizationId }),
       ...(projectId && { projectId }),
-      ...(since && { since: new Date(since) }),
-      ...(until && { until: new Date(until) }),
+      ...(since && !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
+      ...(until && !Number.isNaN(new Date(until).getTime()) && { until: new Date(until) }),
     };
     const limit = limitParam ? parseInt(limitParam, 10) : 10;
 
@@ -663,8 +663,8 @@ costAnalytics.get("/budget-alerts", async (c) => {
       ...(acknowledgedParam !== undefined && {
         acknowledged: acknowledgedParam === "true",
       }),
-      ...(since && { since: new Date(since) }),
-      ...(limitParam && { limit: parseInt(limitParam, 10) }),
+      ...(since && !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
+      ...(limitParam && !Number.isNaN(parseInt(limitParam, 10)) && { limit: parseInt(limitParam, 10) }),
     };
 
     const alerts = await getBudgetAlerts(filter);

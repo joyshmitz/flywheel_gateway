@@ -186,8 +186,8 @@ history.get("/stats", async (c) => {
     // Build options conditionally (for exactOptionalPropertyTypes)
     const statsOptions: Parameters<typeof getHistoryStats>[0] = {};
     if (agentId !== undefined) statsOptions.agentId = agentId;
-    if (startDate) statsOptions.startDate = new Date(startDate);
-    if (endDate) statsOptions.endDate = new Date(endDate);
+    if (startDate && !Number.isNaN(new Date(startDate).getTime())) statsOptions.startDate = new Date(startDate);
+    if (endDate && !Number.isNaN(new Date(endDate).getTime())) statsOptions.endDate = new Date(endDate);
 
     const stats = await getHistoryStats(statsOptions);
 

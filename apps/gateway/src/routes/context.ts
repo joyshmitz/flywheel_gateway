@@ -399,8 +399,10 @@ context.get("/:sessionId/context/history", async (c) => {
     const sinceParam = c.req.query("since");
     const limitParam = c.req.query("limit");
 
-    const since = sinceParam ? new Date(sinceParam) : undefined;
-    const limit = limitParam ? parseInt(limitParam, 10) : 100;
+    const sinceDate = sinceParam ? new Date(sinceParam) : undefined;
+    const since = sinceDate && !Number.isNaN(sinceDate.getTime()) ? sinceDate : undefined;
+    const parsedLimit = limitParam ? parseInt(limitParam, 10) : 100;
+    const limit = Number.isNaN(parsedLimit) ? 100 : parsedLimit;
 
     const healthService = getContextHealthService();
     const history = healthService.getHistory(sessionId, {

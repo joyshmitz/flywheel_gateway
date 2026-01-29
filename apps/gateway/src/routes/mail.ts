@@ -634,6 +634,9 @@ function createMailRoutes(
       const body = await c.req.json();
       const validated = MarkReadSchema.parse(body);
       const messageId = parseInt(c.req.param("messageId"), 10);
+      if (Number.isNaN(messageId)) {
+        return sendError(c, "INVALID_PARAMETER", "messageId must be a number", 400);
+      }
       const service = c.get("agentMail");
 
       const result = await service.client.markMessageRead({
@@ -655,6 +658,9 @@ function createMailRoutes(
       const body = await c.req.json();
       const validated = AcknowledgeSchema.parse(body);
       const messageId = parseInt(c.req.param("messageId"), 10);
+      if (Number.isNaN(messageId)) {
+        return sendError(c, "INVALID_PARAMETER", "messageId must be a number", 400);
+      }
       const service = c.get("agentMail");
 
       const result = await service.client.acknowledgeMessage({
@@ -685,7 +691,7 @@ function createMailRoutes(
       const service = c.get("agentMail");
 
       const results = await service.client.searchMessages(validated);
-      return sendList(c, "search_results", results);
+      return sendList(c, results);
     } catch (error) {
       return handleError(error, c);
     }
