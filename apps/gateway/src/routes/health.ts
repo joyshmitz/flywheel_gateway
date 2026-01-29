@@ -27,6 +27,10 @@ import {
   type HealthDiagnostics,
 } from "../services/tool-health-diagnostics.service";
 import { loadToolRegistry } from "../services/tool-registry.service";
+import {
+  getAllBreakerStatuses,
+  withCircuitBreaker,
+} from "../services/circuit-breaker.service";
 import { sendResource } from "../utils/response";
 import { getHub, type HubStats } from "../ws/hub";
 
@@ -180,6 +184,14 @@ interface DetailedHealthResponse {
     failed: number;
     criticalFailures: string[];
   };
+  circuitBreakers?: Array<{
+    tool: string;
+    state: string;
+    consecutiveFailures: number;
+    currentBackoffMs: number;
+    totalFailures: number;
+    totalSuccesses: number;
+  }>;
   cachedAt?: string;
 }
 
@@ -468,17 +480,32 @@ health.get("/detailed", async (c) => {
   const startTime = performance.now();
   log.info("Running detailed health check");
 
-  // Run all checks in parallel with individual timeouts
-  const [database, dcg, cass, ubs, drivers, websocket, agentCLIs] =
+  // Run all checks in parallel with circuit breakers for CLI tools
+  const unhealthyFallback: ComponentHealth = {
+    status: "unhealthy",
+    message: "Circuit breaker open (cached failure)",
+    latencyMs: 0,
+  };
+
+  const [database, dcgResult, cassResult, ubsResult, drivers, websocket, agentCLIs] =
     await Promise.all([
       checkDatabaseHealth(),
-      checkCLI("DCG", ["dcg", "--version"]),
-      checkCLI("CASS", ["cass", "--version"]),
-      checkCLI("UBS", ["ubs", "--version"]),
+      withCircuitBreaker("dcg", () => checkCLI("DCG", ["dcg", "--version"]), unhealthyFallback),
+      withCircuitBreaker("cass", () => checkCLI("CASS", ["cass", "--version"]), unhealthyFallback),
+      withCircuitBreaker("ubs", () => checkCLI("UBS", ["ubs", "--version"]), unhealthyFallback),
       checkDriversHealth(),
       Promise.resolve(checkWebSocketHealth()),
       checkAgentCLIsHealth(),
     ]);
+
+  const dcg = dcgResult.result;
+  const cass = cassResult.result;
+  const ubs = ubsResult.result;
+
+  // Add circuit breaker metadata to cached results
+  if (dcgResult.fromCache) dcg.details = { ...dcg.details, circuitBreakerOpen: true };
+  if (cassResult.fromCache) cass.details = { ...cass.details, circuitBreakerOpen: true };
+  if (ubsResult.fromCache) ubs.details = { ...ubs.details, circuitBreakerOpen: true };
 
   // Compute dependency-aware diagnostics if detection succeeded
   let diagnostics: HealthDiagnostics | undefined;
@@ -536,6 +563,8 @@ health.get("/detailed", async (c) => {
     status = "healthy";
   }
 
+  const circuitBreakers = getAllBreakerStatuses();
+
   const response: DetailedHealthResponse = {
     status,
     timestamp: new Date().toISOString(),
@@ -548,6 +577,7 @@ health.get("/detailed", async (c) => {
       failed,
       criticalFailures,
     },
+    ...(circuitBreakers.length > 0 && { circuitBreakers }),
   };
 
   // Cache the response
