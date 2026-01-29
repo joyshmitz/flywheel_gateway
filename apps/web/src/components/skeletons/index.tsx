@@ -545,6 +545,72 @@ export function UtilitiesSkeleton() {
 }
 
 // ============================================================================
+// NTM Page Skeleton
+// ============================================================================
+
+export function NTMSkeleton() {
+  return (
+    <div className="page" role="region" aria-busy="true" aria-label="Loading notifications">
+      <div className="card">
+        <div className="card__header">
+          <Skeleton variant="text" style={{ width: 100 }} />
+          <Skeleton variant="button" style={{ width: 80 }} />
+        </div>
+        <div className="form-row" style={{ marginBottom: 16 }}>
+          <Skeleton variant="button" style={{ width: 140 }} />
+          <Skeleton variant="button" style={{ width: 120 }} />
+        </div>
+      </div>
+      <div className="card" style={{ marginTop: 16 }}>
+        <SkeletonTable rows={8} columns={5} />
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// CASS Page Skeleton
+// ============================================================================
+
+export function CASSSkeleton() {
+  return (
+    <div className="page" role="region" aria-busy="true" aria-label="Loading session search">
+      <div className="card">
+        <Skeleton variant="text" style={{ width: 80, marginBottom: 12 }} />
+        <div className="form-row">
+          <Skeleton variant="text" style={{ width: "60%", height: 40 }} />
+          <Skeleton variant="button" style={{ width: 100 }} />
+          <Skeleton variant="button" style={{ width: 80 }} />
+        </div>
+      </div>
+      <div className="card" style={{ marginTop: 16 }}>
+        <SkeletonTable rows={6} columns={4} />
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// SLB Page Skeleton
+// ============================================================================
+
+export function SLBSkeleton() {
+  return (
+    <div className="page" role="region" aria-busy="true" aria-label="Loading safety line buffer">
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <Skeleton variant="button" style={{ width: 80 }} />
+        <Skeleton variant="button" style={{ width: 80 }} />
+        <Skeleton variant="button" style={{ width: 80 }} />
+        <Skeleton variant="button" style={{ width: 100 }} />
+      </div>
+      <div className="card">
+        <SkeletonTable rows={6} columns={5} />
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // Generic Page Skeleton (fallback)
 // ============================================================================
 

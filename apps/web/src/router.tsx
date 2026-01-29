@@ -28,6 +28,9 @@ import {
   SetupSkeleton,
   UtilitiesSkeleton,
   VelocitySkeleton,
+  NTMSkeleton,
+  CASSSkeleton,
+  SLBSkeleton,
 } from "./components/skeletons";
 
 // ============================================================================
@@ -79,6 +82,15 @@ const SetupPage = lazy(() =>
 );
 const UtilitiesPage = lazy(() =>
   import("./pages/Utilities").then((m) => ({ default: m.UtilitiesPage })),
+);
+const NTMPage = lazy(() =>
+  import("./pages/NTM").then((m) => ({ default: m.NTMPage })),
+);
+const CASSPage = lazy(() =>
+  import("./pages/CASS").then((m) => ({ default: m.CASSPage })),
+);
+const SLBPage = lazy(() =>
+  import("./pages/SLB").then((m) => ({ default: m.SLBPage })),
 );
 
 // NotFoundPage stays static (small, always needed)
@@ -197,6 +209,24 @@ const utilitiesRoute = createRoute({
   component: withSuspense(UtilitiesPage, UtilitiesSkeleton),
 });
 
+const ntmRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/ntm",
+  component: withSuspense(NTMPage, NTMSkeleton),
+});
+
+const cassRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/cass",
+  component: withSuspense(CASSPage, CASSSkeleton),
+});
+
+const slbRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/slb",
+  component: withSuspense(SLBPage, SLBSkeleton),
+});
+
 const notFoundRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "*",
@@ -222,6 +252,9 @@ const routeTree = rootRoute.addChildren([
   utilitiesRoute,
   velocityRoute,
   collaborationRoute,
+  ntmRoute,
+  cassRoute,
+  slbRoute,
   settingsRoute,
   notFoundRoute,
 ]);

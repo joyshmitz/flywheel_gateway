@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Activity,
+  Bell,
   Bot,
   ChevronLeft,
   ChevronRight,
@@ -10,7 +11,9 @@ import {
   Gauge,
   GitBranch,
   Key,
+  Lock,
   Network,
+  Search,
   Settings,
   Shield,
   Sparkles,
@@ -31,6 +34,9 @@ const navItems = [
   { label: "Accounts", icon: Key, to: "/accounts" },
   { label: "Costs", icon: DollarSign, to: "/cost-analytics" },
   { label: "DCG", icon: Shield, to: "/dcg" },
+  { label: "SLB", icon: Lock, to: "/slb" },
+  { label: "NTM", icon: Bell, to: "/ntm" },
+  { label: "CASS", icon: Search, to: "/cass" },
   { label: "Fleet", icon: GitBranch, to: "/fleet" },
   { label: "Pipelines", icon: Workflow, to: "/pipelines" },
   { label: "Velocity", icon: Activity, to: "/velocity" },
