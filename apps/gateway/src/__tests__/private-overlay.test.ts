@@ -62,7 +62,9 @@ function restoreEnv(): void {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
   }
-  Object.keys(savedEnv).forEach((k) => delete savedEnv[k]);
+  Object.keys(savedEnv).forEach((k) => {
+    delete savedEnv[k];
+  });
 }
 
 // ============================================================================
@@ -74,7 +76,7 @@ describe("resolvePrivateDir", () => {
 
   it("uses default when env not set", () => {
     clearEnv("FLYWHEEL_PRIVATE_DIR");
-    expect(resolvePrivateDir()).toBe("/dp/flywheel_private");
+    expect(resolvePrivateDir()).toBe("/data/projects/flywheel_private");
   });
 
   it("uses FLYWHEEL_PRIVATE_DIR when set", () => {

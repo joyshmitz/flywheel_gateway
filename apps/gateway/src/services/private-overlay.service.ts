@@ -2,7 +2,7 @@
  * Private Overlay Service (bd-2n73.13)
  *
  * Loads and merges private configuration overlays from an external
- * directory (e.g., /dp/flywheel_private). Overlays can:
+ * directory (e.g., /data/projects/flywheel_private). Overlays can:
  * - Override/extend tool definitions (enable/disable, add auth, aliases)
  * - Supply environment-mapped secrets (TOOL_<NAME>_API_KEY)
  * - Provide per-environment configuration profiles
@@ -20,7 +20,7 @@ import type { ToolDefinition, ToolRegistry } from "@flywheel/shared";
 // Constants
 // ============================================================================
 
-const DEFAULT_PRIVATE_DIR = "/dp/flywheel_private";
+const DEFAULT_PRIVATE_DIR = "/data/projects/flywheel_private";
 const OVERLAY_MANIFEST_FILE = "overlay.manifest.yaml";
 const ENV_MAPPING_FILE = "env-mapping.yaml";
 
