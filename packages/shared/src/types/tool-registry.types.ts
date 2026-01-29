@@ -170,6 +170,8 @@ export interface ToolDefinition {
   robotMode?: RobotModeSpec | undefined;
   /** MCP server capabilities */
   mcp?: McpSpec | undefined;
+  /** Tool dependency IDs (e.g., ["tools.tmux"] means this tool requires tmux) */
+  depends?: string[] | undefined;
 }
 
 export interface ToolRegistry {

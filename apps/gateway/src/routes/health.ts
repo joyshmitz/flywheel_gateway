@@ -22,6 +22,11 @@ import {
   getCapabilities,
   getRuntimeInfo,
 } from "../services/build-info";
+import {
+  computeHealthDiagnostics,
+  type HealthDiagnostics,
+} from "../services/tool-health-diagnostics.service";
+import { loadToolRegistry } from "../services/tool-registry.service";
 import { sendResource } from "../utils/response";
 import { getHub, type HubStats } from "../ws/hub";
 
@@ -167,6 +172,7 @@ interface DetailedHealthResponse {
     websocket: ComponentHealth & { stats: HubStats };
     agentCLIs: ComponentHealth & { detection: DetectionResult | null };
   };
+  diagnostics?: HealthDiagnostics;
   summary: {
     totalChecks: number;
     passed: number;
@@ -474,6 +480,20 @@ health.get("/detailed", async (c) => {
       checkAgentCLIsHealth(),
     ]);
 
+  // Compute dependency-aware diagnostics if detection succeeded
+  let diagnostics: HealthDiagnostics | undefined;
+  if (agentCLIs.detection) {
+    try {
+      const registry = await loadToolRegistry();
+      diagnostics = computeHealthDiagnostics(
+        registry.tools,
+        agentCLIs.detection.clis,
+      );
+    } catch {
+      // Non-critical; omit diagnostics on failure
+    }
+  }
+
   // Aggregate results
   const components = {
     database,
@@ -520,6 +540,7 @@ health.get("/detailed", async (c) => {
     status,
     timestamp: new Date().toISOString(),
     components,
+    ...(diagnostics && { diagnostics }),
     summary: {
       totalChecks: allComponents.length,
       passed,
