@@ -365,8 +365,7 @@ async function sendSlackNotification(
       clearTimeout(timeoutId);
     }
   } catch (error) {
-    const isTimeout =
-      error instanceof Error && error.name === "AbortError";
+    const isTimeout = error instanceof Error && error.name === "AbortError";
     log.error(
       {
         notificationId: notification.id,
