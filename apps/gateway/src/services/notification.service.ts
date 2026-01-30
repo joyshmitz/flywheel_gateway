@@ -201,6 +201,32 @@ async function sendEmailNotification(
   return true;
 }
 
+/** Slack header block max text length */
+const SLACK_HEADER_MAX_LENGTH = 150;
+
+/** Default fetch timeout for external webhook calls (10 seconds) */
+const WEBHOOK_TIMEOUT_MS = 10_000;
+
+/**
+ * Truncate text to max length, adding ellipsis if truncated.
+ */
+function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength - 1)}…`;
+}
+
+/**
+ * Mask a URL for safe logging (show only host, hide path/query).
+ */
+function maskUrlForLogging(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.protocol}//${parsed.host}/***`;
+  } catch {
+    return "***invalid-url***";
+  }
+}
+
 /**
  * Build Slack message payload with Block Kit formatting.
  */
@@ -216,6 +242,10 @@ function buildSlackPayload(notification: Notification): {
   };
 
   const emoji = priorityEmoji[notification.priority] ?? "📢";
+  const headerText = truncateText(
+    `${emoji} ${notification.title}`,
+    SLACK_HEADER_MAX_LENGTH,
+  );
   const fallbackText = `${emoji} ${notification.title}: ${notification.body}`;
 
   const blocks: Array<Record<string, unknown>> = [
@@ -223,7 +253,7 @@ function buildSlackPayload(notification: Notification): {
       type: "header",
       text: {
         type: "plain_text",
-        text: `${emoji} ${notification.title}`,
+        text: headerText,
         emoji: true,
       },
     },
@@ -295,38 +325,54 @@ async function sendSlackNotification(
     return false;
   }
 
+  const maskedUrl = maskUrlForLogging(webhookUrl);
+
   try {
     const payload = buildSlackPayload(notification);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
 
-    const response = await fetch(webhookUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      log.error(
-        {
-          notificationId: notification.id,
-          status: response.status,
-          error: errorText,
+    try {
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        "[NOTIFY] Slack webhook request failed",
-      );
-      return false;
-    }
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
 
-    log.info(
-      { notificationId: notification.id, title: notification.title },
-      "[NOTIFY] Slack notification sent successfully",
-    );
-    return true;
+      if (!response.ok) {
+        const errorText = await response.text();
+        log.error(
+          {
+            notificationId: notification.id,
+            url: maskedUrl,
+            status: response.status,
+            error: errorText,
+          },
+          "[NOTIFY] Slack webhook request failed",
+        );
+        return false;
+      }
+
+      log.info(
+        { notificationId: notification.id, title: notification.title },
+        "[NOTIFY] Slack notification sent successfully",
+      );
+      return true;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   } catch (error) {
+    const isTimeout =
+      error instanceof Error && error.name === "AbortError";
     log.error(
-      { notificationId: notification.id, error: String(error) },
+      {
+        notificationId: notification.id,
+        url: maskedUrl,
+        error: isTimeout ? "Request timed out" : String(error),
+      },
       "[NOTIFY] Slack webhook request error",
     );
     return false;
@@ -369,13 +415,15 @@ async function sendWebhookNotification(
   const webhookConfig = prefs.channelConfig?.webhook;
   const webhookUrl = webhookConfig?.url;
 
-  if (!webhookUrl) {
+  if (!webhookUrl || !webhookConfig) {
     log.debug(
       { notificationId: notification.id },
       "[NOTIFY] Webhook channel: no URL configured",
     );
     return false;
   }
+
+  const maskedUrl = maskUrlForLogging(webhookUrl);
 
   try {
     const payload = {
@@ -413,37 +461,46 @@ async function sendWebhookNotification(
       headers["X-Flywheel-Signature"] = `sha256=${signature}`;
     }
 
-    const response = await fetch(webhookUrl, {
-      method: "POST",
-      headers,
-      body: payloadJson,
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      log.error(
-        {
-          notificationId: notification.id,
-          url: webhookUrl,
-          status: response.status,
-          error: errorText,
-        },
-        "[NOTIFY] Webhook request failed",
+    try {
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers,
+        body: payloadJson,
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        log.error(
+          {
+            notificationId: notification.id,
+            url: maskedUrl,
+            status: response.status,
+            error: errorText,
+          },
+          "[NOTIFY] Webhook request failed",
+        );
+        return false;
+      }
+
+      log.info(
+        { notificationId: notification.id, url: maskedUrl },
+        "[NOTIFY] Webhook notification sent successfully",
       );
-      return false;
+      return true;
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    log.info(
-      { notificationId: notification.id, url: webhookUrl },
-      "[NOTIFY] Webhook notification sent successfully",
-    );
-    return true;
   } catch (error) {
+    const isTimeout = error instanceof Error && error.name === "AbortError";
     log.error(
       {
         notificationId: notification.id,
-        url: webhookUrl,
-        error: String(error),
+        url: maskedUrl,
+        error: isTimeout ? "Request timed out" : String(error),
       },
       "[NOTIFY] Webhook request error",
     );
