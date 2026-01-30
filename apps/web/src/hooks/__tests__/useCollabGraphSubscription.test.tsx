@@ -2,7 +2,7 @@
  * Tests for Collaboration Graph WebSocket subscription behavior.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { act, render } from "@testing-library/react";
 import "@testing-library/jest-dom";
@@ -42,8 +42,18 @@ class MockWebSocket {
   }
 }
 
+const createWebSocket = (url: string) =>
+  new MockWebSocket(url) as unknown as WebSocket;
+
 function SubscriptionProbe({ workspaceId }: { workspaceId?: string }) {
-  const subscriptionOptions = workspaceId === undefined ? {} : { workspaceId };
+  const subscriptionOptions =
+    workspaceId === undefined
+      ? { wsUrl: "ws://example.test/ws", __testCreateWebSocket: createWebSocket }
+      : {
+          workspaceId,
+          wsUrl: "ws://example.test/ws",
+          __testCreateWebSocket: createWebSocket,
+        };
   const { connected } = useGraphSubscription(subscriptionOptions);
   return (
     <div data-testid="connected">
@@ -53,35 +63,11 @@ function SubscriptionProbe({ workspaceId }: { workspaceId?: string }) {
 }
 
 describe("useGraphSubscription", () => {
-  let originalWebSocket: typeof WebSocket;
-  let originalLocation: Location;
-
   beforeEach(() => {
-    originalWebSocket = globalThis.WebSocket;
-    originalLocation = window.location;
-
-    // Ensure deterministic location.host/protocol for URL assertions
-    Object.defineProperty(window, "location", {
-      value: new URL("http://example.test/") as unknown as Location,
-      writable: true,
-      configurable: true,
-    });
-
     // Ensure mock mode is disabled for these tests
     useUiStore.getState().setMockMode(false);
 
-    // Install WebSocket mock
     MockWebSocket.instances = [];
-    globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
-  });
-
-  afterEach(() => {
-    globalThis.WebSocket = originalWebSocket;
-    Object.defineProperty(window, "location", {
-      value: originalLocation,
-      writable: true,
-      configurable: true,
-    });
   });
 
   it("connects to /ws and subscribes to workspace channels", async () => {

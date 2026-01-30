@@ -516,6 +516,15 @@ interface UseGraphSubscriptionOptions {
    * Defaults to "default".
    */
   workspaceId?: string;
+  /**
+   * WebSocket URL override. Defaults to `/ws` on the current host.
+   */
+  wsUrl?: string;
+  /**
+   * Test-only override for WebSocket creation.
+   * Avoids mutating `globalThis.WebSocket` across concurrently running test files.
+   */
+  __testCreateWebSocket?: (url: string) => WebSocket;
   onAgentStatus?: (agent: AgentNode) => void;
   onReservationAcquired?: (reservation: ReservationNode) => void;
   onReservationReleased?: (reservationId: string) => void;
@@ -625,11 +634,24 @@ export function useGraphSubscription(
 
     shouldReconnectRef.current = true;
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = new URL(`${protocol}//${window.location.host}/ws`);
+    const wsUrlValue =
+      options.wsUrl ??
+      (() => {
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        return `${protocol}//${window.location.host}/ws`;
+      })();
+    let wsUrl: URL;
+    try {
+      wsUrl = new URL(wsUrlValue);
+    } catch {
+      setConnected(false);
+      return;
+    }
     const gatewayToken = import.meta.env["VITE_GATEWAY_TOKEN"]?.trim();
     if (gatewayToken) wsUrl.searchParams.set("token", gatewayToken);
-    const ws = new WebSocket(wsUrl.toString());
+    const ws = options.__testCreateWebSocket
+      ? options.__testCreateWebSocket(wsUrl.toString())
+      : new WebSocket(wsUrl.toString());
 
     ws.onopen = () => {
       if (wsRef.current !== ws) return;
@@ -787,7 +809,14 @@ export function useGraphSubscription(
     };
 
     wsRef.current = ws;
-  }, [clearReconnectTimeout, mockMode, options.workspaceId, queueEvent]);
+  }, [
+    clearReconnectTimeout,
+    mockMode,
+    options.workspaceId,
+    options.wsUrl,
+    options.__testCreateWebSocket,
+    queueEvent,
+  ]);
 
   // Keep connectRef in sync with connect for self-referencing
   useEffect(() => {
