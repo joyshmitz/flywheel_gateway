@@ -17,7 +17,7 @@ import type {
   UpdateDashboardInput,
   Widget,
 } from "@flywheel/shared";
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { z } from "zod";
 import { getLogger } from "../middleware/correlation";
 import {
@@ -53,6 +53,15 @@ import {
 import { transformZodError } from "../utils/validation";
 
 const dashboards = new Hono();
+const DEFAULT_DASHBOARD_USER_ID = "default";
+
+function getRequestUserId(c: Context): string {
+  return (
+    c.req.header("X-User-Id") ??
+    c.req.header("X-User") ??
+    DEFAULT_DASHBOARD_USER_ID
+  );
+}
 
 // ============================================================================
 // Validation Schemas
@@ -211,12 +220,17 @@ const UpdateDashboardSchema = z.object({
  */
 dashboards.get("/", async (c) => {
   const log = getLogger();
-  const userId = c.req.query("userId") ?? "default";
+  const userId = getRequestUserId(c);
   const workspaceId = c.req.query("workspaceId");
   const rawVisibility = c.req.query("visibility");
-  const validVisibilities: DashboardVisibility[] = ["private", "team", "public"];
+  const validVisibilities: DashboardVisibility[] = [
+    "private",
+    "team",
+    "public",
+  ];
   const visibility: DashboardVisibility | undefined =
-    rawVisibility && validVisibilities.includes(rawVisibility as DashboardVisibility)
+    rawVisibility &&
+    validVisibilities.includes(rawVisibility as DashboardVisibility)
       ? (rawVisibility as DashboardVisibility)
       : undefined;
   const parsedLimit = Number.parseInt(c.req.query("limit") ?? "50", 10);
@@ -250,7 +264,7 @@ dashboards.get("/", async (c) => {
  */
 dashboards.get("/favorites", async (c) => {
   const log = getLogger();
-  const userId = c.req.query("userId") ?? "default";
+  const userId = getRequestUserId(c);
 
   try {
     const favorites = await listFavorites(userId);
@@ -320,7 +334,7 @@ dashboards.get("/public/:slug", async (c) => {
 dashboards.get("/:id", async (c) => {
   const log = getLogger();
   const id = c.req.param("id");
-  const userId = c.req.query("userId") ?? "default";
+  const userId = getRequestUserId(c);
 
   try {
     const dashboard = await getDashboard(id);
@@ -351,7 +365,7 @@ dashboards.get("/:id", async (c) => {
  */
 dashboards.post("/", async (c) => {
   const log = getLogger();
-  const userId = c.req.query("userId") ?? "default";
+  const userId = getRequestUserId(c);
 
   try {
     const body = await c.req.json();
@@ -381,7 +395,7 @@ dashboards.post("/", async (c) => {
 dashboards.put("/:id", async (c) => {
   const log = getLogger();
   const id = c.req.param("id");
-  const userId = c.req.query("userId") ?? "default";
+  const userId = getRequestUserId(c);
 
   try {
     const existingDashboard = await getDashboard(id);
@@ -430,7 +444,7 @@ dashboards.put("/:id", async (c) => {
 dashboards.delete("/:id", async (c) => {
   const log = getLogger();
   const id = c.req.param("id");
-  const userId = c.req.query("userId") ?? "default";
+  const userId = getRequestUserId(c);
 
   try {
     const dashboard = await getDashboard(id);
@@ -469,7 +483,7 @@ dashboards.delete("/:id", async (c) => {
 dashboards.post("/:id/duplicate", async (c) => {
   const log = getLogger();
   const id = c.req.param("id");
-  const userId = c.req.query("userId") ?? "default";
+  const userId = getRequestUserId(c);
 
   try {
     const existingDashboard = await getDashboard(id);
@@ -515,7 +529,7 @@ dashboards.post("/:id/duplicate", async (c) => {
 dashboards.post("/:id/widgets", async (c) => {
   const log = getLogger();
   const id = c.req.param("id");
-  const userId = c.req.query("userId") ?? "default";
+  const userId = getRequestUserId(c);
 
   try {
     const dashboard = await getDashboard(id);
@@ -562,7 +576,7 @@ dashboards.put("/:id/widgets/:widgetId", async (c) => {
   const log = getLogger();
   const id = c.req.param("id");
   const widgetId = c.req.param("widgetId");
-  const userId = c.req.query("userId") ?? "default";
+  const userId = getRequestUserId(c);
 
   try {
     const dashboard = await getDashboard(id);
@@ -613,7 +627,7 @@ dashboards.delete("/:id/widgets/:widgetId", async (c) => {
   const log = getLogger();
   const id = c.req.param("id");
   const widgetId = c.req.param("widgetId");
-  const userId = c.req.query("userId") ?? "default";
+  const userId = getRequestUserId(c);
 
   try {
     const dashboard = await getDashboard(id);
@@ -653,7 +667,7 @@ dashboards.get("/:id/widgets/:widgetId/data", async (c) => {
   const log = getLogger();
   const id = c.req.param("id");
   const widgetId = c.req.param("widgetId");
-  const userId = c.req.query("userId") ?? "default";
+  const userId = getRequestUserId(c);
 
   try {
     const dashboard = await getDashboard(id);
@@ -694,7 +708,7 @@ dashboards.get("/:id/widgets/:widgetId/data", async (c) => {
 dashboards.put("/:id/sharing", async (c) => {
   const log = getLogger();
   const id = c.req.param("id");
-  const userId = c.req.query("userId") ?? "default";
+  const userId = getRequestUserId(c);
 
   try {
     const dashboard = await getDashboard(id);
@@ -743,7 +757,7 @@ dashboards.put("/:id/sharing", async (c) => {
 dashboards.get("/:id/permissions", async (c) => {
   const log = getLogger();
   const id = c.req.param("id");
-  const userId = c.req.query("userId") ?? "default";
+  const userId = getRequestUserId(c);
 
   try {
     const dashboard = await getDashboard(id);
@@ -779,7 +793,7 @@ dashboards.get("/:id/permissions", async (c) => {
 dashboards.post("/:id/permissions", async (c) => {
   const log = getLogger();
   const id = c.req.param("id");
-  const userId = c.req.query("userId") ?? "default";
+  const userId = getRequestUserId(c);
 
   try {
     const dashboard = await getDashboard(id);
@@ -840,7 +854,7 @@ dashboards.delete("/:id/permissions/:targetUserId", async (c) => {
   const log = getLogger();
   const id = c.req.param("id");
   const targetUserId = c.req.param("targetUserId");
-  const userId = c.req.query("userId") ?? "default";
+  const userId = getRequestUserId(c);
 
   try {
     const dashboard = await getDashboard(id);
@@ -886,7 +900,7 @@ dashboards.delete("/:id/permissions/:targetUserId", async (c) => {
 dashboards.post("/:id/favorite", async (c) => {
   const log = getLogger();
   const id = c.req.param("id");
-  const userId = c.req.query("userId") ?? "default";
+  const userId = getRequestUserId(c);
 
   try {
     const dashboard = await getDashboard(id);
@@ -925,7 +939,7 @@ dashboards.post("/:id/favorite", async (c) => {
 dashboards.delete("/:id/favorite", async (c) => {
   const log = getLogger();
   const id = c.req.param("id");
-  const userId = c.req.query("userId") ?? "default";
+  const userId = getRequestUserId(c);
 
   try {
     const removed = await removeFavorite(userId, id);

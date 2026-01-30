@@ -749,9 +749,6 @@ registry.registerPath({
   tags: ["Dashboards"],
   request: {
     query: PaginationQuerySchema.extend({
-      userId: z.string().optional().openapi({
-        description: "Filter by owner user ID",
-      }),
       workspaceId: z.string().optional().openapi({
         description: "Filter by workspace ID",
       }),
@@ -822,13 +819,6 @@ registry.registerPath({
   summary: "List favorite dashboards",
   description: "Returns the user's favorite dashboards.",
   tags: ["Dashboards"],
-  request: {
-    query: z.object({
-      userId: z.string().optional().openapi({
-        description: "User ID",
-      }),
-    }),
-  },
   responses: {
     200: {
       description: "List of favorite dashboards",

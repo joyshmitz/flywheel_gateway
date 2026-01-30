@@ -578,7 +578,36 @@ export async function terminateAgent(
       state: "terminating",
     };
   } catch (error) {
-    // Mark as failed if termination fails
+    // If graceful termination failed, attempt force-terminate to avoid orphan
+    if (graceful) {
+      try {
+        await drv.terminate(agentId, false);
+        log.warn(
+          { agentId },
+          "Graceful termination failed; force-terminated agent",
+        );
+
+        audit({
+          action: "agent.terminate",
+          resource: agentId,
+          resourceType: "agent",
+          outcome: "success",
+          metadata: { graceful: false, fallback: true },
+        });
+
+        return {
+          agentId,
+          state: "terminating",
+        };
+      } catch (forceError) {
+        log.error(
+          { error: forceError, agentId },
+          "Force termination also failed — agent process may be orphaned",
+        );
+      }
+    }
+
+    // Both graceful and force termination failed (or was already non-graceful)
     markAgentFailed(agentId, "driver_error", {
       code: "TERMINATE_FAILED",
       message: String(error),
