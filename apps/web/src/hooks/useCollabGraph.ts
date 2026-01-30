@@ -536,8 +536,18 @@ export function useGraphSubscription(
   const [eventCount, setEventCount] = useState(0);
   const wsRef = useRef<WebSocket | null>(null);
   const batchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const shouldReconnectRef = useRef(true);
   const eventQueueRef = useRef<GraphEvent[]>([]);
   const connectRef = useRef<() => void>(() => {});
+
+  const clearReconnectTimeout = useCallback(() => {
+    if (!reconnectTimeoutRef.current) return;
+    clearTimeout(reconnectTimeoutRef.current);
+    reconnectTimeoutRef.current = null;
+  }, []);
 
   const processEvents = useCallback(() => {
     const events = eventQueueRef.current;
@@ -585,16 +595,22 @@ export function useGraphSubscription(
   );
 
   const connect = useCallback(() => {
+    clearReconnectTimeout();
+
     if (mockMode) {
       // In mock mode, simulate connection and periodic events
       setConnected(true);
       return;
     }
 
+    shouldReconnectRef.current = true;
+
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
     ws.onopen = () => {
+      if (wsRef.current !== ws) return;
+
       const workspaceId = options.workspaceId ?? "default";
 
       // Consider "connected" only once we have at least one successful subscription.
@@ -616,6 +632,8 @@ export function useGraphSubscription(
     };
 
     ws.onmessage = (event) => {
+      if (wsRef.current !== ws) return;
+
       try {
         const message = JSON.parse(event.data) as {
           type?: unknown;
@@ -725,17 +743,28 @@ export function useGraphSubscription(
     };
 
     ws.onclose = () => {
+      if (wsRef.current !== ws) return;
+      wsRef.current = null;
+
       setConnected(false);
-      // Attempt reconnection after 3 seconds
-      setTimeout(() => connectRef.current(), 3000);
+
+      if (!shouldReconnectRef.current) return;
+
+      // Attempt reconnection after 3 seconds (but only if this wasn't a manual close)
+      clearReconnectTimeout();
+      reconnectTimeoutRef.current = setTimeout(
+        () => connectRef.current(),
+        3000,
+      );
     };
 
     ws.onerror = () => {
+      if (wsRef.current !== ws) return;
       setConnected(false);
     };
 
     wsRef.current = ws;
-  }, [mockMode, options.workspaceId, queueEvent]);
+  }, [clearReconnectTimeout, mockMode, options.workspaceId, queueEvent]);
 
   // Keep connectRef in sync with connect for self-referencing
   useEffect(() => {
@@ -743,24 +772,30 @@ export function useGraphSubscription(
   }, [connect]);
 
   const reconnect = useCallback(() => {
+    shouldReconnectRef.current = false;
+    clearReconnectTimeout();
     if (wsRef.current) {
       wsRef.current.close();
+      wsRef.current = null;
     }
     connect();
-  }, [connect]);
+  }, [clearReconnectTimeout, connect]);
 
   useEffect(() => {
     connect();
 
     return () => {
+      shouldReconnectRef.current = false;
+      clearReconnectTimeout();
       if (wsRef.current) {
         wsRef.current.close();
+        wsRef.current = null;
       }
       if (batchTimeoutRef.current) {
         clearTimeout(batchTimeoutRef.current);
       }
     };
-  }, [connect]);
+  }, [clearReconnectTimeout, connect]);
 
   // Mock mode: simulate periodic events
   useEffect(() => {
