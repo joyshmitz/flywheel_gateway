@@ -110,7 +110,9 @@ describe.skipIf(!BR_AVAILABLE || !runSlowTests)(
         // Include both "open" and "in_progress" since interrupted tests may leave either
         logTest({ test: "setup", action: "cleaning_orphaned_test_beads" });
         try {
-          const allIssues = await service.list({ statuses: ["open", "in_progress"] });
+          const allIssues = await service.list({
+            statuses: ["open", "in_progress"],
+          });
           const orphanedTestBeads = allIssues
             .filter((issue) => issue.title.startsWith("test-bead-"))
             .map((issue) => issue.id);

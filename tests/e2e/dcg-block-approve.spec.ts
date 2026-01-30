@@ -37,7 +37,9 @@ if (isPlaywright) {
     // 1. Block event ingestion
     // ========================================================================
 
-    test("POST /dcg/blocks ingests a block event", async ({ testLogger }) => {
+    test("POST /dcg/blocks ingests a block event", async ({
+      testLogger: _testLogger,
+    }) => {
       const { status, body } = await gw("/dcg/blocks", {
         method: "POST",
         body: JSON.stringify({
@@ -56,7 +58,9 @@ if (isPlaywright) {
       expect(body.data).toBeDefined();
     });
 
-    test("GET /dcg/blocks returns ingested events", async ({ testLogger }) => {
+    test("GET /dcg/blocks returns ingested events", async ({
+      testLogger: _testLogger,
+    }) => {
       // First ingest a block
       await gw("/dcg/blocks", {
         method: "POST",
@@ -84,7 +88,7 @@ if (isPlaywright) {
     // ========================================================================
 
     test("POST /dcg/test identifies dangerous command", async ({
-      testLogger,
+      testLogger: _testLogger,
     }) => {
       const { status, body } = await gw("/dcg/test", {
         method: "POST",
@@ -96,7 +100,9 @@ if (isPlaywright) {
       expect(data.blocked).toBe(true);
     });
 
-    test("POST /dcg/test allows safe command", async ({ testLogger }) => {
+    test("POST /dcg/test allows safe command", async ({
+      testLogger: _testLogger,
+    }) => {
       const { status, body } = await gw("/dcg/test", {
         method: "POST",
         body: JSON.stringify({ command: "git status" }),
@@ -107,7 +113,9 @@ if (isPlaywright) {
       expect(data.blocked).toBe(false);
     });
 
-    test("POST /dcg/explain provides analysis", async ({ testLogger }) => {
+    test("POST /dcg/explain provides analysis", async ({
+      testLogger: _testLogger,
+    }) => {
       const { status, body } = await gw("/dcg/explain", {
         method: "POST",
         body: JSON.stringify({ command: "git reset --hard HEAD" }),
@@ -122,7 +130,9 @@ if (isPlaywright) {
     // 3. Pending exception lifecycle: create → approve → validate
     // ========================================================================
 
-    test("pending exception: full approve workflow", async ({ testLogger }) => {
+    test("pending exception: full approve workflow", async ({
+      testLogger: _testLogger,
+    }) => {
       const dangerousCommand = `rm -rf /tmp/e2e-test-${Date.now()}`;
       const _commandHash = createHash("sha256")
         .update(dangerousCommand)
@@ -184,7 +194,9 @@ if (isPlaywright) {
       }
     });
 
-    test("pending exception: deny workflow", async ({ testLogger }) => {
+    test("pending exception: deny workflow", async ({
+      testLogger: _testLogger,
+    }) => {
       // List any pending exceptions
       const listRes = await gw("/dcg/pending?status=pending");
       expect(listRes.status).toBe(200);
@@ -213,7 +225,7 @@ if (isPlaywright) {
     });
 
     test("pending exception: approve then validate with wrong hash fails", async ({
-      testLogger,
+      testLogger: _testLogger,
     }) => {
       const listRes = await gw("/dcg/pending?status=approved");
       expect(listRes.status).toBe(200);
@@ -241,7 +253,9 @@ if (isPlaywright) {
     // 4. Audit trail verification
     // ========================================================================
 
-    test("GET /dcg/stats reflects block events", async ({ testLogger }) => {
+    test("GET /dcg/stats reflects block events", async ({
+      testLogger: _testLogger,
+    }) => {
       const { status, body } = await gw("/dcg/stats");
       expect(status).toBe(200);
 
@@ -251,7 +265,7 @@ if (isPlaywright) {
     });
 
     test("GET /dcg/stats/full provides comprehensive audit data", async ({
-      testLogger,
+      testLogger: _testLogger,
     }) => {
       const { status, body } = await gw("/dcg/stats/full");
       expect(status).toBe(200);
@@ -265,7 +279,7 @@ if (isPlaywright) {
     });
 
     test("GET /dcg/blocks supports filtering by agentId", async ({
-      testLogger,
+      testLogger: _testLogger,
     }) => {
       const { status, body } = await gw("/dcg/blocks?agentId=e2e-agent-1");
       expect(status).toBe(200);
@@ -275,7 +289,7 @@ if (isPlaywright) {
     });
 
     test("GET /dcg/blocks supports filtering by severity", async ({
-      testLogger,
+      testLogger: _testLogger,
     }) => {
       const { status, body } = await gw("/dcg/blocks?severity=critical");
       expect(status).toBe(200);
@@ -289,7 +303,7 @@ if (isPlaywright) {
     // ========================================================================
 
     test("GET /dcg/config returns current pack configuration", async ({
-      testLogger,
+      testLogger: _testLogger,
     }) => {
       const { status, body } = await gw("/dcg/config");
       expect(status).toBe(200);
@@ -300,7 +314,7 @@ if (isPlaywright) {
     });
 
     test("false positive marking creates audit entry", async ({
-      testLogger,
+      testLogger: _testLogger,
     }) => {
       // Get existing blocks
       const blocksRes = await gw("/dcg/blocks");
@@ -379,7 +393,7 @@ if (isPlaywright) {
 
     test("verify pending exceptions tab shows count", async ({
       page,
-      testLogger,
+      testLogger: _testLogger,
     }) => {
       await page.goto("/dcg");
 
@@ -393,7 +407,10 @@ if (isPlaywright) {
       await expect(pendingHeader).toBeVisible();
     });
 
-    test("statistics tab shows audit data", async ({ page, testLogger }) => {
+    test("statistics tab shows audit data", async ({
+      page,
+      testLogger: _testLogger,
+    }) => {
       await page.goto("/dcg");
 
       // Switch to Statistics tab

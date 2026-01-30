@@ -58,7 +58,7 @@ export const test = base.extend<TestFixtures>({
   },
 
   // Helper to log custom events
-  logEvent: async ({ testLogger }, use) => {
+  logEvent: async ({ testLogger: _testLogger }, use) => {
     const logFn = (
       message: string,
       level: "info" | "warn" | "error" = "info",
@@ -131,7 +131,7 @@ export const testWithScreenshots = test.extend({
  */
 export function describeWithLogging(name: string, fn: () => void): void {
   test.describe(name, () => {
-    test.beforeEach(async ({ testLogger }) => {
+    test.beforeEach(async ({ testLogger: _testLogger }) => {
       // Logger is automatically attached via fixture
       console.log(`📝 Starting test in group: ${name}`);
     });
