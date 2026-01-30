@@ -431,7 +431,7 @@ describe("Checkpoint Service", () => {
       const uniqueAgentId = `agent-prune-delta-${Date.now()}`;
       await ensureAgent(uniqueAgentId);
 
-      const base = await createCheckpoint(uniqueAgentId, {
+      await createCheckpoint(uniqueAgentId, {
         conversationHistory: [{ role: "user", content: "Base" }],
         toolState: { base: true },
         tokenUsage: testTokenUsage,
