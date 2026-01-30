@@ -1673,8 +1673,9 @@ describe("ntm Client Contract Tests", () => {
       const result = await client.snapshot();
 
       expect(result.ts).toBeDefined();
-      expect(result.sessions).toHaveLength(1);
-      const first = result.sessions[0];
+      const sessions = result.sessions as Array<{ name: string; agents: unknown[] }>;
+      expect(sessions).toHaveLength(1);
+      const first = sessions[0];
       if (!first) throw new Error("Expected snapshot() sessions[0]");
       expect(first.name).toBe("agent-1");
       expect(first.agents).toHaveLength(1);
@@ -2148,10 +2149,10 @@ describe("jfp Client Contract Tests", () => {
 
       expect(result.prompts).toHaveLength(2);
       expect(result.total).toBe(2);
-      expect(result.prompts[0].id).toBe("code-review-001");
-      expect(result.prompts[0].category).toBe("development");
-      expect(result.prompts[0].featured).toBe(true);
-      expect(result.prompts[0].difficulty).toBe("intermediate");
+      expect(result.prompts[0]!.id).toBe("code-review-001");
+      expect(result.prompts[0]!.category).toBe("development");
+      expect(result.prompts[0]!.featured).toBe(true);
+      expect(result.prompts[0]!.difficulty).toBe("intermediate");
 
       const inv = logger.getLast();
       expect(inv?.command).toBe("jfp");
@@ -2228,8 +2229,8 @@ describe("jfp Client Contract Tests", () => {
       const result = await client.listCategories();
 
       expect(result).toHaveLength(3);
-      expect(result[0].name).toBe("development");
-      expect(result[0].count).toBe(25);
+      expect(result[0]!.name).toBe("development");
+      expect(result[0]!.count).toBe(25);
     });
   });
 
@@ -2251,7 +2252,7 @@ describe("jfp Client Contract Tests", () => {
 
       expect(result.query).toBe("code review");
       expect(result.prompts).toHaveLength(1);
-      expect(result.prompts[0].id).toBe("code-review-001");
+      expect(result.prompts[0]!.id).toBe("code-review-001");
 
       const inv = logger.getLast();
       expect(inv?.args).toContain("search");
@@ -2291,7 +2292,7 @@ describe("jfp Client Contract Tests", () => {
 
       expect(result.task).toBe("debug a memory leak");
       expect(result.suggestions).toHaveLength(1);
-      expect(result.suggestions[0].id).toBe("debug-helper-002");
+      expect(result.suggestions[0]!.id).toBe("debug-helper-002");
 
       const inv = logger.getLast();
       expect(inv?.args).toContain("suggest");
@@ -2387,12 +2388,12 @@ describe("Invocation Logging", () => {
     const invocations = logger.getAll();
     expect(invocations).toHaveLength(2);
 
-    expect(invocations[0].command).toBe("br");
-    expect(invocations[0].args).toContain("ready");
-    expect(invocations[0].timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(invocations[0]!.command).toBe("br");
+    expect(invocations[0]!.args).toContain("ready");
+    expect(invocations[0]!.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 
-    expect(invocations[1].command).toBe("br");
-    expect(invocations[1].args).toContain("list");
+    expect(invocations[1]!.command).toBe("br");
+    expect(invocations[1]!.args).toContain("list");
   });
 
   test("dump produces readable output", async () => {
