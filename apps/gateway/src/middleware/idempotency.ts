@@ -467,6 +467,8 @@ export function idempotencyMiddleware(config: IdempotencyConfig = {}) {
       resolvePromise = resolve;
       rejectPromise = reject;
     });
+    // Prevent unhandled rejection noise when we reject to unblock duplicates but have no waiters.
+    void promise.catch(() => {});
     pendingRequests.set(scopedKey, {
       promise,
       resolve: resolvePromise!,

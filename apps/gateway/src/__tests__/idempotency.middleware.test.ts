@@ -578,6 +578,45 @@ describe("Idempotency Middleware", () => {
       expect(callCount).toBe(2);
     });
 
+    test("concurrent duplicate does not hang when first response is not cached", async () => {
+      let callCount = 0;
+      const app = new Hono();
+      app.use("*", idempotencyMiddleware());
+      app.post("/test", async (c) => {
+        callCount++;
+        if (callCount === 1) {
+          await new Promise<void>((resolve) => setTimeout(resolve, 25));
+          return c.json({ error: "server error" }, 500);
+        }
+        return c.json({ success: true }, 200);
+      });
+
+      const key = crypto.randomUUID();
+
+      const first = app.request("/test", {
+        method: "POST",
+        headers: { "Idempotency-Key": key },
+      });
+      const second = Promise.race([
+        app.request("/test", {
+          method: "POST",
+          headers: { "Idempotency-Key": key },
+        }),
+        new Promise<Response>((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Timed out waiting for second request")),
+            1000,
+          ),
+        ),
+      ]);
+
+      const [res1, res2] = await Promise.all([first, second]);
+
+      expect(res1.status).toBe(500);
+      expect(res2.status).toBe(200);
+      expect(callCount).toBe(2);
+    });
+
     test("preserves content-type header", async () => {
       const app = new Hono();
       app.use("*", idempotencyMiddleware());
