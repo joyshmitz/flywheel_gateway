@@ -7,8 +7,8 @@ import { agents, db, history } from "../db";
 import {
   exportHistory,
   extractFromOutput,
-  getHistoryStats,
   getHistoryEntry,
+  getHistoryStats,
   incrementReplayCount,
 } from "../services/history.service";
 

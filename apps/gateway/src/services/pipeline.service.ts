@@ -1477,7 +1477,8 @@ function evaluateSafeExpression(
     case "member": {
       const obj = evaluateSafeExpression(node.object, env, depth + 1);
       if (obj === null || obj === undefined) return undefined;
-      if (typeof obj !== "object" && typeof obj !== "function") return undefined;
+      if (typeof obj !== "object" && typeof obj !== "function")
+        return undefined;
       if (UNSAFE_CONTEXT_KEYS.has(node.property)) {
         throw new Error(`Property access is not allowed: ${node.property}`);
       }
@@ -1635,7 +1636,9 @@ async function executeTransform(
             TRANSFORM_MAP_ALLOWED_IDENTIFIERS,
           );
           const filtered = filterSource.filter((item, index) =>
-            Boolean(evaluateSafeExpression(ast, { $item: item, $index: index })),
+            Boolean(
+              evaluateSafeExpression(ast, { $item: item, $index: index }),
+            ),
           );
           setValueByPath(context, operation.target, filtered);
           transformedCount++;
@@ -1652,7 +1655,11 @@ async function executeTransform(
           );
           const reduced = reduceSource.reduce(
             (acc, item, index) =>
-              evaluateSafeExpression(ast, { $acc: acc, $item: item, $index: index }),
+              evaluateSafeExpression(ast, {
+                $acc: acc,
+                $item: item,
+                $index: index,
+              }),
             operation.initial,
           );
           setValueByPath(context, operation.target, reduced);

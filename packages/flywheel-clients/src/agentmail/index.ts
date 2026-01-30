@@ -408,10 +408,18 @@ export type SearchMessagesInput = z.infer<typeof SearchMessagesInputSchema>;
 export type SearchMessagesOutput = z.infer<typeof SearchMessagesOutputSchema>;
 export type SummarizeThreadInput = z.infer<typeof SummarizeThreadInputSchema>;
 export type SummarizeThreadOutput = z.infer<typeof SummarizeThreadOutputSchema>;
-export type ReleaseReservationsInput = z.infer<typeof ReleaseReservationsInputSchema>;
-export type ReleaseReservationsOutput = z.infer<typeof ReleaseReservationsOutputSchema>;
-export type RenewReservationsInput = z.infer<typeof RenewReservationsInputSchema>;
-export type RenewReservationsOutput = z.infer<typeof RenewReservationsOutputSchema>;
+export type ReleaseReservationsInput = z.infer<
+  typeof ReleaseReservationsInputSchema
+>;
+export type ReleaseReservationsOutput = z.infer<
+  typeof ReleaseReservationsOutputSchema
+>;
+export type RenewReservationsInput = z.infer<
+  typeof RenewReservationsInputSchema
+>;
+export type RenewReservationsOutput = z.infer<
+  typeof RenewReservationsOutputSchema
+>;
 export type WhoisInput = z.infer<typeof WhoisInputSchema>;
 export type WhoisOutput = z.infer<typeof WhoisOutputSchema>;
 

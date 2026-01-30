@@ -200,10 +200,7 @@ export function recordFailure(tool: string): void {
     return;
   }
 
-  if (
-    b.state === "CLOSED" &&
-    b.consecutiveFailures >= cfg.failureThreshold
-  ) {
+  if (b.state === "CLOSED" && b.consecutiveFailures >= cfg.failureThreshold) {
     b.state = "OPEN";
     b.nextRetryAt = new Date(Date.now() + b.currentBackoffMs);
     logger.warn(

@@ -5,12 +5,9 @@
  * implemented in bd-bacf.
  */
 
-import { describe, expect, it, beforeEach, afterEach, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import {
-  getAllowMockFallback,
-  useAllowMockFallback,
-} from "../useMockFallback";
+import { getAllowMockFallback, useAllowMockFallback } from "../useMockFallback";
 
 // Register happy-dom for browser globals (window, localStorage, etc.)
 // Wrap in try-catch to avoid errors when running with other test files that already registered

@@ -5,14 +5,14 @@
  * Captures browser console, network, WebSocket, page errors, and timing metrics.
  */
 
-import type { Page, BrowserContext, CDPSession } from "@playwright/test";
+import type { BrowserContext, CDPSession, Page } from "@playwright/test";
 import type {
   ConsoleEntry,
   NetworkEntry,
-  WebSocketEntry,
   PageErrorEntry,
-  TimingMetrics,
   TestLogBundle,
+  TimingMetrics,
+  WebSocketEntry,
 } from "./types";
 
 export class TestLogger {

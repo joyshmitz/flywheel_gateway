@@ -6,7 +6,7 @@
  * the health and WebSocket endpoints.
  */
 
-import { test, expect } from "./lib/test-fixture";
+import { expect, test } from "./lib/test-fixture";
 
 const GATEWAY_URL = process.env["E2E_GATEWAY_URL"] ?? "http://localhost:3456";
 
@@ -161,10 +161,7 @@ test.describe("Dependency-aware diagnostics", () => {
 
       // Should have tools array/object
       if (diag["tools"]) {
-        const tools = diag["tools"] as Record<
-          string,
-          Record<string, unknown>
-        >;
+        const tools = diag["tools"] as Record<string, Record<string, unknown>>;
         for (const [name, tool] of Object.entries(tools)) {
           expect(tool).toHaveProperty("available");
           expect(typeof tool["available"]).toBe("boolean");
@@ -204,9 +201,7 @@ test.describe("Dependency-aware diagnostics", () => {
       return;
     }
 
-    const cascades = diag["cascadeFailures"] as Array<
-      Record<string, unknown>
-    >;
+    const cascades = diag["cascadeFailures"] as Array<Record<string, unknown>>;
     for (const cascade of cascades) {
       const path = cascade["path"] as string[];
       expect(path.length).toBeGreaterThanOrEqual(2);
@@ -301,9 +296,7 @@ test.describe("Health response caching", () => {
     // If cached, timestamp should match and cachedAt should be present
     if (second.body["cachedAt"]) {
       expect(second.body["timestamp"]).toBe(firstTimestamp);
-      logEvent(
-        `Cache hit: cachedAt=${second.body["cachedAt"]}`,
-      );
+      logEvent(`Cache hit: cachedAt=${second.body["cachedAt"]}`);
     }
   });
 });
@@ -313,9 +306,7 @@ test.describe("Health response caching", () => {
 // =============================================================================
 
 test.describe("WebSocket event loss telemetry", () => {
-  test("hub stats endpoint includes event loss data", async ({
-    logEvent,
-  }) => {
+  test("hub stats endpoint includes event loss data", async ({ logEvent }) => {
     logEvent("Checking WS hub stats for event loss telemetry");
 
     // Try to hit the hub stats endpoint if it exists
@@ -339,9 +330,7 @@ test.describe("WebSocket event loss telemetry", () => {
         );
       }
     } else {
-      logEvent(
-        `WS stats endpoint returned ${status} (may not be exposed)`,
-      );
+      logEvent(`WS stats endpoint returned ${status} (may not be exposed)`);
     }
   });
 });

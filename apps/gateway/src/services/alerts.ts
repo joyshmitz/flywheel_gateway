@@ -4,12 +4,12 @@
  * Manages alert rules, evaluates conditions, and tracks alert state.
  */
 
+import type { NtmIsWorkingOutput } from "@flywheel/flywheel-clients";
 import {
   createCursor,
   DEFAULT_PAGINATION,
   decodeCursor,
 } from "@flywheel/shared/api/pagination";
-import type { NtmIsWorkingOutput } from "@flywheel/flywheel-clients";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
 import {
   type Alert,
@@ -29,12 +29,12 @@ import { logger } from "./logger";
 import { getMetricsSnapshot } from "./metrics";
 import { getNtmIngestService } from "./ntm-ingest.service";
 import * as slbService from "./slb.service";
+import { loadToolRegistry } from "./tool-registry.service";
 import { getUBSService } from "./ubs.service";
 import {
   getChecksumAge,
   listToolsWithChecksums,
 } from "./update-checker.service";
-import { loadToolRegistry } from "./tool-registry.service";
 
 /** Active alerts */
 const activeAlerts = new Map<string, Alert>();

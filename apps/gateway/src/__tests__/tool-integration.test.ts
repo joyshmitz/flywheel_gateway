@@ -6,19 +6,19 @@
  * fixtures and structured test logging.
  */
 
-import { describe, expect, it, beforeEach, mock } from "bun:test";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { parse as parseYaml } from "yaml";
 import type { ToolDefinition, ToolRegistry } from "@flywheel/shared";
 import {
   classifyToolUnavailability,
-  UNAVAILABILITY_META,
   type ToolUnavailabilityReason,
+  UNAVAILABILITY_META,
 } from "@flywheel/shared/errors";
-import { computeHealthDiagnostics } from "../services/tool-health-diagnostics.service";
-import type { DetectedCLI } from "../services/agent-detection.service";
+import { parse as parseYaml } from "yaml";
 import { z } from "zod";
+import type { DetectedCLI } from "../services/agent-detection.service";
+import { computeHealthDiagnostics } from "../services/tool-health-diagnostics.service";
 
 const FIXTURES_DIR = join(import.meta.dir, "fixtures");
 
@@ -48,7 +48,10 @@ describe("Manifest Ingestion", () => {
   let validManifest: ToolRegistry;
 
   beforeEach(() => {
-    const raw = readFileSync(join(FIXTURES_DIR, "valid-manifest.yaml"), "utf-8");
+    const raw = readFileSync(
+      join(FIXTURES_DIR, "valid-manifest.yaml"),
+      "utf-8",
+    );
     validManifest = parseYaml(raw) as ToolRegistry;
   });
 
@@ -58,7 +61,12 @@ describe("Manifest Ingestion", () => {
     expect(validManifest.tools.length).toBeGreaterThanOrEqual(5);
 
     logTest(
-      { test: "schema-version", category: "manifest", input: "valid-manifest.yaml", output: validManifest.schemaVersion },
+      {
+        test: "schema-version",
+        category: "manifest",
+        input: "valid-manifest.yaml",
+        output: validManifest.schemaVersion,
+      },
       true,
     );
   });
@@ -90,7 +98,11 @@ describe("Manifest Ingestion", () => {
 
   it("preserves installedCheck from manifest", () => {
     const claude = validManifest.tools.find((t) => t.id === "agents.claude");
-    expect(claude?.installedCheck?.command).toEqual(["command", "-v", "claude"]);
+    expect(claude?.installedCheck?.command).toEqual([
+      "command",
+      "-v",
+      "claude",
+    ]);
   });
 
   it("preserves verify specs from manifest", () => {
@@ -100,7 +112,9 @@ describe("Manifest Ingestion", () => {
   });
 
   it("preserves phase ordering from manifest", () => {
-    const phases = validManifest.tools.map((t) => t.phase).filter((p) => p !== undefined);
+    const phases = validManifest.tools
+      .map((t) => t.phase)
+      .filter((p) => p !== undefined);
     expect(phases.length).toBeGreaterThan(0);
     // Tools should have various phases
     const uniquePhases = [...new Set(phases)];
@@ -108,20 +122,31 @@ describe("Manifest Ingestion", () => {
   });
 
   it("rejects invalid manifest schema", () => {
-    const raw = readFileSync(join(FIXTURES_DIR, "invalid-schema-manifest.yaml"), "utf-8");
+    const raw = readFileSync(
+      join(FIXTURES_DIR, "invalid-schema-manifest.yaml"),
+      "utf-8",
+    );
     const invalid = parseYaml(raw) as Record<string, unknown>;
 
     // Should parse as YAML but have invalid schema version
     expect(invalid["schemaVersion"]).not.toBe("1.0.0");
 
     logTest(
-      { test: "invalid-schema", category: "manifest", input: "invalid-schema-manifest.yaml", output: invalid["schemaVersion"] },
+      {
+        test: "invalid-schema",
+        category: "manifest",
+        input: "invalid-schema-manifest.yaml",
+        output: invalid["schemaVersion"],
+      },
       true,
     );
   });
 
   it("handles minimal manifest with only required fields", () => {
-    const raw = readFileSync(join(FIXTURES_DIR, "minimal-manifest.yaml"), "utf-8");
+    const raw = readFileSync(
+      join(FIXTURES_DIR, "minimal-manifest.yaml"),
+      "utf-8",
+    );
     const minimal = parseYaml(raw) as ToolRegistry;
 
     expect(minimal.schemaVersion).toBeTruthy();
@@ -178,7 +203,13 @@ describe("Robot Mode Output Parsing", () => {
           open_count: 10,
           actionable_count: 8,
           top_picks: [
-            { id: "bd-1", title: "Fix bug", score: 0.9, reasons: ["High priority"], unblocks: 2 },
+            {
+              id: "bd-1",
+              title: "Fix bug",
+              score: 0.9,
+              reasons: ["High priority"],
+              unblocks: 2,
+            },
           ],
         },
         recommendations: [],
@@ -223,7 +254,8 @@ describe("Robot Mode Output Parsing", () => {
 
   it("parses UBS SARIF output shape", () => {
     const sarifOutput = {
-      $schema: "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+      $schema:
+        "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
       version: "2.1.0",
       runs: [
         {
@@ -233,7 +265,11 @@ describe("Robot Mode Output Parsing", () => {
               ruleId: "SQL-001",
               level: "error",
               message: { text: "SQL injection vulnerability" },
-              locations: [{ physicalLocation: { artifactLocation: { uri: "src/db.ts" } } }],
+              locations: [
+                {
+                  physicalLocation: { artifactLocation: { uri: "src/db.ts" } },
+                },
+              ],
             },
           ],
         },
@@ -252,23 +288,29 @@ describe("Robot Mode Output Parsing", () => {
 
 describe("Tool Unavailability Classification", () => {
   it("classifies common stderr patterns correctly", () => {
-    const cases: Array<{ stderr: string; expected: ToolUnavailabilityReason }> = [
-      { stderr: "command not found: dcg", expected: "not_installed" },
-      { stderr: "Permission denied", expected: "permission_denied" },
-      { stderr: "Error: not logged in", expected: "auth_required" },
-      { stderr: "token expired", expected: "auth_expired" },
-      { stderr: "config file not found", expected: "config_missing" },
-      { stderr: "ECONNREFUSED 127.0.0.1:3000", expected: "mcp_unreachable" },
-      { stderr: "Segmentation fault (core dumped)", expected: "crash" },
-      { stderr: "fatal error: out of memory", expected: "crash" },
-    ];
+    const cases: Array<{ stderr: string; expected: ToolUnavailabilityReason }> =
+      [
+        { stderr: "command not found: dcg", expected: "not_installed" },
+        { stderr: "Permission denied", expected: "permission_denied" },
+        { stderr: "Error: not logged in", expected: "auth_required" },
+        { stderr: "token expired", expected: "auth_expired" },
+        { stderr: "config file not found", expected: "config_missing" },
+        { stderr: "ECONNREFUSED 127.0.0.1:3000", expected: "mcp_unreachable" },
+        { stderr: "Segmentation fault (core dumped)", expected: "crash" },
+        { stderr: "fatal error: out of memory", expected: "crash" },
+      ];
 
     for (const { stderr, expected } of cases) {
       const result = classifyToolUnavailability({ stderr });
       expect(result).toBe(expected);
 
       logTest(
-        { test: `classify-${expected}`, category: "unavailability", input: stderr, output: result },
+        {
+          test: `classify-${expected}`,
+          category: "unavailability",
+          input: stderr,
+          output: result,
+        },
         result === expected,
       );
     }
@@ -287,10 +329,20 @@ describe("Tool Unavailability Classification", () => {
 
   it("provides HTTP status and labels for all reasons", () => {
     const allReasons: ToolUnavailabilityReason[] = [
-      "not_installed", "not_in_path", "permission_denied",
-      "version_unsupported", "auth_required", "auth_expired",
-      "config_missing", "config_invalid", "dependency_missing",
-      "mcp_unreachable", "spawn_failed", "timeout", "crash", "unknown",
+      "not_installed",
+      "not_in_path",
+      "permission_denied",
+      "version_unsupported",
+      "auth_required",
+      "auth_expired",
+      "config_missing",
+      "config_invalid",
+      "dependency_missing",
+      "mcp_unreachable",
+      "spawn_failed",
+      "timeout",
+      "crash",
+      "unknown",
     ];
 
     for (const reason of allReasons) {
@@ -319,7 +371,11 @@ describe("Health Diagnostics Integration with Registry", () => {
   function makeToolDef(
     id: string,
     name: string,
-    opts?: { depends?: string[]; displayName?: string; robotMode?: ToolDefinition["robotMode"] },
+    opts?: {
+      depends?: string[];
+      displayName?: string;
+      robotMode?: ToolDefinition["robotMode"];
+    },
   ): ToolDefinition {
     return {
       id,
@@ -349,7 +405,10 @@ describe("Health Diagnostics Integration with Registry", () => {
   }
 
   it("integrates registry tools with detection results", () => {
-    const raw = readFileSync(join(FIXTURES_DIR, "valid-manifest.yaml"), "utf-8");
+    const raw = readFileSync(
+      join(FIXTURES_DIR, "valid-manifest.yaml"),
+      "utf-8",
+    );
     const manifest = parseYaml(raw) as ToolRegistry;
 
     // Simulate mixed detection: some available, some not
@@ -372,7 +431,10 @@ describe("Health Diagnostics Integration with Registry", () => {
   it("detects cascade failures when tmux is missing and ntm depends on it", () => {
     const tools = [
       makeToolDef("tools.tmux", "tmux"),
-      makeToolDef("tools.ntm", "ntm", { depends: ["tools.tmux"], displayName: "NTM" }),
+      makeToolDef("tools.ntm", "ntm", {
+        depends: ["tools.tmux"],
+        displayName: "NTM",
+      }),
     ];
     const clis = [makeCLI("tmux", false), makeCLI("ntm", false)];
 

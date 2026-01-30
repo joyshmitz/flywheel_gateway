@@ -156,7 +156,10 @@ describe("createGatewayHarness", () => {
     const { accounts } = harness.schema as {
       accounts: Parameters<typeof harness.db.select>[0];
     };
-    const result = harness.db.select().from(accounts as any).all();
+    const result = harness.db
+      .select()
+      .from(accounts as any)
+      .all();
     expect(result).toHaveLength(1);
   });
 

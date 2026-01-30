@@ -2,7 +2,7 @@
  * Tests for safety routes.
  */
 
-import { describe, expect, test, mock, beforeEach, afterEach } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { Hono } from "hono";
 import { safety } from "../routes/safety";
 

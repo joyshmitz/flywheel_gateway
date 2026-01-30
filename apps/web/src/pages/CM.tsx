@@ -14,13 +14,16 @@ import { StatusPill } from "../components/ui/StatusPill";
 // ============================================================================
 
 interface ByoaStatus {
-  providers: Record<string, {
-    configured: boolean;
-    profileCount: number;
-    activeProfile?: string;
-    lastRotation?: string;
-    healthy: boolean;
-  }>;
+  providers: Record<
+    string,
+    {
+      configured: boolean;
+      profileCount: number;
+      activeProfile?: string;
+      lastRotation?: string;
+      healthy: boolean;
+    }
+  >;
   totalProfiles: number;
   healthyProviders: number;
   totalProviders: number;
@@ -55,7 +58,11 @@ async function fetchJson<T>(url: string): Promise<T> {
 // ============================================================================
 
 export function CMPage() {
-  const { data: status, isLoading, error } = useQuery({
+  const {
+    data: status,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["cm", "status"],
     queryFn: () => fetchJson<{ data: ByoaStatus }>("/accounts/byoa/status"),
     staleTime: 30_000,
@@ -76,7 +83,11 @@ export function CMPage() {
         <h2>Credential Manager</h2>
         {byoa && (
           <StatusPill
-            tone={byoa.healthyProviders === byoa.totalProviders ? "positive" : "warning"}
+            tone={
+              byoa.healthyProviders === byoa.totalProviders
+                ? "positive"
+                : "warning"
+            }
           >
             {byoa.healthyProviders}/{byoa.totalProviders} healthy
           </StatusPill>
@@ -98,14 +109,19 @@ export function CMPage() {
                 </StatusPill>
               </div>
               <p className="muted">
-                {provider.profileCount} profile{provider.profileCount !== 1 ? "s" : ""}
+                {provider.profileCount} profile
+                {provider.profileCount !== 1 ? "s" : ""}
                 {provider.activeProfile && (
-                  <> | Active: <code>{provider.activeProfile}</code></>
+                  <>
+                    {" "}
+                    | Active: <code>{provider.activeProfile}</code>
+                  </>
                 )}
               </p>
               {provider.lastRotation && (
                 <p className="muted">
-                  Last rotation: {new Date(provider.lastRotation).toLocaleString()}
+                  Last rotation:{" "}
+                  {new Date(provider.lastRotation).toLocaleString()}
                 </p>
               )}
               {!provider.configured && (
@@ -133,7 +149,10 @@ export function CMPage() {
               <span>Cooldown</span>
             </div>
             {poolEntries.map((entry) => (
-              <div key={`${entry.provider}-${entry.profileId}`} className="table__row">
+              <div
+                key={`${entry.provider}-${entry.profileId}`}
+                className="table__row"
+              >
                 <span>{entry.provider}</span>
                 <span className="mono">{entry.profileId}</span>
                 <span>
@@ -165,7 +184,8 @@ export function CMPage() {
       {!isLoading && !byoa && !error && (
         <div className="card">
           <p className="muted">
-            No credential data available. Configure provider accounts in the Accounts page.
+            No credential data available. Configure provider accounts in the
+            Accounts page.
           </p>
         </div>
       )}

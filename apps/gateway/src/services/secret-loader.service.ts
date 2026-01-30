@@ -16,10 +16,10 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { parse as parseYaml } from "yaml";
 import {
+  type EnvMapping,
+  loadEnvMapping,
   resolvePrivateDir,
   resolveToolSecret,
-  loadEnvMapping,
-  type EnvMapping,
 } from "./private-overlay.service";
 
 // ============================================================================
@@ -236,7 +236,11 @@ export async function loadSecrets(
   }
 
   const missingRequired = secrets
-    .filter((s) => !s.found && specs.find((sp) => sp.tool === s.tool && sp.key === s.key)?.required)
+    .filter(
+      (s) =>
+        !s.found &&
+        specs.find((sp) => sp.tool === s.tool && sp.key === s.key)?.required,
+    )
     .map((s) => `${s.tool}:${s.key}`);
 
   return {

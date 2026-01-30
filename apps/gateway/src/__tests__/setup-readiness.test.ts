@@ -20,11 +20,11 @@ import {
   mock,
 } from "bun:test";
 import { Hono } from "hono";
+import { requestContextStorage } from "../middleware/correlation";
 import {
   restoreAgentDetectionService,
   restoreToolRegistryService,
 } from "./test-utils/db-mock-restore";
-import { requestContextStorage } from "../middleware/correlation";
 
 // ============================================================================
 // Mock Infrastructure

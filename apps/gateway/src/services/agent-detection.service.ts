@@ -576,7 +576,9 @@ function deriveCapabilities(
       ...(tool.mcp.capabilities !== undefined
         ? { capabilities: tool.mcp.capabilities }
         : {}),
-      ...(tool.mcp.toolCount !== undefined ? { toolCount: tool.mcp.toolCount } : {}),
+      ...(tool.mcp.toolCount !== undefined
+        ? { toolCount: tool.mcp.toolCount }
+        : {}),
     };
   }
 

@@ -320,7 +320,10 @@ describe("Pipeline Service", () => {
       const finished = await waitForRunToFinish(run.id);
       expect(finished?.status).toBe("completed");
       expect(finished?.context["values"]).toEqual([1, 2, 3]);
-      expect(finished?.context["filtered"]).toEqual([{ value: 2 }, { value: 3 }]);
+      expect(finished?.context["filtered"]).toEqual([
+        { value: 2 },
+        { value: 3 },
+      ]);
       expect(finished?.context["sum"]).toBe(6);
     });
 

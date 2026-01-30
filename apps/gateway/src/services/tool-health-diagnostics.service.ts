@@ -7,11 +7,11 @@
  */
 
 import type { ToolDefinition } from "@flywheel/shared";
-import type { DetectedCLI } from "./agent-detection.service";
 import {
   getUnavailabilityLabel,
   type ToolUnavailabilityReason,
 } from "@flywheel/shared/errors";
+import type { DetectedCLI } from "./agent-detection.service";
 
 // ============================================================================
 // Types
@@ -107,7 +107,12 @@ function findRootCausePath(
   const deps = dependsOn.get(toolId) ?? [];
   for (const dep of deps) {
     if (availabilityMap.get(dep) === false) {
-      const deeper = findRootCausePath(dep, availabilityMap, dependsOn, visited);
+      const deeper = findRootCausePath(
+        dep,
+        availabilityMap,
+        dependsOn,
+        visited,
+      );
       return [...deeper, toolId];
     }
   }
@@ -156,7 +161,9 @@ export function computeHealthDiagnostics(
   for (const def of toolDefs) {
     const cli = detectionMap.get(def.name);
     const available = cli?.available ?? false;
-    const reason = cli?.unavailabilityReason as ToolUnavailabilityReason | undefined;
+    const reason = cli?.unavailabilityReason as
+      | ToolUnavailabilityReason
+      | undefined;
 
     const diagnostic: ToolDiagnostic = {
       toolId: def.id,
@@ -180,11 +187,7 @@ export function computeHealthDiagnostics(
 
       if (unavailableDeps.length > 0) {
         // Find deepest root cause
-        const rootPath = findRootCausePath(
-          def.id,
-          availabilityMap,
-          dependsOn,
-        );
+        const rootPath = findRootCausePath(def.id, availabilityMap, dependsOn);
 
         diagnostic.rootCausePath = rootPath;
 
@@ -192,8 +195,7 @@ export function computeHealthDiagnostics(
         const rootDef = toolDefs.find((t) => t.id === rootToolId);
         const rootName = rootDef?.displayName ?? rootDef?.name ?? rootToolId;
 
-        diagnostic.rootCauseExplanation =
-          `${def.displayName ?? def.name} is unavailable because ${rootName} is missing`;
+        diagnostic.rootCauseExplanation = `${def.displayName ?? def.name} is unavailable because ${rootName} is missing`;
 
         cascadeFailures.push({
           affectedTool: def.id,
@@ -207,9 +209,7 @@ export function computeHealthDiagnostics(
   }
 
   // Identify unique root cause tools
-  const rootCauseTools = [
-    ...new Set(cascadeFailures.map((f) => f.rootCause)),
-  ];
+  const rootCauseTools = [...new Set(cascadeFailures.map((f) => f.rootCause))];
 
   const availableCount = diagnostics.filter((d) => d.available).length;
 

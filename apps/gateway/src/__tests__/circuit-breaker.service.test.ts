@@ -5,19 +5,13 @@
  * exponential backoff, configuration, and the withCircuitBreaker wrapper.
  */
 
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  test,
-} from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
 import {
   _clearAllBreakers,
   configureBreaker,
-  getBreakerStatus,
   getAllBreakerStatuses,
+  getBreakerStatus,
   recordFailure,
   recordSuccess,
   resetBreaker,

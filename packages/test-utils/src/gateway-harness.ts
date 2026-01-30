@@ -27,10 +27,10 @@
  */
 
 import { Database } from "bun:sqlite";
-import { readFileSync, readdirSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync, readFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { drizzle, type BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
+import { join } from "node:path";
+import { type BunSQLiteDatabase, drizzle } from "drizzle-orm/bun-sqlite";
 
 /** Path to the gateway migration SQL files (resolved at import time). */
 const MIGRATIONS_DIR = join(
@@ -196,7 +196,9 @@ export async function createGatewayHarness(
         return v;
       });
       sqliteDb
-        .query(`INSERT INTO "${row.table}" (${colNames}) VALUES (${placeholders})`)
+        .query(
+          `INSERT INTO "${row.table}" (${colNames}) VALUES (${placeholders})`,
+        )
         .run(...(vals as Parameters<ReturnType<Database["query"]>["run"]>));
     }
   }
@@ -218,7 +220,9 @@ export async function createGatewayHarness(
   // 5. Optionally start server
   let baseUrl: string | undefined;
   let server: ReturnType<typeof Bun.serve> | undefined;
-  let fetchFn: ((path: string, init?: RequestInit) => Promise<Response>) | undefined;
+  let fetchFn:
+    | ((path: string, init?: RequestInit) => Promise<Response>)
+    | undefined;
   let restoreEnv: (() => void) | undefined;
 
   if (startServer) {
@@ -244,9 +248,7 @@ export async function createGatewayHarness(
     };
 
     // Dynamic import to get the Hono app (it will use the env we just set)
-    const { default: app } = await import(
-      "../../../apps/gateway/src/index"
-    );
+    const { default: app } = await import("../../../apps/gateway/src/index");
 
     server = Bun.serve({
       fetch: app.fetch,

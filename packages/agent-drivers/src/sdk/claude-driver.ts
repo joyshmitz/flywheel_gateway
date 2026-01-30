@@ -394,14 +394,16 @@ export class ClaudeSDKDriver extends BaseDriver {
         });
 
         if (!response.ok) {
-          throw new Error(`Anthropic API error: ${response.status} ${await response.text()}`);
+          throw new Error(
+            `Anthropic API error: ${response.status} ${await response.text()}`,
+          );
         }
 
         this.updateState(agentId, { activityState: "working" });
 
         const data = await response.json();
         const content = data.content?.[0]?.text ?? "";
-        
+
         this.addOutput(agentId, {
           timestamp: new Date(),
           type: "text",
@@ -416,7 +418,9 @@ export class ClaudeSDKDriver extends BaseDriver {
           tokenUsage: {
             promptTokens: data.usage?.input_tokens ?? 0,
             completionTokens: data.usage?.output_tokens ?? 0,
-            totalTokens: (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0),
+            totalTokens:
+              (data.usage?.input_tokens ?? 0) +
+              (data.usage?.output_tokens ?? 0),
           },
         });
 
@@ -427,16 +431,17 @@ export class ClaudeSDKDriver extends BaseDriver {
         this.updateTokenUsage(agentId, {
           promptTokens: data.usage?.input_tokens ?? 0,
           completionTokens: data.usage?.output_tokens ?? 0,
-          totalTokens: (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0),
+          totalTokens:
+            (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0),
         });
-
       } else {
         // Fallback: Simulation for testing/dev without API key
         await this.delay(100, signal);
         this.updateState(agentId, { activityState: "working" });
 
         const lastMessage = messages[messages.length - 1];
-        const messagePreview = lastMessage?.content?.slice(0, 50) ?? "(no message)";
+        const messagePreview =
+          lastMessage?.content?.slice(0, 50) ?? "(no message)";
         const responseText = `[Simulated Claude response to: "${messagePreview}..."]`;
 
         this.addOutput(agentId, {
@@ -449,13 +454,21 @@ export class ClaudeSDKDriver extends BaseDriver {
           role: "assistant",
           content: responseText,
           timestamp: new Date(),
-          tokenUsage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
+          tokenUsage: {
+            promptTokens: 100,
+            completionTokens: 50,
+            totalTokens: 150,
+          },
         });
 
         // Prune history to prevent unbounded growth
         this.pruneConversationHistory(session);
 
-        this.updateTokenUsage(agentId, { promptTokens: 100, completionTokens: 50, totalTokens: 150 });
+        this.updateTokenUsage(agentId, {
+          promptTokens: 100,
+          completionTokens: 50,
+          totalTokens: 150,
+        });
       }
 
       // Return to idle

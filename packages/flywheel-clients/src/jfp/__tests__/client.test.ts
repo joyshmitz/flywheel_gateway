@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { JfpClientError, createJfpClient, type JfpPrompt } from "../index";
+import { createJfpClient, JfpClientError, type JfpPrompt } from "../index";
 
 function createRunner(stdout: string, exitCode = 0) {
   const calls: { command: string; args: string[] }[] = [];

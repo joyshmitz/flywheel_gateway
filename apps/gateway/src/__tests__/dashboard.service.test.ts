@@ -128,7 +128,9 @@ describe("Dashboard Service", () => {
     });
 
     it("should return undefined for non-existent dashboard", async () => {
-      const updated = await updateDashboard("non-existent", { name: "Updated" });
+      const updated = await updateDashboard("non-existent", {
+        name: "Updated",
+      });
       expect(updated).toBeUndefined();
     });
 

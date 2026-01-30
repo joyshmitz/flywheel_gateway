@@ -93,7 +93,9 @@ function recordLog(level: LogCall["level"]) {
     const second = args[1];
 
     const context =
-      first && typeof first === "object" ? (first as Record<string, unknown>) : {};
+      first && typeof first === "object"
+        ? (first as Record<string, unknown>)
+        : {};
     const message =
       typeof first === "string"
         ? first

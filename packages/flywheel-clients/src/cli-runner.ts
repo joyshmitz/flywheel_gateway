@@ -1,5 +1,5 @@
 import type { CliErrorDetails, CliErrorKind } from "@flywheel/shared";
-import { z } from "zod";
+import type { z } from "zod";
 
 export type CliCommandErrorKind = CliErrorKind | "spawn_failed";
 

@@ -41,21 +41,48 @@ export interface UnavailabilityMeta {
   retryable: boolean;
 }
 
-export const UNAVAILABILITY_META: Record<ToolUnavailabilityReason, UnavailabilityMeta> = {
-  not_installed:       { httpStatus: 404, label: "Not Installed",         retryable: false },
-  not_in_path:         { httpStatus: 404, label: "Not in PATH",          retryable: false },
-  permission_denied:   { httpStatus: 403, label: "Permission Denied",    retryable: false },
-  version_unsupported: { httpStatus: 422, label: "Version Unsupported",  retryable: false },
-  auth_required:       { httpStatus: 401, label: "Auth Required",        retryable: false },
-  auth_expired:        { httpStatus: 401, label: "Auth Expired",         retryable: false },
-  config_missing:      { httpStatus: 404, label: "Config Missing",       retryable: false },
-  config_invalid:      { httpStatus: 422, label: "Config Invalid",       retryable: false },
-  dependency_missing:  { httpStatus: 424, label: "Dependency Missing",   retryable: false },
-  mcp_unreachable:     { httpStatus: 503, label: "MCP Unreachable",      retryable: true  },
-  spawn_failed:        { httpStatus: 500, label: "Spawn Failed",         retryable: true  },
-  timeout:             { httpStatus: 408, label: "Timeout",              retryable: true  },
-  crash:               { httpStatus: 500, label: "Crashed",              retryable: true  },
-  unknown:             { httpStatus: 500, label: "Unknown Error",        retryable: true  },
+export const UNAVAILABILITY_META: Record<
+  ToolUnavailabilityReason,
+  UnavailabilityMeta
+> = {
+  not_installed: { httpStatus: 404, label: "Not Installed", retryable: false },
+  not_in_path: { httpStatus: 404, label: "Not in PATH", retryable: false },
+  permission_denied: {
+    httpStatus: 403,
+    label: "Permission Denied",
+    retryable: false,
+  },
+  version_unsupported: {
+    httpStatus: 422,
+    label: "Version Unsupported",
+    retryable: false,
+  },
+  auth_required: { httpStatus: 401, label: "Auth Required", retryable: false },
+  auth_expired: { httpStatus: 401, label: "Auth Expired", retryable: false },
+  config_missing: {
+    httpStatus: 404,
+    label: "Config Missing",
+    retryable: false,
+  },
+  config_invalid: {
+    httpStatus: 422,
+    label: "Config Invalid",
+    retryable: false,
+  },
+  dependency_missing: {
+    httpStatus: 424,
+    label: "Dependency Missing",
+    retryable: false,
+  },
+  mcp_unreachable: {
+    httpStatus: 503,
+    label: "MCP Unreachable",
+    retryable: true,
+  },
+  spawn_failed: { httpStatus: 500, label: "Spawn Failed", retryable: true },
+  timeout: { httpStatus: 408, label: "Timeout", retryable: true },
+  crash: { httpStatus: 500, label: "Crashed", retryable: true },
+  unknown: { httpStatus: 500, label: "Unknown Error", retryable: true },
 };
 
 // ============================================================================
@@ -75,59 +102,59 @@ export interface ClassificationInput {
  */
 const STDERR_PATTERNS: Array<[RegExp, ToolUnavailabilityReason]> = [
   // Permission
-  [/permission denied/i,               "permission_denied"],
-  [/eacces/i,                          "permission_denied"],
-  [/operation not permitted/i,         "permission_denied"],
+  [/permission denied/i, "permission_denied"],
+  [/eacces/i, "permission_denied"],
+  [/operation not permitted/i, "permission_denied"],
 
   // Auth
-  [/not logged in/i,                   "auth_required"],
-  [/not authenticated/i,               "auth_required"],
-  [/unauthorized/i,                    "auth_required"],
-  [/no api key/i,                      "auth_required"],
-  [/missing credentials/i,            "auth_required"],
-  [/invalid.*token/i,                  "auth_expired"],
-  [/token.*expired/i,                  "auth_expired"],
-  [/authentication.*expired/i,         "auth_expired"],
+  [/not logged in/i, "auth_required"],
+  [/not authenticated/i, "auth_required"],
+  [/unauthorized/i, "auth_required"],
+  [/no api key/i, "auth_required"],
+  [/missing credentials/i, "auth_required"],
+  [/invalid.*token/i, "auth_expired"],
+  [/token.*expired/i, "auth_expired"],
+  [/authentication.*expired/i, "auth_expired"],
 
   // Config (before generic "not found" to avoid false matches)
-  [/config.*not found/i,              "config_missing"],
-  [/missing.*config/i,                "config_missing"],
-  [/no configuration/i,               "config_missing"],
-  [/invalid.*config/i,                "config_invalid"],
-  [/configuration.*error/i,           "config_invalid"],
+  [/config.*not found/i, "config_missing"],
+  [/missing.*config/i, "config_missing"],
+  [/no configuration/i, "config_missing"],
+  [/invalid.*config/i, "config_invalid"],
+  [/configuration.*error/i, "config_invalid"],
 
   // Not installed / not found
-  [/command not found/i,               "not_installed"],
-  [/not found/i,                       "not_installed"],
-  [/no such file or directory/i,       "not_installed"],
-  [/is not recognized/i,              "not_installed"],  // Windows
-  [/not installed/i,                   "not_installed"],
+  [/command not found/i, "not_installed"],
+  [/not found/i, "not_installed"],
+  [/no such file or directory/i, "not_installed"],
+  [/is not recognized/i, "not_installed"], // Windows
+  [/not installed/i, "not_installed"],
 
   // Version
-  [/unsupported version/i,            "version_unsupported"],
-  [/version.*not supported/i,         "version_unsupported"],
-  [/requires.*version/i,              "version_unsupported"],
-  [/minimum.*version/i,               "version_unsupported"],
-  [/upgrade required/i,               "version_unsupported"],
+  [/unsupported version/i, "version_unsupported"],
+  [/version.*not supported/i, "version_unsupported"],
+  [/requires.*version/i, "version_unsupported"],
+  [/minimum.*version/i, "version_unsupported"],
+  [/upgrade required/i, "version_unsupported"],
 
   // Dependencies
-  [/missing.*dependency/i,            "dependency_missing"],
-  [/requires.*installed/i,            "dependency_missing"],
-  [/prerequisite.*not met/i,          "dependency_missing"],
+  [/missing.*dependency/i, "dependency_missing"],
+  [/requires.*installed/i, "dependency_missing"],
+  [/prerequisite.*not met/i, "dependency_missing"],
 
   // MCP
-  [/mcp.*unreachable/i,               "mcp_unreachable"],
-  [/mcp.*connection.*refused/i,        "mcp_unreachable"],
-  [/mcp.*connection.*failed/i,         "mcp_unreachable"],
-  [/econnrefused/i,                    "mcp_unreachable"],
+  [/mcp.*unreachable/i, "mcp_unreachable"],
+  [/mcp.*connection.*refused/i, "mcp_unreachable"],
+  [/mcp.*connection.*failed/i, "mcp_unreachable"],
+  [/econnrefused/i, "mcp_unreachable"],
 
   // Crash
-  [/segfault/i,                        "crash"],
-  [/segmentation fault/i,             "crash"],
-  [/fatal error/i,                     "crash"],
-  [/panic/i,                           "crash"],
-  [/core dumped/i,                     "crash"],
-  [/aborted/i,                         "crash"],
+  [/segfault/i, "crash"],
+  [/segmentation fault/i, "crash"],
+  [/fatal error/i, "crash"],
+  [/panic/i, "crash"],
+  [/core dumped/i, "crash"],
+  [/aborted/i, "crash"],
 ];
 
 /**
@@ -143,8 +170,8 @@ const EXIT_CODE_MAP: Record<number, ToolUnavailabilityReason> = {
   126: "permission_denied",
   127: "not_installed",
   // Signal-based exits
-  134: "crash",  // SIGABRT
-  139: "crash",  // SIGSEGV
+  134: "crash", // SIGABRT
+  139: "crash", // SIGSEGV
 };
 
 /**
@@ -156,11 +183,14 @@ const EXIT_CODE_MAP: Record<number, ToolUnavailabilityReason> = {
  *   3. Error message pattern match
  *   4. Fallback to "unknown"
  */
-export function classifyToolUnavailability(input: ClassificationInput): ToolUnavailabilityReason {
+export function classifyToolUnavailability(
+  input: ClassificationInput,
+): ToolUnavailabilityReason {
   const stderr = input.stderr ?? "";
-  const errorMsg = typeof input.error === "string"
-    ? input.error
-    : input.error?.message ?? "";
+  const errorMsg =
+    typeof input.error === "string"
+      ? input.error
+      : (input.error?.message ?? "");
   const combined = stderr + " " + errorMsg;
 
   // 1. Check stderr + error message patterns
@@ -190,21 +220,27 @@ export function classifyToolUnavailability(input: ClassificationInput): ToolUnav
 /**
  * Get the HTTP status code for a tool unavailability reason.
  */
-export function getUnavailabilityHttpStatus(reason: ToolUnavailabilityReason): number {
+export function getUnavailabilityHttpStatus(
+  reason: ToolUnavailabilityReason,
+): number {
   return UNAVAILABILITY_META[reason].httpStatus;
 }
 
 /**
  * Get the UI display label for a tool unavailability reason.
  */
-export function getUnavailabilityLabel(reason: ToolUnavailabilityReason): string {
+export function getUnavailabilityLabel(
+  reason: ToolUnavailabilityReason,
+): string {
   return UNAVAILABILITY_META[reason].label;
 }
 
 /**
  * Whether the unavailability is potentially transient and worth retrying.
  */
-export function isRetryableUnavailability(reason: ToolUnavailabilityReason): boolean {
+export function isRetryableUnavailability(
+  reason: ToolUnavailabilityReason,
+): boolean {
   return UNAVAILABILITY_META[reason].retryable;
 }
 

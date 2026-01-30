@@ -5,8 +5,8 @@
  * command tier checking, and request history.
  */
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { StatusPill } from "../components/ui/StatusPill";
 
 // ============================================================================
@@ -71,15 +71,16 @@ const tierTone: Record<string, "positive" | "warning" | "danger" | "muted"> = {
   critical: "danger",
 };
 
-const statusTone: Record<string, "positive" | "warning" | "danger" | "muted"> = {
-  pending: "warning",
-  approved: "positive",
-  rejected: "danger",
-  cancelled: "muted",
-  timeout: "muted",
-  executed: "positive",
-  failed: "danger",
-};
+const statusTone: Record<string, "positive" | "warning" | "danger" | "muted"> =
+  {
+    pending: "warning",
+    approved: "positive",
+    rejected: "danger",
+    cancelled: "muted",
+    timeout: "muted",
+    executed: "positive",
+    failed: "danger",
+  };
 
 type TabId = "pending" | "history" | "sessions" | "check";
 
@@ -157,7 +158,11 @@ export function SLBPage() {
       : { id: "pending" as const, label: "Pending" },
     { id: "history", label: "History" },
     sessionList.length > 0
-      ? { id: "sessions" as const, label: "Sessions", badge: sessionList.length }
+      ? {
+          id: "sessions" as const,
+          label: "Sessions",
+          badge: sessionList.length,
+        }
       : { id: "sessions" as const, label: "Sessions" },
     { id: "check", label: "Check Command" },
   ];
@@ -176,7 +181,9 @@ export function SLBPage() {
         {tabs.map((t) => (
           <button
             key={t.id}
-            className={tab === t.id ? "tab-button tab-button--active" : "tab-button"}
+            className={
+              tab === t.id ? "tab-button tab-button--active" : "tab-button"
+            }
             type="button"
             onClick={() => setTab(t.id)}
           >
@@ -208,7 +215,9 @@ export function SLBPage() {
                 <div key={r.id} className="table__row">
                   <span className="mono">{r.command}</span>
                   <span>
-                    <StatusPill tone={tierTone[r.tier] ?? "muted"}>{r.tier}</StatusPill>
+                    <StatusPill tone={tierTone[r.tier] ?? "muted"}>
+                      {r.tier}
+                    </StatusPill>
                   </span>
                   <span>{r.requestedBy}</span>
                   <span className="muted">
@@ -262,10 +271,14 @@ export function SLBPage() {
                 <div key={r.id} className="table__row">
                   <span className="mono">{r.command}</span>
                   <span>
-                    <StatusPill tone={tierTone[r.tier] ?? "muted"}>{r.tier}</StatusPill>
+                    <StatusPill tone={tierTone[r.tier] ?? "muted"}>
+                      {r.tier}
+                    </StatusPill>
                   </span>
                   <span>
-                    <StatusPill tone={statusTone[r.status] ?? "muted"}>{r.status}</StatusPill>
+                    <StatusPill tone={statusTone[r.status] ?? "muted"}>
+                      {r.status}
+                    </StatusPill>
                   </span>
                   <span>{r.requestedBy}</span>
                   <span>{r.reviewedBy ?? "—"}</span>
@@ -346,7 +359,9 @@ export function SLBPage() {
             <div className="result-box" style={{ marginTop: 12 }}>
               <p>
                 Tier:{" "}
-                <StatusPill tone={tierTone[checkMutation.data.data.tier] ?? "muted"}>
+                <StatusPill
+                  tone={tierTone[checkMutation.data.data.tier] ?? "muted"}
+                >
                   {checkMutation.data.data.tier}
                 </StatusPill>
               </p>
@@ -356,13 +371,16 @@ export function SLBPage() {
               </p>
               {checkMutation.data.data.pattern && (
                 <p className="muted">
-                  Matched pattern: <code>{checkMutation.data.data.pattern}</code>
+                  Matched pattern:{" "}
+                  <code>{checkMutation.data.data.pattern}</code>
                 </p>
               )}
             </div>
           )}
           {checkMutation.isError && (
-            <p className="error-text">{(checkMutation.error as Error).message}</p>
+            <p className="error-text">
+              {(checkMutation.error as Error).message}
+            </p>
           )}
         </div>
       )}

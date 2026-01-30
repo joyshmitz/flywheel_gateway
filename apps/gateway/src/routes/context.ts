@@ -400,7 +400,8 @@ context.get("/:sessionId/context/history", async (c) => {
     const limitParam = c.req.query("limit");
 
     const sinceDate = sinceParam ? new Date(sinceParam) : undefined;
-    const since = sinceDate && !Number.isNaN(sinceDate.getTime()) ? sinceDate : undefined;
+    const since =
+      sinceDate && !Number.isNaN(sinceDate.getTime()) ? sinceDate : undefined;
     const parsedLimit = limitParam ? parseInt(limitParam, 10) : 100;
     const limit = Number.isNaN(parsedLimit) ? 100 : parsedLimit;
 

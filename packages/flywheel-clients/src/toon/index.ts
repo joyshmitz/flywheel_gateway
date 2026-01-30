@@ -12,8 +12,8 @@
  * When the toon_rust binary is available, it can also encode data to TOON.
  */
 
-import { z } from "zod";
 import type { OutputFormat } from "@flywheel/shared/types/tool-registry.types";
+import { z } from "zod";
 
 // ============================================================================
 // Types
@@ -161,7 +161,12 @@ export function parseToon(
 ): ToonParseResult<Record<string, unknown>> {
   const trimmed = input.trim();
   if (!trimmed) {
-    return { ok: false, raw: input, detectedFormat: "text", error: "Empty input" };
+    return {
+      ok: false,
+      raw: input,
+      detectedFormat: "text",
+      error: "Empty input",
+    };
   }
 
   if (!isToonFormat(trimmed)) {
@@ -326,9 +331,7 @@ export function normalizeOutput<T = unknown>(
 /**
  * Parse simple CSV (no quoting) into array of header-keyed objects.
  */
-function parseCsvSimple(
-  input: string,
-): Array<Record<string, string>> {
+function parseCsvSimple(input: string): Array<Record<string, string>> {
   const lines = input.split("\n").filter((l) => l.trim());
   if (lines.length < 2) return [];
 

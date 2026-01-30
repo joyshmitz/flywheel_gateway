@@ -8,22 +8,22 @@
  * - ACFS checksum age for tool integrity verification
  */
 
+import type { ToolDefinition } from "@flywheel/shared/types";
 import { Hono } from "hono";
 import { getLogger } from "../middleware/correlation";
-import { sendResource, sendValidationError } from "../utils/response";
 import * as dcgService from "../services/dcg.service";
 import * as slbService from "../services/slb.service";
+import {
+  getRequiredTools,
+  getToolRegistryMetadata,
+  loadToolRegistry,
+} from "../services/tool-registry.service";
 import { getUBSService } from "../services/ubs.service";
 import {
   getChecksumAge,
   listToolsWithChecksums,
 } from "../services/update-checker.service";
-import {
-  loadToolRegistry,
-  getRequiredTools,
-  getToolRegistryMetadata,
-} from "../services/tool-registry.service";
-import type { ToolDefinition } from "@flywheel/shared/types";
+import { sendResource, sendValidationError } from "../utils/response";
 
 const safety = new Hono();
 

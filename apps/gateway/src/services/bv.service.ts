@@ -189,7 +189,9 @@ export async function getBvTriage(options?: {
 
   const start = performance.now();
   const data = await getBvClient().getTriage({
-    ...(options?.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
+    ...(options?.timeoutMs !== undefined
+      ? { timeoutMs: options.timeoutMs }
+      : {}),
     ...(options?.maxOutputBytes !== undefined
       ? { maxOutputBytes: options.maxOutputBytes }
       : {}),

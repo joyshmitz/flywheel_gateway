@@ -11,11 +11,10 @@
  * Uses the E2E logging framework (test-fixture) for traceable artifacts.
  */
 
-import { test, expect } from "./lib/test-fixture";
 import { createHash } from "node:crypto";
+import { expect, test } from "./lib/test-fixture";
 
-const GATEWAY_URL =
-  process.env["E2E_GATEWAY_URL"] ?? "http://localhost:3456";
+const GATEWAY_URL = process.env["E2E_GATEWAY_URL"] ?? "http://localhost:3456";
 
 const isPlaywright = process.env["PLAYWRIGHT_TEST"] === "1";
 
@@ -172,15 +171,12 @@ if (isPlaywright) {
           expect(approvedData.status).toBe("approved");
 
           // Step 4: Validate the command hash for execution
-          const validateRes = await gw(
-            `/dcg/pending/${shortCode}/validate`,
-            {
-              method: "POST",
-              body: JSON.stringify({
-                commandHash: exception.commandHash,
-              }),
-            },
-          );
+          const validateRes = await gw(`/dcg/pending/${shortCode}/validate`, {
+            method: "POST",
+            body: JSON.stringify({
+              commandHash: exception.commandHash,
+            }),
+          });
           expect(validateRes.status).toBe(200);
           const validateData = validateRes.body.data as { valid?: boolean };
           expect(validateData.valid).toBe(true);
@@ -230,13 +226,10 @@ if (isPlaywright) {
         const shortCode = pendingData.exceptions[0]!.shortCode;
 
         // Validate with wrong hash
-        const validateRes = await gw(
-          `/dcg/pending/${shortCode}/validate`,
-          {
-            method: "POST",
-            body: JSON.stringify({ commandHash: "wrong-hash-value" }),
-          },
-        );
+        const validateRes = await gw(`/dcg/pending/${shortCode}/validate`, {
+          method: "POST",
+          body: JSON.stringify({ commandHash: "wrong-hash-value" }),
+        });
 
         expect(validateRes.status).toBe(200);
         const data = validateRes.body.data as { valid?: boolean };
@@ -274,9 +267,7 @@ if (isPlaywright) {
     test("GET /dcg/blocks supports filtering by agentId", async ({
       testLogger,
     }) => {
-      const { status, body } = await gw(
-        "/dcg/blocks?agentId=e2e-agent-1",
-      );
+      const { status, body } = await gw("/dcg/blocks?agentId=e2e-agent-1");
       expect(status).toBe(200);
 
       const data = body.data as { events?: unknown[] };

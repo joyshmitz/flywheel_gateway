@@ -5,17 +5,17 @@
  * Emits structured JSON logs per test and aggregates run summaries.
  */
 
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import type {
-  Reporter,
   FullConfig,
+  FullResult,
+  Reporter,
   Suite,
   TestCase,
   TestResult,
-  FullResult,
 } from "@playwright/test/reporter";
-import { mkdirSync, writeFileSync, existsSync } from "node:fs";
-import { join, basename, dirname } from "node:path";
-import type { TestLogBundle, RunSummary, TestStep, TestError } from "./types";
+import type { RunSummary, TestError, TestLogBundle, TestStep } from "./types";
 
 interface ReporterOptions {
   outputDir?: string;

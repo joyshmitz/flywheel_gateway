@@ -6,14 +6,14 @@
  * is missing, invalid, or fails to load.
  */
 
-import path from "node:path";
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { createHash } from "node:crypto";
+import path from "node:path";
 import type { ToolDefinition, ToolRegistry } from "@flywheel/shared";
 import { createGatewayError, isGatewayError } from "@flywheel/shared/errors";
-import { z } from "zod";
 import { parse as parseYaml } from "yaml";
+import { z } from "zod";
 import { getLogger } from "../middleware/correlation";
 
 // ============================================================================

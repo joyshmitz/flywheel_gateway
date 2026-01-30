@@ -246,7 +246,10 @@ describe("AcpDriver", () => {
 
         // Create checkpoint to inspect history
         const checkpoint = await driver.createCheckpoint(config.id, "test");
-        const fullCheckpoint = await driver.getCheckpoint(config.id, checkpoint.id);
+        const fullCheckpoint = await driver.getCheckpoint(
+          config.id,
+          checkpoint.id,
+        );
 
         const history = fullCheckpoint.conversationHistory as unknown[];
         // Should be pruned to maxHistoryMessages (5)
@@ -254,10 +257,7 @@ describe("AcpDriver", () => {
 
         await driver.terminate(config.id);
       } catch (err) {
-        console.log(
-          "Prune test skipped due to environment:",
-          String(err),
-        );
+        console.log("Prune test skipped due to environment:", String(err));
       }
     });
 
@@ -283,7 +283,10 @@ describe("AcpDriver", () => {
         }
 
         const checkpoint = await driver.createCheckpoint(config.id, "test");
-        const fullCheckpoint = await driver.getCheckpoint(config.id, checkpoint.id);
+        const fullCheckpoint = await driver.getCheckpoint(
+          config.id,
+          checkpoint.id,
+        );
 
         const history = fullCheckpoint.conversationHistory as Array<{
           content: Array<{ text?: string }>;
@@ -326,7 +329,10 @@ describe("AcpDriver", () => {
         }
 
         const checkpoint = await driver.createCheckpoint(config.id, "test");
-        const fullCheckpoint = await driver.getCheckpoint(config.id, checkpoint.id);
+        const fullCheckpoint = await driver.getCheckpoint(
+          config.id,
+          checkpoint.id,
+        );
 
         const history = fullCheckpoint.conversationHistory as unknown[];
         // 3 messages, no pruning needed
@@ -334,10 +340,7 @@ describe("AcpDriver", () => {
 
         await driver.terminate(config.id);
       } catch (err) {
-        console.log(
-          "No prune test skipped due to environment:",
-          String(err),
-        );
+        console.log("No prune test skipped due to environment:", String(err));
       }
     });
 
@@ -363,17 +366,17 @@ describe("AcpDriver", () => {
         }
 
         const checkpoint = await driver.createCheckpoint(config.id, "test");
-        const fullCheckpoint = await driver.getCheckpoint(config.id, checkpoint.id);
+        const fullCheckpoint = await driver.getCheckpoint(
+          config.id,
+          checkpoint.id,
+        );
 
         const history = fullCheckpoint.conversationHistory as unknown[];
         expect(history.length).toBe(5);
 
         await driver.terminate(config.id);
       } catch (err) {
-        console.log(
-          "At limit test skipped due to environment:",
-          String(err),
-        );
+        console.log("At limit test skipped due to environment:", String(err));
       }
     });
 
@@ -407,13 +410,19 @@ describe("AcpDriver", () => {
 
         // Check session 1 - should be pruned to 4 messages
         const checkpoint1 = await driver.createCheckpoint(config1.id, "test");
-        const fullCheckpoint1 = await driver.getCheckpoint(config1.id, checkpoint1.id);
+        const fullCheckpoint1 = await driver.getCheckpoint(
+          config1.id,
+          checkpoint1.id,
+        );
         const history1 = fullCheckpoint1.conversationHistory as unknown[];
         expect(history1.length).toBe(4);
 
         // Check session 2 - should still have 2 messages
         const checkpoint2 = await driver.createCheckpoint(config2.id, "test");
-        const fullCheckpoint2 = await driver.getCheckpoint(config2.id, checkpoint2.id);
+        const fullCheckpoint2 = await driver.getCheckpoint(
+          config2.id,
+          checkpoint2.id,
+        );
         const history2 = fullCheckpoint2.conversationHistory as unknown[];
         expect(history2.length).toBe(2);
 

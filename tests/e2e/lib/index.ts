@@ -32,25 +32,22 @@
  * ```
  */
 
+export type { LoggingFixtures } from "./fixtures";
+// Extended fixtures
+export { expect, getTestPrefix, logMarker, test } from "./fixtures";
+// Core logging utilities
+export { createTestLogger, TestLogger } from "./logging";
+// Reporter is imported directly in config, but export for reference
+export { default as StructuredReporter } from "./reporter";
 // Types
 export type {
   ConsoleEntry,
   NetworkEntry,
-  WebSocketEntry,
   PageErrorEntry,
-  TimingMetrics,
+  RunSummary,
+  TestError,
   TestLogBundle,
   TestStep,
-  TestError,
-  RunSummary,
+  TimingMetrics,
+  WebSocketEntry,
 } from "./types";
-
-// Core logging utilities
-export { TestLogger, createTestLogger } from "./logging";
-
-// Extended fixtures
-export { test, expect, getTestPrefix, logMarker } from "./fixtures";
-export type { LoggingFixtures } from "./fixtures";
-
-// Reporter is imported directly in config, but export for reference
-export { default as StructuredReporter } from "./reporter";

@@ -527,7 +527,12 @@ export function SetupSkeleton() {
 
 export function UtilitiesSkeleton() {
   return (
-    <div className="page" role="region" aria-busy="true" aria-label="Loading utilities">
+    <div
+      className="page"
+      role="region"
+      aria-busy="true"
+      aria-label="Loading utilities"
+    >
       <SkeletonCard />
       <div className="grid grid--3" style={{ marginTop: 16 }}>
         {Array.from({ length: 6 }).map((_, i) => (
@@ -550,7 +555,12 @@ export function UtilitiesSkeleton() {
 
 export function NTMSkeleton() {
   return (
-    <div className="page" role="region" aria-busy="true" aria-label="Loading NTM sessions">
+    <div
+      className="page"
+      role="region"
+      aria-busy="true"
+      aria-label="Loading NTM sessions"
+    >
       <div className="card">
         <div className="card__header">
           <Skeleton variant="text" style={{ width: 100 }} />
@@ -574,7 +584,12 @@ export function NTMSkeleton() {
 
 export function CASSSkeleton() {
   return (
-    <div className="page" role="region" aria-busy="true" aria-label="Loading session search">
+    <div
+      className="page"
+      role="region"
+      aria-busy="true"
+      aria-label="Loading session search"
+    >
       <div className="card">
         <Skeleton variant="text" style={{ width: 80, marginBottom: 12 }} />
         <div className="form-row">
@@ -596,7 +611,12 @@ export function CASSSkeleton() {
 
 export function SLBSkeleton() {
   return (
-    <div className="page" role="region" aria-busy="true" aria-label="Loading safety line buffer">
+    <div
+      className="page"
+      role="region"
+      aria-busy="true"
+      aria-label="Loading safety line buffer"
+    >
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         <Skeleton variant="button" style={{ width: 80 }} />
         <Skeleton variant="button" style={{ width: 80 }} />
@@ -616,7 +636,12 @@ export function SLBSkeleton() {
 
 export function CMSkeleton() {
   return (
-    <div className="page" role="region" aria-busy="true" aria-label="Loading credential manager">
+    <div
+      className="page"
+      role="region"
+      aria-busy="true"
+      aria-label="Loading credential manager"
+    >
       <div className="card card--compact" style={{ marginBottom: 16 }}>
         <Skeleton variant="text" style={{ width: 200 }} />
       </div>

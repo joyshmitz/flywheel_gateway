@@ -9,7 +9,7 @@
  */
 
 export {
-  type NtmDriverOptions,
-  NtmDriver,
   createNtmDriver,
+  NtmDriver,
+  type NtmDriverOptions,
 } from "./ntm-driver";

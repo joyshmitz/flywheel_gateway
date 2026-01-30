@@ -75,8 +75,7 @@ const AI_HINT_OVERRIDES: Partial<Record<ErrorCode, AIHint>> = {
   },
   TOOL_CONFIG_MISSING: {
     severity: "recoverable",
-    suggestedAction:
-      "Create the required configuration file for the tool.",
+    suggestedAction: "Create the required configuration file for the tool.",
   },
   TOOL_CONFIG_INVALID: {
     severity: "recoverable",
@@ -85,8 +84,7 @@ const AI_HINT_OVERRIDES: Partial<Record<ErrorCode, AIHint>> = {
   },
   TOOL_DEPENDENCY_MISSING: {
     severity: "terminal",
-    suggestedAction:
-      "Install the missing dependency required by the tool.",
+    suggestedAction: "Install the missing dependency required by the tool.",
   },
   TOOL_MCP_UNREACHABLE: {
     severity: "retry",

@@ -7,8 +7,8 @@
  */
 
 import { test as base, expect } from "@playwright/test";
-import { TestLogger, createTestLogger } from "./logging";
 import { registerTestLogData } from "./e2e-reporter";
+import { createTestLogger, type TestLogger } from "./logging";
 
 // Declare the extended fixtures
 type TestFixtures = {
@@ -90,11 +90,11 @@ export type { TestLogger } from "./logging";
 export type {
   ConsoleEntry,
   NetworkEntry,
-  WebSocketEntry,
   PageErrorEntry,
-  TimingMetrics,
-  TestLogBundle,
   RunSummary,
+  TestLogBundle,
+  TimingMetrics,
+  WebSocketEntry,
 } from "./types";
 
 /**

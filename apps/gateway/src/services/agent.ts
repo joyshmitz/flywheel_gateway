@@ -17,6 +17,13 @@ import { agents as agentsTable, db } from "../db";
 import { getLogger } from "../middleware/correlation";
 import { isTerminalState, LifecycleState } from "../models/agent-state";
 import {
+  clearAgentHealth,
+  getAgentHealth,
+  getFleetHealthSummary,
+  isSafeToRestart,
+  pushOutputSample,
+} from "./agent-health.service";
+import {
   getAgentState,
   hydrateAgentState,
   initializeAgentState,
@@ -39,13 +46,6 @@ import {
   getOutput as getOutputFromBuffer,
   pushOutput,
 } from "./output.service";
-import {
-  clearAgentHealth,
-  getAgentHealth,
-  getFleetHealthSummary,
-  isSafeToRestart,
-  pushOutputSample,
-} from "./agent-health.service";
 
 // In-memory agent registry
 const agents = new Map<string, AgentRecord>();
@@ -147,7 +147,10 @@ async function handleAgentEvents(
             .set({ status: "terminated", updatedAt: new Date() })
             .where(eq(agentsTable.id, agentId))
             .catch((dbErr: unknown) => {
-              log.error({ dbErr, agentId }, "Failed to update DB on agent termination event");
+              log.error(
+                { dbErr, agentId },
+                "Failed to update DB on agent termination event",
+              );
             });
         } catch (err) {
           log.error({ err, agentId }, "Error handling agent termination event");

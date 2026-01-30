@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Activity,
+  BookOpen,
   Bot,
   ChevronLeft,
   ChevronRight,
@@ -14,10 +15,9 @@ import {
   Network,
   Search,
   Settings,
-  BookOpen,
   Shield,
-  Terminal,
   Sparkles,
+  Terminal,
   Wand2,
   Workflow,
   Wrench,

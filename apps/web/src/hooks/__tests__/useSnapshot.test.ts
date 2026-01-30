@@ -5,7 +5,7 @@
  * processes real API response shapes via fetch mocking at the network level.
  */
 
-import { describe, expect, it, mock, beforeEach, afterEach } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import type { SystemSnapshot } from "@flywheel/shared";
 
 // ============================================================================

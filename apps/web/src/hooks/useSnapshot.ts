@@ -202,7 +202,9 @@ const mockSnapshot: SystemSnapshot = {
   },
 };
 
-function refreshMockSnapshotTimestamps(snapshot: SystemSnapshot): SystemSnapshot {
+function refreshMockSnapshotTimestamps(
+  snapshot: SystemSnapshot,
+): SystemSnapshot {
   const now = new Date().toISOString();
   return {
     ...snapshot,
@@ -426,10 +428,10 @@ export function getAgentStateInfo(state: string): {
   label: string;
   color: string;
 } {
-  return agentStateInfoByState[
-    state as keyof typeof agentStateInfoByState
-  ] ?? {
-    label: state,
-    color: "var(--color-gray-400)",
-  };
+  return (
+    agentStateInfoByState[state as keyof typeof agentStateInfoByState] ?? {
+      label: state,
+      color: "var(--color-gray-400)",
+    }
+  );
 }

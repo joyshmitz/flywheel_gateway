@@ -3,6 +3,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { requestContextStorage } from "../middleware/correlation";
 import type { AuditEventOptions } from "../services/audit";
 import {
   audit,
@@ -10,7 +11,6 @@ import {
   auditSuccess,
   setAuditDbForTesting,
 } from "../services/audit";
-import { requestContextStorage } from "../middleware/correlation";
 
 const mockLogger = {
   info: () => {},

@@ -19,18 +19,18 @@ import {
   ShieldCheck,
   XCircle,
 } from "lucide-react";
-import { StatusPill } from "../ui/StatusPill";
 import {
   formatAge,
   getStatusTone,
-  useSafetyPosture,
   type ToolStatus,
+  useSafetyPosture,
 } from "../../hooks/useSafetyPosture";
 import {
   fadeVariants,
   listContainerVariants,
   listItemVariants,
 } from "../../lib/animations";
+import { StatusPill } from "../ui/StatusPill";
 
 // ============================================================================
 // Tool Status Card

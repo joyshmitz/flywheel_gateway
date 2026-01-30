@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { NtmClientError, createNtmClient } from "../index";
+import { createNtmClient, NtmClientError } from "../index";
 
 function createRunner(stdout: string, exitCode = 0) {
   const calls: { command: string; args: string[] }[] = [];
