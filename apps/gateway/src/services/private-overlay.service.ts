@@ -166,12 +166,19 @@ export async function loadOverlay(
 
 /**
  * Resolve a tool secret from environment variables.
- * Checks TOOL_<NAME>_API_KEY and mapped env var names.
+ * Checks TOOL_<NAME>_<KEY> and mapped env var names.
  */
 export function resolveToolSecret(
   toolName: string,
   envMapping?: EnvMapping,
+  secretKey = "apiKey",
 ): string | undefined {
+  const toolVarPart = toolName.toUpperCase().replace(/-/g, "_");
+  const keyVarPart = secretKey
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .toUpperCase()
+    .replace(/[^A-Z0-9_]/g, "_");
+
   // Check explicit mapping first
   const mappedVar = envMapping?.toolSecrets?.[toolName];
   if (mappedVar) {
@@ -179,8 +186,8 @@ export function resolveToolSecret(
     if (value) return value;
   }
 
-  // Check conventional TOOL_<NAME>_API_KEY pattern
-  const conventionVar = `TOOL_${toolName.toUpperCase().replace(/-/g, "_")}_API_KEY`;
+  // Check conventional TOOL_<NAME>_<KEY> pattern
+  const conventionVar = `TOOL_${toolVarPart}_${keyVarPart}`;
   return process.env[conventionVar];
 }
 

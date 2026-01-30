@@ -9,7 +9,7 @@ import {
 describe("redaction utilities", () => {
   describe("redactApiKey", () => {
     test("redacts full key showing only last 4 chars", () => {
-      expect(redactApiKey("sk-12345678901234567890")).toBe("...7890");
+      expect(redactApiKey("key-1234567890")).toBe("...7890");
     });
 
     test("redacts short keys completely", () => {
@@ -55,7 +55,7 @@ describe("redaction utilities", () => {
         username: "alice",
         password: "secret123",
         token: "abc123",
-        apiKey: "sk-12345",
+        apiKey: "key-12345",
       };
       const result = redactSensitive(input);
       expect(result["username"]).toBe("alice");

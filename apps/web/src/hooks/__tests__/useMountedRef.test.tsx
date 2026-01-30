@@ -16,7 +16,12 @@ import "@testing-library/jest-dom";
 import { useState, useEffect, useCallback } from "react";
 import { useMountedRef } from "../useMountedRef";
 
-GlobalRegistrator.register();
+// Wrap in try-catch to avoid errors when running with other test files that already registered
+try {
+  GlobalRegistrator.register();
+} catch {
+  // Already registered by another test file
+}
 
 // ============================================================================
 // Test Components

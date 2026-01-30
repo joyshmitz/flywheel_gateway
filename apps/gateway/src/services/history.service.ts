@@ -658,13 +658,14 @@ export function extractFromOutput(
       const jsonPattern = /(\{[\s\S]*?\}|\[[\s\S]*?\])/g;
       for (const match of output.matchAll(jsonPattern)) {
         const captured = match[1];
-        if (!captured) continue;
+        const matchIndex = match.index;
+        if (!captured || matchIndex === undefined) continue;
         try {
           JSON.parse(captured);
-          const startLine = output.slice(0, match.index).split("\n").length - 1;
-          const endLine =
-            output.slice(0, match.index! + captured.length).split("\n").length -
-            1;
+          const startLine = output.slice(0, matchIndex).split("\n").length - 1;
+          const endLine = output
+            .slice(0, matchIndex + captured.length)
+            .split("\n").length - 1;
           matches.push({
             content: captured,
             lineStart: startLine,
@@ -683,8 +684,9 @@ export function extractFromOutput(
         /(?:^|\s)((?:\/[\w.-]+)+\/?|(?:[A-Za-z]:)?\\(?:[\w.-]+\\)*[\w.-]+)/gm;
       for (const match of output.matchAll(pathPattern)) {
         const captured = match[1];
-        if (!captured) continue;
-        const lineNum = output.slice(0, match.index).split("\n").length - 1;
+        const matchIndex = match.index;
+        if (!captured || matchIndex === undefined) continue;
+        const lineNum = output.slice(0, matchIndex).split("\n").length - 1;
         matches.push({
           content: captured.trim(),
           lineStart: lineNum,
@@ -698,7 +700,9 @@ export function extractFromOutput(
       // Extract URLs
       const urlPattern = /https?:\/\/[^\s<>"{}|\\^`[\]]+/gi;
       for (const match of output.matchAll(urlPattern)) {
-        const lineNum = output.slice(0, match.index).split("\n").length - 1;
+        const matchIndex = match.index;
+        if (matchIndex === undefined) continue;
+        const lineNum = output.slice(0, matchIndex).split("\n").length - 1;
         matches.push({
           content: match[0],
           lineStart: lineNum,
@@ -722,7 +726,9 @@ export function extractFromOutput(
 
       for (const pattern of errorPatterns) {
         for (const match of output.matchAll(pattern)) {
-          const lineNum = output.slice(0, match.index).split("\n").length - 1;
+          const matchIndex = match.index;
+          if (matchIndex === undefined) continue;
+          const lineNum = output.slice(0, matchIndex).split("\n").length - 1;
           matches.push({
             content: match[0],
             lineStart: lineNum,
@@ -738,7 +744,9 @@ export function extractFromOutput(
         try {
           const pattern = new RegExp(options.customPattern, "gi");
           for (const match of output.matchAll(pattern)) {
-            const lineNum = output.slice(0, match.index).split("\n").length - 1;
+            const matchIndex = match.index;
+            if (matchIndex === undefined) continue;
+            const lineNum = output.slice(0, matchIndex).split("\n").length - 1;
             matches.push({
               content: match[0],
               lineStart: lineNum,

@@ -67,13 +67,13 @@ describe("loadSecretsFromDir", () => {
     const dir = makeTempDir("secret-inline-");
     writeFileSync(
       join(dir, "secrets.yaml"),
-      "tools:\n  dcg:\n    apiKey: sk-test-123\n  cass:\n    token: tok-abc",
+      "tools:\n  dcg:\n    apiKey: key-test-123\n  cass:\n    token: tok-abc",
     );
     const result = await loadSecretsFromDir(dir);
     expect(result.entries).toHaveLength(2);
     expect(result.entries[0].tool).toBe("dcg");
     expect(result.entries[0].key).toBe("apiKey");
-    expect(result.entries[0].value).toBe("sk-test-123");
+    expect(result.entries[0].value).toBe("key-test-123");
     rmSync(dir, { recursive: true });
   });
 
@@ -132,6 +132,20 @@ describe("resolveSecret", () => {
     expect(result.found).toBe(true);
     expect(result.source).toBe("env");
     expect(result.value).toBe("env-secret");
+  });
+
+  it("resolves non-apiKey secrets from conventional env var", async () => {
+    const tokenSpec: ToolSecretSpec = {
+      tool: "cass",
+      key: "token",
+      required: true,
+      description: "CASS token",
+    };
+    setEnv("TOOL_CASS_TOKEN", "env-token");
+    const result = await resolveSecret(tokenSpec);
+    expect(result.found).toBe(true);
+    expect(result.source).toBe("env");
+    expect(result.value).toBe("env-token");
   });
 
   it("resolves from env mapping", async () => {

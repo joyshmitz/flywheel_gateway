@@ -269,5 +269,43 @@ if (isPlaywright) {
         contentType: "text/html",
       });
     });
+
+    test("should show error state with retry when snapshot API fails", async ({
+      page,
+    }) => {
+      let snapshotCallCount = 0;
+      const snapshot = buildSnapshot({});
+
+      await page.route("**/api/system/snapshot**", async (route) => {
+        snapshotCallCount += 1;
+
+        if (snapshotCallCount === 1) {
+          await route.fulfill({
+            status: 503,
+            contentType: "application/json",
+            body: JSON.stringify({ error: "Service unavailable" }),
+          });
+          return;
+        }
+
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ data: snapshot }),
+        });
+      });
+
+      await page.goto("/");
+
+      await expect(page.getByTestId("snapshot-error")).toBeVisible();
+      const retryButton = page.getByTestId("retry-button");
+      await expect(retryButton).toBeVisible();
+
+      await retryButton.click();
+
+      await expect(page.getByTestId("snapshot-summary-panel")).toBeVisible();
+      await expect(page.getByTestId("snapshot-error")).toBeHidden();
+      expect(snapshotCallCount).toBeGreaterThanOrEqual(2);
+    });
   });
 }

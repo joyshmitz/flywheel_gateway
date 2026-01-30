@@ -87,7 +87,7 @@ const SECRETS_INDEX_FILE = "secrets.yaml";
  * Or secrets.yaml can contain inline values:
  *   tools:
  *     dcg:
- *       apiKey: "sk-..."
+ *       apiKey: "example-key"
  */
 export async function loadSecretsFromDir(
   privateDir?: string,
@@ -167,7 +167,7 @@ export async function resolveSecret(
 ): Promise<ResolvedSecret> {
   // 1. Try environment (mapping + convention)
   const mappedEnvVar = envMapping?.toolSecrets?.[spec.tool];
-  const envValue = resolveToolSecret(spec.tool, envMapping);
+  const envValue = resolveToolSecret(spec.tool, envMapping, spec.key);
   if (envValue) {
     // Source is "mapping" only if the mapped env var actually provided the value
     const mappedVarValue = mappedEnvVar ? process.env[mappedEnvVar] : undefined;

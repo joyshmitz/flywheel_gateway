@@ -9,7 +9,7 @@
  */
 
 import type { SystemSnapshot } from "@flywheel/shared";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "../components/ui/Toaster";
 import { useUiStore } from "../stores/ui";
 import { useAllowMockFallback } from "./useMockFallback";
@@ -202,6 +202,33 @@ const mockSnapshot: SystemSnapshot = {
   },
 };
 
+function refreshMockSnapshotTimestamps(snapshot: SystemSnapshot): SystemSnapshot {
+  const now = new Date().toISOString();
+  return {
+    ...snapshot,
+    meta: {
+      ...snapshot.meta,
+      generatedAt: now,
+    },
+    ntm: {
+      ...snapshot.ntm,
+      capturedAt: now,
+    },
+    agentMail: {
+      ...snapshot.agentMail,
+      capturedAt: now,
+    },
+    beads: {
+      ...snapshot.beads,
+      capturedAt: now,
+    },
+    tools: {
+      ...snapshot.tools,
+      capturedAt: now,
+    },
+  };
+}
+
 // ============================================================================
 // API Client
 // ============================================================================
@@ -254,6 +281,7 @@ export function useSnapshot(options?: {
 }): UseQueryResult<SystemSnapshot> {
   const mockMode = useUiStore((state) => state.mockMode);
   const allowMockFallback = useAllowMockFallback();
+  const toastStateRef = useRef<"none" | "mock" | "error">("none");
   const [data, setData] = useState<SystemSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -267,13 +295,7 @@ export function useSnapshot(options?: {
       if (mockMode) {
         // Simulate network delay
         await new Promise((r) => setTimeout(r, 300));
-        setData({
-          ...mockSnapshot,
-          meta: {
-            ...mockSnapshot.meta,
-            generatedAt: new Date().toISOString(),
-          },
-        });
+        setData(refreshMockSnapshotTimestamps(mockSnapshot));
         setUsingMockData(true);
         setIsLoading(false);
         return;
@@ -283,20 +305,27 @@ export function useSnapshot(options?: {
         const result = await fetchAPI<SystemSnapshot>("/snapshot", bypassCache);
         setData(result);
         setUsingMockData(false);
+        toastStateRef.current = "none";
       } catch (e) {
         const err = e instanceof Error ? e : new Error("Unknown error");
         setError(err);
 
         if (allowMockFallback) {
           // Development mode: fall back to mock data but indicate it
-          setData(mockSnapshot);
+          setData(refreshMockSnapshotTimestamps(mockSnapshot));
           setUsingMockData(true);
-          toast.warning("Using mock data - API unavailable");
+          if (toastStateRef.current !== "mock") {
+            toast.warning("Using mock data - API unavailable");
+            toastStateRef.current = "mock";
+          }
         } else {
           // Production: show error, no mock data
           setData(null);
           setUsingMockData(false);
-          toast.error(`Failed to load snapshot: ${err.message}`);
+          if (toastStateRef.current !== "error") {
+            toast.error(`Failed to load snapshot: ${err.message}`);
+            toastStateRef.current = "error";
+          }
         }
       } finally {
         setIsLoading(false);
@@ -330,19 +359,20 @@ export function useSnapshot(options?: {
 /**
  * Get the display tone for StatusPill based on health status.
  */
+const healthToneByStatus = {
+  healthy: "positive",
+  degraded: "warning",
+  unhealthy: "danger",
+  unknown: "muted",
+} as const satisfies Record<
+  "healthy" | "degraded" | "unhealthy" | "unknown",
+  "positive" | "warning" | "danger" | "muted"
+>;
+
 export function getHealthTone(
   status: "healthy" | "degraded" | "unhealthy" | "unknown",
 ): "positive" | "warning" | "danger" | "muted" {
-  switch (status) {
-    case "healthy":
-      return "positive";
-    case "degraded":
-      return "warning";
-    case "unhealthy":
-      return "danger";
-    case "unknown":
-      return "muted";
-  }
+  return healthToneByStatus[status];
 }
 
 /**
@@ -382,20 +412,24 @@ export function formatSecondsAgo(seconds: number | undefined): string {
 /**
  * Get agent state display info.
  */
+const agentStateInfoByState = {
+  working: { label: "Working", color: "var(--color-green-500)" },
+  idle: { label: "Idle", color: "var(--color-gray-400)" },
+  error: { label: "Error", color: "var(--color-red-500)" },
+  waiting: { label: "Waiting", color: "var(--color-amber-500)" },
+} as const satisfies Record<
+  "working" | "idle" | "error" | "waiting",
+  { label: string; color: string }
+>;
+
 export function getAgentStateInfo(state: string): {
   label: string;
   color: string;
 } {
-  switch (state) {
-    case "working":
-      return { label: "Working", color: "var(--color-green-500)" };
-    case "idle":
-      return { label: "Idle", color: "var(--color-gray-400)" };
-    case "error":
-      return { label: "Error", color: "var(--color-red-500)" };
-    case "waiting":
-      return { label: "Waiting", color: "var(--color-amber-500)" };
-    default:
-      return { label: state, color: "var(--color-gray-400)" };
-  }
+  return agentStateInfoByState[
+    state as keyof typeof agentStateInfoByState
+  ] ?? {
+    label: state,
+    color: "var(--color-gray-400)",
+  };
 }

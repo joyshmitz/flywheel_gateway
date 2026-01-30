@@ -85,7 +85,7 @@ describe("CLI Logging Standards (ADR-007)", () => {
     });
 
     test("redacts --api-key= arguments", () => {
-      const args = ["--api-key=sk-abc123def456"];
+      const args = ["--api-key=example"];
       const redacted = redactArgs(args);
 
       expect(redacted[0]).toBe("--api-key=[REDACTED]");
@@ -647,7 +647,7 @@ describe("CLI Logging Standards (ADR-007)", () => {
       const input: CliCommandLogInput = {
         tool: "cass",
         command: "search",
-        args: ["--api-key=sk-secret", "--query=test"],
+        args: ["--api-key=example", "--query=test"],
         latencyMs: 500,
         exitCode: 1,
         stderr: "Authentication failed",

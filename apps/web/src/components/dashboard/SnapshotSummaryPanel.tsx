@@ -28,6 +28,7 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
+import { MockDataBanner } from "../ui/MockDataBanner";
 import { StatusPill } from "../ui/StatusPill";
 import {
   formatSecondsAgo,
@@ -388,13 +389,17 @@ function IssuesList({ issues }: IssuesListProps) {
 // ============================================================================
 
 export function SnapshotSummaryPanel() {
-  const { data, isLoading, error, refetch } = useSnapshot({
+  const { data, isLoading, error, usingMockData, refetch } = useSnapshot({
     pollingInterval: 30000, // Auto-refresh every 30 seconds
   });
 
   if (isLoading && !data) {
     return (
-      <div className="card" style={{ textAlign: "center", padding: "32px" }}>
+      <div
+        className="card"
+        data-testid="snapshot-loading"
+        style={{ textAlign: "center", padding: "32px" }}
+      >
         <Loader2 size={24} className="spin" style={{ marginBottom: "12px" }} />
         <div className="muted">Loading system snapshot...</div>
       </div>
@@ -405,6 +410,7 @@ export function SnapshotSummaryPanel() {
     return (
       <motion.div
         className="card"
+        data-testid="snapshot-error"
         style={{ backgroundColor: "var(--color-red-50)" }}
         variants={fadeVariants}
         initial="hidden"
@@ -414,11 +420,14 @@ export function SnapshotSummaryPanel() {
           <AlertCircle size={24} style={{ color: "var(--color-red-500)" }} />
           <div>
             <div style={{ fontWeight: 500 }}>Error loading system snapshot</div>
-            <div className="muted">{error.message}</div>
+            <div className="muted" data-testid="error-message">
+              {error.message}
+            </div>
           </div>
         </div>
         <button
           className="btn btn--secondary"
+          data-testid="retry-button"
           onClick={() => refetch(true)}
           style={{ marginTop: "16px" }}
         >
@@ -456,6 +465,15 @@ export function SnapshotSummaryPanel() {
       initial="hidden"
       animate="visible"
     >
+      {usingMockData ? (
+        <div style={{ marginBottom: "16px" }}>
+          <MockDataBanner
+            message={
+              error ? "Showing mock data - API unavailable" : "Mock mode enabled"
+            }
+          />
+        </div>
+      ) : null}
       {/* Header Card */}
       <div className="card">
         <div className="card__header">

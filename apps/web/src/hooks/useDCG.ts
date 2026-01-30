@@ -6,7 +6,7 @@
  * approve/deny/test operations.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "../components/ui/Toaster";
 import { useUiStore } from "../stores/ui";
 import { useAllowMockFallback } from "./useMockFallback";
@@ -340,6 +340,7 @@ function useQuery<T>(
 ): UseQueryResult<T> {
   const mockMode = useUiStore((state) => state.mockMode);
   const allowMockFallback = useAllowMockFallback();
+  const toastStateRef = useRef<"none" | "mock" | "error">("none");
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -362,6 +363,7 @@ function useQuery<T>(
       const result = await fetchAPI<T>(endpoint);
       setData(result);
       setUsingMockData(false);
+      toastStateRef.current = "none";
     } catch (e) {
       const err = e instanceof Error ? e : new Error("Unknown error");
       setError(err);
@@ -370,12 +372,18 @@ function useQuery<T>(
         // Development mode: fall back to mock data but indicate it
         setData(mockData);
         setUsingMockData(true);
-        toast.warning("Using mock data - API unavailable");
+        if (toastStateRef.current !== "mock") {
+          toast.warning("Using mock data - API unavailable");
+          toastStateRef.current = "mock";
+        }
       } else {
         // Production: show error, no mock data
         setData(null);
         setUsingMockData(false);
-        toast.error(`Failed to load data: ${err.message}`);
+        if (toastStateRef.current !== "error") {
+          toast.error(`Failed to load data: ${err.message}`);
+          toastStateRef.current = "error";
+        }
       }
     } finally {
       setIsLoading(false);

@@ -846,20 +846,18 @@ type SafeExprNode =
   | { type: "identifier"; name: string }
   | { type: "member"; object: SafeExprNode; property: string }
   | { type: "unary"; operator: "!" | "+" | "-"; argument: SafeExprNode }
-  | {
-      type: "binary";
-      operator:
-        | "+"
-        | "-"
-        | "*"
-        | "/"
-        | "%"
-        | "=="
-        | "!="
-        | "==="
-        | "!=="
-        | "<"
-        | "<="
+	  | {
+	      type: "binary";
+	      operator:
+	        | "+"
+	        | "-"
+	        | "*"
+	        | "/"
+	        | "%"
+	        | "==="
+	        | "!=="
+	        | "<"
+	        | "<="
         | ">"
         | ">="
         | "&&"
@@ -1024,29 +1022,43 @@ function tokenizeSafeExpression(expression: string): SafeExprToken[] {
       continue;
     }
 
-    // Multi-char operators (longest first)
-    const start = index;
-    const rest = trimmed.slice(index);
-    const multi =
-      rest.startsWith("!==")
-        ? "!=="
-        : rest.startsWith("===")
-          ? "==="
+	    // Multi-char operators (longest first)
+	    const start = index;
+	    const rest = trimmed.slice(index);
+	    if (rest.startsWith("==") && !rest.startsWith("===")) {
+	      throw new Error(
+	        formatSafeExpressionError(
+	          'Use strict equality (===) instead of "=="',
+	          trimmed,
+	          start,
+	        ),
+	      );
+	    }
+	    if (rest.startsWith("!=") && !rest.startsWith("!==")) {
+	      throw new Error(
+	        formatSafeExpressionError(
+	          'Use strict inequality (!==) instead of "!="',
+	          trimmed,
+	          start,
+	        ),
+	      );
+	    }
+	    const multi =
+	      rest.startsWith("!==")
+	        ? "!=="
+	        : rest.startsWith("===")
+	          ? "==="
           : rest.startsWith("&&")
             ? "&&"
             : rest.startsWith("||")
               ? "||"
-              : rest.startsWith("<=")
-                ? "<="
-                : rest.startsWith(">=")
-                  ? ">="
-                  : rest.startsWith("==")
-                    ? "=="
-                    : rest.startsWith("!=")
-                      ? "!="
-                      : rest.startsWith("??")
-                        ? "??"
-                        : undefined;
+	              : rest.startsWith("<=")
+	                ? "<="
+	                : rest.startsWith(">=")
+	                  ? ">="
+	                  : rest.startsWith("??")
+	                    ? "??"
+	                    : undefined;
 
     if (multi) {
       index += multi.length;
@@ -1185,33 +1197,23 @@ class SafeExpressionParser {
     return node;
   }
 
-  private parseEquality(): SafeExprNode {
-    let node = this.parseComparison();
-    while (true) {
-      if (this.matchOperator("===")) {
-        const right = this.parseComparison();
-        node = { type: "binary", operator: "===", left: node, right };
-        continue;
-      }
-      if (this.matchOperator("!==")) {
-        const right = this.parseComparison();
-        node = { type: "binary", operator: "!==", left: node, right };
-        continue;
-      }
-      if (this.matchOperator("==")) {
-        const right = this.parseComparison();
-        node = { type: "binary", operator: "==", left: node, right };
-        continue;
-      }
-      if (this.matchOperator("!=")) {
-        const right = this.parseComparison();
-        node = { type: "binary", operator: "!=", left: node, right };
-        continue;
-      }
-      break;
-    }
-    return node;
-  }
+	  private parseEquality(): SafeExprNode {
+	    let node = this.parseComparison();
+	    while (true) {
+	      if (this.matchOperator("===")) {
+	        const right = this.parseComparison();
+	        node = { type: "binary", operator: "===", left: node, right };
+	        continue;
+	      }
+	      if (this.matchOperator("!==")) {
+	        const right = this.parseComparison();
+	        node = { type: "binary", operator: "!==", left: node, right };
+	        continue;
+	      }
+	      break;
+	    }
+	    return node;
+	  }
 
   private parseComparison(): SafeExprNode {
     let node = this.parseAdditive();
@@ -1506,30 +1508,24 @@ function evaluateSafeExpression(
       const left = evaluateSafeExpression(node.left, env, depth + 1);
       const right = evaluateSafeExpression(node.right, env, depth + 1);
 
-      switch (node.operator) {
-        case "+":
-          return typeof left === "string" || typeof right === "string"
-            ? `${String(left ?? "")}${String(right ?? "")}`
-            : Number(left) + Number(right);
-        case "-":
-          return Number(left) - Number(right);
-        case "*":
-          return Number(left) * Number(right);
-        case "/":
-          return Number(left) / Number(right);
-        case "%":
-          return Number(left) % Number(right);
-        case "==":
-          // biome-ignore lint/suspicious/noDoubleEquals: transform expressions can use JS loose equality
-          return left == right;
-        case "!=":
-          // biome-ignore lint/suspicious/noDoubleEquals: transform expressions can use JS loose inequality
-          return left != right;
-        case "===":
-          return left === right;
-        case "!==":
-          return left !== right;
-        case "<":
+	      switch (node.operator) {
+	        case "+":
+	          return typeof left === "string" || typeof right === "string"
+	            ? `${String(left ?? "")}${String(right ?? "")}`
+	            : Number(left) + Number(right);
+	        case "-":
+	          return Number(left) - Number(right);
+	        case "*":
+	          return Number(left) * Number(right);
+	        case "/":
+	          return Number(left) / Number(right);
+	        case "%":
+	          return Number(left) % Number(right);
+	        case "===":
+	          return left === right;
+	        case "!==":
+	          return left !== right;
+	        case "<":
           return Number(left) < Number(right);
         case "<=":
           return Number(left) <= Number(right);

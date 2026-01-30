@@ -32,7 +32,7 @@ export function useAllowMockFallback(): boolean {
  * Checks localStorage directly for mock mode setting.
  */
 export function getAllowMockFallback(): boolean {
-  const isDevelopment = import.meta.env.DEV;
+  const isDevelopment = import.meta.env.DEV === true;
 
   if (typeof window === "undefined") {
     return isDevelopment;
