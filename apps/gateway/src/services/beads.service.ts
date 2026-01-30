@@ -1,4 +1,5 @@
 import type {
+  BrClient,
   BrCloseOptions,
   BrCommandOptions,
   BrCreateInput,
@@ -31,6 +32,10 @@ import {
   getBvPlan,
   getBvTriage,
 } from "./bv.service";
+
+export interface CreateBeadsServiceOptions {
+  brClient?: BrClient;
+}
 
 export interface BeadsService {
   // BV (triage/insights/plan/graph)
@@ -65,7 +70,9 @@ export interface BeadsService {
   sync: (options?: BrSyncOptions) => Promise<BrSyncResult>;
 }
 
-export function createBeadsService(): BeadsService {
+export function createBeadsService(options: CreateBeadsServiceOptions = {}): BeadsService {
+  const brClient = options.brClient;
+
   return {
     // BV operations
     getTriage: () => getBvTriage(),
@@ -74,15 +81,24 @@ export function createBeadsService(): BeadsService {
     getGraph: (options?: BvGraphOptions) => getBvGraph(options),
 
     // BR CRUD operations
-    ready: (options?: BrReadyOptions) => getBrReady(options),
-    list: (options?: BrListOptions) => getBrList(options),
-    show: (ids, options) => getBrShow(ids, options),
-    create: (input, options) => createBrIssue(input, options),
-    update: (ids, input, options) => updateBrIssues(ids, input, options),
-    close: (ids, options) => closeBrIssues(ids, options),
+    ready: (options?: BrReadyOptions) =>
+      brClient ? brClient.ready(options) : getBrReady(options),
+    list: (options?: BrListOptions) =>
+      brClient ? brClient.list(options) : getBrList(options),
+    show: (ids, options) =>
+      brClient ? brClient.show(ids, options) : getBrShow(ids, options),
+    create: (input, options) =>
+      brClient ? brClient.create(input, options) : createBrIssue(input, options),
+    update: (ids, input, options) =>
+      brClient
+        ? brClient.update(ids, input, options)
+        : updateBrIssues(ids, input, options),
+    close: (ids, options) =>
+      brClient ? brClient.close(ids, options) : closeBrIssues(ids, options),
 
     // BR sync operations
-    syncStatus: (options) => getBrSyncStatus(options),
-    sync: (options) => syncBr(options),
+    syncStatus: (options) =>
+      brClient ? brClient.syncStatus(options) : getBrSyncStatus(options),
+    sync: (options) => (brClient ? brClient.sync(options) : syncBr(options)),
   };
 }

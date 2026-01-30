@@ -399,6 +399,13 @@ async function getStatus(): Promise<StatusReport> {
         url: gatewayUrl,
         details: `v${data.version ?? "unknown"}, uptime: ${data.uptime ?? "unknown"}`,
       });
+    } else {
+      services.push({
+        name: "Gateway API",
+        running: false,
+        url: gatewayUrl,
+        details: `HTTP ${response.status}`,
+      });
     }
   } catch {
     services.push({

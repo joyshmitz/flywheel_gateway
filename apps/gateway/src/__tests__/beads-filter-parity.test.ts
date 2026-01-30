@@ -10,11 +10,30 @@
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Hono } from "hono";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createBrClient, createBunBrCommandRunner } from "@flywheel/flywheel-clients";
 import { createBeadsRoutes } from "../routes/beads";
 import { createBeadsService } from "../services/beads.service";
 
 const TEST_TIMEOUT = 60000;
 const LOG_PREFIX = "[beads-filter-parity]";
+
+function isBrAvailable(): boolean {
+  try {
+    const result = spawnSync("br", ["--version"], {
+      encoding: "utf8",
+      timeout: 5000,
+    });
+    return result.status === 0;
+  } catch {
+    return false;
+  }
+}
+
+const BR_AVAILABLE = isBrAvailable();
 
 interface TestLogEntry {
   timestamp: string;
@@ -57,7 +76,7 @@ function getTestBeadTitle(): string {
 
 const createdBeadIds: string[] = [];
 
-describe("Beads Filter Parity Tests (bd-3kes)", () => {
+describe.skipIf(!BR_AVAILABLE)("Beads Filter Parity Tests (bd-3kes)", () => {
   let app: Hono;
   let service: ReturnType<typeof createBeadsService>;
 
@@ -70,13 +89,32 @@ describe("Beads Filter Parity Tests (bd-3kes)", () => {
   beforeAll(async () => {
     logTest({ test: "setup", action: "initializing_filter_parity_tests" });
 
-    service = createBeadsService();
+    const testProjectRoot = mkdtempSync(join(tmpdir(), "flywheel-beads-parity-"));
+    const init = spawnSync(
+      "br",
+      ["init", "--json", "--no-auto-import", "--no-auto-flush"],
+      { cwd: testProjectRoot, encoding: "utf8", timeout: TEST_TIMEOUT },
+    );
+    if (init.status !== 0) {
+      throw new Error(
+        `br init failed (${init.status}): ${(init.stderr || init.stdout || "").trim()}`,
+      );
+    }
+
+    const brClient = createBrClient({
+      runner: createBunBrCommandRunner(),
+      cwd: testProjectRoot,
+      timeout: TEST_TIMEOUT,
+      autoImport: false,
+      autoFlush: false,
+    });
+
+    service = createBeadsService({ brClient });
     app = new Hono();
     app.route("/beads", createBeadsRoutes(service));
 
-    // Create test beads with specific attributes for filter testing
-    // Note: We'll use existing beads in the repo for most tests since
-    // creating many beads is slow. These are for specific filter scenarios.
+    // Create a small set of beads with specific attributes for filter testing.
+    // The BR project is isolated in a temp directory to avoid mutating repo `.beads/`.
 
     // Bead with specific label for label filter tests
     const labeledBead = await service.create({

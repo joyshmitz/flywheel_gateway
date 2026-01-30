@@ -4,8 +4,9 @@
  * These tests verify create/show/close/ready flows with actual br commands.
  * Each test logs request IDs and payload summaries for easy debugging.
  *
- * NOTE: These tests are slow (each br command takes 3-5 seconds) and are
- * skipped by default. To run them, set RUN_SLOW_TESTS=1 environment variable.
+ * NOTE: These tests invoke the real `br` CLI and are skipped by default.
+ * To run them, set RUN_SLOW_TESTS=1. They run against an isolated temp beads
+ * workspace so they never mutate the repo `.beads/`.
  *
  * Part of bd-n52p: Tests for br endpoints.
  */
@@ -20,6 +21,10 @@ import {
 } from "bun:test";
 import { Hono } from "hono";
 import { spawnSync } from "node:child_process";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createBrClient, createBunBrCommandRunner } from "@flywheel/flywheel-clients";
 import { createBeadsRoutes } from "../routes/beads";
 import { createBeadsService } from "../services/beads.service";
 
@@ -98,44 +103,31 @@ describe.skipIf(!BR_AVAILABLE || !runSlowTests)("BR Endpoints Integration Tests"
     async () => {
       logTest({ test: "setup", action: "initializing_test_suite" });
 
-      // Create app with real BeadsService
-      service = createBeadsService();
+      // Create isolated BR project for tests so we never mutate the repo `.beads/`.
+      const testProjectRoot = mkdtempSync(join(tmpdir(), "flywheel-beads-it-"));
+      const init = spawnSync(
+        "br",
+        ["init", "--json", "--no-auto-import", "--no-auto-flush"],
+        { cwd: testProjectRoot, encoding: "utf8", timeout: TEST_TIMEOUT },
+      );
+      if (init.status !== 0) {
+        throw new Error(
+          `br init failed (${init.status}): ${(init.stderr || init.stdout || "").trim()}`,
+        );
+      }
+
+      const brClient = createBrClient({
+        runner: createBunBrCommandRunner(),
+        cwd: testProjectRoot,
+        timeout: TEST_TIMEOUT,
+        autoImport: false,
+        autoFlush: false,
+      });
+
+      // Create app with isolated BeadsService
+      service = createBeadsService({ brClient });
       app = new Hono();
       app.route("/beads", createBeadsRoutes(service));
-
-      // Pre-test cleanup: remove any orphaned test beads from prior runs
-      // This prevents test pollution if previous runs were interrupted
-      logTest({ test: "setup", action: "cleaning_orphaned_test_beads" });
-      try {
-        const allIssues = await service.list({ statuses: ["open"] });
-        const orphanedTestBeads = allIssues
-          .filter((issue) => issue.title.startsWith("test-bead-"))
-          .map((issue) => issue.id);
-
-        if (orphanedTestBeads.length > 0) {
-          logTest({
-            test: "setup",
-            action: "found_orphaned_beads",
-            payload: { count: orphanedTestBeads.length, ids: orphanedTestBeads },
-          });
-          await service.close(orphanedTestBeads, { force: true });
-          logTest({
-            test: "setup",
-            action: "cleaned_orphaned_beads",
-            payload: { count: orphanedTestBeads.length },
-          });
-        }
-      } catch (cleanupError) {
-        logTest({
-          test: "setup",
-          action: "orphan_cleanup_failed",
-          error:
-            cleanupError instanceof Error
-              ? cleanupError.message
-              : String(cleanupError),
-        });
-        // Non-fatal: continue with tests even if cleanup fails
-      }
 
       logTest({ test: "setup", action: "test_suite_initialized" });
     },
