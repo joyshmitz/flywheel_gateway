@@ -219,6 +219,7 @@ export function CostForecastChart({
                 (1 -
                   (d.predictedCostUnits - chartMetrics.minValue) / valueRange);
             return (
+              // biome-ignore lint/a11y/noStaticElementInteractions: SVG circle with focus handlers is valid for chart accessibility
               <circle
                 key={d.date}
                 cx={x}
