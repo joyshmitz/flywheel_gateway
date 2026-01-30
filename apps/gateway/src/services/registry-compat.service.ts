@@ -60,6 +60,10 @@ export function recordDeprecation(warning: DeprecationWarning): void {
     (w) => w.tool === warning.tool && w.field === warning.field,
   );
   if (!exists) {
+    // Cap at 500 entries to prevent unbounded growth in long-running processes
+    if (deprecationLog.length >= 500) {
+      deprecationLog.shift();
+    }
     deprecationLog.push(warning);
   }
 }

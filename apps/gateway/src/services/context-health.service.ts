@@ -154,10 +154,14 @@ export class ContextHealthService {
 
     // Start monitoring
     if (this.started && this.config.autoHealing.enabled) {
-      const interval = setInterval(
-        () => this.checkHealth(sessionId),
-        this.config.monitoring.checkIntervalMs,
-      );
+      const interval = setInterval(() => {
+        this.checkHealth(sessionId).catch((err) => {
+          baseLogger.error(
+            { sessionId, error: err },
+            "Health check failed in monitoring interval",
+          );
+        });
+      }, this.config.monitoring.checkIntervalMs);
       this.monitoringIntervals.set(sessionId, interval);
     }
 
