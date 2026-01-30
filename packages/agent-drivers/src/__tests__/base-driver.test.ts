@@ -413,6 +413,43 @@ describe("BaseDriver", () => {
 
       expect(events.some((event) => event.type === "terminated")).toBe(true);
     });
+
+    it("should abort subscription and remove subscriber without termination", async () => {
+      const agentConfig = createTestConfig();
+      await driver.spawn(agentConfig);
+
+      const state = driver.testGetInternalState(agentConfig.id);
+      expect(state).toBeDefined();
+      if (!state) return;
+      expect(state.eventSubscribers.size).toBe(0);
+
+      const abortController = new AbortController();
+
+      const subscription = driver.subscribe(
+        agentConfig.id,
+        abortController.signal,
+      );
+      const collector = (async () => {
+        for await (const _event of subscription) {
+          // Should not yield any events in this test
+        }
+      })();
+
+      // Wait a tick for subscription to start and register
+      await Bun.sleep(10);
+      expect(state.eventSubscribers.size).toBe(1);
+
+      abortController.abort();
+
+      await Promise.race([
+        collector,
+        Bun.sleep(200).then(() => {
+          throw new Error("Subscription did not terminate after abort()");
+        }),
+      ]);
+
+      expect(state.eventSubscribers.size).toBe(0);
+    });
   });
 
   describe("token usage and context health", () => {

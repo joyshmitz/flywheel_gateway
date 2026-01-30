@@ -128,10 +128,11 @@ export interface AgentDriver {
    * Returns an async iterable that yields events as they occur.
    *
    * @param agentId - The agent's unique identifier
+   * @param signal - Optional AbortSignal to cancel the subscription
    * @returns Async iterable of agent events
    * @throws {AgentNotFoundError} If the agent doesn't exist
    */
-  subscribe(agentId: string): AsyncIterable<AgentEvent>;
+  subscribe(agentId: string, signal?: AbortSignal): AsyncIterable<AgentEvent>;
 
   // ============================================================================
   // Checkpointing (Optional)

@@ -330,7 +330,10 @@ export abstract class BaseDriver implements AgentDriver {
     return output.slice(-limit);
   }
 
-  async *subscribe(agentId: string): AsyncIterable<AgentEvent> {
+  async *subscribe(
+    agentId: string,
+    signal?: AbortSignal,
+  ): AsyncIterable<AgentEvent> {
     const state = this.agents.get(agentId);
     if (!state) {
       throw new Error(`Agent not found: ${agentId}`);
@@ -338,23 +341,43 @@ export abstract class BaseDriver implements AgentDriver {
 
     // Create an async queue for events
     const queue: AgentEvent[] = [];
-    let resolveWaiting: ((value: IteratorResult<AgentEvent>) => void) | null =
-      null;
+    let resolveNext: ((event: AgentEvent | null) => void) | null = null;
     let done = false;
+    let cancelled = false;
+
+    if (signal?.aborted) {
+      return;
+    }
 
     const subscriber = (event: AgentEvent) => {
+      if (cancelled) return;
       if (event.type === "terminated") {
         done = true;
       }
-      if (resolveWaiting) {
-        resolveWaiting({ value: event, done: false });
-        resolveWaiting = null;
+      if (resolveNext) {
+        resolveNext(event);
+        resolveNext = null;
       } else {
         queue.push(event);
       }
     };
 
     state.eventSubscribers.add(subscriber);
+
+    const handleAbort = () => {
+      cancelled = true;
+      done = true;
+      queue.length = 0;
+      if (resolveNext) {
+        resolveNext(null);
+        resolveNext = null;
+      }
+    };
+
+    signal?.addEventListener("abort", handleAbort, { once: true });
+    if (signal?.aborted) {
+      handleAbort();
+    }
 
     const liveState = this.agents.get(agentId);
     if (!liveState || liveState !== state) {
@@ -373,22 +396,22 @@ export abstract class BaseDriver implements AgentDriver {
         if (queue.length > 0) {
           yield queue.shift()!;
         } else {
-          const event = await new Promise<IteratorResult<AgentEvent>>(
-            (resolve) => {
-              resolveWaiting = resolve;
-            },
-          );
-          if (!event.done) {
-            yield event.value;
-          }
+          const event = await new Promise<AgentEvent | null>((resolve) => {
+            resolveNext = resolve;
+          });
+          if (event === null) break;
+          yield event;
         }
       }
-      // Drain any remaining queued events after done is set
-      // This handles the case where terminated arrives while we're processing a previous event
-      while (queue.length > 0) {
-        yield queue.shift()!;
+      if (!cancelled) {
+        // Drain any remaining queued events after done is set
+        // This handles the case where terminated arrives while we're processing a previous event
+        while (queue.length > 0) {
+          yield queue.shift()!;
+        }
       }
     } finally {
+      signal?.removeEventListener("abort", handleAbort);
       state.eventSubscribers.delete(subscriber);
     }
   }
