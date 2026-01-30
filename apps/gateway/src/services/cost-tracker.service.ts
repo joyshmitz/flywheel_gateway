@@ -351,8 +351,9 @@ export async function getCostRecords(
         .where(eq(costRecords.id, decoded.id))
         .limit(1);
 
-      if (cursorRecord.length > 0) {
-        const cursorTimestamp = cursorRecord[0]!.timestamp;
+      const cursorItem = cursorRecord[0];
+      if (cursorItem) {
+        const cursorTimestamp = cursorItem.timestamp;
         const countBefore = await db
           .select({ count: sql<number>`count(*)` })
           .from(costRecords)

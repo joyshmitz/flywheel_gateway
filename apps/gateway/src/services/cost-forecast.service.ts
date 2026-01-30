@@ -134,7 +134,11 @@ function detectSeasonality(dailyValues: number[]): boolean {
   const dayAverages = Array.from({ length: 7 }, () => [] as number[]);
   for (const week of weeks) {
     for (let d = 0; d < 7; d++) {
-      dayAverages[d]!.push(week[d]!);
+      const dayArray = dayAverages[d];
+      const weekValue = week[d];
+      if (dayArray !== undefined && weekValue !== undefined) {
+        dayArray.push(weekValue);
+      }
     }
   }
 
@@ -165,7 +169,11 @@ function forecastLinear(
   }
 
   // Convert dates to day indices
-  const baseDate = historicalData[0]!.date.getTime();
+  const firstDataPoint = historicalData[0];
+  if (!firstDataPoint) {
+    return [];
+  }
+  const baseDate = firstDataPoint.date.getTime();
   const xValues = historicalData.map(
     (d) => (d.date.getTime() - baseDate) / (24 * 60 * 60 * 1000),
   );
@@ -218,23 +226,32 @@ function forecastExponential(
 
   const values = historicalData.map((d) => d.costUnits);
   const smoothed = exponentialSmoothing(values, 0.3);
-  const lastSmoothed = smoothed[smoothed.length - 1]!;
+  const lastSmoothedValue = smoothed[smoothed.length - 1];
+  if (lastSmoothedValue === undefined) {
+    return [];
+  }
+  const lastSmoothed = lastSmoothedValue;
 
   // Calculate trend from smoothed data
   const recentSmoothed = smoothed.slice(-14);
+  const firstRecent = recentSmoothed[0];
+  const lastRecent = recentSmoothed[recentSmoothed.length - 1];
   const trend =
-    recentSmoothed.length > 1
-      ? (recentSmoothed[recentSmoothed.length - 1]! - recentSmoothed[0]!) /
-        recentSmoothed.length
+    recentSmoothed.length > 1 && firstRecent !== undefined && lastRecent !== undefined
+      ? (lastRecent - firstRecent) / recentSmoothed.length
       : 0;
 
   // Error estimation
-  const errors = values.map((v, i) => v - smoothed[i]!);
+  const errors = values.map((v, i) => v - (smoothed[i] ?? 0));
   const errorStd = stdDev(errors);
   const zScore = 1.96;
 
   const forecasts: DailyForecast[] = [];
-  const lastDate = historicalData[historicalData.length - 1]!.date;
+  const lastDataPoint = historicalData[historicalData.length - 1];
+  if (!lastDataPoint) {
+    return [];
+  }
+  const lastDate = lastDataPoint.date;
 
   for (let i = 1; i <= horizonDays; i++) {
     const predicted = Math.max(0, lastSmoothed + trend * i);
@@ -396,8 +413,11 @@ export async function generateForecast(options: {
     let sumAbsPercent = 0;
     let sumSquaredError = 0;
     for (let i = 0; i < testData.length && i < testForecasts.length; i++) {
-      const actual = testData[i]!.costUnits;
-      const predicted = testForecasts[i]!.predictedCostUnits;
+      const testItem = testData[i];
+      const forecastItem = testForecasts[i];
+      if (!testItem || !forecastItem) continue;
+      const actual = testItem.costUnits;
+      const predicted = forecastItem.predictedCostUnits;
       if (actual > 0) {
         sumAbsPercent += Math.abs((actual - predicted) / actual);
       }

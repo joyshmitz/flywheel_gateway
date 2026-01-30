@@ -1011,10 +1011,11 @@ export async function deleteCheckpoint(checkpointId: string): Promise<void> {
     )
     .limit(1);
 
-  if (dependents.length > 0) {
+  const firstDependent = dependents[0];
+  if (firstDependent) {
     throw new CheckpointError(
       "HAS_DEPENDENTS",
-      `Cannot delete checkpoint ${checkpointId}: it is referenced as parent by ${dependents[0]!.id}`,
+      `Cannot delete checkpoint ${checkpointId}: it is referenced as parent by ${firstDependent.id}`,
     );
   }
 

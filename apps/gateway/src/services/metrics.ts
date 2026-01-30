@@ -243,8 +243,13 @@ function calculateTrend(
     return { trend: "stable", trendPercent: 0 };
   }
 
-  const first = recentPoints[0]!.value;
-  const last = recentPoints[recentPoints.length - 1]!.value;
+  const firstPoint = recentPoints[0];
+  const lastPoint = recentPoints[recentPoints.length - 1];
+  if (!firstPoint || !lastPoint) {
+    return { trend: "stable", trendPercent: 0 };
+  }
+  const first = firstPoint.value;
+  const last = lastPoint.value;
 
   if (first === 0) {
     return { trend: last > 0 ? "up" : "stable", trendPercent: 0 };
