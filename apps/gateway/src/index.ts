@@ -8,6 +8,7 @@ import {
   authMiddleware,
   buildAuthContext,
   getBearerToken,
+  safeCompare,
   verifyJwtHs256,
 } from "./middleware/auth";
 import { correlationMiddleware } from "./middleware/correlation";
@@ -171,7 +172,7 @@ if (import.meta.main) {
           ? createGuestAuthContext()
           : createInternalAuthContext();
         if (authEnabled && token) {
-          if (adminKey && token === adminKey) {
+          if (adminKey && safeCompare(token, adminKey)) {
             authContext = createInternalAuthContext();
           } else if (jwtSecret) {
             const result = await verifyJwtHs256(token, jwtSecret);

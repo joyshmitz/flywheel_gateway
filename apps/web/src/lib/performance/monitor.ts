@@ -53,6 +53,8 @@ class PerformanceMonitor {
   private longTasks: LongTaskEntry[] = [];
   private observers: PerformanceObserver[] = [];
   private frameRateInterval: ReturnType<typeof setInterval> | null = null;
+  private frameRateRequestId: number | null = null;
+  private frameRateActive = false;
   private callbacks: Set<MetricCallback> = new Set();
 
   constructor() {
@@ -235,15 +237,22 @@ class PerformanceMonitor {
    */
   startFrameRateMonitoring(sampleInterval = 1000): void {
     if (this.frameRateInterval) return;
+    if (typeof requestAnimationFrame !== "function") return;
 
     let lastTime = performance.now();
     let frameCount = 0;
 
+    this.frameRateActive = true;
+
     const measureFrame = () => {
+      if (!this.frameRateActive) {
+        this.frameRateRequestId = null;
+        return;
+      }
       frameCount++;
-      requestAnimationFrame(measureFrame);
+      this.frameRateRequestId = requestAnimationFrame(measureFrame);
     };
-    requestAnimationFrame(measureFrame);
+    this.frameRateRequestId = requestAnimationFrame(measureFrame);
 
     this.frameRateInterval = setInterval(() => {
       const now = performance.now();
@@ -262,6 +271,15 @@ class PerformanceMonitor {
     if (this.frameRateInterval) {
       clearInterval(this.frameRateInterval);
       this.frameRateInterval = null;
+    }
+
+    this.frameRateActive = false;
+    if (
+      this.frameRateRequestId !== null &&
+      typeof cancelAnimationFrame === "function"
+    ) {
+      cancelAnimationFrame(this.frameRateRequestId);
+      this.frameRateRequestId = null;
     }
   }
 

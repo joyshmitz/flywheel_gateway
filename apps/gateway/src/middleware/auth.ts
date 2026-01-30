@@ -22,11 +22,16 @@ function safeCompare(a: string, b: string): boolean {
     const bPadded = Buffer.alloc(maxLen);
     aBuffer.copy(aPadded);
     bBuffer.copy(bPadded);
-    timingSafeEqual(aPadded, bPadded);
+    // Always perform timing-safe comparison to prevent length-based timing leaks,
+    // but return false since the original lengths differ
+    void timingSafeEqual(aPadded, bPadded);
     return false;
   }
   return timingSafeEqual(aBuffer, bBuffer);
 }
+
+// Export for use in WebSocket auth
+export { safeCompare };
 
 type JwtPayload = Record<string, unknown>;
 

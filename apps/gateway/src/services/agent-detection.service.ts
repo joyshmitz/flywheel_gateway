@@ -1081,8 +1081,10 @@ async function detectCLI(def: CLIDefinition): Promise<DetectedCLI> {
         detectionMethod = "manifest";
       } else {
         // Check passed but didn't return path - find it via fallback
-        const primaryCmd = def.commands[0]!;
-        path = await findExecutable(primaryCmd);
+        const primaryCmd = def.commands[0];
+        if (primaryCmd) {
+          path = await findExecutable(primaryCmd);
+        }
         if (path) {
           detectionMethod = "manifest";
         }
@@ -1100,9 +1102,11 @@ async function detectCLI(def: CLIDefinition): Promise<DetectedCLI> {
 
   // Priority 2: Fallback to which/where if manifest check not available or failed
   if (!path) {
-    const primaryCmd = def.commands[0]!;
-    path = await findExecutable(primaryCmd);
-    detectionMethod = "fallback";
+    const primaryCmd = def.commands[0];
+    if (primaryCmd) {
+      path = await findExecutable(primaryCmd);
+      detectionMethod = "fallback";
+    }
   }
 
   if (!path) {
