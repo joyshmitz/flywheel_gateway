@@ -17,6 +17,10 @@ import { Hono } from "hono";
 
 // Import routes directly — no mock.module
 import { setup } from "../routes/setup";
+import { buildAuthContext } from "../middleware/auth";
+import type { AuthContext } from "../ws/hub";
+
+type TestEnv = { Variables: { auth: AuthContext } };
 
 type Envelope<T> = {
   object: string;
@@ -29,9 +33,9 @@ describe("Setup Routes Integration (no mocks)", () => {
   // These tests intentionally mount only the setup routes (no auth middleware),
   // so set an admin auth context explicitly instead of mutating process.env
   // (which can be flaky under parallel test execution).
-  const app = new Hono();
+  const app = new Hono<TestEnv>();
   app.use("*", async (c, next) => {
-    c.set("auth", { isAdmin: true });
+    c.set("auth", buildAuthContext({}, true));
     await next();
   });
   app.route("/setup", setup);
