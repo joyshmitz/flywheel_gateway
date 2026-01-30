@@ -210,7 +210,8 @@ export function CostForecastChart({
           />
           {/* Data points */}
           {dailyForecasts.map((d, i) => {
-            const denominator = dailyForecasts.length > 1 ? dailyForecasts.length - 1 : 1;
+            const denominator =
+              dailyForecasts.length > 1 ? dailyForecasts.length - 1 : 1;
             const x = (i / denominator) * 100;
             const valueRange =
               chartMetrics.maxValue - chartMetrics.minValue || 1;

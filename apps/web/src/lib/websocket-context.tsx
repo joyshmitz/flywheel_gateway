@@ -20,6 +20,7 @@ import {
 } from "./websocket/reconnect";
 
 const gatewayToken = import.meta.env["VITE_GATEWAY_TOKEN"]?.trim();
+const WS_READY_STATE_OPEN = 1;
 
 // ============================================================================
 // Types
@@ -63,9 +64,24 @@ interface WebSocketProviderProps {
   children: ReactNode;
   /** WebSocket URL (defaults to auto-detect based on window.location) */
   url?: string;
+  /**
+   * Test-only override for the internal message queue instance.
+   * Avoids global prototype patching in unit tests.
+   */
+  __testMessageQueue?: QueuedMessage[];
+  /**
+   * Test-only override for WebSocket creation.
+   * Avoids mutating `globalThis.WebSocket` across concurrently running test files.
+   */
+  __testCreateWebSocket?: (url: string) => WebSocket;
 }
 
-export function WebSocketProvider({ children, url }: WebSocketProviderProps) {
+export function WebSocketProvider({
+  children,
+  url,
+  __testMessageQueue,
+  __testCreateWebSocket,
+}: WebSocketProviderProps) {
   const mockMode = useUiStore((state) => state.mockMode);
   const [status, setStatus] = useState<ConnectionStatus>(createInitialStatus());
 
@@ -81,7 +97,7 @@ export function WebSocketProvider({ children, url }: WebSocketProviderProps) {
   const subscriptionsRef = useRef<Map<string, Set<(data: unknown) => void>>>(
     new Map(),
   );
-  const messageQueueRef = useRef<QueuedMessage[]>([]);
+  const messageQueueRef = useRef<QueuedMessage[]>(__testMessageQueue ?? []);
 
   // Build WebSocket URL
   const wsUrlBase =
@@ -137,7 +153,7 @@ export function WebSocketProvider({ children, url }: WebSocketProviderProps) {
 
   // Flush queued messages when connected
   const flushQueue = useCallback(() => {
-    if (wsRef.current?.readyState !== WebSocket.OPEN) return;
+    if (wsRef.current?.readyState !== WS_READY_STATE_OPEN) return;
 
     const queue = messageQueueRef.current;
     messageQueueRef.current = [];
@@ -154,7 +170,7 @@ export function WebSocketProvider({ children, url }: WebSocketProviderProps) {
 
   // Resubscribe to all channels after reconnect
   const resubscribeAll = useCallback(() => {
-    if (wsRef.current?.readyState !== WebSocket.OPEN) return;
+    if (wsRef.current?.readyState !== WS_READY_STATE_OPEN) return;
 
     for (const channel of subscriptionsRef.current.keys()) {
       try {
@@ -191,7 +207,9 @@ export function WebSocketProvider({ children, url }: WebSocketProviderProps) {
     updateStatus("connecting");
 
     try {
-      const ws = new WebSocket(wsUrl);
+      const ws = __testCreateWebSocket
+        ? __testCreateWebSocket(wsUrl)
+        : new WebSocket(wsUrl);
 
       ws.onopen = () => {
         // Guard against setState after unmount
@@ -329,7 +347,15 @@ export function WebSocketProvider({ children, url }: WebSocketProviderProps) {
     } catch {
       updateStatus("failed", attemptRef.current);
     }
-  }, [isMounted, mockMode, wsUrl, updateStatus, resubscribeAll, flushQueue]);
+  }, [
+    isMounted,
+    mockMode,
+    wsUrl,
+    updateStatus,
+    resubscribeAll,
+    flushQueue,
+    __testCreateWebSocket,
+  ]);
 
   // Manual reconnect (from failed state)
   const reconnect = useCallback(() => {
@@ -344,7 +370,7 @@ export function WebSocketProvider({ children, url }: WebSocketProviderProps) {
         return;
       }
 
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
+      if (wsRef.current?.readyState === WS_READY_STATE_OPEN) {
         try {
           wsRef.current.send(JSON.stringify(message));
           return;
@@ -369,7 +395,7 @@ export function WebSocketProvider({ children, url }: WebSocketProviderProps) {
       subscriptionsRef.current.get(channel)?.add(handler);
 
       // Send subscribe message if connected
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
+      if (wsRef.current?.readyState === WS_READY_STATE_OPEN) {
         try {
           wsRef.current.send(JSON.stringify({ type: "subscribe", channel }));
         } catch {
@@ -385,7 +411,7 @@ export function WebSocketProvider({ children, url }: WebSocketProviderProps) {
         // Unsubscribe from channel if no more handlers
         if (handlers?.size === 0) {
           subscriptionsRef.current.delete(channel);
-          if (wsRef.current?.readyState === WebSocket.OPEN) {
+          if (wsRef.current?.readyState === WS_READY_STATE_OPEN) {
             try {
               wsRef.current.send(
                 JSON.stringify({ type: "unsubscribe", channel }),
@@ -405,7 +431,7 @@ export function WebSocketProvider({ children, url }: WebSocketProviderProps) {
     const channels = Array.from(subscriptionsRef.current.keys());
     subscriptionsRef.current.clear();
 
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    if (wsRef.current?.readyState === WS_READY_STATE_OPEN) {
       for (const channel of channels) {
         try {
           wsRef.current.send(JSON.stringify({ type: "unsubscribe", channel }));

@@ -597,12 +597,7 @@ export async function executePlanWithDCG(
   for (let i = 0; i < actions.length; i++) {
     const action = actions[i];
     if (!action) continue;
-    const result = await executeActionWithDCG(
-      sessionId,
-      planId,
-      i,
-      action,
-    );
+    const result = await executeActionWithDCG(sessionId, planId, i, action);
     results.push(result);
 
     if (result.success) {

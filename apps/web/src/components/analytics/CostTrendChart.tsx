@@ -168,7 +168,8 @@ export function CostTrendChart({
           />
           {/* Data points */}
           {filteredData.map((d, i) => {
-            const denominator = filteredData.length > 1 ? filteredData.length - 1 : 1;
+            const denominator =
+              filteredData.length > 1 ? filteredData.length - 1 : 1;
             const x = (i / denominator) * 100;
             const maxCost = chartMetrics.maxCost || 1;
             const y = 5 + 140 * (1 - d.costUnits / maxCost);

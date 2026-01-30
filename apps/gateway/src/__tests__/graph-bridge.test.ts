@@ -36,6 +36,60 @@ describe("GraphBridgeService", () => {
     globalThis.fetch = originalFetch;
   });
 
+  describe("SSE mode", () => {
+    it("should start SSE without blocking start()", async () => {
+      const event = {
+        type: "node_added",
+        node: {
+          id: "file:/src/test.ts",
+          type: "file",
+          data: { label: "test.ts", path: "/src/test.ts" },
+          status: "active",
+        },
+        timestamp: new Date().toISOString(),
+        version: 1,
+      };
+
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify(event)}\n\n`),
+          );
+          // Leave the stream open; `service.stop()` should abort the read loop.
+        },
+      });
+
+      globalThis.fetch = mock(() =>
+        Promise.resolve(
+          new Response(stream, {
+            headers: { "content-type": "text/event-stream" },
+          }),
+        ),
+      ) as unknown as typeof fetch;
+
+      const service = new GraphBridgeService({
+        controlPlaneUrl: "http://localhost:8080",
+        apiKey: "test-key",
+        defaultWorkspaceId: "default",
+        useSSE: true,
+      });
+
+      await Promise.race([
+        service.start(mockGraphEvents),
+        new Promise<void>((_, reject) =>
+          setTimeout(() => reject(new Error("start() timed out")), 1000),
+        ),
+      ]);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(mockGraphEvents.publishNodeAdded).toHaveBeenCalled();
+
+      service.stop();
+    });
+  });
+
   describe("polling mode", () => {
     it("should poll control_plane for events", async () => {
       const mockResponse = {

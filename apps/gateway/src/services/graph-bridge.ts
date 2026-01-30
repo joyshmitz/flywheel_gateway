@@ -106,7 +106,8 @@ export class GraphBridgeService {
     );
 
     if (this.config.useSSE) {
-      await this.startSSE();
+      // Run SSE loop in the background so `start()` doesn't block startup forever.
+      void this.startSSE();
     } else {
       this.startPolling();
     }

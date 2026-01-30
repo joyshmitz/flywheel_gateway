@@ -51,11 +51,36 @@ import {
   sendValidationError,
 } from "../utils/response";
 import { transformZodError } from "../utils/validation";
+import type { AuthContext } from "../ws/hub";
 
 const dashboards = new Hono();
 const DEFAULT_DASHBOARD_USER_ID = "default";
 
 function getRequestUserId(c: Context): string {
+  const adminKey = process.env["GATEWAY_ADMIN_KEY"]?.trim();
+  const jwtSecret = process.env["JWT_SECRET"]?.trim();
+  const authEnabled = Boolean(adminKey || jwtSecret);
+
+  if (authEnabled) {
+    const auth = c.get("auth") as AuthContext | undefined;
+
+    // Non-admin users must use the authenticated userId; never trust caller-controlled headers.
+    if (typeof auth?.userId === "string" && auth.userId.length > 0) {
+      return auth.userId;
+    }
+
+    // Allow admin/internal to optionally "act as" a user for debugging via headers.
+    if (auth?.isAdmin === true) {
+      return (
+        c.req.header("X-User-Id") ??
+        c.req.header("X-User") ??
+        DEFAULT_DASHBOARD_USER_ID
+      );
+    }
+
+    return DEFAULT_DASHBOARD_USER_ID;
+  }
+
   return (
     c.req.header("X-User-Id") ??
     c.req.header("X-User") ??
