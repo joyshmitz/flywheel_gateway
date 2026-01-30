@@ -338,8 +338,11 @@ function XfPanel() {
             {mutation.data.data.total} results for "{mutation.data.data.query}"
           </p>
           <div className="result-list">
-            {mutation.data.data.results.map((r, i) => (
-              <div key={i} className="result-item">
+            {mutation.data.data.results.map((r) => (
+              <div
+                key={`${r.type}:${r.created_at ?? "unknown"}:${r.text.slice(0, 24)}`}
+                className="result-item"
+              >
                 <StatusPill tone="muted">{r.type}</StatusPill>
                 <span className="result-text">{r.text.slice(0, 200)}</span>
                 {r.created_at && (

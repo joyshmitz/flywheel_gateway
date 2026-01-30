@@ -213,7 +213,12 @@ dashboards.get("/", async (c) => {
   const log = getLogger();
   const userId = c.req.query("userId") ?? "default";
   const workspaceId = c.req.query("workspaceId");
-  const visibility = c.req.query("visibility");
+  const rawVisibility = c.req.query("visibility");
+  const validVisibilities: DashboardVisibility[] = ["private", "team", "public"];
+  const visibility: DashboardVisibility | undefined =
+    rawVisibility && validVisibilities.includes(rawVisibility as DashboardVisibility)
+      ? (rawVisibility as DashboardVisibility)
+      : undefined;
   const parsedLimit = Number.parseInt(c.req.query("limit") ?? "50", 10);
   const limit = Number.isNaN(parsedLimit) ? 50 : parsedLimit;
   const parsedOffset = Number.parseInt(c.req.query("offset") ?? "0", 10);
@@ -225,7 +230,7 @@ dashboards.get("/", async (c) => {
       limit,
       offset,
       ...(workspaceId && { workspaceId }),
-      ...(visibility && { visibility: visibility as DashboardVisibility }),
+      ...(visibility && { visibility }),
     });
 
     return sendList(c, items, {

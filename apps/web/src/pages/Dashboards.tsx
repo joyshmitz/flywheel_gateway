@@ -10,7 +10,7 @@
 
 import type { Widget, WidgetType } from "@flywheel/shared";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import {
   DashboardGrid,
   WIDGET_DEFINITIONS,
@@ -73,6 +73,30 @@ export function DashboardsPage() {
       setNewDashboardName("");
       setShowCreateModal(false);
       navigate({ to: `/dashboards/${dashboard.id}` });
+    }
+  };
+
+  const handleCardKeyDown = (
+    event: KeyboardEvent<HTMLDivElement>,
+    dashboardIdValue: string,
+  ) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      navigate({ to: `/dashboards/${dashboardIdValue}` });
+    }
+  };
+
+  const handleOverlayKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape" || event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      setShowCreateModal(false);
+    }
+  };
+
+  const handleModalKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      setShowCreateModal(false);
     }
   };
 
@@ -208,6 +232,9 @@ export function DashboardsPage() {
                 key={dashboard.id}
                 className="dashboards-page__card"
                 onClick={() => navigate({ to: `/dashboards/${dashboard.id}` })}
+                onKeyDown={(event) => handleCardKeyDown(event, dashboard.id)}
+                role="button"
+                tabIndex={0}
               >
                 <div className="dashboards-page__card-header">
                   <h3>{dashboard.name}</h3>
@@ -259,10 +286,18 @@ export function DashboardsPage() {
           <div
             className="dashboards-page__modal-overlay"
             onClick={() => setShowCreateModal(false)}
+            onKeyDown={handleOverlayKeyDown}
+            role="button"
+            tabIndex={0}
+            aria-label="Close create dashboard modal"
           >
             <div
               className="dashboards-page__modal"
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={handleModalKeyDown}
+              role="dialog"
+              aria-modal="true"
+              tabIndex={-1}
             >
               <h2>Create Dashboard</h2>
               <div className="dashboards-page__modal-field">

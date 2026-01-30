@@ -584,6 +584,10 @@ function AllowlistTab({
   isRemoving,
   isAdding,
 }: AllowlistTabProps) {
+  const ruleIdInputId = "dcg-allowlist-rule-id";
+  const patternInputId = "dcg-allowlist-pattern";
+  const reasonInputId = "dcg-allowlist-reason";
+
   const [showAddForm, setShowAddForm] = useState(false);
   const [newEntry, setNewEntry] = useState({
     ruleId: "",
@@ -619,8 +623,11 @@ function AllowlistTab({
         >
           <div style={{ display: "grid", gap: "12px" }}>
             <div>
-              <label className="eyebrow">Rule ID</label>
+              <label className="eyebrow" htmlFor={ruleIdInputId}>
+                Rule ID
+              </label>
               <input
+                id={ruleIdInputId}
                 type="text"
                 className="data-table__search-input"
                 style={{ width: "100%", marginTop: "4px" }}
@@ -632,8 +639,11 @@ function AllowlistTab({
               />
             </div>
             <div>
-              <label className="eyebrow">Pattern</label>
+              <label className="eyebrow" htmlFor={patternInputId}>
+                Pattern
+              </label>
               <input
+                id={patternInputId}
                 type="text"
                 className="data-table__search-input"
                 style={{ width: "100%", marginTop: "4px" }}
@@ -645,8 +655,11 @@ function AllowlistTab({
               />
             </div>
             <div>
-              <label className="eyebrow">Reason</label>
+              <label className="eyebrow" htmlFor={reasonInputId}>
+                Reason
+              </label>
               <input
+                id={reasonInputId}
                 type="text"
                 className="data-table__search-input"
                 style={{ width: "100%", marginTop: "4px" }}
@@ -774,6 +787,7 @@ function CommandTester({
   testResult,
   explainResult,
 }: CommandTesterProps) {
+  const commandInputId = "dcg-command-test-input";
   const [command, setCommand] = useState("");
 
   return (
@@ -784,9 +798,12 @@ function CommandTester({
       </div>
 
       <div style={{ marginBottom: "16px" }}>
-        <label className="eyebrow">Enter a command to test</label>
+        <label className="eyebrow" htmlFor={commandInputId}>
+          Enter a command to test
+        </label>
         <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
           <input
+            id={commandInputId}
             type="text"
             className="data-table__search-input"
             style={{ flex: 1 }}
@@ -871,9 +888,9 @@ function CommandTester({
           {explainResult.matchingRules.length > 0 && (
             <>
               <h4 style={{ marginBottom: "8px" }}>Matching Rules</h4>
-              {explainResult.matchingRules.map((rule, i) => (
+              {explainResult.matchingRules.map((rule) => (
                 <div
-                  key={i}
+                  key={`${rule.pack}:${rule.rule}:${rule.severity}`}
                   style={{
                     padding: "8px",
                     marginBottom: "8px",

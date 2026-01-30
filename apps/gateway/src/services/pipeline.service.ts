@@ -107,6 +107,9 @@ function substituteVariables(
       if (typeof value !== "object" || value === null) {
         return "";
       }
+      if (UNSAFE_CONTEXT_KEYS.has(part)) {
+        return "";
+      }
       value = (value as Record<string, unknown>)[part];
     }
     return value !== undefined ? String(value) : "";

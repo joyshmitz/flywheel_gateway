@@ -301,7 +301,9 @@ export async function spawnAgent(config: {
 
     // Start event monitoring (output + state)
     const eventStream = drv.subscribe(agentId);
-    handleAgentEvents(agentId, eventStream);
+    handleAgentEvents(agentId, eventStream).catch((err) => {
+      log.error({ error: err, agentId }, "Unhandled error in agent event handler");
+    });
 
     // Initialize auto-checkpointing for the agent
     const acs = getAutoCheckpointService(agentId);

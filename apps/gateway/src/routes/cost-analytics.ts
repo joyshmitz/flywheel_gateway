@@ -29,6 +29,7 @@ import {
   calculateForecastAccuracy,
   generateForecast,
   generateScenarios,
+  getForecastById,
   getLatestForecast,
 } from "../services/cost-forecast.service";
 import {
@@ -818,6 +819,7 @@ costAnalytics.get("/forecasts/latest", async (c) => {
  */
 costAnalytics.get("/forecasts/:forecastId/scenarios", async (c) => {
   try {
+    const forecastId = c.req.param("forecastId");
     const organizationId = c.req.query("organizationId");
     const projectId = c.req.query("projectId");
 
@@ -826,10 +828,10 @@ costAnalytics.get("/forecasts/:forecastId/scenarios", async (c) => {
       ...(projectId && { projectId }),
     };
 
-    const forecast = await getLatestForecast(filter);
+    const forecast = await getForecastById(forecastId, filter);
 
     if (!forecast) {
-      return sendNotFound(c, "forecast", c.req.param("forecastId"));
+      return sendNotFound(c, "forecast", forecastId);
     }
 
     const scenarios = await generateScenarios(forecast);

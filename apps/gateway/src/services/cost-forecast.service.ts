@@ -476,6 +476,37 @@ export async function generateForecast(options: {
   return forecast;
 }
 
+function mapForecastRow(row: typeof costForecasts.$inferSelect): CostForecast {
+  const result: CostForecast = {
+    id: row.id,
+    forecastDate: row.forecastDate,
+    horizonDays: row.horizonDays,
+    dailyForecasts: row.dailyForecasts as DailyForecast[],
+    totalForecastUnits: row.totalForecastUnits,
+    confidenceInterval95: {
+      lower: row.confidenceLower,
+      upper: row.confidenceUpper,
+    },
+    methodology: row.methodology as ForecastMethodology,
+    accuracyMetrics: {
+      mape: row.mape ?? 0,
+      rmse: row.rmse ?? 0,
+    },
+    historicalDaysUsed: row.historicalDaysUsed,
+    seasonalityDetected: row.seasonalityDetected,
+    trendDirection: (row.trendDirection as CostTrend) ?? "stable",
+    trendStrength: row.trendStrength ?? 0,
+    createdAt: row.createdAt,
+  };
+  if (row.organizationId !== null) {
+    result.organizationId = row.organizationId;
+  }
+  if (row.projectId !== null) {
+    result.projectId = row.projectId;
+  }
+  return result;
+}
+
 /**
  * Get the latest forecast.
  */
@@ -505,35 +536,39 @@ export async function getLatestForecast(filter?: {
     return undefined;
   }
 
-  const row = rows[0]!;
-  const result: CostForecast = {
-    id: row.id,
-    forecastDate: row.forecastDate,
-    horizonDays: row.horizonDays,
-    dailyForecasts: row.dailyForecasts as DailyForecast[],
-    totalForecastUnits: row.totalForecastUnits,
-    confidenceInterval95: {
-      lower: row.confidenceLower,
-      upper: row.confidenceUpper,
-    },
-    methodology: row.methodology as ForecastMethodology,
-    accuracyMetrics: {
-      mape: row.mape ?? 0,
-      rmse: row.rmse ?? 0,
-    },
-    historicalDaysUsed: row.historicalDaysUsed,
-    seasonalityDetected: row.seasonalityDetected,
-    trendDirection: (row.trendDirection as CostTrend) ?? "stable",
-    trendStrength: row.trendStrength ?? 0,
-    createdAt: row.createdAt,
-  };
-  if (row.organizationId !== null) {
-    result.organizationId = row.organizationId;
+  return mapForecastRow(rows[0]!);
+}
+
+/**
+ * Get forecast by ID.
+ */
+export async function getForecastById(
+  forecastId: string,
+  filter?: {
+    organizationId?: string;
+    projectId?: string;
+  },
+): Promise<CostForecast | undefined> {
+  const conditions = [eq(costForecasts.id, forecastId)];
+
+  if (filter?.organizationId) {
+    conditions.push(eq(costForecasts.organizationId, filter.organizationId));
   }
-  if (row.projectId !== null) {
-    result.projectId = row.projectId;
+  if (filter?.projectId) {
+    conditions.push(eq(costForecasts.projectId, filter.projectId));
   }
-  return result;
+
+  const rows = await db
+    .select()
+    .from(costForecasts)
+    .where(and(...conditions))
+    .limit(1);
+
+  if (rows.length === 0) {
+    return undefined;
+  }
+
+  return mapForecastRow(rows[0]!);
 }
 
 /**
