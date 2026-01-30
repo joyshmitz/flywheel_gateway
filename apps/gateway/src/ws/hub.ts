@@ -703,11 +703,10 @@ export class WebSocketHub {
       const channel = parseChannel(channelStr);
       if (channel) {
         const prefix = getChannelTypePrefix(channel);
-        if (!bufferCounts[prefix]) {
-          bufferCounts[prefix] = { total: 0, count: 0 };
-        }
-        bufferCounts[prefix]!.total += buffer.utilization();
-        bufferCounts[prefix]!.count++;
+        const bucket = bufferCounts[prefix] ?? { total: 0, count: 0 };
+        bucket.total += buffer.utilization();
+        bucket.count += 1;
+        bufferCounts[prefix] = bucket;
       }
     }
 
@@ -730,11 +729,13 @@ export class WebSocketHub {
         const channel = parseChannel(channelStr);
         const prefix = channel ? getChannelTypePrefix(channel) : channelStr;
 
-        if (!byChannel[prefix]) {
-          byChannel[prefix] = { capacityEvictions: 0, ttlExpirations: 0 };
-        }
-        byChannel[prefix]!.capacityEvictions += stats.capacityEvictions;
-        byChannel[prefix]!.ttlExpirations += stats.ttlExpirations;
+        const channelStats = byChannel[prefix] ?? {
+          capacityEvictions: 0,
+          ttlExpirations: 0,
+        };
+        channelStats.capacityEvictions += stats.capacityEvictions;
+        channelStats.ttlExpirations += stats.ttlExpirations;
+        byChannel[prefix] = channelStats;
         totalCapacityEvictions += stats.capacityEvictions;
         totalTtlExpirations += stats.ttlExpirations;
 

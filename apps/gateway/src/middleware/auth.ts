@@ -59,9 +59,10 @@ export async function verifyJwtHs256(
     return { ok: false, reason: "invalid" };
   }
 
-  const headerB64 = parts[0]!;
-  const payloadB64 = parts[1]!;
-  const signatureB64 = parts[2]!;
+  const [headerB64, payloadB64, signatureB64] = parts;
+  if (!headerB64 || !payloadB64 || !signatureB64) {
+    return { ok: false, reason: "invalid" };
+  }
 
   let header: JwtPayload;
   let payload: JwtPayload;

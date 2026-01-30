@@ -192,7 +192,8 @@ export class RingBuffer<T> {
 
     const now = Date.now();
     for (let i = this.buffer.length - 1; i >= 0; i--) {
-      const entry = this.buffer[i]!;
+      const entry = this.buffer[i];
+      if (!entry) continue;
       if (now - entry.timestamp <= this.ttlMs) {
         return entry.cursor;
       }
@@ -244,7 +245,8 @@ export class RingBuffer<T> {
     // Filter in place to keep non-expired entries
     let writeIndex = 0;
     for (let readIndex = 0; readIndex < this.buffer.length; readIndex++) {
-      const entry = this.buffer[readIndex]!;
+      const entry = this.buffer[readIndex];
+      if (!entry) continue;
       if (now - entry.timestamp <= this.ttlMs) {
         this.buffer[writeIndex] = entry;
         writeIndex++;
