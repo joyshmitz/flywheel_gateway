@@ -31,12 +31,14 @@ mock.module("../services/logger", () => ({
 // Ensure we use the real db by re-mocking with the real implementation
 // This prevents other test files' db mocks from affecting these tests
 import { Database } from "bun:sqlite";
-import { drizzle } from "drizzle-orm/bun-sqlite";
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { drizzle } from "drizzle-orm/bun-sqlite";
 import * as schema from "../db/schema";
 
-const dbFile = process.env["DB_FILE_NAME"] ?? "./data/gateway.db";
+// Default to an in-memory DB to avoid touching any on-disk dev database when a
+// test file is run without DB_FILE_NAME configured.
+const dbFile = process.env["DB_FILE_NAME"] ?? ":memory:";
 const realSqlite = new Database(dbFile);
 
 function runMigrations(sqliteDb: Database): void {
@@ -54,9 +56,11 @@ function runMigrations(sqliteDb: Database): void {
   `);
 
   const appliedMigrations = new Set(
-    (sqliteDb
-      .query(`SELECT hash FROM "__drizzle_migrations"`)
-      .all() as { hash: string }[]).map((row) => row.hash),
+    (
+      sqliteDb.query(`SELECT hash FROM "__drizzle_migrations"`).all() as {
+        hash: string;
+      }[]
+    ).map((row) => row.hash),
   );
 
   for (const file of migrationFiles) {

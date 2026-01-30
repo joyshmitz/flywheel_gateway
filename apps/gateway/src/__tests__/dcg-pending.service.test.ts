@@ -35,7 +35,9 @@ import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import * as schema from "../db/schema";
 
-const dbFile = process.env["DB_FILE_NAME"] ?? "./data/gateway.db";
+// Default to an in-memory DB to avoid touching any on-disk dev database when a
+// test file is run without DB_FILE_NAME configured.
+const dbFile = process.env["DB_FILE_NAME"] ?? ":memory:";
 const realSqlite = new Database(dbFile);
 const realDb = drizzle(realSqlite, { schema });
 
