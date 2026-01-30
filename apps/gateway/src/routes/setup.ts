@@ -81,6 +81,22 @@ function handleError(error: unknown, c: Context) {
   return sendInternalError(c);
 }
 
+function guardInstallAccess(c: Context): Response | null {
+  const auth = c.get("auth") as { isAdmin?: boolean } | undefined;
+  if (auth?.isAdmin) return null;
+
+  if (process.env["ENABLE_SETUP_INSTALL_UNAUTH"] === "true") {
+    return null;
+  }
+
+  return sendError(
+    c,
+    "AUTH_INSUFFICIENT_SCOPE",
+    "Admin access required for setup installs. Set ENABLE_SETUP_INSTALL_UNAUTH=true to allow unauthenticated installs in local development.",
+    403,
+  );
+}
+
 // ============================================================================
 // Readiness Routes
 // ============================================================================
@@ -164,6 +180,9 @@ setup.post("/install", async (c) => {
   const log = getLogger();
 
   try {
+    const guard = guardInstallAccess(c);
+    if (guard) return guard;
+
     const body = await c.req.json();
     const validated = InstallRequestSchema.parse(body);
 
@@ -218,6 +237,9 @@ setup.post("/install/batch", async (c) => {
   const log = getLogger();
 
   try {
+    const guard = guardInstallAccess(c);
+    if (guard) return guard;
+
     const body = await c.req.json();
 
     const BatchInstallSchema = z.object({

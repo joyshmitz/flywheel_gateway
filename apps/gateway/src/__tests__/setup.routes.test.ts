@@ -6,7 +6,7 @@
  * To run these tests, set RUN_SLOW_TESTS=1 environment variable.
  */
 
-import { beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 import {
   restoreAgentDetectionService,
@@ -218,6 +218,20 @@ describe("Setup Routes", () => {
   });
 
   describe("POST /setup/install", () => {
+    const originalAllowUnauth = process.env["ENABLE_SETUP_INSTALL_UNAUTH"];
+
+    beforeAll(() => {
+      process.env["ENABLE_SETUP_INSTALL_UNAUTH"] = "true";
+    });
+
+    afterAll(() => {
+      if (originalAllowUnauth === undefined) {
+        delete process.env["ENABLE_SETUP_INSTALL_UNAUTH"];
+      } else {
+        process.env["ENABLE_SETUP_INSTALL_UNAUTH"] = originalAllowUnauth;
+      }
+    });
+
     test("validates request body", async () => {
       const res = await app.request("/setup/install", {
         method: "POST",
@@ -517,6 +531,53 @@ describe("Setup Routes", () => {
           method: "DELETE",
         });
         expect(res.status).toBe(200);
+      }
+    });
+  });
+
+  describe("POST /setup/install", () => {
+    test("requires admin or explicit allowlist", async () => {
+      const original = process.env["ENABLE_SETUP_INSTALL_UNAUTH"];
+      delete process.env["ENABLE_SETUP_INSTALL_UNAUTH"];
+
+      const res = await app.request("/setup/install", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tool: "dcg", mode: "easy", verify: false }),
+      });
+
+      expect(res.status).toBe(403);
+      const body = (await res.json()) as Envelope<unknown>;
+      expect(body.error?.code).toBe("AUTH_INSUFFICIENT_SCOPE");
+
+      if (original !== undefined) {
+        process.env["ENABLE_SETUP_INSTALL_UNAUTH"] = original;
+      }
+    });
+  });
+
+  describe("POST /setup/install/batch", () => {
+    test("requires admin or explicit allowlist", async () => {
+      const original = process.env["ENABLE_SETUP_INSTALL_UNAUTH"];
+      delete process.env["ENABLE_SETUP_INSTALL_UNAUTH"];
+
+      const res = await app.request("/setup/install/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tools: ["dcg"],
+          mode: "easy",
+          verify: false,
+          stopOnError: true,
+        }),
+      });
+
+      expect(res.status).toBe(403);
+      const body = (await res.json()) as Envelope<unknown>;
+      expect(body.error?.code).toBe("AUTH_INSUFFICIENT_SCOPE");
+
+      if (original !== undefined) {
+        process.env["ENABLE_SETUP_INSTALL_UNAUTH"] = original;
       }
     });
   });
