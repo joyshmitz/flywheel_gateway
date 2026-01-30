@@ -113,8 +113,8 @@ bun dev:gateway      # Backend only
 bun dev:web          # Frontend only
 
 # Testing
-bun test             # Run all tests
-bun test --watch     # Watch mode
+bun run test         # Run all tests
+bun run test -- --watch  # Watch mode
 
 # Linting/Formatting
 bun lint             # Check with Biome
@@ -772,7 +772,7 @@ if (!agent) {
 
 ### Unit Tests
 
-Run with `bun test`:
+Run with `bun run test`:
 
 ```typescript
 // apps/gateway/src/__tests__/agent.service.test.ts
@@ -878,7 +878,7 @@ test.describe('Agent Management', () => {
 - **Integration tests**: Cover all API endpoints
 - **E2E tests**: Cover critical user paths
 
-Run coverage: `bun test --coverage`
+Run coverage: `bun run test -- --coverage`
 
 ### Contract Tests
 
@@ -1289,7 +1289,7 @@ bun lint
 bun lint:fix
 
 # Run all tests
-bun test
+bun run test
 
 # Run E2E tests
 bun test:e2e
