@@ -401,14 +401,19 @@ export async function updateDashboard(
 
   await db.update(dashboards).set(updates).where(eq(dashboards.id, id));
 
+  const sharingUpdates = input.sharing;
   if (
-    input.sharing?.viewers !== undefined ||
-    input.sharing?.editors !== undefined
+    sharingUpdates &&
+    (sharingUpdates.viewers !== undefined || sharingUpdates.editors !== undefined)
   ) {
     await syncDashboardPermissions({
       dashboardId: id,
-      viewers: input.sharing.viewers,
-      editors: input.sharing.editors,
+      ...(sharingUpdates.viewers !== undefined
+        ? { viewers: sharingUpdates.viewers }
+        : {}),
+      ...(sharingUpdates.editors !== undefined
+        ? { editors: sharingUpdates.editors }
+        : {}),
     });
   }
 
@@ -929,8 +934,8 @@ export async function updateSharing(
   if (sharing.viewers !== undefined || sharing.editors !== undefined) {
     await syncDashboardPermissions({
       dashboardId,
-      viewers: sharing.viewers,
-      editors: sharing.editors,
+      ...(sharing.viewers !== undefined ? { viewers: sharing.viewers } : {}),
+      ...(sharing.editors !== undefined ? { editors: sharing.editors } : {}),
       grantedBy: dashboard.ownerId,
     });
   }

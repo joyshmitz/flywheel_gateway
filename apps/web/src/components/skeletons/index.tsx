@@ -14,8 +14,8 @@ import { Skeleton, SkeletonCard, SkeletonText } from "../ui/Skeleton";
 function SkeletonTableHeader({ columns }: { columns: number }) {
   return (
     <div className="table__row table__row--header">
-      {Array.from({ length: columns }).map((_, i) => (
-        <Skeleton key={i} variant="text" style={{ width: "60%" }} />
+      {Array.from({ length: columns }, (_, i) => `col-${i}`).map((key) => (
+        <Skeleton key={key} variant="text" style={{ width: "60%" }} />
       ))}
     </div>
   );
@@ -24,9 +24,9 @@ function SkeletonTableHeader({ columns }: { columns: number }) {
 function SkeletonTableRow({ columns }: { columns: number }) {
   return (
     <div className="table__row">
-      {Array.from({ length: columns }).map((_, i) => (
+      {Array.from({ length: columns }, (_, i) => i).map((i) => (
         <Skeleton
-          key={i}
+          key={`col-${i}`}
           variant="text"
           style={{ width: i === 0 ? "80%" : "60%" }}
         />
@@ -45,8 +45,8 @@ function SkeletonTable({
   return (
     <div className="table">
       <SkeletonTableHeader columns={columns} />
-      {Array.from({ length: rows }).map((_, i) => (
-        <SkeletonTableRow key={i} columns={columns} />
+      {Array.from({ length: rows }, (_, i) => `row-${i}`).map((key) => (
+        <SkeletonTableRow key={key} columns={columns} />
       ))}
     </div>
   );
@@ -473,8 +473,8 @@ export function UtilitiesSkeleton() {
     <section className="page" aria-busy="true" aria-label="Loading utilities">
       <SkeletonCard />
       <div className="grid grid--3" style={{ marginTop: 16 }}>
-        {Array.from({ length: 6 }).map((_, i) => (
-          <SkeletonCard key={i} />
+        {Array.from({ length: 6 }, (_, i) => `card-${i}`).map((key) => (
+          <SkeletonCard key={key} />
         ))}
       </div>
       <div style={{ marginTop: 24 }}>

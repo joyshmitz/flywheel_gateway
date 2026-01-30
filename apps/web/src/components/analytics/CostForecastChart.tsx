@@ -225,7 +225,7 @@ export function CostForecastChart({
                 cy={y}
                 r={hoveredIndex === i ? 4 : 2}
                 className="cost-forecast__point"
-                role="button"
+                role="graphics-symbol"
                 tabIndex={0}
                 aria-label={`Forecast point for ${d.date}`}
                 onMouseEnter={() => setHoveredIndex(i)}

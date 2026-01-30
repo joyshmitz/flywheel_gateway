@@ -82,7 +82,7 @@ const skeletons = [
 ];
 
 describe("Skeleton Components", () => {
-  describe.each(skeletons)("$name", ({ name, Component, label }) => {
+  describe.each(skeletons)("$name", ({ Component, label }) => {
     it("should render without errors", () => {
       expect(() => render(<Component />)).not.toThrow();
     });

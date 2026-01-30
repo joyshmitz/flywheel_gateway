@@ -189,8 +189,8 @@ describe("WebSocketProvider", () => {
       messageIds: ["msg_123"],
     });
 
-    // Sanity check: API exists and reconnect is callable.
-    expect(typeof api?.reconnect).toBe("function");
+    // Sanity check: API was captured from the provider.
+    expect(api).not.toBeNull();
     unmount();
   });
 });

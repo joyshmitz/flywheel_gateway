@@ -99,7 +99,32 @@ describe("isPrivateNetworkUrl", () => {
 	    });
 	  });
 
-	  describe("edge cases", () => {
+	  describe("trailing-dot FQDN normalization", () => {
+    test("blocks localhost with trailing dot", () => {
+      expect(isPrivateNetworkUrl("http://localhost./api")).toBe(true);
+      expect(isPrivateNetworkUrl("http://localhost.:8080/api")).toBe(true);
+    });
+
+    test("blocks private IPs with trailing dot", () => {
+      expect(isPrivateNetworkUrl("http://127.0.0.1./api")).toBe(true);
+      expect(isPrivateNetworkUrl("http://10.0.0.1./api")).toBe(true);
+      expect(isPrivateNetworkUrl("http://192.168.1.1./api")).toBe(true);
+    });
+
+    test("blocks metadata endpoints with trailing dot", () => {
+      expect(isPrivateNetworkUrl("http://metadata.google.internal./api")).toBe(
+        true,
+      );
+      expect(isPrivateNetworkUrl("http://service.internal./api")).toBe(true);
+    });
+
+    test("allows public URLs with trailing dot", () => {
+      expect(isPrivateNetworkUrl("https://example.com./api")).toBe(false);
+      expect(isPrivateNetworkUrl("https://api.github.com./webhook")).toBe(false);
+    });
+  });
+
+  describe("edge cases", () => {
 	    test("blocks documentation/test ranges (TEST-NET)", () => {
 	      expect(isPrivateNetworkUrl("http://192.0.2.1/api")).toBe(true);
 	      expect(isPrivateNetworkUrl("http://198.51.100.1/api")).toBe(true);

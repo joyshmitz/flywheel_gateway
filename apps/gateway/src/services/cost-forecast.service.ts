@@ -237,7 +237,9 @@ function forecastExponential(
   const firstRecent = recentSmoothed[0];
   const lastRecent = recentSmoothed[recentSmoothed.length - 1];
   const trend =
-    recentSmoothed.length > 1 && firstRecent !== undefined && lastRecent !== undefined
+    recentSmoothed.length > 1 &&
+    firstRecent !== undefined &&
+    lastRecent !== undefined
       ? (lastRecent - firstRecent) / recentSmoothed.length
       : 0;
 

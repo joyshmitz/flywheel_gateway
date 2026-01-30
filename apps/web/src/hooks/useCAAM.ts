@@ -349,8 +349,7 @@ export function useProfiles(options?: {
  */
 export function useProfile(profileId: string): UseQueryResult<AccountProfile> {
   const defaultProfile = mockProfiles[0];
-  const mock =
-    mockProfiles.find((p) => p.id === profileId) ?? defaultProfile;
+  const mock = mockProfiles.find((p) => p.id === profileId) ?? defaultProfile;
   // Mock profiles are static fixtures, so this should never be undefined
   if (!mock) throw new Error("No mock profiles available");
   return useQuery(`/profiles/${profileId}`, mock, [profileId]);

@@ -3,8 +3,8 @@
  */
 
 import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
-import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { randomUUID } from "node:crypto";
+import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { agents, db } from "../db";
 import {
   CheckpointError,

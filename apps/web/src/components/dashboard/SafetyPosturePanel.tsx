@@ -275,7 +275,9 @@ function IssuesPanel({ issues, recommendations }: IssuesPanelProps) {
       <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
         {issues.map((issue, i) => (
           <div
-            key={i}
+            key={
+              recommendations[i] ? `${issue}::${recommendations[i]}` : issue
+            }
             style={{
               display: "flex",
               alignItems: "flex-start",

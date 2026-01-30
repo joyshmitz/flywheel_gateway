@@ -14,10 +14,9 @@
 
 import { describe, expect, it } from "bun:test";
 import { Hono } from "hono";
-
+import { buildAuthContext } from "../middleware/auth";
 // Import routes directly — no mock.module
 import { setup } from "../routes/setup";
-import { buildAuthContext } from "../middleware/auth";
 import type { AuthContext } from "../ws/hub";
 
 type TestEnv = { Variables: { auth: AuthContext } };

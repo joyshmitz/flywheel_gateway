@@ -358,9 +358,9 @@ function IssuesList({ issues }: IssuesListProps) {
         </span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-        {issues.map((issue, i) => (
+        {issues.map((issue) => (
           <div
-            key={i}
+            key={issue}
             style={{
               fontSize: "12px",
               color: "var(--color-amber-700)",
@@ -673,9 +673,9 @@ export function SnapshotSummaryPanel() {
                 NTM Alerts
               </span>
             </div>
-            {data.ntm.alerts.map((alert, i) => (
+            {data.ntm.alerts.map((alert) => (
               <div
-                key={i}
+                key={alert}
                 style={{
                   fontSize: "12px",
                   color: "var(--color-red-700)",

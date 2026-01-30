@@ -148,7 +148,8 @@ function parseDecimalIP(
 export function isPrivateNetworkUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
-    const hostname = parsed.hostname.toLowerCase();
+    // Normalize hostname: lowercase and strip trailing dots (FQDNs like "localhost." are equivalent to "localhost")
+    const hostname = parsed.hostname.toLowerCase().replace(/\.+$/, "");
 
     // Check for localhost variants
     if (
