@@ -10,9 +10,20 @@ import {
 } from "../tmux";
 import type { AgentConfig } from "../types";
 
+// Detect tmux availability once at module level so describe.skipIf works
+let tmuxAvailable = false;
+try {
+  const result = await Bun.spawn(["tmux", "-V"], {
+    stdout: "pipe",
+    stderr: "pipe",
+  }).exited;
+  tmuxAvailable = result === 0;
+} catch {
+  tmuxAvailable = false;
+}
+
 describe("TmuxDriver", () => {
   let driver: TmuxDriver;
-  let tmuxAvailable: boolean;
 
   const createTestConfig = (
     overrides: Partial<AgentConfig> = {},
@@ -37,19 +48,6 @@ describe("TmuxDriver", () => {
       return false;
     }
   };
-
-  // Check if tmux is available before running tests
-  beforeEach(async () => {
-    try {
-      const result = await Bun.spawn(["tmux", "-V"], {
-        stdout: "pipe",
-        stderr: "pipe",
-      }).exited;
-      tmuxAvailable = result === 0;
-    } catch {
-      tmuxAvailable = false;
-    }
-  });
 
   describe("createTmuxDriver", () => {
     it("should create a Tmux driver instance", async () => {
@@ -97,16 +95,14 @@ describe("TmuxDriver", () => {
   });
 
   describe("health check", () => {
-    it("should return true when tmux is available", async () => {
-      if (!tmuxAvailable) {
-        console.log("Skipping test: tmux not available");
-        return;
-      }
-
-      const driver = await createTmuxDriver();
-      const healthy = await driver.isHealthy();
-      expect(healthy).toBe(true);
-    });
+    it.skipIf(!tmuxAvailable)(
+      "should return true when tmux is available",
+      async () => {
+        const driver = await createTmuxDriver();
+        const healthy = await driver.isHealthy();
+        expect(healthy).toBe(true);
+      },
+    );
 
     it("should return false when tmux binary does not exist", async () => {
       const driver = await createTmuxDriver({
@@ -118,16 +114,8 @@ describe("TmuxDriver", () => {
     });
   });
 
-  describe("spawn (requires tmux)", () => {
-    // These are integration tests that require a working tmux server.
-    // They may fail in CI environments where tmux can't create sessions.
-
+  describe.skipIf(!tmuxAvailable)("spawn (requires tmux)", () => {
     it("should spawn returns valid agent structure", async () => {
-      if (!tmuxAvailable) {
-        console.log("Skipping test: tmux not available");
-        return;
-      }
-
       const driver = await createTmuxDriver({
         socketName: "flywheel-integ-test",
         agentBinary: "sleep",
@@ -168,13 +156,8 @@ describe("TmuxDriver", () => {
     });
   });
 
-  describe("interrupt (requires tmux)", () => {
+  describe.skipIf(!tmuxAvailable)("interrupt (requires tmux)", () => {
     it("should handle interrupt call gracefully", async () => {
-      if (!tmuxAvailable) {
-        console.log("Skipping test: tmux not available");
-        return;
-      }
-
       const driver = await createTmuxDriver({
         socketName: "flywheel-integ-test-2",
         agentBinary: "sleep",

@@ -2,20 +2,35 @@
  * Tests for the ACP Driver.
  */
 
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-} from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { mkdir } from "node:fs/promises";
 import { type AcpDriver, type AcpDriverOptions, createAcpDriver } from "../acp";
 import type { AgentConfig } from "../types";
 
+const testWorkspace = "/tmp/flywheel-test-workspace";
+let workspaceAvailable = false;
+let shellAvailable = false;
+
+try {
+  await mkdir(testWorkspace, { recursive: true });
+  workspaceAvailable = true;
+} catch {
+  workspaceAvailable = false;
+}
+
+// Detect /bin/sh availability once at module level so describe.skipIf works
+try {
+  const result = await Bun.spawn(["/bin/sh", "-c", "true"], {
+    stdout: "ignore",
+    stderr: "ignore",
+  }).exited;
+  shellAvailable = workspaceAvailable && result === 0;
+} catch {
+  shellAvailable = false;
+}
+
 describe("AcpDriver", () => {
   let driver: AcpDriver;
-  let shellAvailable = false;
 
   const createTestConfig = (
     overrides: Partial<AgentConfig> = {},
@@ -23,20 +38,8 @@ describe("AcpDriver", () => {
     id: `test-agent-${Date.now()}`,
     provider: "claude",
     model: "claude-opus-4",
-    workingDirectory: "/tmp/test-workspace",
+    workingDirectory: testWorkspace,
     ...overrides,
-  });
-
-  beforeAll(async () => {
-    try {
-      const result = await Bun.spawn(["/bin/sh", "-c", "true"], {
-        stdout: "ignore",
-        stderr: "ignore",
-      }).exited;
-      shellAvailable = result === 0;
-    } catch {
-      shellAvailable = false;
-    }
   });
 
   describe("createAcpDriver", () => {
@@ -104,13 +107,8 @@ describe("AcpDriver", () => {
     });
   });
 
-  describe("spawn", () => {
+  describe.skipIf(!shellAvailable)("spawn", () => {
     beforeEach(async () => {
-      // Use /bin/sh -c "sleep 60" as the agent command
-      // This allows us to run a long-running process that ignores extra args
-      if (!shellAvailable) {
-        return;
-      }
       driver = await createAcpDriver({
         agentBinary: "/bin/sh",
         agentArgs: ["-c", "sleep 60"],
@@ -118,7 +116,6 @@ describe("AcpDriver", () => {
     });
 
     afterEach(async () => {
-      // Clean up any spawned agents
       try {
         for (const agentId of ["test-spawn-agent"]) {
           await driver.terminate(agentId).catch(() => {});
@@ -129,10 +126,6 @@ describe("AcpDriver", () => {
     });
 
     it("should spawn an agent and return initial state", async () => {
-      if (!shellAvailable) {
-        console.log("Skipping spawn test: /bin/sh not available");
-        return;
-      }
       const config = createTestConfig({ id: "test-spawn-agent" });
 
       try {
@@ -145,20 +138,13 @@ describe("AcpDriver", () => {
         expect(agent.tokenUsage.totalTokens).toBe(0);
         expect(agent.contextHealth).toBe("healthy");
 
-        // Clean up
         await driver.terminate(agent.id);
       } catch (err) {
-        // In some environments the shell command may not work as expected
-        // Just verify the error is meaningful
         console.log("Spawn test skipped due to environment:", String(err));
       }
     });
 
     it("should reject duplicate agent IDs", async () => {
-      if (!shellAvailable) {
-        console.log("Skipping duplicate ID test: /bin/sh not available");
-        return;
-      }
       const config = createTestConfig({ id: "test-spawn-agent" });
 
       try {
@@ -174,11 +160,8 @@ describe("AcpDriver", () => {
     });
   });
 
-  describe("checkpointing", () => {
+  describe.skipIf(!shellAvailable)("checkpointing", () => {
     beforeEach(async () => {
-      if (!shellAvailable) {
-        return;
-      }
       driver = await createAcpDriver({
         agentBinary: "/bin/sh",
         agentArgs: ["-c", "sleep 60"],
@@ -186,16 +169,11 @@ describe("AcpDriver", () => {
     });
 
     it("should create and list checkpoints", async () => {
-      if (!shellAvailable) {
-        console.log("Skipping checkpoint test: /bin/sh not available");
-        return;
-      }
       const config = createTestConfig({ id: "checkpoint-test-agent" });
 
       try {
         await driver.spawn(config);
 
-        // Create checkpoint
         const checkpoint = await driver.createCheckpoint(
           config.id,
           "Test checkpoint",
@@ -203,7 +181,6 @@ describe("AcpDriver", () => {
         expect(checkpoint.id).toBeDefined();
         expect(checkpoint.description).toBe("Test checkpoint");
 
-        // List checkpoints
         const checkpoints = await driver.listCheckpoints(config.id);
         expect(checkpoints.length).toBe(1);
         expect(checkpoints[0]?.id).toBe(checkpoint.id);
@@ -215,10 +192,6 @@ describe("AcpDriver", () => {
     });
 
     it("should get a specific checkpoint", async () => {
-      if (!shellAvailable) {
-        console.log("Skipping get checkpoint test: /bin/sh not available");
-        return;
-      }
       const config = createTestConfig({ id: "get-checkpoint-agent" });
 
       try {
@@ -240,10 +213,6 @@ describe("AcpDriver", () => {
     });
 
     it("should restore from checkpoint", async () => {
-      if (!shellAvailable) {
-        console.log("Skipping restore checkpoint test: /bin/sh not available");
-        return;
-      }
       const config = createTestConfig({ id: "restore-checkpoint-agent" });
 
       try {
@@ -270,16 +239,11 @@ describe("AcpDriver", () => {
     });
   });
 
-  describe("conversation history pruning", () => {
+  describe.skipIf(!shellAvailable)("conversation history pruning", () => {
     it("should prune conversation history when it exceeds maxHistoryMessages", async () => {
-      if (!shellAvailable) {
-        console.log("Skipping pruning test: /bin/sh not available");
-        return;
-      }
-      // Create driver with small history limit
       const driver = await createAcpDriver({
         agentBinary: "/bin/sh",
-        agentArgs: ["-c", "cat > /dev/null"], // Accept input but discard it
+        agentArgs: ["-c", "cat > /dev/null"],
         maxHistoryMessages: 5,
       });
 
@@ -288,13 +252,10 @@ describe("AcpDriver", () => {
       try {
         await driver.spawn(config);
 
-        // Send multiple messages (each send adds 1 user message to history)
-        // Unlike Claude driver, ACP doesn't add assistant responses automatically in tests
         for (let i = 0; i < 7; i++) {
           await driver.send(config.id, `Message ${i}`);
         }
 
-        // Create checkpoint to inspect history
         const checkpoint = await driver.createCheckpoint(config.id, "test");
         const fullCheckpoint = await driver.getCheckpoint(
           config.id,
@@ -302,7 +263,6 @@ describe("AcpDriver", () => {
         );
 
         const history = fullCheckpoint.conversationHistory as unknown[];
-        // Should be pruned to maxHistoryMessages (5)
         expect(history.length).toBe(5);
 
         await driver.terminate(config.id);
@@ -312,12 +272,6 @@ describe("AcpDriver", () => {
     });
 
     it("should preserve the first message when pruning", async () => {
-      if (!shellAvailable) {
-        console.log(
-          "Skipping preserve-first-message test: /bin/sh not available",
-        );
-        return;
-      }
       const driver = await createAcpDriver({
         agentBinary: "/bin/sh",
         agentArgs: ["-c", "cat > /dev/null"],
@@ -329,7 +283,6 @@ describe("AcpDriver", () => {
       try {
         await driver.spawn(config);
 
-        // Send messages to trigger pruning
         for (let i = 0; i < 5; i++) {
           await driver.send(config.id, `Message ${i}`);
         }
@@ -345,7 +298,6 @@ describe("AcpDriver", () => {
         }>;
         expect(history.length).toBe(3);
 
-        // First message should be preserved (original "Message 0")
         const firstMsg = history[0];
         expect(firstMsg).toBeDefined();
         expect(firstMsg!.content[0]?.text).toBe("Message 0");
@@ -360,14 +312,10 @@ describe("AcpDriver", () => {
     });
 
     it("should not prune when history is under the limit", async () => {
-      if (!shellAvailable) {
-        console.log("Skipping no-prune test: /bin/sh not available");
-        return;
-      }
       const driver = await createAcpDriver({
         agentBinary: "/bin/sh",
         agentArgs: ["-c", "cat > /dev/null"],
-        maxHistoryMessages: 100, // High limit
+        maxHistoryMessages: 100,
       });
 
       const config = createTestConfig({ id: "no-prune-agent" });
@@ -375,7 +323,6 @@ describe("AcpDriver", () => {
       try {
         await driver.spawn(config);
 
-        // Send just a few messages
         for (let i = 0; i < 3; i++) {
           await driver.send(config.id, `Message ${i}`);
         }
@@ -387,7 +334,6 @@ describe("AcpDriver", () => {
         );
 
         const history = fullCheckpoint.conversationHistory as unknown[];
-        // 3 messages, no pruning needed
         expect(history.length).toBe(3);
 
         await driver.terminate(config.id);
@@ -397,10 +343,6 @@ describe("AcpDriver", () => {
     });
 
     it("should not prune when history is exactly at the limit", async () => {
-      if (!shellAvailable) {
-        console.log("Skipping at-limit test: /bin/sh not available");
-        return;
-      }
       const driver = await createAcpDriver({
         agentBinary: "/bin/sh",
         agentArgs: ["-c", "cat > /dev/null"],
@@ -412,7 +354,6 @@ describe("AcpDriver", () => {
       try {
         await driver.spawn(config);
 
-        // Send exactly 5 messages
         for (let i = 0; i < 5; i++) {
           await driver.send(config.id, `Message ${i}`);
         }
@@ -433,10 +374,6 @@ describe("AcpDriver", () => {
     });
 
     it("should isolate pruning between multiple sessions", async () => {
-      if (!shellAvailable) {
-        console.log("Skipping multi-session test: /bin/sh not available");
-        return;
-      }
       const driver = await createAcpDriver({
         agentBinary: "/bin/sh",
         agentArgs: ["-c", "cat > /dev/null"],
@@ -450,17 +387,14 @@ describe("AcpDriver", () => {
         await driver.spawn(config1);
         await driver.spawn(config2);
 
-        // Send 6 messages to session 1 (triggers pruning)
         for (let i = 0; i < 6; i++) {
           await driver.send(config1.id, `Session1 Message ${i}`);
         }
 
-        // Send only 2 messages to session 2 (no pruning)
         for (let i = 0; i < 2; i++) {
           await driver.send(config2.id, `Session2 Message ${i}`);
         }
 
-        // Check session 1 - should be pruned to 4 messages
         const checkpoint1 = await driver.createCheckpoint(config1.id, "test");
         const fullCheckpoint1 = await driver.getCheckpoint(
           config1.id,
@@ -469,7 +403,6 @@ describe("AcpDriver", () => {
         const history1 = fullCheckpoint1.conversationHistory as unknown[];
         expect(history1.length).toBe(4);
 
-        // Check session 2 - should still have 2 messages
         const checkpoint2 = await driver.createCheckpoint(config2.id, "test");
         const fullCheckpoint2 = await driver.getCheckpoint(
           config2.id,
