@@ -1237,10 +1237,19 @@ export function getAgentConflictStats(agentId: string): {
   // because one failed attempt can cause multiple conflict records if it
   // overlaps with multiple existing reservations. A rate > 100% is possible
   // if conflicts outnumber successful reservations.
-  const conflictRate =
-    agentReservations.length > 0
-      ? (conflictsCaused / agentReservations.length) * 100
-      : 0;
+  //
+  // Edge case: If agent has no successful reservations but has conflicts,
+  // we return 100% per conflict to indicate high conflict rate.
+  let conflictRate: number;
+  if (agentReservations.length > 0) {
+    conflictRate = (conflictsCaused / agentReservations.length) * 100;
+  } else if (conflictsCaused > 0) {
+    // All attempts failed - return 100% per conflict as a high-conflict indicator
+    conflictRate = conflictsCaused * 100;
+  } else {
+    // No reservations and no conflicts
+    conflictRate = 0;
+  }
 
   return {
     totalReservations: agentReservations.length,
