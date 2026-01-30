@@ -179,7 +179,7 @@ describe("Route registration conformance", () => {
     const routesDir = join(import.meta.dir, "../routes");
     const routeFiles = readdirSync(routesDir) as string[];
 
-    const prefixes = new Set(endpoints.map((e) => `/${e.path.split("/")[1]}`));
+    const prefixes = new Set(endpoints.map((e) => "/" + e.path.split("/")[1]));
 
     for (const prefix of prefixes) {
       const expectedFile = pathToRouteFile[prefix!];
@@ -204,14 +204,12 @@ describe("Route registration conformance", () => {
     // Extract "type" field values from response examples
     const typeRegex = /"type":\s*"([^"]+)"/g;
     const types: string[] = [];
-    let match = typeRegex.exec(md);
-    while (match !== null) {
+    let match;
+    while ((match = typeRegex.exec(md)) !== null) {
       // Skip request body types like "user"
       if (!["subscribe", "ack", "user", "state_changed"].includes(match[1]!)) {
         types.push(match[1]!);
       }
-
-      match = typeRegex.exec(md);
     }
 
     // Response types should use snake_case

@@ -316,6 +316,7 @@ function ToolCard({
           )}
           {!cli.available && !isAgent && onInstall && (
             <button
+              type="button"
               className="btn btn--sm btn--secondary"
               onClick={onInstall}
               disabled={installing}
@@ -447,6 +448,7 @@ function SetupSteps({
 
         return (
           <button
+            type="button"
             key={step.id}
             className={`btn ${isCurrent ? "btn--primary" : "btn--ghost"}`}
             onClick={() => onStepClick(step.id)}
@@ -611,7 +613,7 @@ function DetectStepContent({
           marginTop: "24px",
         }}
       >
-        <button className="btn btn--primary" onClick={onNext}>
+        <button type="button" className="btn btn--primary" onClick={onNext}>
           Continue to Install
           <ArrowRight size={16} />
         </button>
@@ -746,10 +748,10 @@ function InstallStepContent({
           marginTop: "24px",
         }}
       >
-        <button className="btn btn--ghost" onClick={onBack}>
+        <button type="button" className="btn btn--ghost" onClick={onBack}>
           Back
         </button>
-        <button className="btn btn--primary" onClick={onNext}>
+        <button type="button" className="btn btn--primary" onClick={onNext}>
           Continue to Verify
           <ArrowRight size={16} />
         </button>
@@ -805,6 +807,7 @@ function VerifyStepContent({
             Verification Results
           </h3>
           <button
+            type="button"
             className="btn btn--sm btn--secondary"
             onClick={onRefresh}
             disabled={loading}
@@ -956,7 +959,7 @@ function VerifyStepContent({
           marginTop: "24px",
         }}
       >
-        <button className="btn btn--ghost" onClick={onBack}>
+        <button type="button" className="btn btn--ghost" onClick={onBack}>
           Back
         </button>
       </div>
@@ -1063,6 +1066,7 @@ export function SetupPage() {
             </div>
           </div>
           <button
+            type="button"
             className="btn btn--secondary"
             onClick={() => refresh()}
             style={{ marginTop: "16px" }}
@@ -1129,6 +1133,7 @@ export function SetupPage() {
           </p>
         </div>
         <button
+          type="button"
           className="btn btn--secondary"
           onClick={handleRefresh}
           disabled={loading}

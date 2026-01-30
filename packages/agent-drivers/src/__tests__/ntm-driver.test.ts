@@ -54,8 +54,6 @@ function createMockNtmClient(overrides: Partial<NtmClient> = {}): NtmClient {
 
 // Create a testable NTM driver subclass that exposes internals
 class TestableNtmDriver extends NtmDriver {
-  private mockClient: NtmClient;
-
   constructor(mockClient: NtmClient, options: Partial<NtmDriverOptions> = {}) {
     const config = createDriverOptions("ntm", options);
     super(config, {
@@ -67,7 +65,6 @@ class TestableNtmDriver extends NtmDriver {
         ),
       },
     });
-    this.mockClient = mockClient;
     // Replace the client with our mock
     // @ts-expect-error - accessing private field for testing
     this.client = mockClient;

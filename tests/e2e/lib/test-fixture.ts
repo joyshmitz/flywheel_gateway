@@ -71,7 +71,7 @@ export const test = base.extend<TestFixtures>({
   },
 
   // Helper to add custom metadata
-  addMetadata: async ({}, use, testInfo) => {
+  addMetadata: async (_fixtures, use, testInfo) => {
     const metadataFn = (key: string, value: unknown) => {
       testInfo.annotations.push({
         type: "metadata",

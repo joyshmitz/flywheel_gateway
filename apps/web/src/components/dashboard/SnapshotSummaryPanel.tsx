@@ -423,6 +423,7 @@ export function SnapshotSummaryPanel() {
           </div>
         </div>
         <button
+          type="button"
           className="btn btn--secondary"
           data-testid="retry-button"
           onClick={() => refetch(true)}
@@ -496,6 +497,7 @@ export function SnapshotSummaryPanel() {
                   : "Unhealthy"}
             </StatusPill>
             <button
+              type="button"
               className="btn btn--sm btn--ghost"
               onClick={() => refetch(true)}
               disabled={isLoading}

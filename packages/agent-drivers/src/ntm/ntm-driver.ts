@@ -154,11 +154,7 @@ export class NtmDriver extends BaseDriver {
         (s) => s.name === sessionName,
       );
 
-      if (
-        existingSession &&
-        existingSession.agents &&
-        existingSession.agents.length > 0
-      ) {
+      if (existingSession?.agents?.length) {
         // Use existing agent's pane
         const firstAgent = existingSession.agents[0];
         if (firstAgent) {
