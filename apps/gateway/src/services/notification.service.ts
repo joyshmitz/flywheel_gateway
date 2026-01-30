@@ -211,8 +211,13 @@ const WEBHOOK_TIMEOUT_MS = 10_000;
  * Truncate text to max length, adding ellipsis if truncated.
  */
 function truncateText(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text;
-  return `${text.slice(0, maxLength - 1)}…`;
+  if (maxLength <= 0) return "";
+
+  const chars = Array.from(text);
+  if (chars.length <= maxLength) return text;
+
+  const truncated = chars.slice(0, Math.max(0, maxLength - 1)).join("");
+  return `${truncated}…`;
 }
 
 /**

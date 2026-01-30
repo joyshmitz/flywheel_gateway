@@ -2013,7 +2013,12 @@ function setValueByPath(
   for (let i = 0; i < parts.length - 1; i++) {
     const part = parts[i];
     if (!part) continue;
-    if (!(part in current) || typeof current[part] !== "object") {
+    // Note: typeof null === "object" in JS, so we need an explicit null check
+    if (
+      !(part in current) ||
+      current[part] === null ||
+      typeof current[part] !== "object"
+    ) {
       current[part] = {};
     }
     current = current[part] as Record<string, unknown>;
@@ -2036,8 +2041,13 @@ function deleteValueByPath(obj: Record<string, unknown>, path: string): void {
   for (let i = 0; i < parts.length - 1; i++) {
     const part = parts[i];
     if (!part) continue;
-    if (!(part in current) || typeof current[part] !== "object") {
-      return; // Path doesn't exist
+    // Note: typeof null === "object" in JS, so we need an explicit null check
+    if (
+      !(part in current) ||
+      current[part] === null ||
+      typeof current[part] !== "object"
+    ) {
+      return; // Path doesn't exist or is not traversable
     }
     current = current[part] as Record<string, unknown>;
   }
