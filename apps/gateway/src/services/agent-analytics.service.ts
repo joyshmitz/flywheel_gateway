@@ -14,6 +14,7 @@ import { db } from "../db";
 import { agents as agentsTable, history as historyTable } from "../db/schema";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
 import { analyticsCache, generateCacheKey } from "./query-cache";
+import { getAgentConflictStats } from "./reservation.service";
 
 // ============================================================================
 // Types
@@ -254,6 +255,48 @@ async function getFleetSuccessRates(
 
     return successRates;
   }) as Promise<Map<string, number>>;
+}
+
+/**
+ * Get fleet-wide average tokens per task.
+ * Uses a single batch query for efficiency (avoids N+1 pattern).
+ * Results are cached for 30 seconds to reduce database load.
+ */
+async function getFleetAverageTokensPerTask(): Promise<number> {
+  const cacheKey = generateCacheKey("fleet_avg_tokens", {});
+
+  return analyticsCache.getOrCompute(cacheKey, async () => {
+    const { start, end } = getPeriodDates("7d");
+
+    // Single batch query for all history in the period
+    const allHistory = await db
+      .select()
+      .from(historyTable)
+      .where(
+        and(
+          gte(historyTable.createdAt, start),
+          lte(historyTable.createdAt, end),
+        ),
+      );
+
+    let totalTokens = 0;
+    let totalTasks = 0;
+
+    for (const row of allHistory) {
+      const input = row.input as Record<string, unknown> | null;
+      const output = row.output as Record<string, unknown> | null;
+      const outcome = output?.["outcome"] as string | undefined;
+
+      if (outcome === "success" || outcome === "failure") {
+        totalTasks++;
+        totalTokens +=
+          ((input?.["promptTokens"] as number) ?? 0) +
+          ((output?.["responseTokens"] as number) ?? 0);
+      }
+    }
+
+    return totalTasks > 0 ? totalTokens / totalTasks : 0;
+  }) as Promise<number>;
 }
 
 // ============================================================================
@@ -527,14 +570,17 @@ export async function getQualityMetrics(
       mtbe = totalGap / (errorTimestamps.length - 1);
     }
 
+    // Get conflict stats from reservation service
+    const conflictStats = getAgentConflictStats(agentId);
+
     return {
       agentId,
       period,
       errorRate: totalTasks > 0 ? (errorCount / totalTasks) * 100 : 0,
       errorsByCategory,
       meanTimeBetweenErrors: mtbe,
-      conflictRate: 0, // TODO: Get from reservation/conflict service
-      conflictsResolved: 0,
+      conflictRate: conflictStats.conflictRate,
+      conflictsResolved: conflictStats.conflictsResolved,
     };
   }) as Promise<QualityMetric>;
 }
@@ -600,6 +646,15 @@ export async function getTokenEfficiencyMetrics(
       Math.min(100, 100 - avgTokensPerTask / 100),
     );
 
+    // Calculate vs fleet average (percentage difference)
+    // Positive = uses more tokens than average (worse)
+    // Negative = uses fewer tokens than average (better)
+    const fleetAvg = await getFleetAverageTokensPerTask();
+    const vsFleetAverage =
+      fleetAvg > 0
+        ? Math.round(((avgTokensPerTask - fleetAvg) / fleetAvg) * 100)
+        : 0;
+
     return {
       agentId,
       model: agentModel,
@@ -607,7 +662,7 @@ export async function getTokenEfficiencyMetrics(
       avgPromptTokens,
       avgCompletionTokens,
       efficiencyScore,
-      vsFleetAverage: 0, // TODO: Calculate vs fleet
+      vsFleetAverage,
     };
   }) as Promise<TokenEfficiencyMetric>;
 }
