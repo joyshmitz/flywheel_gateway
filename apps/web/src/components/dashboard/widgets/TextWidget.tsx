@@ -100,14 +100,14 @@ function sanitizeHref(rawHref: string): string | null {
   const href = rawHref.trim();
 
   // Disallow obvious HTML injection / whitespace tricks.
-  if (href === "" || /[\s<>]/.test(href)) {
+  if (href === "" || /[\s<>"'`]/.test(href)) {
     return null;
   }
 
   // Allow relative links and anchors.
   if (
     href.startsWith("#") ||
-    href.startsWith("/") ||
+    (href.startsWith("/") && !href.startsWith("//")) ||
     href.startsWith("./") ||
     href.startsWith("../") ||
     href.startsWith("?")
