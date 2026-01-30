@@ -4,6 +4,9 @@
  * These tests verify create/show/close/ready flows with actual br commands.
  * Each test logs request IDs and payload summaries for easy debugging.
  *
+ * NOTE: These tests are slow (each br command takes 3-5 seconds) and are
+ * skipped by default. To run them, set RUN_SLOW_TESTS=1 environment variable.
+ *
  * Part of bd-n52p: Tests for br endpoints.
  */
 
@@ -38,6 +41,9 @@ function isBrAvailable(): boolean {
 }
 
 const BR_AVAILABLE = isBrAvailable();
+
+// Skip by default unless RUN_SLOW_TESTS=1 is set (tests are slow, ~4s per br command)
+const runSlowTests = process.env["RUN_SLOW_TESTS"] === "1";
 
 // Test utilities for structured logging
 interface TestLogEntry {
@@ -84,7 +90,7 @@ function getTestBeadTitle(): string {
 // Beads created during tests that need cleanup
 const createdBeadIds: string[] = [];
 
-describe.skipIf(!BR_AVAILABLE)("BR Endpoints Integration Tests", () => {
+describe.skipIf(!BR_AVAILABLE || !runSlowTests)("BR Endpoints Integration Tests", () => {
   let app: Hono;
   let service: ReturnType<typeof createBeadsService>;
 
