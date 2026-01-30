@@ -60,6 +60,7 @@ if (import.meta.main) {
   const config = getConfig();
 
   const port = config.server.port;
+  const host = config.server.host;
 
   // Start background jobs
   startCleanupJob();
@@ -123,8 +124,9 @@ if (import.meta.main) {
   if (mcpEnabled) {
     logger.info("Agent Mail MCP tool caller registered");
   }
-  logger.info({ port }, "Starting Flywheel Gateway");
+  logger.info({ host, port }, "Starting Flywheel Gateway");
   Bun.serve({
+    hostname: host,
     fetch(req, server) {
       // Handle WebSocket upgrade
       const url = new URL(req.url);
