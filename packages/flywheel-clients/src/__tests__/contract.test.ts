@@ -82,13 +82,14 @@ class InvocationLogger {
     args: string[],
     options?: { cwd?: string; timeout?: number },
   ): void {
-    this.invocations.push({
+    const invocation: Invocation = {
       timestamp: new Date().toISOString(),
       command,
       args: [...args],
-      cwd: options?.cwd,
-      timeout: options?.timeout,
-    });
+    };
+    if (options?.cwd !== undefined) invocation.cwd = options.cwd;
+    if (options?.timeout !== undefined) invocation.timeout = options.timeout;
+    this.invocations.push(invocation);
   }
 
   getAll(): Invocation[] {
@@ -863,9 +864,14 @@ describe("br Client Contract Tests", () => {
       const result = await client.ready();
 
       expect(result).toHaveLength(2);
-      expect(result[0].id).toBe("bd-test1");
-      expect(result[0].title).toBe("Test bead 1");
-      expect(result[1].labels).toEqual(["urgent"]);
+      const first = result[0];
+      const second = result[1];
+      if (!first || !second) {
+        throw new Error("Expected ready() to return 2 issues");
+      }
+      expect(first.id).toBe("bd-test1");
+      expect(first.title).toBe("Test bead 1");
+      expect(second.labels).toEqual(["urgent"]);
 
       const inv = logger.getLast();
       expect(inv?.command).toBe("br");
@@ -907,7 +913,9 @@ describe("br Client Contract Tests", () => {
       const result = await client.list();
 
       expect(result).toHaveLength(1);
-      expect(result[0].status).toBe("closed");
+      const first = result[0];
+      if (!first) throw new Error("Expected list() to return 1 issue");
+      expect(first.status).toBe("closed");
     });
 
     test("includes filter args", async () => {
@@ -949,8 +957,10 @@ describe("br Client Contract Tests", () => {
       const result = await client.show("bd-show1");
 
       expect(result).toHaveLength(1);
-      expect(result[0].description).toBe("Detailed description");
-      expect(result[0].dependencies).toHaveLength(1);
+      const first = result[0];
+      if (!first) throw new Error("Expected show() to return 1 issue");
+      expect(first.description).toBe("Detailed description");
+      expect(first.dependencies).toHaveLength(1);
     });
   });
 
@@ -1071,7 +1081,9 @@ describe("bv Client Contract Tests", () => {
 
       expect(result.generated_at).toBe("2025-01-15T12:00:00Z");
       expect(result.triage.recommendations).toHaveLength(1);
-      expect(result.triage.recommendations?.[0].score).toBe(0.95);
+      const firstRec = result.triage.recommendations?.[0];
+      if (!firstRec) throw new Error("Expected triage recommendations[0]");
+      expect(firstRec.score).toBe(0.95);
       expect(result.triage.quick_wins).toHaveLength(1);
 
       const inv = logger.getLast();
@@ -1100,11 +1112,15 @@ describe("bv Client Contract Tests", () => {
       expect(Array.isArray(result.nodes)).toBe(true);
       if (Array.isArray(result.nodes)) {
         expect(result.nodes).toHaveLength(2);
-        expect(result.nodes[0].id).toBe("bd-1");
+        const firstNode = result.nodes[0];
+        if (!firstNode) throw new Error("Expected graph nodes[0]");
+        expect(firstNode.id).toBe("bd-1");
       }
       if (Array.isArray(result.edges)) {
         expect(result.edges).toHaveLength(1);
-        expect(result.edges[0].type).toBe("blocks");
+        const firstEdge = result.edges[0];
+        if (!firstEdge) throw new Error("Expected graph edges[0]");
+        expect(firstEdge.type).toBe("blocks");
       }
     });
 
@@ -1178,9 +1194,12 @@ describe("caam Client Contract Tests", () => {
       const result = await client.status();
 
       expect(result.tools).toHaveLength(2);
-      expect(result.tools[0].logged_in).toBe(true);
-      expect(result.tools[0].identity?.email).toBe("test@example.com");
-      expect(result.tools[1].logged_in).toBe(false);
+      const first = result.tools[0];
+      const second = result.tools[1];
+      if (!first || !second) throw new Error("Expected status() tools[0..1]");
+      expect(first.logged_in).toBe(true);
+      expect(first.identity?.email).toBe("test@example.com");
+      expect(second.logged_in).toBe(false);
       expect(result.recommendations).toHaveLength(1);
     });
 
@@ -1349,8 +1368,10 @@ describe("apr Client Contract Tests", () => {
       const result = await client.listWorkflows();
 
       expect(result).toHaveLength(1);
-      expect(result[0].name).toBe("main");
-      expect(result[0].rounds).toBe(3);
+      const first = result[0];
+      if (!first) throw new Error("Expected listWorkflows() to return 1 item");
+      expect(first.name).toBe("main");
+      expect(first.rounds).toBe(3);
     });
   });
 
@@ -1465,8 +1486,10 @@ describe("ntm Client Contract Tests", () => {
       const result = await client.status();
 
       expect(result.sessions).toHaveLength(2);
-      expect(result.sessions[0].name).toBe("agent-1");
-      expect(result.sessions[0].attached).toBe(true);
+      const first = result.sessions[0];
+      if (!first) throw new Error("Expected status() sessions[0]");
+      expect(first.name).toBe("agent-1");
+      expect(first.attached).toBe(true);
       expect(result.summary.total_sessions).toBe(2);
       expect(result.system.tmux_available).toBe(true);
 
