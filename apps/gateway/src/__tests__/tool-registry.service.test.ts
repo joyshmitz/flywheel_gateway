@@ -76,9 +76,17 @@ mock.module("yaml", () => ({
   },
 }));
 
+// Use a cache-busting specifier so this test file always loads a fresh copy
+// of the registry module after mocks are installed. Keep the specifier
+// non-literal so TypeScript doesn't try to resolve the query string.
+const TOOL_REGISTRY_MODULE_SPECIFIER =
+  "../services/tool-registry.service?tool-registry-service-test";
+
 // Import after mocks are defined
 const { clearToolRegistryCache, getToolRegistryMetadata, loadToolRegistry } =
-  await import("../services/tool-registry.service");
+  (await import(
+    TOOL_REGISTRY_MODULE_SPECIFIER,
+  )) as typeof import("../services/tool-registry.service");
 
 const validManifest = `schemaVersion: "1.0.0"
 source: "acfs"
