@@ -1651,8 +1651,10 @@ describe("ntm Client Contract Tests", () => {
 
       expect(result.ts).toBeDefined();
       expect(result.sessions).toHaveLength(1);
-      expect(result.sessions[0].name).toBe("agent-1");
-      expect(result.sessions[0].agents).toHaveLength(1);
+      const first = result.sessions[0];
+      if (!first) throw new Error("Expected snapshot() sessions[0]");
+      expect(first.name).toBe("agent-1");
+      expect(first.agents).toHaveLength(1);
     });
   });
 
@@ -1763,7 +1765,9 @@ describe("ms Client Contract Tests", () => {
 
       expect(result.status).toBe("healthy");
       expect(result.checks).toHaveLength(2);
-      expect(result.checks[0].name).toBe("database");
+      const firstCheck = result.checks[0];
+      if (!firstCheck) throw new Error("Expected doctor() checks[0]");
+      expect(firstCheck.name).toBe("database");
       expect(result.embedding_service.available).toBe(true);
       expect(result.embedding_service.model).toBe("all-MiniLM-L6-v2");
       expect(result.storage.index_count).toBe(5);
@@ -1792,9 +1796,12 @@ describe("ms Client Contract Tests", () => {
       const result = await client.listKnowledgeBases();
 
       expect(result).toHaveLength(2);
-      expect(result[0].name).toBe("skills");
-      expect(result[0].entry_count).toBe(150);
-      expect(result[1].name).toBe("prompts");
+      const first = result[0];
+      const second = result[1];
+      if (!first || !second) throw new Error("Expected listKnowledgeBases() items[0..1]");
+      expect(first.name).toBe("skills");
+      expect(first.entry_count).toBe(150);
+      expect(second.name).toBe("prompts");
     });
   });
 
@@ -1816,7 +1823,9 @@ describe("ms Client Contract Tests", () => {
 
       expect(result.query).toBe("authentication");
       expect(result.results).toHaveLength(2);
-      expect(result.results[0].score).toBe(0.92);
+      const first = result.results[0];
+      if (!first) throw new Error("Expected search() results[0]");
+      expect(first.score).toBe(0.92);
       expect(result.semantic_enabled).toBe(true);
       expect(result.took_ms).toBe(45);
 
