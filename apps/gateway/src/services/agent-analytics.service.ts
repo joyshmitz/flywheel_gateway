@@ -177,7 +177,8 @@ function generateRecommendationId(): string {
 /**
  * Categorize a command into a task type for analytics.
  * Uses pattern matching to group similar operations together.
- * Patterns are checked in order of specificity.
+ * Patterns use word boundaries where needed to avoid false positives
+ * (e.g., "test" shouldn't match "latest").
  */
 function categorizeCommand(command: string): string {
   const cmd = command.toLowerCase();
@@ -187,11 +188,11 @@ function categorizeCommand(command: string): string {
     return "git";
   }
 
-  // Build/test operations
+  // Build/test operations - use word boundaries for common words
   if (
-    cmd.includes("test") ||
-    cmd.includes("build") ||
-    cmd.includes("compile") ||
+    /\btest\b/.test(cmd) ||
+    /\bbuild\b/.test(cmd) ||
+    /\bcompile\b/.test(cmd) ||
     cmd.startsWith("npm ") ||
     cmd.includes(" npm ") ||
     cmd.startsWith("bun ") ||
@@ -207,15 +208,15 @@ function categorizeCommand(command: string): string {
     cmd.includes(" rg ") ||
     cmd.startsWith("find ") ||
     cmd.includes(" find ") ||
-    cmd.includes("search") ||
-    cmd.includes("glob")
+    /\bsearch\b/.test(cmd) ||
+    /\bglob\b/.test(cmd)
   ) {
     return "search";
   }
 
-  // File read operations
+  // File read operations - use word boundaries for "read"
   if (
-    cmd.includes("read") ||
+    /\bread\b/.test(cmd) ||
     cmd.startsWith("cat ") ||
     cmd.includes(" cat ") ||
     cmd.startsWith("head ") ||
@@ -224,20 +225,20 @@ function categorizeCommand(command: string): string {
     return "read";
   }
 
-  // File write operations
+  // File write operations - use word boundaries for ambiguous words
   if (
-    cmd.includes("write") ||
-    cmd.includes("edit") ||
+    /\bwrite\b/.test(cmd) ||
+    /\bedit\b/.test(cmd) ||
     cmd.startsWith("sed ") ||
     cmd.includes(" sed ") ||
-    cmd.includes("patch")
+    /\bpatch\b/.test(cmd)
   ) {
     return "write";
   }
 
-  // Shell execution (check last - use word boundaries to avoid false positives)
+  // Shell execution (check last)
   if (
-    cmd.includes("bash") ||
+    /\bbash\b/.test(cmd) ||
     cmd.startsWith("sh ") ||
     cmd.includes(" sh ") ||
     /\bexec\b/.test(cmd)
