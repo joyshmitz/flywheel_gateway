@@ -143,9 +143,17 @@ export default defineConfig(({ mode }): UserConfig => {
     server: {
       port: 5173,
       proxy: {
+        // The gateway mounts routes at the root (e.g. /agents, /notifications, /ws)
+        // while the web app uses /api/* and /api/v1/* prefixes.
+        "/api/v1": {
+          target: gatewayTarget,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/v1/, "") || "/",
+        },
         "/api": {
           target: gatewayTarget,
           changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api/, "") || "/",
         },
         "/ws": {
           target: gatewayTarget,
