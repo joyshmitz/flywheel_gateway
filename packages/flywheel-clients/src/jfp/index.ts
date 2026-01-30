@@ -418,8 +418,9 @@ export function createJfpClient(options: JfpClientOptions): JfpClient {
 
       // Apply category filter locally if specified (CLI may not support it)
       if (opts?.category) {
+        const category = opts.category;
         prompts = prompts.filter(
-          (p) => p.category.toLowerCase() === opts.category!.toLowerCase(),
+          (p) => p.category.toLowerCase() === category.toLowerCase(),
         );
       }
 
