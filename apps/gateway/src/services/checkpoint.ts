@@ -614,7 +614,7 @@ export async function getLatestCheckpoint(
     .select()
     .from(checkpointsTable)
     .where(eq(checkpointsTable.agentId, agentId))
-    .orderBy(desc(checkpointsTable.id))
+    .orderBy(desc(checkpointsTable.createdAt), desc(sql`rowid`))
     .limit(1);
 
   const row = result[0];

@@ -4,7 +4,29 @@ import type { AuthContext } from "../ws/hub";
 
 const AUTH_EXEMPT_PATH_PREFIXES = ["/health", "/openapi", "/docs", "/redoc"];
 
+import { timingSafeEqual } from "node:crypto";
+
 const textEncoder = new TextEncoder();
+
+/**
+ * Constant-time string comparison to prevent timing attacks.
+ * Uses crypto.timingSafeEqual for secure comparison.
+ */
+function safeCompare(a: string, b: string): boolean {
+  const aBuffer = Buffer.from(a, "utf8");
+  const bBuffer = Buffer.from(b, "utf8");
+  // If lengths differ, pad shorter to match longer to avoid timing leak on length
+  if (aBuffer.length !== bBuffer.length) {
+    const maxLen = Math.max(aBuffer.length, bBuffer.length);
+    const aPadded = Buffer.alloc(maxLen);
+    const bPadded = Buffer.alloc(maxLen);
+    aBuffer.copy(aPadded);
+    bBuffer.copy(bPadded);
+    timingSafeEqual(aPadded, bPadded);
+    return false;
+  }
+  return timingSafeEqual(aBuffer, bBuffer);
+}
 
 type JwtPayload = Record<string, unknown>;
 
@@ -159,7 +181,7 @@ export function authMiddleware() {
       );
     }
 
-    if (adminKey && token === adminKey) {
+    if (adminKey && safeCompare(token, adminKey)) {
       c.set("auth", buildAuthContext({}, true));
       await next();
       return;
