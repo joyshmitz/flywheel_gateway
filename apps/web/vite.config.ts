@@ -99,6 +99,7 @@ export default defineConfig(({ mode }): UserConfig => {
   const isProd = nodeEnv === "production";
   const disableCompiler = env["VITE_DISABLE_COMPILER"] === "true";
   const compilerEnabled = !disableCompiler;
+  const gatewayTarget = env["VITE_GATEWAY_TARGET"] ?? "http://127.0.0.1:3000";
 
   if (!isProd) {
     console.debug(`[Compiler] ${compilerEnabled ? "Enabled" : "Disabled"}`);
@@ -141,6 +142,17 @@ export default defineConfig(({ mode }): UserConfig => {
 
     server: {
       port: 5173,
+      proxy: {
+        "/api": {
+          target: gatewayTarget,
+          changeOrigin: true,
+        },
+        "/ws": {
+          target: gatewayTarget,
+          ws: true,
+          changeOrigin: true,
+        },
+      },
     },
 
     resolve: {
