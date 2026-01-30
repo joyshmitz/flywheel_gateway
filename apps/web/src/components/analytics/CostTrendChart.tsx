@@ -169,7 +169,8 @@ export function CostTrendChart({
           {/* Data points */}
           {filteredData.map((d, i) => {
             const x = (i / (filteredData.length - 1)) * 100;
-            const y = 5 + 140 * (1 - d.costUnits / chartMetrics.maxCost);
+            const maxCost = chartMetrics.maxCost || 1;
+            const y = 5 + 140 * (1 - d.costUnits / maxCost);
             return (
               // biome-ignore lint/a11y/noStaticElementInteractions: SVG circle with focus handlers is valid for chart accessibility
               <circle

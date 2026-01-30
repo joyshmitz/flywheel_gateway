@@ -54,35 +54,51 @@ class MockWebSocket {
 }
 
 describe("WebSocketProvider", () => {
-  let originalWebSocket: typeof WebSocket;
-  let originalLocation: Location;
-
   beforeEach(() => {
-    originalWebSocket = globalThis.WebSocket;
-    originalLocation = window.location;
-
-    // Ensure deterministic location.host/protocol for URL assertions
-    Object.defineProperty(window, "location", {
-      value: new URL("http://example.test/") as unknown as Location,
-      writable: true,
-      configurable: true,
-    });
-
     // Ensure mock mode is disabled for these tests
     useUiStore.getState().setMockMode(false);
 
-    // Install WebSocket mock
     MockWebSocket.instances = [];
-    globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
   });
 
-  afterEach(() => {
-    globalThis.WebSocket = originalWebSocket;
-    Object.defineProperty(window, "location", {
-      value: originalLocation,
-      writable: true,
-      configurable: true,
+  const createWebSocket = (url: string) =>
+    new MockWebSocket(url) as unknown as WebSocket;
+
+  it("does not queue messages in mock mode", () => {
+    useUiStore.getState().setMockMode(true);
+
+    const testQueue = [] as Array<{ message: unknown; timestamp: number }>;
+    Object.defineProperty(testQueue, "push", {
+      value: () => {
+        throw new Error("Unexpected queue push");
+      },
     });
+
+    let api: ReturnType<typeof useWebSocket> | null = null;
+
+    function Probe() {
+      api = useWebSocket();
+      return null;
+    }
+
+    const { unmount } = render(
+      <WebSocketProvider
+        url="ws://example.test/ws"
+        __testCreateWebSocket={createWebSocket}
+        __testMessageQueue={testQueue}
+      >
+        <Probe />
+      </WebSocketProvider>,
+    );
+
+    expect(() => {
+      act(() => {
+        api?.send({ type: "ping" });
+      });
+    }).not.toThrow();
+
+    expect(MockWebSocket.instances).toHaveLength(0);
+    unmount();
   });
 
   it("ignores stale onopen callbacks after reconnect", () => {
@@ -94,7 +110,10 @@ describe("WebSocketProvider", () => {
     }
 
     const { getByTestId, unmount } = render(
-      <WebSocketProvider>
+      <WebSocketProvider
+        url="ws://example.test/ws"
+        __testCreateWebSocket={createWebSocket}
+      >
         <Probe />
       </WebSocketProvider>,
     );
@@ -142,7 +161,10 @@ describe("WebSocketProvider", () => {
     }
 
     const { unmount } = render(
-      <WebSocketProvider>
+      <WebSocketProvider
+        url="ws://example.test/ws"
+        __testCreateWebSocket={createWebSocket}
+      >
         <Probe />
       </WebSocketProvider>,
     );
