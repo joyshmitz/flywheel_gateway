@@ -787,7 +787,9 @@ export async function installTool(
       stderr = result.stderr;
       exitCode = result.exitCode;
     } catch (error) {
+      // Prevent unhandled rejection if the process exits after timeout
       if (timedOut) {
+        void resultPromise.catch(() => undefined);
         log.error(
           {
             tool: request.tool,
