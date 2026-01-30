@@ -9,6 +9,7 @@ import {
   AgentListWidget,
   BarChartWidget,
   GaugeWidget,
+  HeatmapWidget,
   LineChartWidget,
   MetricCardWidget,
   PieChartWidget,
@@ -74,10 +75,7 @@ export function WidgetRenderer({
         return <BarChartWidget widget={widget} data={widgetData} />;
 
       case "heatmap":
-        // TODO: Implement heatmap widget
-        return (
-          <div className="widget-placeholder">Heatmap widget coming soon</div>
-        );
+        return <HeatmapWidget widget={widget} data={widgetData} />;
 
       case "iframe":
         // Iframe widget renders external content
