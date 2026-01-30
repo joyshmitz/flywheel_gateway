@@ -194,6 +194,7 @@ costAnalytics.get("/records", async (c) => {
     const since = c.req.query("since");
     const until = c.req.query("until");
     const limit = c.req.query("limit");
+    const parsedLimit = limit ? parseInt(limit, 10) : NaN;
     const startingAfter = c.req.query("startingAfter");
 
     const filter: CostFilter = {
@@ -204,7 +205,7 @@ costAnalytics.get("/records", async (c) => {
       ...(provider && { provider }),
       ...(since && !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
       ...(until && !Number.isNaN(new Date(until).getTime()) && { until: new Date(until) }),
-      ...(limit && !Number.isNaN(parseInt(limit, 10)) && { limit: parseInt(limit, 10) }),
+      ...(!Number.isNaN(parsedLimit) && { limit: parsedLimit }),
       ...(startingAfter && { startingAfter }),
     };
 
@@ -660,6 +661,7 @@ costAnalytics.get("/budget-alerts", async (c) => {
     const acknowledgedParam = c.req.query("acknowledged");
     const since = c.req.query("since");
     const limitParam = c.req.query("limit");
+    const parsedLimit = limitParam ? parseInt(limitParam, 10) : NaN;
 
     const filter = {
       ...(budgetId && { budgetId }),
@@ -667,7 +669,7 @@ costAnalytics.get("/budget-alerts", async (c) => {
         acknowledged: acknowledgedParam === "true",
       }),
       ...(since && !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
-      ...(limitParam && !Number.isNaN(parseInt(limitParam, 10)) && { limit: parseInt(limitParam, 10) }),
+      ...(!Number.isNaN(parsedLimit) && { limit: parsedLimit }),
     };
 
     const alerts = await getBudgetAlerts(filter);
@@ -917,13 +919,14 @@ costAnalytics.get("/recommendations", async (c) => {
       | "failed"
       | undefined;
     const limitParam = c.req.query("limit");
+    const parsedLimit = limitParam ? parseInt(limitParam, 10) : NaN;
 
     const filter = {
       ...(organizationId && { organizationId }),
       ...(projectId && { projectId }),
       ...(categoryParam && { category: categoryParam }),
       ...(statusParam && { status: statusParam }),
-      ...(limitParam && !Number.isNaN(parseInt(limitParam, 10)) && { limit: parseInt(limitParam, 10) }),
+      ...(!Number.isNaN(parsedLimit) && { limit: parsedLimit }),
     };
 
     const recommendations = await getRecommendations(filter);

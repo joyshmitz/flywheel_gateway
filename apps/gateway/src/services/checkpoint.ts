@@ -19,7 +19,7 @@ import type {
   CheckpointMetadata,
   TokenUsage,
 } from "@flywheel/agent-drivers";
-import { desc, eq, inArray } from "drizzle-orm";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 import { ulid } from "ulid";
 import { checkpoints as checkpointsTable, db } from "../db";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
@@ -1002,9 +1002,21 @@ export async function deleteCheckpoint(checkpointId: string): Promise<void> {
     return; // Already deleted
   }
 
-  // TODO: Check if any other checkpoints depend on this one
-  // Requires schema update to expose parentCheckpointId as column
-  // or JSON query capabilities.
+  // Check if any other checkpoints depend on this one via delta chain
+  const dependents = await db
+    .select({ id: checkpointsTable.id })
+    .from(checkpointsTable)
+    .where(
+      sql`json_extract(${checkpointsTable.state}, '$.parentCheckpointId') = ${checkpointId}`,
+    )
+    .limit(1);
+
+  if (dependents.length > 0) {
+    throw new CheckpointError(
+      "HAS_DEPENDENTS",
+      `Cannot delete checkpoint ${checkpointId}: it is referenced as parent by ${dependents[0]!.id}`,
+    );
+  }
 
   // Remove from storage
   await db

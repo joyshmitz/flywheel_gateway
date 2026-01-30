@@ -849,7 +849,9 @@ describe.skipIf(!BR_AVAILABLE)("BR Endpoints Integration Tests", () => {
           description: "Test bead for close endpoint",
         });
         testBeadId = bead.id;
-        // Don't add to cleanup list since we're closing it in the test
+        // Always track for cleanup — if the test fails before closing,
+        // afterAll will clean up. Re-closing an already-closed bead is safe.
+        createdBeadIds.push(testBeadId);
       },
       { timeout: TEST_TIMEOUT },
     );
@@ -900,6 +902,7 @@ describe.skipIf(!BR_AVAILABLE)("BR Endpoints Integration Tests", () => {
           priority: 4,
         });
         const beadId = bead.id;
+        createdBeadIds.push(beadId);
 
         logTest({
           test: testName,
@@ -976,6 +979,7 @@ describe.skipIf(!BR_AVAILABLE)("BR Endpoints Integration Tests", () => {
           type: "task",
           priority: 4,
         });
+        createdBeadIds.push(bead.id);
 
         logTest({
           test: testName,
@@ -1102,6 +1106,7 @@ describe.skipIf(!BR_AVAILABLE)("BR Endpoints Integration Tests", () => {
 
         expect(createRes.status).toBe(201);
         const beadId = createData.data.id;
+        createdBeadIds.push(beadId);
 
         logTest({
           test: testName,

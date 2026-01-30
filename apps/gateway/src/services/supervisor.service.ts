@@ -289,9 +289,10 @@ export class SupervisorService {
       "Stopping daemon",
     );
 
-    // Stop health checks and pending restarts
+    // Stop health checks, pending restarts, and starting timeouts
     this.stopHealthCheck(name);
     this.clearRestartTimeout(name);
+    this.clearStartingTimeout(name);
 
     // Update state
     state.status = "stopping";

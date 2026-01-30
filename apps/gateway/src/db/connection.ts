@@ -9,6 +9,8 @@ import { logger } from "../services/logger";
 import * as schema from "./schema";
 
 const isDev = process.env["NODE_ENV"] !== "production";
+const isTest =
+  process.env["NODE_ENV"] === "test" || process.env["BUN_TEST"] === "1";
 const rawSlowQueryThresholdMs = Number(process.env["DB_SLOW_QUERY_MS"] ?? 100);
 const slowQueryThresholdMs = Number.isFinite(rawSlowQueryThresholdMs)
   ? rawSlowQueryThresholdMs
@@ -43,12 +45,15 @@ sqlite.exec("PRAGMA busy_timeout = 5000");
 export const db = drizzle(sqlite, { schema, logger: drizzleLogger });
 
 const shouldAutoMigrate =
+  isTest ||
   dbFile === ":memory:" ||
   process.env["DB_AUTO_MIGRATE"] === "1" ||
   process.env["DB_AUTO_MIGRATE"] === "true";
 
 if (shouldAutoMigrate) {
-  const migrationsFolder = fileURLToPath(new URL("./migrations", import.meta.url));
+  const migrationsFolder = fileURLToPath(
+    new URL("./migrations", import.meta.url),
+  );
   migrate(db, { migrationsFolder });
 }
 

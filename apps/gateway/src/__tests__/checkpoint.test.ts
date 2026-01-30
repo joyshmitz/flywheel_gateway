@@ -375,7 +375,7 @@ describe("Checkpoint Service", () => {
       // Should not throw
     });
 
-    test.skip("throws when checkpoint has dependents", async () => {
+    test("throws when checkpoint has dependents", async () => {
       const uniqueAgentId = `agent-delete-${Date.now()}`;
       await ensureAgent(uniqueAgentId);
 
