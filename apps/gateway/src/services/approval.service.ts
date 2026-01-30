@@ -31,8 +31,8 @@ function generateId(prefix: string, length = 12): string {
     crypto.getRandomValues(randomBytes);
 
     for (let i = 0; i < bufSize && result.length < length; i++) {
-      const byte = randomBytes[i]!;
-      if (byte < maxByte) {
+      const byte = randomBytes[i];
+      if (byte !== undefined && byte < maxByte) {
         result += chars[byte % charLen];
       }
     }
@@ -170,15 +170,36 @@ function mapToApprovalRequest(
 ): ApprovalRequest {
   // Parse JSON fields
   // Handle case where json mode text might be returned as string if not properly typed by drizzle-orm/sqlite-core depending on version
-  const operationDetails =
-    typeof row.operationDetails === "string"
-      ? JSON.parse(row.operationDetails)
-      : (row.operationDetails as Record<string, unknown>);
+  let operationDetails: Record<string, unknown> = {};
+  if (typeof row.operationDetails === "string") {
+    try {
+      operationDetails = JSON.parse(row.operationDetails) as Record<
+        string,
+        unknown
+      >;
+    } catch {
+      logger.warn(
+        { id: row.id, operationDetails: row.operationDetails },
+        "Failed to parse operationDetails JSON",
+      );
+    }
+  } else if (row.operationDetails) {
+    operationDetails = row.operationDetails as Record<string, unknown>;
+  }
 
-  const recentActions =
-    typeof row.recentActions === "string"
-      ? JSON.parse(row.recentActions)
-      : ((row.recentActions as unknown as string[]) ?? []);
+  let recentActions: string[] = [];
+  if (typeof row.recentActions === "string") {
+    try {
+      recentActions = JSON.parse(row.recentActions) as string[];
+    } catch {
+      logger.warn(
+        { id: row.id, recentActions: row.recentActions },
+        "Failed to parse recentActions JSON",
+      );
+    }
+  } else if (Array.isArray(row.recentActions)) {
+    recentActions = row.recentActions as string[];
+  }
 
   // Reconstruct a minimal rule object
   const rule: SafetyRule = {

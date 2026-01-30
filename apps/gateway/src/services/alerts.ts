@@ -563,6 +563,8 @@ export function getActiveAlerts(filter?: AlertFilter): AlertListResponse {
   const total = alerts.length;
   const limit = filter?.limit ?? DEFAULT_PAGINATION.limit;
   let startIndex = 0;
+  let endIndex: number | undefined;
+  let isBackward = false;
 
   // Handle cursor-based pagination
   if (filter?.startingAfter) {
@@ -574,19 +576,26 @@ export function getActiveAlerts(filter?: AlertFilter): AlertListResponse {
       }
     }
   } else if (filter?.endingBefore) {
+    isBackward = true;
     const decoded = decodeCursor(filter.endingBefore);
     if (decoded) {
       const cursorIndex = alerts.findIndex((a) => a.id === decoded.id);
       if (cursorIndex >= 0) {
         startIndex = Math.max(0, cursorIndex - limit);
+        endIndex = cursorIndex; // End before the cursor item
       }
     }
   }
 
-  // Get page items (fetch limit + 1 to determine hasMore)
-  const pageItems = alerts.slice(startIndex, startIndex + limit + 1);
-  const hasMore = pageItems.length > limit;
-  const resultItems = hasMore ? pageItems.slice(0, limit) : pageItems;
+  const sliceEnd =
+    isBackward && endIndex !== undefined ? endIndex : startIndex + limit + 1;
+  const pageItems = alerts.slice(startIndex, sliceEnd);
+  const hasMore = isBackward ? startIndex > 0 : pageItems.length > limit;
+  const resultItems = isBackward
+    ? pageItems
+    : hasMore
+      ? pageItems.slice(0, limit)
+      : pageItems;
 
   const result: AlertListResponse = {
     alerts: resultItems,
@@ -633,6 +642,8 @@ export function getAlertHistory(filter?: AlertFilter): AlertListResponse {
   const total = alerts.length;
   const limit = filter?.limit ?? DEFAULT_PAGINATION.limit;
   let startIndex = 0;
+  let endIndex: number | undefined;
+  let isBackward = false;
 
   // Handle cursor-based pagination
   if (filter?.startingAfter) {
@@ -644,19 +655,26 @@ export function getAlertHistory(filter?: AlertFilter): AlertListResponse {
       }
     }
   } else if (filter?.endingBefore) {
+    isBackward = true;
     const decoded = decodeCursor(filter.endingBefore);
     if (decoded) {
       const cursorIndex = alerts.findIndex((a) => a.id === decoded.id);
       if (cursorIndex >= 0) {
         startIndex = Math.max(0, cursorIndex - limit);
+        endIndex = cursorIndex; // End before the cursor item
       }
     }
   }
 
-  // Get page items (fetch limit + 1 to determine hasMore)
-  const pageItems = alerts.slice(startIndex, startIndex + limit + 1);
-  const hasMore = pageItems.length > limit;
-  const resultItems = hasMore ? pageItems.slice(0, limit) : pageItems;
+  const sliceEnd =
+    isBackward && endIndex !== undefined ? endIndex : startIndex + limit + 1;
+  const pageItems = alerts.slice(startIndex, sliceEnd);
+  const hasMore = isBackward ? startIndex > 0 : pageItems.length > limit;
+  const resultItems = isBackward
+    ? pageItems
+    : hasMore
+      ? pageItems.slice(0, limit)
+      : pageItems;
 
   const result: AlertListResponse = {
     alerts: resultItems,

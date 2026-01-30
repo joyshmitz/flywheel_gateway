@@ -65,7 +65,7 @@ function linearRegression(
   xValues: number[],
   yValues: number[],
 ): { slope: number; intercept: number; r2: number } {
-  const n = xValues.length;
+  const n = Math.min(xValues.length, yValues.length);
   if (n < 2) {
     return { slope: 0, intercept: mean(yValues), r2: 0 };
   }
@@ -77,8 +77,11 @@ function linearRegression(
   let denominator = 0;
 
   for (let i = 0; i < n; i++) {
-    numerator += (xValues[i]! - xMean) * (yValues[i]! - yMean);
-    denominator += (xValues[i]! - xMean) ** 2;
+    const x = xValues[i];
+    const y = yValues[i];
+    if (x === undefined || y === undefined) continue;
+    numerator += (x - xMean) * (y - yMean);
+    denominator += (x - xMean) ** 2;
   }
 
   const slope = denominator !== 0 ? numerator / denominator : 0;
@@ -88,9 +91,12 @@ function linearRegression(
   let ssRes = 0;
   let ssTot = 0;
   for (let i = 0; i < n; i++) {
-    const predicted = slope * xValues[i]! + intercept;
-    ssRes += (yValues[i]! - predicted) ** 2;
-    ssTot += (yValues[i]! - yMean) ** 2;
+    const x = xValues[i];
+    const y = yValues[i];
+    if (x === undefined || y === undefined) continue;
+    const predicted = slope * x + intercept;
+    ssRes += (y - predicted) ** 2;
+    ssTot += (y - yMean) ** 2;
   }
   const r2 = ssTot !== 0 ? 1 - ssRes / ssTot : 0;
 
@@ -102,12 +108,16 @@ function linearRegression(
  * Returns the smoothed forecast value.
  */
 function exponentialSmoothing(values: number[], alpha: number = 0.3): number[] {
-  if (values.length === 0) return [];
+  const firstValue = values[0];
+  if (values.length === 0 || firstValue === undefined) return [];
 
-  const smoothed: number[] = [values[0]!];
+  const smoothed: number[] = [firstValue];
 
   for (let i = 1; i < values.length; i++) {
-    smoothed.push(alpha * values[i]! + (1 - alpha) * smoothed[i - 1]!);
+    const currValue = values[i];
+    const prevSmoothed = smoothed[i - 1];
+    if (currValue === undefined || prevSmoothed === undefined) continue;
+    smoothed.push(alpha * currValue + (1 - alpha) * prevSmoothed);
   }
 
   return smoothed;
@@ -183,14 +193,14 @@ function forecastLinear(
 
   // Calculate prediction error for confidence intervals
   const predictions = xValues.map((x) => slope * x + intercept);
-  const errors = yValues.map((y, i) => y - predictions[i]!);
+  const errors = yValues.map((y, i) => y - (predictions[i] ?? 0));
   const errorStd = stdDev(errors);
 
   // Z-score for 95% confidence
   const zScore = 1.96;
 
   const forecasts: DailyForecast[] = [];
-  const lastX = xValues[xValues.length - 1]!;
+  const lastX = xValues.at(-1) ?? 0;
 
   for (let i = 1; i <= horizonDays; i++) {
     const x = lastX + i;
@@ -286,7 +296,11 @@ function forecastEnsemble(
   if (exponentialForecasts.length === 0) return linearForecasts;
 
   return linearForecasts.map((lf, i) => {
-    const ef = exponentialForecasts[i]!;
+    const ef = exponentialForecasts[i];
+    if (!ef) {
+      // If exponential forecast is missing for this index, use linear only
+      return lf;
+    }
     return {
       date: lf.date,
       predictedCostUnits: Math.round(
@@ -554,11 +568,10 @@ export async function getLatestForecast(filter?: {
     .orderBy(desc(costForecasts.createdAt))
     .limit(1);
 
-  if (rows.length === 0) {
-    return undefined;
-  }
+  const row = rows[0];
+  if (!row) return undefined;
 
-  return mapForecastRow(rows[0]!);
+  return mapForecastRow(row);
 }
 
 /**
@@ -586,11 +599,10 @@ export async function getForecastById(
     .where(and(...conditions))
     .limit(1);
 
-  if (rows.length === 0) {
-    return undefined;
-  }
+  const row = rows[0];
+  if (!row) return undefined;
 
-  return mapForecastRow(rows[0]!);
+  return mapForecastRow(row);
 }
 
 /**
@@ -682,11 +694,9 @@ export async function calculateForecastAccuracy(forecastId: string): Promise<
     .where(eq(costForecasts.id, forecastId))
     .limit(1);
 
-  if (rows.length === 0) {
-    return undefined;
-  }
+  const forecast = rows[0];
+  if (!forecast) return undefined;
 
-  const forecast = rows[0]!;
   const dailyForecasts = forecast.dailyForecasts as DailyForecast[];
 
   // Get actual costs for forecast period

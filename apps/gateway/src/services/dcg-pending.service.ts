@@ -11,7 +11,7 @@ import {
   DEFAULT_PAGINATION,
   decodeCursor,
 } from "@flywheel/shared/api/pagination";
-import { and, desc, eq, gt, lt } from "drizzle-orm";
+import { and, desc, eq, gt, lt, or } from "drizzle-orm";
 import { db } from "../db";
 import { dcgPendingExceptions } from "../db/schema";
 import { getCorrelationId } from "../middleware/correlation";
@@ -97,7 +97,8 @@ function generateId(prefix: string, length = 12): string {
   crypto.getRandomValues(randomBytes);
   let result = "";
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(randomBytes[i]! % chars.length);
+    const byte = randomBytes[i] ?? 0;
+    result += chars.charAt(byte % chars.length);
   }
   return `${prefix}_${result}`;
 }
@@ -111,7 +112,8 @@ function generateShortCode(): string {
   crypto.getRandomValues(randomBytes);
   let result = "";
   for (let i = 0; i < 6; i++) {
-    result += chars.charAt(randomBytes[i]! % chars.length);
+    const byte = randomBytes[i] ?? 0;
+    result += chars.charAt(byte % chars.length);
   }
   return result;
 }
@@ -298,13 +300,22 @@ export async function listPendingExceptions(
     if (decoded) {
       // Get the cursor item's createdAt for pagination
       const cursorRow = await db
-        .select({ createdAt: dcgPendingExceptions.createdAt })
+        .select({
+          createdAt: dcgPendingExceptions.createdAt,
+          id: dcgPendingExceptions.id,
+        })
         .from(dcgPendingExceptions)
         .where(eq(dcgPendingExceptions.id, decoded.id))
         .get();
       if (cursorRow) {
         conditions.push(
-          lt(dcgPendingExceptions.createdAt, cursorRow.createdAt),
+          or(
+            lt(dcgPendingExceptions.createdAt, cursorRow.createdAt),
+            and(
+              eq(dcgPendingExceptions.createdAt, cursorRow.createdAt),
+              lt(dcgPendingExceptions.id, cursorRow.id),
+            ),
+          ),
         );
       }
     }
@@ -312,13 +323,22 @@ export async function listPendingExceptions(
     const decoded = decodeCursor(params.endingBefore);
     if (decoded) {
       const cursorRow = await db
-        .select({ createdAt: dcgPendingExceptions.createdAt })
+        .select({
+          createdAt: dcgPendingExceptions.createdAt,
+          id: dcgPendingExceptions.id,
+        })
         .from(dcgPendingExceptions)
         .where(eq(dcgPendingExceptions.id, decoded.id))
         .get();
       if (cursorRow) {
         conditions.push(
-          gt(dcgPendingExceptions.createdAt, cursorRow.createdAt),
+          or(
+            gt(dcgPendingExceptions.createdAt, cursorRow.createdAt),
+            and(
+              eq(dcgPendingExceptions.createdAt, cursorRow.createdAt),
+              gt(dcgPendingExceptions.id, cursorRow.id),
+            ),
+          ),
         );
       }
     }
@@ -328,7 +348,10 @@ export async function listPendingExceptions(
   let query = db
     .select()
     .from(dcgPendingExceptions)
-    .orderBy(desc(dcgPendingExceptions.createdAt))
+    .orderBy(
+      desc(dcgPendingExceptions.createdAt),
+      desc(dcgPendingExceptions.id),
+    )
     .limit(limit + 1); // Fetch one extra to determine hasMore
 
   if (conditions.length > 0) {

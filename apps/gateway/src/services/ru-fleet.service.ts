@@ -130,7 +130,8 @@ function generateId(prefix: string, length = 12): string {
   crypto.getRandomValues(randomBytes);
   let result = "";
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(randomBytes[i]! % chars.length);
+    const byte = randomBytes[i] ?? 0;
+    result += chars.charAt(byte % chars.length);
   }
   return `${prefix}${result}`;
 }

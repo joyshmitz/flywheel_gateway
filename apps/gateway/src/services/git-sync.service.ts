@@ -130,7 +130,8 @@ function generateOperationId(): string {
   crypto.getRandomValues(randomBytes);
   let result = "";
   for (let i = 0; i < 12; i++) {
-    result += chars.charAt(randomBytes[i]! % chars.length);
+    const byte = randomBytes[i] ?? 0;
+    result += chars.charAt(byte % chars.length);
   }
   return `gso_${result}`;
 }

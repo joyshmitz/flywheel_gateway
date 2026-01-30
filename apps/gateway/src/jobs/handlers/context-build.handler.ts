@@ -86,7 +86,8 @@ export class ContextBuildHandler
     for (let i = 0; i < input.files.length; i++) {
       context.throwIfCancelled();
 
-      const filePath = input.files[i]!;
+      const filePath = input.files[i];
+      if (!filePath) continue;
       await context.updateProgress(
         i,
         input.files.length,
@@ -236,7 +237,7 @@ export class ContextBuildHandler
       parts.push(
         `    <file path="${this.escapeXml(file.path)}" language="${file.extension}">\n`,
       );
-      parts.push(`      <![CDATA[${file.content}]]>\n`);
+      parts.push(`      <![CDATA[${this.escapeCdata(file.content)}]]>\n`);
       parts.push("    </file>\n");
     }
     parts.push("  </files>\n");
@@ -277,5 +278,9 @@ export class ContextBuildHandler
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&apos;");
+  }
+
+  private escapeCdata(content: string): string {
+    return content.replace(/]]>/g, "]]]]><![CDATA[>");
   }
 }

@@ -968,7 +968,8 @@ async function findExecutable(command: string): Promise<string | null> {
 
     if (!result.timedOut && result.exitCode === 0 && result.stdout.trim()) {
       // Return first line (in case of multiple matches)
-      return result.stdout.trim().split("\n")[0]!;
+      const firstLine = result.stdout.trim().split("\n")[0];
+      return firstLine ?? null;
     }
     return null;
   } catch {
@@ -1076,7 +1077,7 @@ async function detectCLI(def: CLIDefinition): Promise<DetectedCLI> {
       const output = checkResult.output;
       if (output && (output.startsWith("/") || output.includes(":"))) {
         // Looks like a path (Unix absolute or Windows drive letter)
-        path = output.split("\n")[0]!;
+        path = output.split("\n")[0] ?? null;
         detectionMethod = "manifest";
       } else {
         // Check passed but didn't return path - find it via fallback

@@ -292,7 +292,8 @@ export async function validateSweepPlan(
 
   // Scan each action's commands
   for (let i = 0; i < actions.length; i++) {
-    const action = actions[i]!;
+    const action = actions[i];
+    if (!action) continue;
     const commands = extractCommandsFromAction(action);
 
     for (const command of commands) {
@@ -594,11 +595,13 @@ export async function executePlanWithDCG(
   let actionsFailed = 0;
 
   for (let i = 0; i < actions.length; i++) {
+    const action = actions[i];
+    if (!action) continue;
     const result = await executeActionWithDCG(
       sessionId,
       planId,
       i,
-      actions[i]!,
+      action,
     );
     results.push(result);
 

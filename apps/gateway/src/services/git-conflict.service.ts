@@ -97,7 +97,8 @@ function generateConflictId(): string {
   crypto.getRandomValues(randomBytes);
   let result = "";
   for (let i = 0; i < 8; i++) {
-    result += chars.charAt(randomBytes[i]! % chars.length);
+    const byte = randomBytes[i] ?? 0;
+    result += chars.charAt(byte % chars.length);
   }
   return `gcf_${result}`;
 }
@@ -111,7 +112,8 @@ function generateAnalysisId(): string {
   crypto.getRandomValues(randomBytes);
   let result = "";
   for (let i = 0; i < 10; i++) {
-    result += chars.charAt(randomBytes[i]! % chars.length);
+    const byte = randomBytes[i] ?? 0;
+    result += chars.charAt(byte % chars.length);
   }
   return `gca_${result}`;
 }
@@ -279,8 +281,9 @@ export async function analyzeRepositoryConflicts(
   // Compare each pair of branches
   for (let i = 0; i < allBranchChanges.length; i++) {
     for (let j = i + 1; j < allBranchChanges.length; j++) {
-      const changesA = allBranchChanges[i]!;
-      const changesB = allBranchChanges[j]!;
+      const changesA = allBranchChanges[i];
+      const changesB = allBranchChanges[j];
+      if (!changesA || !changesB) continue;
 
       const pairConflicts = detectPairConflicts(
         changesA,

@@ -88,7 +88,8 @@ function getDaysAgo(days: number): Date {
 }
 
 function formatDateKey(date: Date): string {
-  return date.toISOString().split("T")[0]!;
+  // ISO string format is "YYYY-MM-DDTHH:mm:ss.sssZ", split always returns date part
+  return date.toISOString().split("T")[0] ?? "";
 }
 
 // ============================================================================

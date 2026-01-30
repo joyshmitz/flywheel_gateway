@@ -274,7 +274,8 @@ function getPriorityValue(priority: string): number {
  * Get progress detail.
  */
 function getProgressDetail(input: RationaleInput): string {
-  const progress = input.holdingProgress!;
+  const progress = input.holdingProgress;
+  if (!progress) return "";
   const percentage = progress.progressPercentage;
   const remaining = progress.estimatedRemainingMs;
 
@@ -293,8 +294,9 @@ function getProgressDetail(input: RationaleInput): string {
  * Get historical success detail.
  */
 function getHistoricalDetail(input: RationaleInput): string {
-  const rate = input.historicalSuccessRate!;
-  const sample = input.historicalSampleSize!;
+  const rate = input.historicalSuccessRate;
+  const sample = input.historicalSampleSize;
+  if (rate === undefined || sample === undefined) return "";
 
   const successCount = Math.round(rate * sample);
 
@@ -396,18 +398,18 @@ function generateRiskSummary(risks: RiskAssessment[]): string {
   );
   const mediumRisks = risks.filter((r) => r.severity === "medium");
 
-  if (highRisks.length > 0) {
-    const firstHigh = highRisks[0]!;
+  const firstHigh = highRisks[0];
+  if (firstHigh) {
     return `Risk: High - ${firstHigh.description}`;
   }
 
-  if (mediumRisks.length > 0) {
-    const firstMedium = mediumRisks[0]!;
+  const firstMedium = mediumRisks[0];
+  if (firstMedium) {
     return `Risk: Medium - ${firstMedium.description}`;
   }
 
-  const lowRisk = risks[0]!;
-  return `Risk: Low - ${lowRisk.description}`;
+  const lowRisk = risks[0];
+  return `Risk: Low - ${lowRisk?.description ?? "minimal risk"}`;
 }
 
 // ============================================================================

@@ -223,8 +223,8 @@ export class GraphBridgeService {
       this.pollInterval.unref();
     }
 
-    // Initial poll
-    this.pollEvents();
+    // Initial poll (fire-and-forget)
+    void this.pollEvents();
   }
 
   /**

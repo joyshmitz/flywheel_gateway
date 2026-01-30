@@ -773,6 +773,8 @@ export function getNotifications(
   const total = notifications.length;
   const limit = filter.limit ?? DEFAULT_PAGINATION.limit;
   let startIndex = 0;
+  let endIndex: number | undefined;
+  let isBackward = false;
 
   // Handle cursor-based pagination
   if (filter.startingAfter) {
@@ -784,19 +786,26 @@ export function getNotifications(
       }
     }
   } else if (filter.endingBefore) {
+    isBackward = true;
     const decoded = decodeCursor(filter.endingBefore);
     if (decoded) {
       const cursorIndex = notifications.findIndex((n) => n.id === decoded.id);
       if (cursorIndex >= 0) {
         startIndex = Math.max(0, cursorIndex - limit);
+        endIndex = cursorIndex; // End before the cursor item
       }
     }
   }
 
-  // Get page items
-  const pageItems = notifications.slice(startIndex, startIndex + limit + 1);
-  const hasMore = pageItems.length > limit;
-  const resultItems = hasMore ? pageItems.slice(0, limit) : pageItems;
+  const sliceEnd =
+    isBackward && endIndex !== undefined ? endIndex : startIndex + limit + 1;
+  const pageItems = notifications.slice(startIndex, sliceEnd);
+  const hasMore = isBackward ? startIndex > 0 : pageItems.length > limit;
+  const resultItems = isBackward
+    ? pageItems
+    : hasMore
+      ? pageItems.slice(0, limit)
+      : pageItems;
 
   const result: NotificationListResponse = {
     notifications: resultItems,

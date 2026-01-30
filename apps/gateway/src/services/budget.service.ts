@@ -147,11 +147,9 @@ export async function getBudget(budgetId: string): Promise<Budget | undefined> {
     .where(eq(budgets.id, budgetId))
     .limit(1);
 
-  if (rows.length === 0) {
-    return undefined;
-  }
+  const row = rows[0];
+  if (!row) return undefined;
 
-  const row = rows[0]!;
   return {
     id: row.id,
     name: row.name,

@@ -49,8 +49,8 @@ function generateId(prefix: string, length = 12): string {
     crypto.getRandomValues(randomBytes);
 
     for (let i = 0; i < bufSize && result.length < length; i++) {
-      const byte = randomBytes[i]!;
-      if (byte < maxByte) {
+      const byte = randomBytes[i];
+      if (byte !== undefined && byte < maxByte) {
         result += chars[byte % charLen];
       }
     }

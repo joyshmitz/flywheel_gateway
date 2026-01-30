@@ -524,8 +524,8 @@ export class SupervisorService {
 
     this.healthCheckIntervals.set(name, interval);
 
-    // Also do an immediate check
-    this.checkHealth(name);
+    // Also do an immediate check (fire-and-forget)
+    void this.checkHealth(name);
   }
 
   private stopHealthCheck(name: string): void {

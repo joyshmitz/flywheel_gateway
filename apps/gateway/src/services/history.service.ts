@@ -680,9 +680,9 @@ export function extractFromOutput(
     }
 
     case "file_paths": {
-      // Extract file paths
+      // Extract file paths (bounded quantifiers to prevent ReDoS)
       const pathPattern =
-        /(?:^|\s)((?:\/[\w.-]+)+\/?|(?:[A-Za-z]:)?\\(?:[\w.-]+\\)*[\w.-]+)/gm;
+        /(?:^|\s)((?:\/[\w.-]+){1,100}\/?|(?:[A-Za-z]:)?\\(?:[\w.-]+\\){0,100}[\w.-]+)/gm;
       for (const match of output.matchAll(pathPattern)) {
         const captured = match[1];
         const matchIndex = match.index;

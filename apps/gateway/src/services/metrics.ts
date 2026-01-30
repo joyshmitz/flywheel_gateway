@@ -141,8 +141,10 @@ export function recordHistogram(
 
   // Update buckets
   for (let i = 0; i < bucketBoundaries.length; i++) {
-    if (value <= bucketBoundaries[i]!) {
-      histogram.buckets[i]!++;
+    const boundary = bucketBoundaries[i];
+    if (boundary !== undefined && value <= boundary) {
+      const current = histogram.buckets[i] ?? 0;
+      histogram.buckets[i] = current + 1;
     }
   }
 
@@ -218,7 +220,7 @@ export function getHistogram(
 
   return {
     buckets: histogram.buckets.map((count, i) => ({
-      le: histogram.boundaries[i]!,
+      le: histogram.boundaries[i] ?? Infinity,
       count,
     })),
     sum: histogram.sum,
