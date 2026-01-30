@@ -70,7 +70,9 @@ export interface BeadsService {
   sync: (options?: BrSyncOptions) => Promise<BrSyncResult>;
 }
 
-export function createBeadsService(options: CreateBeadsServiceOptions = {}): BeadsService {
+export function createBeadsService(
+  options: CreateBeadsServiceOptions = {},
+): BeadsService {
   const brClient = options.brClient;
 
   return {
@@ -88,7 +90,9 @@ export function createBeadsService(options: CreateBeadsServiceOptions = {}): Bea
     show: (ids, options) =>
       brClient ? brClient.show(ids, options) : getBrShow(ids, options),
     create: (input, options) =>
-      brClient ? brClient.create(input, options) : createBrIssue(input, options),
+      brClient
+        ? brClient.create(input, options)
+        : createBrIssue(input, options),
     update: (ids, input, options) =>
       brClient
         ? brClient.update(ids, input, options)

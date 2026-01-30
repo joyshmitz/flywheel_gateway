@@ -11,8 +11,8 @@
  * 4. Verifies success - Confirms new agent actually launched
  */
 
-import type { RobotResponse, ConfidenceLevel } from "./types";
 import type { AgentWorkStatus } from "./is-working";
+import type { ConfidenceLevel, RobotResponse } from "./types";
 
 // =============================================================================
 // Restart Action Types

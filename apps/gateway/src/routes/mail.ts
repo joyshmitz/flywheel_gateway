@@ -635,7 +635,12 @@ function createMailRoutes(
       const validated = MarkReadSchema.parse(body);
       const messageId = parseInt(c.req.param("messageId"), 10);
       if (Number.isNaN(messageId)) {
-        return sendError(c, "INVALID_PARAMETER", "messageId must be a number", 400);
+        return sendError(
+          c,
+          "INVALID_PARAMETER",
+          "messageId must be a number",
+          400,
+        );
       }
       const service = c.get("agentMail");
 
@@ -659,7 +664,12 @@ function createMailRoutes(
       const validated = AcknowledgeSchema.parse(body);
       const messageId = parseInt(c.req.param("messageId"), 10);
       if (Number.isNaN(messageId)) {
-        return sendError(c, "INVALID_PARAMETER", "messageId must be a number", 400);
+        return sendError(
+          c,
+          "INVALID_PARAMETER",
+          "messageId must be a number",
+          400,
+        );
       }
       const service = c.get("agentMail");
 

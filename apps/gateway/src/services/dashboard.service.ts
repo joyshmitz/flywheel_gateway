@@ -6,7 +6,7 @@
  * - Widget data fetching
  * - Permission management
  * - Favorites management
- * 
+ *
  * Persists data to SQLite via Drizzle ORM.
  */
 
@@ -27,9 +27,9 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { ulid } from "ulid";
 import { db } from "../db";
 import {
-  dashboards,
   dashboardFavorites,
   dashboardPermissions,
+  dashboards,
 } from "../db/schema";
 import { getLogger } from "../middleware/correlation";
 
@@ -179,7 +179,11 @@ export async function createDashboard(
  * Get a dashboard by ID.
  */
 export async function getDashboard(id: string): Promise<Dashboard | undefined> {
-  const row = await db.select().from(dashboards).where(eq(dashboards.id, id)).get();
+  const row = await db
+    .select()
+    .from(dashboards)
+    .where(eq(dashboards.id, id))
+    .get();
   if (!row) return undefined;
   return rowToDashboard(row);
 }
@@ -187,7 +191,9 @@ export async function getDashboard(id: string): Promise<Dashboard | undefined> {
 /**
  * Get a dashboard by public slug.
  */
-export async function getDashboardBySlug(slug: string): Promise<Dashboard | undefined> {
+export async function getDashboardBySlug(
+  slug: string,
+): Promise<Dashboard | undefined> {
   const row = await db
     .select()
     .from(dashboards)
@@ -288,13 +294,12 @@ export async function duplicateDashboard(
       ...DEFAULT_SHARING_CONFIG,
     },
     refreshInterval: original.refreshInterval,
-    ...(original.description !== undefined ? { description: original.description } : {}),
+    ...(original.description !== undefined
+      ? { description: original.description }
+      : {}),
   };
 
-  return createDashboard(
-    createInput,
-    ownerId,
-  );
+  return createDashboard(createInput, ownerId);
 }
 
 // ============================================================================
@@ -346,10 +351,7 @@ export async function listDashboards(
   // For now, we fetch base list and filter if needed, but SQL filtering is better.
   // Implementing full RBAC in one SQL query requires joining permissions table.
 
-  let query = db
-    .select()
-    .from(dashboards)
-    .orderBy(desc(dashboards.updatedAt));
+  let query = db.select().from(dashboards).orderBy(desc(dashboards.updatedAt));
 
   if (conditions.length > 0) {
     query = query.where(and(...conditions)) as typeof query;
@@ -571,7 +573,9 @@ export async function removeFavorite(
 /**
  * List user's favorite dashboards.
  */
-export async function listFavorites(userId: string): Promise<DashboardSummary[]> {
+export async function listFavorites(
+  userId: string,
+): Promise<DashboardSummary[]> {
   const rows = await db
     .select({
       dashboard: dashboards,
@@ -583,7 +587,9 @@ export async function listFavorites(userId: string): Promise<DashboardSummary[]>
   return rows.map(({ dashboard }) => ({
     id: dashboard.id,
     name: dashboard.name,
-    ...(dashboard.description != null ? { description: dashboard.description } : {}),
+    ...(dashboard.description != null
+      ? { description: dashboard.description }
+      : {}),
     ownerId: dashboard.ownerId,
     visibility: dashboard.visibility as "private" | "team" | "public",
     widgetCount: (dashboard.widgets as any[]).length,
@@ -723,17 +729,27 @@ export async function updateSharing(
 
   if (sharing.visibility !== undefined) updates.visibility = sharing.visibility;
   if (sharing.teamId !== undefined) updates.teamId = sharing.teamId;
-  
-  if (sharing.visibility === "public" && !dashboard.sharing.publicSlug && !sharing.publicSlug) {
+
+  if (
+    sharing.visibility === "public" &&
+    !dashboard.sharing.publicSlug &&
+    !sharing.publicSlug
+  ) {
     updates.publicSlug = `${generateSlug(dashboard.name)}-${ulid().slice(-6).toLowerCase()}`;
   } else if (sharing.publicSlug !== undefined) {
     updates.publicSlug = sharing.publicSlug;
   }
 
-  if (sharing.requireAuth !== undefined) updates.requireAuth = sharing.requireAuth;
-  
-  if (sharing.embedEnabled !== undefined) updates.embedEnabled = sharing.embedEnabled;
-  if (sharing.embedEnabled && !dashboard.sharing.embedToken && !sharing.embedToken) {
+  if (sharing.requireAuth !== undefined)
+    updates.requireAuth = sharing.requireAuth;
+
+  if (sharing.embedEnabled !== undefined)
+    updates.embedEnabled = sharing.embedEnabled;
+  if (
+    sharing.embedEnabled &&
+    !dashboard.sharing.embedToken &&
+    !sharing.embedToken
+  ) {
     updates.embedToken = generateEmbedToken();
   } else if (sharing.embedToken !== undefined) {
     updates.embedToken = sharing.embedToken;

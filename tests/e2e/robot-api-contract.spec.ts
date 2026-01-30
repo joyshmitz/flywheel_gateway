@@ -6,7 +6,7 @@
  * docs/robot-mode-api.md.
  */
 
-import { test, expect } from "./lib/test-fixture";
+import { expect, test } from "./lib/test-fixture";
 
 const GATEWAY_URL = process.env["E2E_GATEWAY_URL"] ?? "http://localhost:3456";
 
@@ -17,7 +17,11 @@ const GATEWAY_URL = process.env["E2E_GATEWAY_URL"] ?? "http://localhost:3456";
 async function gw(
   path: string,
   init?: RequestInit,
-): Promise<{ status: number; body: Record<string, unknown>; headers: Headers }> {
+): Promise<{
+  status: number;
+  body: Record<string, unknown>;
+  headers: Headers;
+}> {
   const res = await fetch(`${GATEWAY_URL}${path}`, {
     headers: { "Content-Type": "application/json", ...init?.headers },
     ...init,
@@ -31,7 +35,9 @@ async function gw(
 // =============================================================================
 
 test.describe("Response envelope conformance", () => {
-  test("GET /beads returns list envelope with type field", async ({ logEvent }) => {
+  test("GET /beads returns list envelope with type field", async ({
+    logEvent,
+  }) => {
     logEvent("Testing beads list envelope");
     const { status, body } = await gw("/beads");
 
@@ -42,7 +48,9 @@ test.describe("Response envelope conformance", () => {
     }
   });
 
-  test("GET /beads/list/ready returns ready tasks envelope", async ({ logEvent }) => {
+  test("GET /beads/list/ready returns ready tasks envelope", async ({
+    logEvent,
+  }) => {
     logEvent("Testing ready beads envelope");
     const { status, body } = await gw("/beads/list/ready");
 
@@ -56,7 +64,9 @@ test.describe("Response envelope conformance", () => {
     }
   });
 
-  test("GET /agents returns agent list with type field", async ({ logEvent }) => {
+  test("GET /agents returns agent list with type field", async ({
+    logEvent,
+  }) => {
     logEvent("Testing agents list envelope");
     const { status, body } = await gw("/agents");
 
@@ -66,7 +76,9 @@ test.describe("Response envelope conformance", () => {
     }
   });
 
-  test("GET /system/snapshot returns snapshot envelope", async ({ logEvent }) => {
+  test("GET /system/snapshot returns snapshot envelope", async ({
+    logEvent,
+  }) => {
     logEvent("Testing snapshot envelope");
     const { status, body } = await gw("/system/snapshot");
 
@@ -76,7 +88,9 @@ test.describe("Response envelope conformance", () => {
     }
   });
 
-  test("GET /setup/readiness returns readiness envelope", async ({ logEvent }) => {
+  test("GET /setup/readiness returns readiness envelope", async ({
+    logEvent,
+  }) => {
     logEvent("Testing readiness envelope");
     const { status, body } = await gw("/setup/readiness");
 
@@ -127,7 +141,9 @@ test.describe("HATEOAS link conformance", () => {
     if (status !== 200) return;
 
     const data = body["data"] as Record<string, unknown>;
-    const beads = (data?.["beads"] ?? data) as Array<Record<string, unknown>> | undefined;
+    const beads = (data?.["beads"] ?? data) as
+      | Array<Record<string, unknown>>
+      | undefined;
 
     if (Array.isArray(beads) && beads.length > 0) {
       const bead = beads[0]!;
@@ -259,7 +275,9 @@ test.describe("OpenAPI spec availability", () => {
 // =============================================================================
 
 test.describe("Triage endpoint conformance", () => {
-  test("GET /beads/triage returns triage recommendations", async ({ logEvent }) => {
+  test("GET /beads/triage returns triage recommendations", async ({
+    logEvent,
+  }) => {
     logEvent("Testing triage endpoint");
     const { status, body } = await gw("/beads/triage");
 

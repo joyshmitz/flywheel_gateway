@@ -8,7 +8,7 @@
  * Check logs in: tests/e2e/logs/
  */
 
-import { test, expect, logMarker } from "./lib/fixtures";
+import { expect, logMarker, test } from "./lib/fixtures";
 
 const isPlaywright = process.env["PLAYWRIGHT_TEST"] === "1";
 

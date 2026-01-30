@@ -5,18 +5,18 @@
  * env mapping, and secure diagnostics.
  */
 
-import { describe, expect, it, afterEach } from "bun:test";
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { afterEach, describe, expect, it } from "bun:test";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { EnvMapping } from "../services/private-overlay.service";
 import {
+  loadSecrets,
   loadSecretsFromDir,
   resolveSecret,
-  loadSecrets,
   secretDiagnostics,
   type ToolSecretSpec,
 } from "../services/secret-loader.service";
-import type { EnvMapping } from "../services/private-overlay.service";
 
 // ============================================================================
 // Helpers
@@ -39,7 +39,9 @@ function restoreEnv(): void {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
   }
-  Object.keys(savedEnv).forEach((k) => delete savedEnv[k]);
+  Object.keys(savedEnv).forEach((k) => {
+    delete savedEnv[k];
+  });
 }
 
 function makeTempDir(prefix: string): string {
@@ -85,7 +87,7 @@ describe("loadSecretsFromDir", () => {
     writeFileSync(join(dir, "secrets", "dcg-key.txt"), "file-secret-value\n");
     writeFileSync(
       join(dir, "secrets", "secrets.yaml"),
-      "tools:\n  dcg:\n    apiKey: \"file:dcg-key.txt\"",
+      'tools:\n  dcg:\n    apiKey: "file:dcg-key.txt"',
     );
     const result = await loadSecretsFromDir(dir);
     expect(result.entries).toHaveLength(1);
@@ -108,7 +110,7 @@ describe("loadSecretsFromDir", () => {
     const dir = makeTempDir("secret-missing-file-");
     writeFileSync(
       join(dir, "secrets.yaml"),
-      "tools:\n  dcg:\n    apiKey: \"file:nonexistent.txt\"",
+      'tools:\n  dcg:\n    apiKey: "file:nonexistent.txt"',
     );
     const result = await loadSecretsFromDir(dir);
     expect(result.entries).toHaveLength(0); // File not found, skipped
@@ -258,9 +260,21 @@ describe("secretDiagnostics", () => {
   it("generates safe summary without secret values", () => {
     const result = {
       secrets: [
-        { tool: "dcg", key: "apiKey", found: true, source: "env" as const, value: "SHOULD_NOT_APPEAR" },
+        {
+          tool: "dcg",
+          key: "apiKey",
+          found: true,
+          source: "env" as const,
+          value: "SHOULD_NOT_APPEAR",
+        },
         { tool: "cass", key: "token", found: false, source: "none" as const },
-        { tool: "slb", key: "apiKey", found: true, source: "file" as const, value: "ALSO_SECRET" },
+        {
+          tool: "slb",
+          key: "apiKey",
+          found: true,
+          source: "file" as const,
+          value: "ALSO_SECRET",
+        },
       ],
       missingRequired: ["cass:token"],
       allRequiredPresent: false,

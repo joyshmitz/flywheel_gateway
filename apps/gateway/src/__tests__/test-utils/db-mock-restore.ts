@@ -24,11 +24,11 @@
 
 import { Database } from "bun:sqlite";
 import { mock } from "bun:test";
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import * as flywheelClientsExports from "@flywheel/flywheel-clients";
 import * as drizzleOrmExports from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
-import * as flywheelClientsExports from "@flywheel/flywheel-clients";
 import * as schema from "../../db/schema";
 import * as agentDetectionServiceExports from "../../services/agent-detection.service";
 import * as bvServiceExports from "../../services/bv.service";
@@ -56,9 +56,11 @@ function runMigrations(sqliteDb: Database): void {
   `);
 
   const appliedMigrations = new Set(
-    (sqliteDb
-      .query(`SELECT hash FROM "__drizzle_migrations"`)
-      .all() as { hash: string }[]).map((row) => row.hash),
+    (
+      sqliteDb.query(`SELECT hash FROM "__drizzle_migrations"`).all() as {
+        hash: string;
+      }[]
+    ).map((row) => row.hash),
   );
 
   for (const file of migrationFiles) {
@@ -75,7 +77,9 @@ function runMigrations(sqliteDb: Database): void {
     }
 
     sqliteDb
-      .query(`INSERT INTO "__drizzle_migrations" (hash, created_at) VALUES (?, ?)`)
+      .query(
+        `INSERT INTO "__drizzle_migrations" (hash, created_at) VALUES (?, ?)`,
+      )
       .run(file, Date.now());
   }
 }
@@ -152,7 +156,10 @@ export function restoreCorrelation(): void {
  * Call this in afterAll() for any test file that uses mock.module("../services/tool-registry.service", ...).
  */
 export function restoreToolRegistryService(): void {
-  mock.module("../services/tool-registry.service", () => toolRegistryServiceExports);
+  mock.module(
+    "../services/tool-registry.service",
+    () => toolRegistryServiceExports,
+  );
   mock.module(
     "../../services/tool-registry.service",
     () => toolRegistryServiceExports,

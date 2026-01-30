@@ -81,7 +81,7 @@ function sanitizeForTmux(input: string, maxLength: number): string {
   return (
     input
       // Replace path separators and common special chars with hyphen
-      .replace(/[/\\:@#$%^&*()+=\[\]{}|;'"<>,?!`~]/g, "-")
+      .replace(/[/\\:@#$%^&*()+=[\]{}|;'"<>,?!`~]/g, "-")
       // Collapse multiple hyphens
       .replace(/-+/g, "-")
       // Remove leading/trailing hyphens

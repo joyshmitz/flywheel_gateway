@@ -10,9 +10,9 @@ import { z } from "zod";
 import {
   detectOutputFormat,
   isToonFormat,
+  normalizeOutput,
   parseToon,
   parseToonWithSchema,
-  normalizeOutput,
   StandardEnvelopeSchema,
 } from "../toon";
 
@@ -26,7 +26,7 @@ describe("detectOutputFormat", () => {
   });
 
   it("detects valid JSON array", () => {
-    expect(detectOutputFormat('[1, 2, 3]')).toBe("json");
+    expect(detectOutputFormat("[1, 2, 3]")).toBe("json");
   });
 
   it("detects JSONL (multiple JSON objects)", () => {
@@ -140,7 +140,9 @@ describe("parseToon", () => {
 ──────────────────`;
     const result = parseToon(toon);
     expect(result.ok).toBe(true);
-    const config = (result.data as Record<string, Record<string, string>>)["Config"]!;
+    const config = (result.data as Record<string, Record<string, string>>)[
+      "Config"
+    ]!;
     expect(config["host"]).toBe("localhost");
     expect(config["port"]).toBe("8080");
   });
@@ -153,7 +155,9 @@ describe("parseToon", () => {
 ────────────`;
     const result = parseToon(toon);
     expect(result.ok).toBe(true);
-    const data = (result.data as Record<string, Record<string, string>>)["Data"]!;
+    const data = (result.data as Record<string, Record<string, string>>)[
+      "Data"
+    ]!;
     expect(data["key"]).toBe("val");
   });
 
@@ -226,9 +230,7 @@ describe("normalizeOutput", () => {
     const sarif = JSON.stringify({ version: "2.1.0", runs: [{ results: [] }] });
     const result = normalizeOutput(sarif, "sarif");
     expect(result.sourceFormat).toBe("sarif");
-    expect(
-      (result.data as Record<string, unknown>)["version"],
-    ).toBe("2.1.0");
+    expect((result.data as Record<string, unknown>)["version"]).toBe("2.1.0");
   });
 });
 

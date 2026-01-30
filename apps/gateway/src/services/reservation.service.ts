@@ -339,7 +339,9 @@ function fileMatchesPatterns(filePath: string, patterns: string[]): boolean {
   return false;
 }
 
-function normalizeCursorSortValue(sortValue: string | number | undefined): number {
+function normalizeCursorSortValue(
+  sortValue: string | number | undefined,
+): number {
   if (typeof sortValue === "number") return sortValue;
   if (typeof sortValue === "string") {
     const parsed = Number(sortValue);
@@ -520,9 +522,9 @@ export async function checkReservation(
           // Exclusive held by other -> Blocking
           allowed = false;
           blockingReservation = reservation;
-          // Fail fast on first blocking reservation? 
+          // Fail fast on first blocking reservation?
           // Yes, because one exclusive block is enough to deny.
-          break; 
+          break;
         }
         // Shared held by other -> Non-blocking (continue checking)
         holdingReservations.push(reservation);
@@ -542,8 +544,8 @@ export async function checkReservation(
 
   // If we have holders (shared or self), return info about the 'best' one (e.g. self or first shared)
   // Prefer showing self-reservation if exists
-  const relevantReservation = 
-    holdingReservations.find(r => r.agentId === params.agentId) || 
+  const relevantReservation =
+    holdingReservations.find((r) => r.agentId === params.agentId) ||
     holdingReservations[0];
 
   if (relevantReservation) {
@@ -751,8 +753,7 @@ export async function listReservations(
   // Sort by creation time (newest first)
   reservations.sort(
     (a, b) =>
-      b.createdAt.getTime() - a.createdAt.getTime() ||
-      b.id.localeCompare(a.id),
+      b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id),
   );
 
   const limit = Math.min(
@@ -892,8 +893,7 @@ export async function listConflicts(
         afterCursor = conflicts.filter(
           (c) =>
             c.detectedAt.getTime() < cursorTime ||
-            (c.detectedAt.getTime() === cursorTime &&
-              c.conflictId < cursor.id),
+            (c.detectedAt.getTime() === cursorTime && c.conflictId < cursor.id),
         );
       }
     }
@@ -909,8 +909,7 @@ export async function listConflicts(
         beforeCursor = conflicts.filter(
           (c) =>
             c.detectedAt.getTime() > cursorTime ||
-            (c.detectedAt.getTime() === cursorTime &&
-              c.conflictId > cursor.id),
+            (c.detectedAt.getTime() === cursorTime && c.conflictId > cursor.id),
         );
       }
     }

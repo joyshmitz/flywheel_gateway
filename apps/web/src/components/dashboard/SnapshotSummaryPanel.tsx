@@ -9,6 +9,11 @@
  * - Current issues and alerts
  */
 
+import type {
+  NtmAgentSnapshot,
+  SystemHealthStatus,
+  ToolHealthStatus,
+} from "@flywheel/shared";
 import { motion } from "framer-motion";
 import {
   Activity,
@@ -16,20 +21,15 @@ import {
   AlertTriangle,
   CheckCircle,
   ChevronRight,
-  Cpu,
   GitBranch,
   Loader2,
-  Mail,
   RefreshCw,
   Shield,
   ShieldAlert,
   ShieldCheck,
-  Terminal,
   Users,
   XCircle,
 } from "lucide-react";
-import { MockDataBanner } from "../ui/MockDataBanner";
-import { StatusPill } from "../ui/StatusPill";
 import {
   formatSecondsAgo,
   getAgentStateInfo,
@@ -42,11 +42,8 @@ import {
   listContainerVariants,
   listItemVariants,
 } from "../../lib/animations";
-import type {
-  NtmAgentSnapshot,
-  SystemHealthStatus,
-  ToolHealthStatus,
-} from "@flywheel/shared";
+import { MockDataBanner } from "../ui/MockDataBanner";
+import { StatusPill } from "../ui/StatusPill";
 
 // ============================================================================
 // Sub-components
@@ -469,7 +466,9 @@ export function SnapshotSummaryPanel() {
         <div style={{ marginBottom: "16px" }}>
           <MockDataBanner
             message={
-              error ? "Showing mock data - API unavailable" : "Mock mode enabled"
+              error
+                ? "Showing mock data - API unavailable"
+                : "Mock mode enabled"
             }
           />
         </div>

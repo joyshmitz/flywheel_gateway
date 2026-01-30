@@ -16,22 +16,19 @@ import {
   BeadResponseSchema,
   BrSyncResultResponseSchema,
   BrSyncStatusResponseSchema,
-  BvGraphResponseSchema,
-  BvInsightsResponseSchema,
-  BvPlanResponseSchema,
-  BvTriageResponseSchema,
-  CloseBeadRequestSchema,
-  CreateBeadRequestSchema,
-  ListBeadsQuerySchema,
-  UpdateBeadRequestSchema,
   // Cost Analytics
   BudgetAlertListResponseSchema,
   BudgetListResponseSchema,
   BudgetResponseSchema,
   BudgetStatusResponseSchema,
+  BvGraphResponseSchema,
+  BvInsightsResponseSchema,
+  BvPlanResponseSchema,
+  BvTriageResponseSchema,
   CacheClearedResultResponseSchema,
   CheckpointListResponseSchema,
   CheckpointResponseSchema,
+  CloseBeadRequestSchema,
   ConflictListResponseSchema,
   CostBreakdownResponseSchema,
   CostRecordInputSchema,
@@ -39,6 +36,7 @@ import {
   CostRecordResponseSchema,
   CostSummaryResponseSchema,
   CostTrendPointSchema,
+  CreateBeadRequestSchema,
   CreateBudgetRequestSchema,
   CreateCheckpointRequestSchema,
   CreateDashboardRequestSchema,
@@ -57,6 +55,7 @@ import {
   GrantPermissionRequestSchema,
   HealthCheckResponseSchema,
   InterruptAgentRequestSchema,
+  ListBeadsQuerySchema,
   NotificationListResponseSchema,
   OptimizationSummaryResponseSchema,
   PaginationQuerySchema,
@@ -86,6 +85,7 @@ import {
   ToolInfoListResponseSchema,
   ToolInfoWithStatusResponseSchema,
   TopSpendingAgentSchema,
+  UpdateBeadRequestSchema,
   UpdateDashboardRequestSchema,
   VerificationResultResponseSchema,
   WidgetDataResponseSchema,
@@ -2815,7 +2815,8 @@ registry.registerPath({
   method: "post",
   path: "/mail/projects",
   summary: "Ensure project exists",
-  description: "Idempotently create or ensure a project exists for agent coordination.",
+  description:
+    "Idempotently create or ensure a project exists for agent coordination.",
   tags: ["Mail"],
   responses: {
     200: { description: "Project ensured" },
@@ -2838,7 +2839,8 @@ registry.registerPath({
   method: "post",
   path: "/mail/messages",
   summary: "Send message",
-  description: "Send a message to one or more agent recipients with priority and TTL.",
+  description:
+    "Send a message to one or more agent recipients with priority and TTL.",
   tags: ["Mail"],
   responses: {
     201: { description: "Message sent" },
@@ -2860,7 +2862,8 @@ registry.registerPath({
   method: "get",
   path: "/mail/messages/inbox",
   summary: "Fetch inbox",
-  description: "Retrieve recent messages for an agent with optional filters (limit, since, priority).",
+  description:
+    "Retrieve recent messages for an agent with optional filters (limit, since, priority).",
   tags: ["Mail"],
   responses: {
     200: { description: "Inbox messages" },
@@ -2893,7 +2896,8 @@ registry.registerPath({
   method: "get",
   path: "/mail/messages/search",
   summary: "Search messages",
-  description: "Full-text search over message subjects and bodies using FTS5 syntax.",
+  description:
+    "Full-text search over message subjects and bodies using FTS5 syntax.",
   tags: ["Mail"],
   responses: {
     200: { description: "Search results" },
@@ -2904,7 +2908,8 @@ registry.registerPath({
   method: "get",
   path: "/mail/threads/{threadId}/summary",
   summary: "Summarize thread",
-  description: "Extract participants, key points, and action items from a thread.",
+  description:
+    "Extract participants, key points, and action items from a thread.",
   tags: ["Mail"],
   responses: {
     200: { description: "Thread summary" },
@@ -2915,7 +2920,8 @@ registry.registerPath({
   method: "post",
   path: "/mail/reservations",
   summary: "Request file reservation",
-  description: "Request advisory file reservations on project-relative paths or globs.",
+  description:
+    "Request advisory file reservations on project-relative paths or globs.",
   tags: ["Mail"],
   responses: {
     201: { description: "Reservation granted" },
@@ -2949,7 +2955,8 @@ registry.registerPath({
   method: "post",
   path: "/mail/reservations/renew",
   summary: "Renew reservations",
-  description: "Extend expiry for active file reservations without reissuing them.",
+  description:
+    "Extend expiry for active file reservations without reissuing them.",
   tags: ["Mail"],
   responses: {
     200: { description: "Reservations renewed" },
@@ -2960,7 +2967,8 @@ registry.registerPath({
   method: "get",
   path: "/mail/agents/{agentName}/whois",
   summary: "Agent profile lookup",
-  description: "Return enriched profile details for an agent, optionally including recent commits.",
+  description:
+    "Return enriched profile details for an agent, optionally including recent commits.",
   tags: ["Mail"],
   responses: {
     200: { description: "Agent profile" },

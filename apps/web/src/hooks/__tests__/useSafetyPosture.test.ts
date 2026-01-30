@@ -7,9 +7,9 @@
 
 import { describe, expect, it } from "bun:test";
 import type {
+  ChecksumStatus,
   SafetyPostureResponse,
   ToolStatus,
-  ChecksumStatus,
 } from "../useSafetyPosture";
 
 // ============================================================================
@@ -58,7 +58,9 @@ const FIXTURE_POSTURE: SafetyPostureResponse = {
 
 describe("SafetyPostureResponse Fixture Shape", () => {
   it("has valid top-level status", () => {
-    expect(["healthy", "degraded", "unhealthy"]).toContain(FIXTURE_POSTURE.status);
+    expect(["healthy", "degraded", "unhealthy"]).toContain(
+      FIXTURE_POSTURE.status,
+    );
     expect(new Date(FIXTURE_POSTURE.timestamp).getTime()).not.toBeNaN();
   });
 

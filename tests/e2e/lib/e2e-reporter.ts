@@ -6,6 +6,8 @@
  * for debugging and analysis.
  */
 
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
 import type {
   FullConfig,
   FullResult,
@@ -15,9 +17,7 @@ import type {
   TestResult,
   TestStep,
 } from "@playwright/test/reporter";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join, dirname, relative } from "node:path";
-import type { TestLogBundle, RunSummary, TestError } from "./types";
+import type { RunSummary, TestError, TestLogBundle } from "./types";
 
 interface E2EReporterOptions {
   /** Output directory for log bundles (default: tests/e2e/logs) */

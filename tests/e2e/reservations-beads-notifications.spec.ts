@@ -8,10 +8,9 @@
  * rich diagnostic logs via the logging framework.
  */
 
-import { test, expect } from "./lib/fixtures";
+import { expect, test } from "./lib/fixtures";
 
-const GATEWAY_URL =
-  process.env["E2E_GATEWAY_URL"] ?? "http://localhost:3456";
+const GATEWAY_URL = process.env["E2E_GATEWAY_URL"] ?? "http://localhost:3456";
 
 // ============================================================================
 // Helpers
@@ -132,9 +131,7 @@ test.describe("Beads API E2E", () => {
     await expect(loggedPage.locator(".page")).toBeVisible();
   });
 
-  test("beads page renders table with status pills", async ({
-    loggedPage,
-  }) => {
+  test("beads page renders table with status pills", async ({ loggedPage }) => {
     await loggedPage.goto("/beads");
 
     // Table should be visible
@@ -240,9 +237,7 @@ test.describe("Reservations API E2E", () => {
     await expect(loggedPage.locator(".page")).toBeVisible();
   });
 
-  test("reservation stats endpoint returns counts", async ({
-    loggedPage,
-  }) => {
+  test("reservation stats endpoint returns counts", async ({ loggedPage }) => {
     const { status } = await apiGet("/api/reservations/stats");
     expect([200, 404]).toContain(status);
 

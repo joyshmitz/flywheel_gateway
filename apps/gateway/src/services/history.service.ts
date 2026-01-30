@@ -663,9 +663,9 @@ export function extractFromOutput(
         try {
           JSON.parse(captured);
           const startLine = output.slice(0, matchIndex).split("\n").length - 1;
-          const endLine = output
-            .slice(0, matchIndex + captured.length)
-            .split("\n").length - 1;
+          const endLine =
+            output.slice(0, matchIndex + captured.length).split("\n").length -
+            1;
           matches.push({
             content: captured,
             lineStart: startLine,

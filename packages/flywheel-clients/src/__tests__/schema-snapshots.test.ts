@@ -22,64 +22,63 @@
 
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
-
+import {
+  type AprCommandResult,
+  type AprCommandRunner,
+  createAprClient,
+} from "../apr";
 // Import all schemas via the client modules
 import {
+  type BrCommandResult,
+  type BrCommandRunner,
   type BrIssue,
   type BrSyncStatus,
   createBrClient,
-  type BrCommandRunner,
-  type BrCommandResult,
 } from "../br";
 import {
-  createBvClient,
-  type BvCommandRunner,
   type BvCommandResult,
+  type BvCommandRunner,
+  createBvClient,
 } from "../bv";
 import {
-  createCaamClient,
-  type CaamCommandRunner,
   type CaamCommandResult,
+  type CaamCommandRunner,
+  createCaamClient,
 } from "../caam";
 import {
-  createAprClient,
-  type AprCommandRunner,
-  type AprCommandResult,
-} from "../apr";
-import {
-  createNtmClient,
-  type NtmCommandRunner,
-  type NtmCommandResult,
-} from "../ntm";
-import {
-  createMsClient,
-  type MsCommandRunner,
-  type MsCommandResult,
-} from "../ms";
-import {
-  createPtClient,
-  type PtCommandRunner,
-  type PtCommandResult,
-} from "../pt";
-import {
-  createJfpClient,
-  type JfpCommandRunner,
-  type JfpCommandResult,
-} from "../jfp";
-import {
-  createCassClient,
-  type CassCommandRunner,
   type CassCommandResult,
+  type CassCommandRunner,
+  createCassClient,
 } from "../cass";
 import {
-  createCMClient,
-  type CMCommandRunner,
   type CMCommandResult,
+  type CMCommandRunner,
+  createCMClient,
 } from "../cm";
 import {
+  createJfpClient,
+  type JfpCommandResult,
+  type JfpCommandRunner,
+} from "../jfp";
+import {
+  createMsClient,
+  type MsCommandResult,
+  type MsCommandRunner,
+} from "../ms";
+import {
+  createNtmClient,
+  type NtmCommandResult,
+  type NtmCommandRunner,
+} from "../ntm";
+import {
+  createPtClient,
+  type PtCommandResult,
+  type PtCommandRunner,
+} from "../pt";
+import {
   createRuClient,
-  type RuCommandRunner,
   type RuCommandResult,
+  type RuCommandRunner,
 } from "../ru";
 
 // ============================================================================

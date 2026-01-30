@@ -111,7 +111,10 @@ export interface HubStats {
     /** Timestamp of last drop event */
     lastDropAt: string | null;
     /** Per-channel drop counts (only channels with drops) */
-    byChannel: Record<string, { capacityEvictions: number; ttlExpirations: number }>;
+    byChannel: Record<
+      string,
+      { capacityEvictions: number; ttlExpirations: number }
+    >;
   };
 }
 
@@ -716,7 +719,10 @@ export class WebSocketHub {
     let totalCapacityEvictions = 0;
     let totalTtlExpirations = 0;
     let lastDropAt: number | null = null;
-    const byChannel: Record<string, { capacityEvictions: number; ttlExpirations: number }> = {};
+    const byChannel: Record<
+      string,
+      { capacityEvictions: number; ttlExpirations: number }
+    > = {};
 
     for (const [channelStr, buffer] of this.buffers) {
       const stats = buffer.dropStats;

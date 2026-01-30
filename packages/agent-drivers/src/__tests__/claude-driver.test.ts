@@ -2,7 +2,7 @@
  * Tests for Claude SDK Driver.
  */
 
-import { describe, expect, it, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { createDriverOptions } from "../base-driver";
 import { ClaudeSDKDriver } from "../sdk/claude-driver";
 import type { AgentConfig } from "../types";
@@ -53,7 +53,9 @@ describe("ClaudeSDKDriver", () => {
 
   it("should prune conversation history when it exceeds maxHistoryMessages", async () => {
     // Create driver with small history limit for testing
-    const config = createDriverOptions("sdk", { driverId: "test-claude-prune" });
+    const config = createDriverOptions("sdk", {
+      driverId: "test-claude-prune",
+    });
     const driver = new ClaudeSDKDriver(config, {
       apiKey: "",
       maxHistoryMessages: 5,
@@ -86,14 +88,19 @@ describe("ClaudeSDKDriver", () => {
     expect(checkpoints.length).toBe(1);
 
     // Get the full checkpoint to verify history length
-    const fullCheckpoint = await driver.getCheckpoint("agent-prune", checkpoint.id);
+    const fullCheckpoint = await driver.getCheckpoint(
+      "agent-prune",
+      checkpoint.id,
+    );
     // Should be exactly maxHistoryMessages (5) due to pruning
     expect(fullCheckpoint.conversationHistory).toBeDefined();
     expect((fullCheckpoint.conversationHistory as unknown[]).length).toBe(5);
   });
 
   it("should preserve the first message when pruning", async () => {
-    const config = createDriverOptions("sdk", { driverId: "test-claude-first-msg" });
+    const config = createDriverOptions("sdk", {
+      driverId: "test-claude-first-msg",
+    });
     const driver = new ClaudeSDKDriver(config, {
       apiKey: "",
       maxHistoryMessages: 3,
@@ -115,9 +122,15 @@ describe("ClaudeSDKDriver", () => {
 
     // Create checkpoint to inspect history
     const checkpoint = await driver.createCheckpoint("agent-first-msg", "test");
-    const fullCheckpoint = await driver.getCheckpoint("agent-first-msg", checkpoint.id);
+    const fullCheckpoint = await driver.getCheckpoint(
+      "agent-first-msg",
+      checkpoint.id,
+    );
 
-    const history = fullCheckpoint.conversationHistory as Array<{ content: string; role: string }>;
+    const history = fullCheckpoint.conversationHistory as Array<{
+      content: string;
+      role: string;
+    }>;
     expect(history.length).toBe(3);
 
     // First message should be the original "Message 0" (user message preserved)
@@ -128,7 +141,9 @@ describe("ClaudeSDKDriver", () => {
   });
 
   it("should not prune when history is under the limit", async () => {
-    const config = createDriverOptions("sdk", { driverId: "test-claude-no-prune" });
+    const config = createDriverOptions("sdk", {
+      driverId: "test-claude-no-prune",
+    });
     const driver = new ClaudeSDKDriver(config, {
       apiKey: "",
       maxHistoryMessages: 100, // Default, high limit
@@ -150,7 +165,10 @@ describe("ClaudeSDKDriver", () => {
 
     // Create checkpoint to inspect history
     const checkpoint = await driver.createCheckpoint("agent-no-prune", "test");
-    const fullCheckpoint = await driver.getCheckpoint("agent-no-prune", checkpoint.id);
+    const fullCheckpoint = await driver.getCheckpoint(
+      "agent-no-prune",
+      checkpoint.id,
+    );
 
     const history = fullCheckpoint.conversationHistory as unknown[];
     // 3 sends = 6 messages (3 user + 3 assistant), no pruning
@@ -158,7 +176,9 @@ describe("ClaudeSDKDriver", () => {
   });
 
   it("should not prune when history is exactly at the limit", async () => {
-    const config = createDriverOptions("sdk", { driverId: "test-claude-at-limit" });
+    const config = createDriverOptions("sdk", {
+      driverId: "test-claude-at-limit",
+    });
     const driver = new ClaudeSDKDriver(config, {
       apiKey: "",
       maxHistoryMessages: 6, // Exactly 3 sends = 6 messages
@@ -179,7 +199,10 @@ describe("ClaudeSDKDriver", () => {
     }
 
     const checkpoint = await driver.createCheckpoint("agent-at-limit", "test");
-    const fullCheckpoint = await driver.getCheckpoint("agent-at-limit", checkpoint.id);
+    const fullCheckpoint = await driver.getCheckpoint(
+      "agent-at-limit",
+      checkpoint.id,
+    );
 
     const history = fullCheckpoint.conversationHistory as unknown[];
     // Exactly at limit - no pruning should occur
@@ -187,7 +210,9 @@ describe("ClaudeSDKDriver", () => {
   });
 
   it("should isolate pruning between multiple sessions", async () => {
-    const config = createDriverOptions("sdk", { driverId: "test-claude-multi-session" });
+    const config = createDriverOptions("sdk", {
+      driverId: "test-claude-multi-session",
+    });
     const driver = new ClaudeSDKDriver(config, {
       apiKey: "",
       maxHistoryMessages: 4,
@@ -220,20 +245,34 @@ describe("ClaudeSDKDriver", () => {
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     // Check session 1 - should be pruned to 4 messages
-    const checkpoint1 = await driver.createCheckpoint("agent-session-1", "test");
-    const fullCheckpoint1 = await driver.getCheckpoint("agent-session-1", checkpoint1.id);
+    const checkpoint1 = await driver.createCheckpoint(
+      "agent-session-1",
+      "test",
+    );
+    const fullCheckpoint1 = await driver.getCheckpoint(
+      "agent-session-1",
+      checkpoint1.id,
+    );
     const history1 = fullCheckpoint1.conversationHistory as unknown[];
     expect(history1.length).toBe(4);
 
     // Check session 2 - should still have 2 messages (no pruning)
-    const checkpoint2 = await driver.createCheckpoint("agent-session-2", "test");
-    const fullCheckpoint2 = await driver.getCheckpoint("agent-session-2", checkpoint2.id);
+    const checkpoint2 = await driver.createCheckpoint(
+      "agent-session-2",
+      "test",
+    );
+    const fullCheckpoint2 = await driver.getCheckpoint(
+      "agent-session-2",
+      checkpoint2.id,
+    );
     const history2 = fullCheckpoint2.conversationHistory as unknown[];
     expect(history2.length).toBe(2);
   });
 
   it("should handle agent with initial conversation history from providerOptions", async () => {
-    const config = createDriverOptions("sdk", { driverId: "test-claude-initial-history" });
+    const config = createDriverOptions("sdk", {
+      driverId: "test-claude-initial-history",
+    });
     const driver = new ClaudeSDKDriver(config, {
       apiKey: "",
       maxHistoryMessages: 5,
@@ -248,7 +287,11 @@ describe("ClaudeSDKDriver", () => {
       providerOptions: {
         conversationHistory: [
           { role: "user", content: "Initial message", timestamp: new Date() },
-          { role: "assistant", content: "Initial response", timestamp: new Date() },
+          {
+            role: "assistant",
+            content: "Initial response",
+            timestamp: new Date(),
+          },
         ],
       },
     };
@@ -260,9 +303,17 @@ describe("ClaudeSDKDriver", () => {
       await new Promise((resolve) => setTimeout(resolve, 200));
     }
 
-    const checkpoint = await driver.createCheckpoint("agent-initial-history", "test");
-    const fullCheckpoint = await driver.getCheckpoint("agent-initial-history", checkpoint.id);
-    const history = fullCheckpoint.conversationHistory as Array<{ content: string }>;
+    const checkpoint = await driver.createCheckpoint(
+      "agent-initial-history",
+      "test",
+    );
+    const fullCheckpoint = await driver.getCheckpoint(
+      "agent-initial-history",
+      checkpoint.id,
+    );
+    const history = fullCheckpoint.conversationHistory as Array<{
+      content: string;
+    }>;
 
     // Should be pruned to 5 messages
     expect(history.length).toBe(5);

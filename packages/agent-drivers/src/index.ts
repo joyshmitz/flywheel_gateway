@@ -45,11 +45,10 @@ export {
 export * from "./interface";
 // Naming utilities for deterministic session names
 export * from "./naming";
-// Driver registry and selection
-export * from "./registry";
-
 // NTM driver
 export * from "./ntm";
+// Driver registry and selection
+export * from "./registry";
 // SDK drivers
 export * from "./sdk";
 // Tmux driver

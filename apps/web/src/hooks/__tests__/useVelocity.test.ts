@@ -73,9 +73,27 @@ const FIXTURE_STAGES: StageMetric[] = [
 ];
 
 const FIXTURE_LEARNING: LearningMetric[] = [
-  { metric: "context_retention", current: 0.85, previous: 0.78, change: 0.07, trend: "improving" },
-  { metric: "first_attempt_success", current: 0.72, previous: 0.72, change: 0, trend: "stable" },
-  { metric: "error_recovery_time", current: 3200, previous: 4500, change: -1300, trend: "improving" },
+  {
+    metric: "context_retention",
+    current: 0.85,
+    previous: 0.78,
+    change: 0.07,
+    trend: "improving",
+  },
+  {
+    metric: "first_attempt_success",
+    current: 0.72,
+    previous: 0.72,
+    change: 0,
+    trend: "stable",
+  },
+  {
+    metric: "error_recovery_time",
+    current: 3200,
+    previous: 4500,
+    change: -1300,
+    trend: "improving",
+  },
 ];
 
 const FIXTURE_HISTORY: VelocityHistory = {
@@ -109,7 +127,11 @@ describe("VelocityScore Fixture", () => {
 
   it("breakdown components are within range", () => {
     const { breakdown } = FIXTURE_SCORE;
-    for (const val of [breakdown.throughput, breakdown.quality, breakdown.velocity]) {
+    for (const val of [
+      breakdown.throughput,
+      breakdown.quality,
+      breakdown.velocity,
+    ]) {
       expect(val).toBeGreaterThanOrEqual(0);
       expect(val).toBeLessThanOrEqual(100);
     }
@@ -173,7 +195,9 @@ describe("VelocityHistory Fixture", () => {
   });
 
   it("aggregate stats are consistent", () => {
-    expect(FIXTURE_HISTORY.peak).toBeGreaterThanOrEqual(FIXTURE_HISTORY.average);
+    expect(FIXTURE_HISTORY.peak).toBeGreaterThanOrEqual(
+      FIXTURE_HISTORY.average,
+    );
     expect(FIXTURE_HISTORY.trough).toBeLessThanOrEqual(FIXTURE_HISTORY.average);
   });
 

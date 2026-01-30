@@ -5,8 +5,8 @@
  * viewing session content, and expanding context around matches.
  */
 
-import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { StatusPill } from "../components/ui/StatusPill";
 
 // ============================================================================
@@ -131,7 +131,9 @@ export function CASSPage() {
   const [mode, setMode] = useState<SearchMode>("lexical");
   const [agentFilter, setAgentFilter] = useState("");
   const [limit, setLimit] = useState(20);
-  const [viewerData, setViewerData] = useState<CassViewResponse["data"] | null>(null);
+  const [viewerData, setViewerData] = useState<CassViewResponse["data"] | null>(
+    null,
+  );
 
   const { data: health } = useQuery({
     queryKey: ["cass", "health"],
@@ -153,7 +155,9 @@ export function CASSPage() {
 
   const viewMutation = useMutation({
     mutationFn: ({ file, line }: { file: string; line: number }) =>
-      fetchJson<CassViewResponse>(`/cass/view/${encodeURIComponent(file)}?line=${line}&context=10`),
+      fetchJson<CassViewResponse>(
+        `/cass/view/${encodeURIComponent(file)}?line=${line}&context=10`,
+      ),
     onSuccess: (data) => setViewerData(data.data),
   });
 
@@ -175,7 +179,11 @@ export function CASSPage() {
           <p className="muted">
             {health.data.indexedSessions ?? 0} sessions indexed
             {health.data.lastIndexed && (
-              <> | Last indexed: {new Date(health.data.lastIndexed).toLocaleString()}</>
+              <>
+                {" "}
+                | Last indexed:{" "}
+                {new Date(health.data.lastIndexed).toLocaleString()}
+              </>
             )}
           </p>
         </div>
@@ -242,12 +250,11 @@ export function CASSPage() {
           <div className="card__header">
             <h3>Results</h3>
             <StatusPill tone="muted">
-              {searchMutation.data.data.total} matches ({searchMutation.data.data.mode})
+              {searchMutation.data.data.total} matches (
+              {searchMutation.data.data.mode})
             </StatusPill>
           </div>
-          {results.length === 0 && (
-            <p className="muted">No results found.</p>
-          )}
+          {results.length === 0 && <p className="muted">No results found.</p>}
           {results.length > 0 && (
             <div className="table">
               <div className="table__row table__row--header">

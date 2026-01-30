@@ -5,16 +5,16 @@
  * installer source detection, and compatibility reporting.
  */
 
-import { describe, expect, it, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import type { ToolDefinition } from "@flywheel/shared/types/tool-registry.types";
 import {
-  recordDeprecation,
-  getDeprecations,
-  clearDeprecations,
   analyzeToolMigration,
-  getInstallerSource,
-  checkInstallerDeprecation,
   buildCompatibilityReport,
+  checkInstallerDeprecation,
+  clearDeprecations,
+  getDeprecations,
+  getInstallerSource,
+  recordDeprecation,
 } from "../services/registry-compat.service";
 
 // ============================================================================
@@ -171,7 +171,9 @@ describe("getInstallerSource", () => {
 
   it("returns install_array when install[] present", () => {
     expect(
-      getInstallerSource(makeTool({ install: [{ command: "cargo install x" }] })),
+      getInstallerSource(
+        makeTool({ install: [{ command: "cargo install x" }] }),
+      ),
     ).toBe("install_array");
   });
 

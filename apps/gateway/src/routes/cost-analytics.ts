@@ -203,8 +203,10 @@ costAnalytics.get("/records", async (c) => {
       ...(agentId && { agentId }),
       ...(model && { model }),
       ...(provider && { provider }),
-      ...(since && !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
-      ...(until && !Number.isNaN(new Date(until).getTime()) && { until: new Date(until) }),
+      ...(since &&
+        !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
+      ...(until &&
+        !Number.isNaN(new Date(until).getTime()) && { until: new Date(until) }),
       ...(!Number.isNaN(parsedLimit) && { limit: parsedLimit }),
       ...(startingAfter && { startingAfter }),
     };
@@ -251,8 +253,10 @@ costAnalytics.get("/summary", async (c) => {
       ...(organizationId && { organizationId }),
       ...(projectId && { projectId }),
       ...(agentId && { agentId }),
-      ...(since && !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
-      ...(until && !Number.isNaN(new Date(until).getTime()) && { until: new Date(until) }),
+      ...(since &&
+        !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
+      ...(until &&
+        !Number.isNaN(new Date(until).getTime()) && { until: new Date(until) }),
     };
 
     const summary = await getCostSummary(filter);
@@ -295,8 +299,10 @@ costAnalytics.get("/breakdown/:dimension", async (c) => {
     const filter: CostFilter = {
       ...(organizationId && { organizationId }),
       ...(projectId && { projectId }),
-      ...(since && !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
-      ...(until && !Number.isNaN(new Date(until).getTime()) && { until: new Date(until) }),
+      ...(since &&
+        !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
+      ...(until &&
+        !Number.isNaN(new Date(until).getTime()) && { until: new Date(until) }),
     };
 
     const breakdown = await getCostBreakdown(dimension, filter);
@@ -333,8 +339,10 @@ costAnalytics.get("/trends/hourly", async (c) => {
     const filter: CostFilter = {
       ...(organizationId && { organizationId }),
       ...(projectId && { projectId }),
-      ...(since && !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
-      ...(until && !Number.isNaN(new Date(until).getTime()) && { until: new Date(until) }),
+      ...(since &&
+        !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
+      ...(until &&
+        !Number.isNaN(new Date(until).getTime()) && { until: new Date(until) }),
     };
     const parsedHours = hoursParam ? parseInt(hoursParam, 10) : 24;
     const hours = Number.isNaN(parsedHours) ? 24 : parsedHours;
@@ -370,8 +378,10 @@ costAnalytics.get("/trends/daily", async (c) => {
     const filter: CostFilter = {
       ...(organizationId && { organizationId }),
       ...(projectId && { projectId }),
-      ...(since && !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
-      ...(until && !Number.isNaN(new Date(until).getTime()) && { until: new Date(until) }),
+      ...(since &&
+        !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
+      ...(until &&
+        !Number.isNaN(new Date(until).getTime()) && { until: new Date(until) }),
     };
     const parsedDays = daysParam ? parseInt(daysParam, 10) : 30;
     const days = Number.isNaN(parsedDays) ? 30 : parsedDays;
@@ -407,8 +417,10 @@ costAnalytics.get("/top-agents", async (c) => {
     const filter: CostFilter = {
       ...(organizationId && { organizationId }),
       ...(projectId && { projectId }),
-      ...(since && !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
-      ...(until && !Number.isNaN(new Date(until).getTime()) && { until: new Date(until) }),
+      ...(since &&
+        !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
+      ...(until &&
+        !Number.isNaN(new Date(until).getTime()) && { until: new Date(until) }),
     };
     const parsedLimit = limitParam ? parseInt(limitParam, 10) : 10;
     const limit = Number.isNaN(parsedLimit) ? 10 : parsedLimit;
@@ -668,7 +680,8 @@ costAnalytics.get("/budget-alerts", async (c) => {
       ...(acknowledgedParam !== undefined && {
         acknowledged: acknowledgedParam === "true",
       }),
-      ...(since && !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
+      ...(since &&
+        !Number.isNaN(new Date(since).getTime()) && { since: new Date(since) }),
       ...(!Number.isNaN(parsedLimit) && { limit: parsedLimit }),
     };
 

@@ -9,11 +9,11 @@
  * 5. No React warnings - verify no 'setState on unmounted' warnings
  */
 
-import { describe, expect, it, beforeEach, afterEach, spyOn } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { render, act, waitFor } from "@testing-library/react";
+import { act, render, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useMountedRef } from "../useMountedRef";
 
 // Wrap in try-catch to avoid errors when running with other test files that already registered
@@ -81,11 +81,7 @@ function AsyncStateUpdater({
 /**
  * Component that tracks console.error calls for React warnings.
  */
-function StateWarningTester({
-  triggerWarning,
-}: {
-  triggerWarning: boolean;
-}) {
+function StateWarningTester({ triggerWarning }: { triggerWarning: boolean }) {
   const isMounted = useMountedRef();
   const [state, setState] = useState(0);
 
@@ -265,7 +261,9 @@ describe("useMountedRef", () => {
       };
 
       try {
-        const { unmount } = render(<StateWarningTester triggerWarning={true} />);
+        const { unmount } = render(
+          <StateWarningTester triggerWarning={true} />,
+        );
 
         // Unmount before the setTimeout completes
         unmount();

@@ -1,11 +1,11 @@
-import { describe, it, expect } from "bun:test";
+import { describe, expect, it } from "bun:test";
 import {
   classifyToolUnavailability,
   getUnavailabilityHttpStatus,
   getUnavailabilityLabel,
   isRetryableUnavailability,
-  UNAVAILABILITY_REASONS,
   type ToolUnavailabilityReason,
+  UNAVAILABILITY_REASONS,
 } from "@flywheel/shared/errors";
 
 describe("classifyToolUnavailability", () => {
@@ -19,7 +19,8 @@ describe("classifyToolUnavailability", () => {
     it("classifies 'no such file or directory' as not_installed", () => {
       expect(
         classifyToolUnavailability({
-          stderr: "Error: ENOENT: no such file or directory, stat '/usr/bin/dcg'",
+          stderr:
+            "Error: ENOENT: no such file or directory, stat '/usr/bin/dcg'",
         }),
       ).toBe("not_installed");
     });
@@ -40,7 +41,9 @@ describe("classifyToolUnavailability", () => {
 
     it("classifies EACCES as permission_denied", () => {
       expect(
-        classifyToolUnavailability({ stderr: "Error: EACCES: permission denied" }),
+        classifyToolUnavailability({
+          stderr: "Error: EACCES: permission denied",
+        }),
       ).toBe("permission_denied");
     });
 
@@ -51,9 +54,9 @@ describe("classifyToolUnavailability", () => {
     });
 
     it("classifies 'unauthorized' as auth_required", () => {
-      expect(
-        classifyToolUnavailability({ stderr: "401 Unauthorized" }),
-      ).toBe("auth_required");
+      expect(classifyToolUnavailability({ stderr: "401 Unauthorized" })).toBe(
+        "auth_required",
+      );
     });
 
     it("classifies 'no api key' as auth_required", () => {
@@ -78,7 +81,9 @@ describe("classifyToolUnavailability", () => {
 
     it("classifies 'unsupported version' as version_unsupported", () => {
       expect(
-        classifyToolUnavailability({ stderr: "Error: unsupported version 0.1" }),
+        classifyToolUnavailability({
+          stderr: "Error: unsupported version 0.1",
+        }),
       ).toBe("version_unsupported");
     });
 
@@ -98,7 +103,9 @@ describe("classifyToolUnavailability", () => {
 
     it("classifies 'invalid config' as config_invalid", () => {
       expect(
-        classifyToolUnavailability({ stderr: "Error: invalid config at line 5" }),
+        classifyToolUnavailability({
+          stderr: "Error: invalid config at line 5",
+        }),
       ).toBe("config_invalid");
     });
 
@@ -120,7 +127,9 @@ describe("classifyToolUnavailability", () => {
 
     it("classifies segfault as crash", () => {
       expect(
-        classifyToolUnavailability({ stderr: "Segmentation fault (core dumped)" }),
+        classifyToolUnavailability({
+          stderr: "Segmentation fault (core dumped)",
+        }),
       ).toBe("crash");
     });
 
@@ -167,9 +176,9 @@ describe("classifyToolUnavailability", () => {
     });
 
     it("classifies from string errors", () => {
-      expect(
-        classifyToolUnavailability({ error: "command not found" }),
-      ).toBe("not_installed");
+      expect(classifyToolUnavailability({ error: "command not found" })).toBe(
+        "not_installed",
+      );
     });
   });
 

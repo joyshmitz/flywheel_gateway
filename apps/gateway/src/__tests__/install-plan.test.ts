@@ -9,8 +9,8 @@ import { describe, expect, it } from "bun:test";
 import type { ToolDefinition } from "@flywheel/shared/types/tool-registry.types";
 import {
   computeInstallPlan,
-  formatInstallScript,
   type DetectedToolState,
+  formatInstallScript,
 } from "../services/install-plan.service";
 
 // ============================================================================
@@ -195,16 +195,26 @@ describe("Remediation guidance", () => {
       [],
     );
     const entry = plan.entries[0]!;
-    expect(entry.remediation.some((r) => r.includes("cargo install dcg"))).toBe(true);
+    expect(entry.remediation.some((r) => r.includes("cargo install dcg"))).toBe(
+      true,
+    );
   });
 
   it("includes docsUrl in remediation", () => {
     const plan = computeInstallPlan(
-      [makeTool({ name: "dcg", tags: ["critical"], docsUrl: "https://dcg.dev" })],
+      [
+        makeTool({
+          name: "dcg",
+          tags: ["critical"],
+          docsUrl: "https://dcg.dev",
+        }),
+      ],
       [],
     );
     const entry = plan.entries[0]!;
-    expect(entry.remediation.some((r) => r.includes("https://dcg.dev"))).toBe(true);
+    expect(entry.remediation.some((r) => r.includes("https://dcg.dev"))).toBe(
+      true,
+    );
   });
 
   it("includes verify command", () => {
@@ -219,7 +229,9 @@ describe("Remediation guidance", () => {
       [],
     );
     const entry = plan.entries[0]!;
-    expect(entry.remediation.some((r) => r.includes("dcg --version"))).toBe(true);
+    expect(entry.remediation.some((r) => r.includes("dcg --version"))).toBe(
+      true,
+    );
   });
 
   it("notes sudo requirement", () => {

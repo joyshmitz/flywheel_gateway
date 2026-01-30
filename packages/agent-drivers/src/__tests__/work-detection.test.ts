@@ -25,7 +25,9 @@ import {
 
 describe("detectWorkState - tool calling", () => {
   test("detects tool usage patterns", () => {
-    const result = detectWorkState("Using tool: Read\nReading file src/index.ts");
+    const result = detectWorkState(
+      "Using tool: Read\nReading file src/index.ts",
+    );
     expect(result.isWorking).toBe(true);
     expect(result.activityState).toBe("working");
     expect(result.matchedPatterns).toContain("work:tool_calling");
@@ -279,9 +281,9 @@ describe("isAgentIdle", () => {
   });
 
   test("returns false for working output", () => {
-    expect(
-      isAgentIdle("Using tool: Read\nSearching files\nExecuting"),
-    ).toBe(false);
+    expect(isAgentIdle("Using tool: Read\nSearching files\nExecuting")).toBe(
+      false,
+    );
   });
 
   test("returns false for empty output", () => {

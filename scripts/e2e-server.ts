@@ -20,9 +20,9 @@
  */
 
 import { Database } from "bun:sqlite";
-import { readFileSync, readdirSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync, readFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const PORT = Number(process.env["E2E_GATEWAY_PORT"] ?? 3456);
 const MIGRATIONS_DIR = join(

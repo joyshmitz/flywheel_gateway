@@ -11,25 +11,25 @@
  * @bead bd-3vj0
  */
 
-import { describe, expect, test, beforeEach, afterEach } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
-  redactArgs,
-  truncateOutput,
-  buildCliCommandLogFields,
-  buildCliResultLogFields,
-  logCliCommand,
-  logCliResult,
-  logCliWarning,
-  logCliError,
-  createToolLogger,
-  type CliCommandLogInput,
-  type CliCommandLogFields,
-} from "../cli-logging";
-import {
-  requestContextStorage,
   type RequestContext,
+  requestContextStorage,
 } from "../../middleware/correlation";
 import { logger } from "../../services/logger";
+import {
+  buildCliCommandLogFields,
+  buildCliResultLogFields,
+  type CliCommandLogFields,
+  type CliCommandLogInput,
+  createToolLogger,
+  logCliCommand,
+  logCliError,
+  logCliResult,
+  logCliWarning,
+  redactArgs,
+  truncateOutput,
+} from "../cli-logging";
 
 // Test correlation ID used in request context
 const TEST_CORRELATION_ID = "test-correlation-id-12345";

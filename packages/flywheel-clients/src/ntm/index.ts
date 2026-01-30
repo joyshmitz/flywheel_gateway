@@ -612,7 +612,9 @@ export interface NtmClient {
     options?: NtmHealthOptions,
   ) => Promise<NtmSessionHealthOutput>;
   isWorking: (options?: NtmIsWorkingOptions) => Promise<NtmIsWorkingOutput>;
-  projectHealth: (options?: { cwd?: string }) => Promise<NtmProjectHealthOutput>;
+  projectHealth: (options?: {
+    cwd?: string;
+  }) => Promise<NtmProjectHealthOutput>;
   alerts: (
     session: string,
     options?: NtmAlertsOptions,

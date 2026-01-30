@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import {
   createRuClient,
   RuClientError,
-  type RuCommandRunner,
   type RuCommandResult,
+  type RuCommandRunner,
 } from "../index";
 
 // ============================================================================

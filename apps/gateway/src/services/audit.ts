@@ -5,7 +5,9 @@ import { redactSensitiveData } from "./audit-redaction.service";
 
 let auditDb = realDb;
 
-export function setAuditDbForTesting(dbOverride: typeof realDb | undefined): void {
+export function setAuditDbForTesting(
+  dbOverride: typeof realDb | undefined,
+): void {
   auditDb = dbOverride ?? realDb;
 }
 

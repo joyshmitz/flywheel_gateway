@@ -4,9 +4,9 @@
 
 import {
   BrClientError,
-  BvClientError,
   type BrCreateInput,
   type BrUpdateInput,
+  BvClientError,
 } from "@flywheel/flywheel-clients";
 import type { GatewayError } from "@flywheel/shared/errors";
 import {
@@ -82,7 +82,7 @@ const CloseBeadSchema = z.object({
  * Documents all supported filters with validation.
  * Part of bd-2l4h: Beads API parity with br list/filter/pagination.
  */
-const ListBeadsQuerySchema = z.object({
+const _ListBeadsQuerySchema = z.object({
   // Status filters (can be repeated)
   status: z.union([z.string(), z.array(z.string())]).optional(),
   // Type filters (can be repeated)

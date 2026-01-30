@@ -8,10 +8,9 @@
  * via the logging framework.
  */
 
-import { test, expect } from "./lib/fixtures";
+import { expect, test } from "./lib/fixtures";
 
-const GATEWAY_URL =
-  process.env["E2E_GATEWAY_URL"] ?? "http://localhost:3456";
+const GATEWAY_URL = process.env["E2E_GATEWAY_URL"] ?? "http://localhost:3456";
 
 // ============================================================================
 // Helpers
@@ -84,9 +83,7 @@ test.describe("Utilities List API", () => {
 // ============================================================================
 
 test.describe("Giil Utility Workflow", () => {
-  test("giil run endpoint validates request schema", async ({
-    loggedPage,
-  }) => {
+  test("giil run endpoint validates request schema", async ({ loggedPage }) => {
     // Missing required url field should fail validation
     const { status } = await apiPost("/utilities/giil/run", {});
     expect([400, 422]).toContain(status);
@@ -253,10 +250,7 @@ test.describe("Utilities Page E2E", () => {
     expect(summary.consoleErrors).toBe(0);
   });
 
-  test("utilities page makes API calls", async ({
-    loggedPage,
-    testLogger,
-  }) => {
+  test("utilities page makes API calls", async ({ loggedPage, testLogger }) => {
     await loggedPage.goto("/utilities");
     await loggedPage.waitForLoadState("networkidle");
 
@@ -268,15 +262,15 @@ test.describe("Utilities Page E2E", () => {
     await loggedPage.goto("/utilities");
 
     // Should have buttons or input forms
-    const interactiveCount =
-      (await loggedPage.locator("button, input, textarea").count());
+    const interactiveCount = await loggedPage
+      .locator("button, input, textarea")
+      .count();
     expect(interactiveCount).toBeGreaterThan(0);
   });
 
-  test("screenshot capture on utilities page", async (
-    { loggedPage },
-    testInfo,
-  ) => {
+  test("screenshot capture on utilities page", async ({
+    loggedPage,
+  }, testInfo) => {
     await loggedPage.goto("/utilities");
     await loggedPage.waitForLoadState("networkidle");
 

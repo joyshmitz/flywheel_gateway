@@ -22,12 +22,12 @@ import {
 } from "@flywheel/flywheel-clients";
 import { getLogger } from "../middleware/correlation";
 import { LifecycleState } from "../models/agent-state";
-import { incrementCounter, setGauge, recordHistogram } from "./metrics";
 import {
   getAgentState,
   initializeAgentState,
   transitionState,
 } from "./agent-state-machine";
+import { incrementCounter, recordHistogram, setGauge } from "./metrics";
 
 // =============================================================================
 // Types

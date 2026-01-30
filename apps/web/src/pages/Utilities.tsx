@@ -1,5 +1,5 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { StatusPill } from "../components/ui/StatusPill";
 
 // ============================================================================
@@ -100,7 +100,7 @@ function UtilityCard({ util }: { util: UtilityInfo }) {
       <div className="card__header">
         <h3>{util.displayName}</h3>
         <StatusPill tone={util.installed ? "positive" : "warning"}>
-          {util.installed ? util.version ?? "installed" : "missing"}
+          {util.installed ? (util.version ?? "installed") : "missing"}
         </StatusPill>
       </div>
       <p className="muted">{util.description}</p>
@@ -115,9 +115,7 @@ function UtilityCard({ util }: { util: UtilityInfo }) {
         </button>
       )}
       {installMutation.isError && (
-        <p className="error-text">
-          {(installMutation.error as Error).message}
-        </p>
+        <p className="error-text">{(installMutation.error as Error).message}</p>
       )}
     </div>
   );
@@ -204,14 +202,11 @@ function CsctfPanel() {
       }),
   });
 
-  const toggleFormat = useCallback(
-    (fmt: string) => {
-      setFormats((prev) =>
-        prev.includes(fmt) ? prev.filter((f) => f !== fmt) : [...prev, fmt],
-      );
-    },
-    [],
-  );
+  const toggleFormat = useCallback((fmt: string) => {
+    setFormats((prev) =>
+      prev.includes(fmt) ? prev.filter((f) => f !== fmt) : [...prev, fmt],
+    );
+  }, []);
 
   return (
     <div className="card card--wide">
@@ -445,9 +440,7 @@ export function UtilitiesPage() {
       <div className="page__header">
         <h2>Utilities</h2>
         {doctor?.data && (
-          <StatusPill
-            tone={doctor.data.allHealthy ? "positive" : "warning"}
-          >
+          <StatusPill tone={doctor.data.allHealthy ? "positive" : "warning"}>
             {doctor.data.installedCount}/{doctor.data.totalCount} installed
           </StatusPill>
         )}

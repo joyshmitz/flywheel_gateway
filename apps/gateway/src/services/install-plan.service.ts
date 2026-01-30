@@ -11,7 +11,11 @@ import type { ToolDefinition } from "@flywheel/shared/types/tool-registry.types"
 // Types
 // ============================================================================
 
-export type ToolInstallStatus = "installed" | "missing" | "optional_missing" | "error";
+export type ToolInstallStatus =
+  | "installed"
+  | "missing"
+  | "optional_missing"
+  | "error";
 
 export interface ToolPlanEntry {
   id: string;
@@ -140,9 +144,7 @@ export function computeInstallPlan(
   const installScript: string[] = [];
 
   // Sort by phase
-  const sorted = [...tools].sort(
-    (a, b) => (a.phase ?? 999) - (b.phase ?? 999),
-  );
+  const sorted = [...tools].sort((a, b) => (a.phase ?? 999) - (b.phase ?? 999));
 
   for (const tool of sorted) {
     const state = detectedMap.get(tool.name);
@@ -182,7 +184,9 @@ export function computeInstallPlan(
 
     // Build install script for missing required tools
     if (status === "missing" && required && installCmd) {
-      installScript.push(`# ${tool.displayName ?? tool.name} (phase ${tool.phase ?? "?"})`);
+      installScript.push(
+        `# ${tool.displayName ?? tool.name} (phase ${tool.phase ?? "?"})`,
+      );
       installScript.push(installCmd);
     }
   }

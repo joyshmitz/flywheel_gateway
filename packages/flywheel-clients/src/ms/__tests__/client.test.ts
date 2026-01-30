@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { MsClientError, createMsClient } from "../index";
+import { createMsClient, MsClientError } from "../index";
 
 function createRunner(stdout: string, exitCode = 0) {
   const calls: { command: string; args: string[] }[] = [];

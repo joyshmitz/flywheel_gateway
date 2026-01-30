@@ -11,13 +11,13 @@
 
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
+import type { CliCommandResult, CliCommandRunner } from "../cli-runner";
 import {
   CliCommandError,
   createBunCliRunner,
   parseJson,
   parseJsonWithSchema,
 } from "../cli-runner";
-import type { CliCommandResult, CliCommandRunner } from "../cli-runner";
 
 // =============================================================================
 // Test Utilities

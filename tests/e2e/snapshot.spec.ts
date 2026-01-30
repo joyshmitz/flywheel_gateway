@@ -7,8 +7,8 @@
  * - Network requests and console errors are logged for diagnostics
  */
 
-import { expect, test, type Page } from "@playwright/test";
 import type { SystemSnapshot } from "@flywheel/shared";
+import { expect, type Page, test } from "@playwright/test";
 
 const isPlaywright = process.env["PLAYWRIGHT_TEST"] === "1";
 

@@ -4,7 +4,7 @@
  * Main orchestration layer for safety guardrails.
  * Coordinates rule evaluation, rate limiting, budget tracking,
  * and approval workflows.
- * 
+ *
  * Persists configuration and violations to the database.
  * Rate limits are kept in-memory for performance.
  */
@@ -205,7 +205,7 @@ let cleanupIntervalHandle: ReturnType<typeof setInterval> | null = null;
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 
 /** How long to keep inactive budget entries (24 hours) - handled via DB query now */
-// const BUDGET_INACTIVE_TTL_MS = 24 * 60 * 60 * 1000; 
+// const BUDGET_INACTIVE_TTL_MS = 24 * 60 * 60 * 1000;
 
 // ============================================================================
 // Cleanup Job
@@ -510,7 +510,9 @@ export async function getConfig(workspaceId: string): Promise<SafetyConfig> {
     id: configRow.id,
     workspaceId: configRow.workspaceId,
     name: configRow.name,
-    ...(configRow.description != null ? { description: configRow.description } : {}),
+    ...(configRow.description != null
+      ? { description: configRow.description }
+      : {}),
     enabled: configRow.enabled,
     categories,
     rateLimits: JSON.parse(configRow.rateLimits),
@@ -630,10 +632,7 @@ export async function removeRule(
   const result = await db
     .delete(safetyRules)
     .where(
-      and(
-        eq(safetyRules.id, ruleId),
-        eq(safetyRules.workspaceId, workspaceId),
-      ),
+      and(eq(safetyRules.id, ruleId), eq(safetyRules.workspaceId, workspaceId)),
     )
     .returning({ id: safetyRules.id });
 
@@ -641,9 +640,9 @@ export async function removeRule(
     // Update config timestamp
     const config = await getConfig(workspaceId);
     await db
-        .update(safetyConfigs)
-        .set({ updatedAt: new Date() })
-        .where(eq(safetyConfigs.id, config.id));
+      .update(safetyConfigs)
+      .set({ updatedAt: new Date() })
+      .where(eq(safetyConfigs.id, config.id));
 
     logger.info({ workspaceId, ruleId }, "Safety rule removed");
     return true;
@@ -667,40 +666,37 @@ export async function toggleRule(
       updatedAt: new Date(),
     })
     .where(
-      and(
-        eq(safetyRules.id, ruleId),
-        eq(safetyRules.workspaceId, workspaceId),
-      ),
+      and(eq(safetyRules.id, ruleId), eq(safetyRules.workspaceId, workspaceId)),
     )
     .returning();
 
-	  if (result.length > 0) {
-	    const row = result[0]!;
-	    // Update config timestamp
-	    const config = await getConfig(workspaceId);
-	    await db
-	      .update(safetyConfigs)
-	      .set({ updatedAt: new Date() })
-	      .where(eq(safetyConfigs.id, config.id));
+  if (result.length > 0) {
+    const row = result[0]!;
+    // Update config timestamp
+    const config = await getConfig(workspaceId);
+    await db
+      .update(safetyConfigs)
+      .set({ updatedAt: new Date() })
+      .where(eq(safetyConfigs.id, config.id));
 
-	    logger.info({ workspaceId, ruleId, enabled }, "Safety rule toggled");
+    logger.info({ workspaceId, ruleId, enabled }, "Safety rule toggled");
 
-	    return {
-	      id: row.id,
-	      name: row.name,
-	      description: row.description ?? "",
-	      category: row.category as SafetyCategory,
-	      conditions: JSON.parse(row.conditions),
-	      conditionLogic: row.conditionLogic as "and" | "or",
-	      action: row.action as SafetyAction,
-	      severity: row.severity as SafetySeverity,
-	      message: row.message,
-	      enabled: row.enabled,
-	      ...(row.alternatives
-	        ? { alternatives: JSON.parse(row.alternatives) as string[] }
-	        : {}),
-	    };
-	  }
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description ?? "",
+      category: row.category as SafetyCategory,
+      conditions: JSON.parse(row.conditions),
+      conditionLogic: row.conditionLogic as "and" | "or",
+      action: row.action as SafetyAction,
+      severity: row.severity as SafetySeverity,
+      message: row.message,
+      enabled: row.enabled,
+      ...(row.alternatives
+        ? { alternatives: JSON.parse(row.alternatives) as string[] }
+        : {}),
+    };
+  }
 
   return undefined;
 }
@@ -999,19 +995,19 @@ async function checkBudget(
   info?: { used: number; limit: number; percentage: number };
 }> {
   const { scope, scopeId } = getBudgetKey(request, config.budget);
-  
+
   // Get usage for the current period (assuming infinite/cumulative for now as period isn't defined in request)
   // In a real implementation, we'd determine the period based on config (e.g. daily, monthly).
   // For simplicity here, we'll check the total usage in the budgetUsage table for this scope.
   // Note: The schema has periodStart/periodEnd. We'll query for the 'active' one.
-  
+
   const usageRow = await db.query.budgetUsage.findFirst({
     where: and(
-        eq(budgetUsageTable.workspaceId, request.workspaceId),
-        eq(budgetUsageTable.scope, scope),
-        eq(budgetUsageTable.scopeId, scopeId),
+      eq(budgetUsageTable.workspaceId, request.workspaceId),
+      eq(budgetUsageTable.scope, scope),
+      eq(budgetUsageTable.scopeId, scopeId),
     ),
-    orderBy: desc(budgetUsageTable.periodStart) // Get most recent
+    orderBy: desc(budgetUsageTable.periodStart), // Get most recent
   });
 
   const usedDollars = usageRow?.dollarsUsed ?? 0;
@@ -1060,15 +1056,19 @@ export async function recordUsage(
 
   // Simple daily period for now
   const now = new Date();
-  const periodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  
+  const periodStart = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
+
   // Generate ID based on scope/period to upsert
   const id = `budg_${scope}_${scopeId}_${periodStart.getTime()}`;
 
   // Upsert usage
   // We need to fetch first to add to existing, or rely on sql increment (drizzle support depends on driver)
   // SQLite supports upsert with conflict targets.
-  
+
   await db
     .insert(budgetUsageTable)
     .values({
@@ -1082,12 +1082,16 @@ export async function recordUsage(
       lastUpdatedAt: new Date(),
     })
     .onConflictDoUpdate({
-      target: [budgetUsageTable.scope, budgetUsageTable.scopeId, budgetUsageTable.periodStart],
+      target: [
+        budgetUsageTable.scope,
+        budgetUsageTable.scopeId,
+        budgetUsageTable.periodStart,
+      ],
       set: {
         tokensUsed: sql`${budgetUsageTable.tokensUsed} + ${tokens}`,
         dollarsUsed: sql`${budgetUsageTable.dollarsUsed} + ${dollars}`,
         lastUpdatedAt: new Date(),
-      }
+      },
     });
 
   // Check for threshold alerts (read back updated value)
@@ -1096,14 +1100,14 @@ export async function recordUsage(
   }
 
   const updatedUsage = await db.query.budgetUsage.findFirst({
-      where: eq(budgetUsageTable.id, id)
+    where: eq(budgetUsageTable.id, id),
   });
-  
+
   if (!updatedUsage) return;
 
   const currentDollars = updatedUsage.dollarsUsed;
   const percentage = (currentDollars / config.budget.limits.totalDollars) * 100;
-  
+
   for (const threshold of config.budget.alertThresholds) {
     const thresholdPct = threshold * 100;
     const prevPercentage =
@@ -1175,7 +1179,9 @@ export async function getViolations(
       recentHistory: row.recentHistory
         ? (JSON.parse(row.recentHistory as string) as string[])
         : [],
-      ...(row.taskDescription != null ? { taskDescription: row.taskDescription } : {}),
+      ...(row.taskDescription != null
+        ? { taskDescription: row.taskDescription }
+        : {}),
     };
 
     const action: SafetyViolation["action"] =
@@ -1209,7 +1215,9 @@ export async function getViolations(
       },
       action,
       context,
-      ...(row.correlationId != null ? { correlationId: row.correlationId } : {}),
+      ...(row.correlationId != null
+        ? { correlationId: row.correlationId }
+        : {}),
     };
   });
 }
@@ -1365,14 +1373,14 @@ export async function clearEmergencyStop(
 ): Promise<void> {
   // Find and remove emergency stop rules
   const stopRules = await db.query.safetyRules.findMany({
-      where: and(
-          eq(safetyRules.workspaceId, workspaceId),
-          eq(safetyRules.name, "Emergency Stop")
-      )
+    where: and(
+      eq(safetyRules.workspaceId, workspaceId),
+      eq(safetyRules.name, "Emergency Stop"),
+    ),
   });
 
   for (const rule of stopRules) {
-      await removeRule(workspaceId, rule.id);
+    await removeRule(workspaceId, rule.id);
   }
 
   logger.info(

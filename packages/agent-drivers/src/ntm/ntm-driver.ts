@@ -9,6 +9,14 @@
  */
 
 import {
+  createBunNtmCommandRunner,
+  createNtmClient,
+  type NtmClient,
+  type NtmCommandRunner,
+  type NtmSnapshotOutput,
+  type NtmTailOutput,
+} from "@flywheel/flywheel-clients";
+import {
   BaseDriver,
   type BaseDriverConfig,
   createDriverOptions,
@@ -22,14 +30,6 @@ import {
   generateNtmSessionName,
 } from "../naming";
 import type { Agent, AgentConfig, SendResult } from "../types";
-import {
-  type NtmClient,
-  type NtmCommandRunner,
-  type NtmSnapshotOutput,
-  type NtmTailOutput,
-  createBunNtmCommandRunner,
-  createNtmClient,
-} from "@flywheel/flywheel-clients";
 
 /**
  * Configuration specific to NTM driver.
@@ -429,7 +429,10 @@ export class NtmDriver extends BaseDriver {
    * Mark an agent as failed due to persistent poll failures.
    * Cleans up resources and emits terminated event.
    */
-  private async markAgentFailed(agentId: string, reason: string): Promise<void> {
+  private async markAgentFailed(
+    agentId: string,
+    reason: string,
+  ): Promise<void> {
     const session = this.sessions.get(agentId);
     if (!session) return;
 

@@ -1003,7 +1003,8 @@ function parseAgentMailAgentSnapshot(
           : undefined;
     if (agentType) derived["agentType"] = agentType;
 
-    if (typeof value["status"] === "string") derived["status"] = value["status"];
+    if (typeof value["status"] === "string")
+      derived["status"] = value["status"];
     if (typeof value["event"] === "string") derived["event"] = value["event"];
 
     if (Object.keys(derived).length > 0) snapshot.metadata = derived;

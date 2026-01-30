@@ -19,18 +19,18 @@ import {
   ShieldCheck,
   XCircle,
 } from "lucide-react";
-import { StatusPill } from "../ui/StatusPill";
 import {
   formatAge,
   getStatusTone,
-  useSafetyPosture,
   type ToolStatus,
+  useSafetyPosture,
 } from "../../hooks/useSafetyPosture";
 import {
   fadeVariants,
   listContainerVariants,
   listItemVariants,
 } from "../../lib/animations";
+import { StatusPill } from "../ui/StatusPill";
 
 // ============================================================================
 // Tool Status Card
@@ -345,6 +345,7 @@ export function SafetyPosturePanel() {
           </div>
         </div>
         <button
+          type="button"
           className="btn btn--secondary"
           onClick={refetch}
           style={{ marginTop: "16px" }}
@@ -394,6 +395,7 @@ export function SafetyPosturePanel() {
                   : "Attention Required"}
             </StatusPill>
             <button
+              type="button"
               className="btn btn--sm btn--ghost"
               onClick={refetch}
               disabled={isLoading}

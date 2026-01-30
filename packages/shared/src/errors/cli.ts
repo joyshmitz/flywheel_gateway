@@ -31,7 +31,12 @@ export class CliClientError extends Error {
     this.kind = kind;
     if (details) {
       // Auto-classify unavailability reason when not explicitly provided
-      if (!details.unavailabilityReason && (kind === "unavailable" || kind === "not_installed" || kind === "command_failed")) {
+      if (
+        !details.unavailabilityReason &&
+        (kind === "unavailable" ||
+          kind === "not_installed" ||
+          kind === "command_failed")
+      ) {
         details.unavailabilityReason = classifyToolUnavailability({
           ...(details.exitCode !== undefined
             ? { exitCode: details.exitCode }

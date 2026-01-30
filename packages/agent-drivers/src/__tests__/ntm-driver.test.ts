@@ -9,8 +9,8 @@
 
 import { beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 import type { NtmClient, NtmTailOutput } from "@flywheel/flywheel-clients";
-import { NtmDriver, type NtmDriverOptions } from "../ntm/ntm-driver";
 import { createDriverOptions } from "../base-driver";
+import { NtmDriver, type NtmDriverOptions } from "../ntm/ntm-driver";
 import type { AgentConfig } from "../types";
 
 // Mock NTM client factory
@@ -56,16 +56,15 @@ function createMockNtmClient(overrides: Partial<NtmClient> = {}): NtmClient {
 class TestableNtmDriver extends NtmDriver {
   private mockClient: NtmClient;
 
-  constructor(
-    mockClient: NtmClient,
-    options: Partial<NtmDriverOptions> = {},
-  ) {
+  constructor(mockClient: NtmClient, options: Partial<NtmDriverOptions> = {}) {
     const config = createDriverOptions("ntm", options);
     super(config, {
       ...options,
       // Override the runner to prevent actual NTM commands
       runner: {
-        run: mock(() => Promise.resolve({ stdout: "{}", stderr: "", exitCode: 0 })),
+        run: mock(() =>
+          Promise.resolve({ stdout: "{}", stderr: "", exitCode: 0 }),
+        ),
       },
     });
     this.mockClient = mockClient;
@@ -382,7 +381,8 @@ describe("NtmDriver", () => {
 
       // lastSuccessfulPoll should be recent (within last second)
       const timeSinceSuccess =
-        Date.now() - (sessions.get(config.id)?.lastSuccessfulPoll.getTime() ?? 0);
+        Date.now() -
+        (sessions.get(config.id)?.lastSuccessfulPoll.getTime() ?? 0);
       expect(timeSinceSuccess).toBeLessThan(1000);
     });
   });

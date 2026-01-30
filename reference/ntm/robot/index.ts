@@ -5,7 +5,7 @@
  * Use these patterns when implementing machine-readable API responses.
  */
 
-export * from "./types";
 export * from "./agent-health";
 export * from "./is-working";
 export * from "./smart-restart";
+export * from "./types";

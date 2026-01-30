@@ -23,14 +23,14 @@ import {
   getRuntimeInfo,
 } from "../services/build-info";
 import {
+  getAllBreakerStatuses,
+  withCircuitBreaker,
+} from "../services/circuit-breaker.service";
+import {
   computeHealthDiagnostics,
   type HealthDiagnostics,
 } from "../services/tool-health-diagnostics.service";
 import { loadToolRegistry } from "../services/tool-registry.service";
-import {
-  getAllBreakerStatuses,
-  withCircuitBreaker,
-} from "../services/circuit-breaker.service";
 import { sendResource } from "../utils/response";
 import { getHub, type HubStats } from "../ws/hub";
 
@@ -487,25 +487,47 @@ health.get("/detailed", async (c) => {
     latencyMs: 0,
   };
 
-  const [database, dcgResult, cassResult, ubsResult, drivers, websocket, agentCLIs] =
-    await Promise.all([
-      checkDatabaseHealth(),
-      withCircuitBreaker("dcg", () => checkCLI("DCG", ["dcg", "--version"]), unhealthyFallback),
-      withCircuitBreaker("cass", () => checkCLI("CASS", ["cass", "--version"]), unhealthyFallback),
-      withCircuitBreaker("ubs", () => checkCLI("UBS", ["ubs", "--version"]), unhealthyFallback),
-      checkDriversHealth(),
-      Promise.resolve(checkWebSocketHealth()),
-      checkAgentCLIsHealth(),
-    ]);
+  const [
+    database,
+    dcgResult,
+    cassResult,
+    ubsResult,
+    drivers,
+    websocket,
+    agentCLIs,
+  ] = await Promise.all([
+    checkDatabaseHealth(),
+    withCircuitBreaker(
+      "dcg",
+      () => checkCLI("DCG", ["dcg", "--version"]),
+      unhealthyFallback,
+    ),
+    withCircuitBreaker(
+      "cass",
+      () => checkCLI("CASS", ["cass", "--version"]),
+      unhealthyFallback,
+    ),
+    withCircuitBreaker(
+      "ubs",
+      () => checkCLI("UBS", ["ubs", "--version"]),
+      unhealthyFallback,
+    ),
+    checkDriversHealth(),
+    Promise.resolve(checkWebSocketHealth()),
+    checkAgentCLIsHealth(),
+  ]);
 
   const dcg = dcgResult.result;
   const cass = cassResult.result;
   const ubs = ubsResult.result;
 
   // Add circuit breaker metadata to cached results
-  if (dcgResult.fromCache) dcg.details = { ...dcg.details, circuitBreakerOpen: true };
-  if (cassResult.fromCache) cass.details = { ...cass.details, circuitBreakerOpen: true };
-  if (ubsResult.fromCache) ubs.details = { ...ubs.details, circuitBreakerOpen: true };
+  if (dcgResult.fromCache)
+    dcg.details = { ...dcg.details, circuitBreakerOpen: true };
+  if (cassResult.fromCache)
+    cass.details = { ...cass.details, circuitBreakerOpen: true };
+  if (ubsResult.fromCache)
+    ubs.details = { ...ubs.details, circuitBreakerOpen: true };
 
   // Compute dependency-aware diagnostics if detection succeeded
   let diagnostics: HealthDiagnostics | undefined;
@@ -516,10 +538,7 @@ health.get("/detailed", async (c) => {
         ...agentCLIs.detection.agents,
         ...agentCLIs.detection.tools,
       ];
-      diagnostics = computeHealthDiagnostics(
-        registry.tools,
-        detectedCLIs,
-      );
+      diagnostics = computeHealthDiagnostics(registry.tools, detectedCLIs);
     } catch {
       // Non-critical; omit diagnostics on failure
     }

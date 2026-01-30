@@ -8,10 +8,9 @@
  * logging framework.
  */
 
-import { test, expect } from "./lib/fixtures";
+import { expect, test } from "./lib/fixtures";
 
-const GATEWAY_URL =
-  process.env["E2E_GATEWAY_URL"] ?? "http://localhost:3456";
+const GATEWAY_URL = process.env["E2E_GATEWAY_URL"] ?? "http://localhost:3456";
 
 // ============================================================================
 // API Tests: Tool Detection & Registry
@@ -58,9 +57,7 @@ test.describe("Tool Detection API", () => {
     await expect(loggedPage.locator(".page")).toBeVisible();
   });
 
-  test("detected CLIs with refresh bypasses cache", async ({
-    loggedPage,
-  }) => {
+  test("detected CLIs with refresh bypasses cache", async ({ loggedPage }) => {
     const res = await fetch(`${GATEWAY_URL}/agents/detected?refresh=true`);
     expect(res.status).toBe(200);
 
@@ -103,9 +100,7 @@ test.describe("Health Readiness API", () => {
     await expect(loggedPage.locator(".page")).toBeVisible();
   });
 
-  test("detailed health includes component checks", async ({
-    loggedPage,
-  }) => {
+  test("detailed health includes component checks", async ({ loggedPage }) => {
     const res = await fetch(`${GATEWAY_URL}/health/detailed`);
     const body = (await res.json()) as Record<string, unknown>;
     const data = (body["data"] ?? body) as Record<string, unknown>;
@@ -131,7 +126,9 @@ test.describe("Health Readiness API", () => {
     expect(typeof summary["passed"]).toBe("number");
 
     // Diagnostics (from tool-health-diagnostics)
-    const diagnostics = data["diagnostics"] as Record<string, unknown> | undefined;
+    const diagnostics = data["diagnostics"] as
+      | Record<string, unknown>
+      | undefined;
     if (diagnostics) {
       const tools = diagnostics["tools"] as unknown[];
       expect(Array.isArray(tools)).toBe(true);
@@ -151,9 +148,7 @@ test.describe("Health Readiness API", () => {
 // ============================================================================
 
 test.describe("Setup Page E2E", () => {
-  test("setup page renders with tool status cards", async ({
-    loggedPage,
-  }) => {
+  test("setup page renders with tool status cards", async ({ loggedPage }) => {
     await loggedPage.goto("/setup");
     await expect(loggedPage.locator(".page")).toBeVisible();
 
@@ -265,9 +260,7 @@ test.describe("Tool Health Navigation Flow", () => {
     expect(finalSummary.pageErrors).toBe(0);
   });
 
-  test("screenshot capture on setup page", async ({
-    loggedPage,
-  }, testInfo) => {
+  test("screenshot capture on setup page", async ({ loggedPage }, testInfo) => {
     await loggedPage.goto("/setup");
     await loggedPage.waitForLoadState("networkidle");
 

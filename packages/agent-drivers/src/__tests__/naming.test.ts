@@ -11,7 +11,6 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import type { AgentConfig } from "../types";
 import {
   createAgentNtmMapping,
   extractProjectName,
@@ -20,6 +19,7 @@ import {
   generateNtmSessionName,
   parseNtmSessionName,
 } from "../naming";
+import type { AgentConfig } from "../types";
 
 // ============================================================================
 // Test Fixtures

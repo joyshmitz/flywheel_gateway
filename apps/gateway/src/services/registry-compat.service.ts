@@ -119,10 +119,7 @@ export function analyzeToolMigration(
   });
 }
 
-function getToolField(
-  tool: ToolDefinition,
-  field: string,
-): string | undefined {
+function getToolField(tool: ToolDefinition, field: string): string | undefined {
   switch (field) {
     case "displayName":
       return tool.displayName;

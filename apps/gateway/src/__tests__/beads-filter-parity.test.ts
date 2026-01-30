@@ -9,12 +9,15 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { Hono } from "hono";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createBrClient, createBunBrCommandRunner } from "@flywheel/flywheel-clients";
+import {
+  createBrClient,
+  createBunBrCommandRunner,
+} from "@flywheel/flywheel-clients";
+import { Hono } from "hono";
 import { createBeadsRoutes } from "../routes/beads";
 import { createBeadsService } from "../services/beads.service";
 
@@ -89,7 +92,9 @@ describe.skipIf(!BR_AVAILABLE)("Beads Filter Parity Tests (bd-3kes)", () => {
   beforeAll(async () => {
     logTest({ test: "setup", action: "initializing_filter_parity_tests" });
 
-    const testProjectRoot = mkdtempSync(join(tmpdir(), "flywheel-beads-parity-"));
+    const testProjectRoot = mkdtempSync(
+      join(tmpdir(), "flywheel-beads-parity-"),
+    );
     const init = spawnSync(
       "br",
       ["init", "--json", "--no-auto-import", "--no-auto-flush"],

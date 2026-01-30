@@ -69,8 +69,9 @@ const {
   listSetupTools,
   loadToolRegistry,
 } = (await import(
-  TOOL_REGISTRY_MODULE_SPECIFIER,
+  TOOL_REGISTRY_MODULE_SPECIFIER
 )) as typeof import("../services/tool-registry.service");
+
 import type { ToolDefinition } from "@flywheel/shared/types/tool-registry.types";
 
 const MANIFEST_PATH = "/tmp/norm-test.yaml";
@@ -121,7 +122,9 @@ afterAll(() => {
 describe("Zod schema edge cases", () => {
   it("accepts tool with only required fields (id, name, category)", async () => {
     setManifest(
-      buildManifest(`  - id: "tools.bare"\n    name: "bare"\n    category: "tool"`),
+      buildManifest(
+        `  - id: "tools.bare"\n    name: "bare"\n    category: "tool"`,
+      ),
     );
     const reg = await loadToolRegistry();
     expect(reg.tools).toHaveLength(1);
@@ -216,7 +219,9 @@ tools:
 
   it("rejects non-integer phase", async () => {
     setManifest(
-      buildManifest(`  - id: "x"\n    name: "x"\n    category: "tool"\n    phase: 1.5`),
+      buildManifest(
+        `  - id: "x"\n    name: "x"\n    category: "tool"\n    phase: 1.5`,
+      ),
     );
     const reg = await loadToolRegistry();
     expect(reg.schemaVersion).toBe("1.0.0-fallback");
@@ -265,7 +270,9 @@ tools:
   });
 
   it("defaults schemaVersion when omitted", async () => {
-    setManifest(`tools:\n  - id: "tools.x"\n    name: "x"\n    category: "tool"`);
+    setManifest(
+      `tools:\n  - id: "tools.x"\n    name: "x"\n    category: "tool"`,
+    );
     const reg = await loadToolRegistry();
     expect(reg.schemaVersion).toBe("1.0.0");
   });
@@ -422,8 +429,9 @@ tools:
     setManifest(phaseManifest);
     const phases = await getToolsByPhase();
     const p999 = phases.find((p) => p.phase === 999);
-    expect(p999?.tools).toHaveLength(1);
-    expect(p999?.tools[0]!.id).toBe("nophase");
+    expect(p999).toBeDefined();
+    expect(p999!.tools).toHaveLength(1);
+    expect(p999!.tools[0]!.id).toBe("nophase");
   });
 
   it("empty tools list produces no phase groups", async () => {
@@ -552,8 +560,8 @@ describe("Fallback registry", () => {
 // Golden Fixture Normalization
 // ============================================================================
 
-import nodePath from "node:path";
 import { readFileSync } from "node:fs";
+import nodePath from "node:path";
 
 const fixturesDir = nodePath.join(__dirname, "fixtures");
 const loadFixture = (name: string): string => {

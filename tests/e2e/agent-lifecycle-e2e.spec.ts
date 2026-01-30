@@ -7,10 +7,9 @@
  * and captures full diagnostic artifacts via the logging framework.
  */
 
-import { test, expect } from "./lib/fixtures";
+import { expect, test } from "./lib/fixtures";
 
-const GATEWAY_URL =
-  process.env["E2E_GATEWAY_URL"] ?? "http://localhost:3456";
+const GATEWAY_URL = process.env["E2E_GATEWAY_URL"] ?? "http://localhost:3456";
 
 // ============================================================================
 // Helpers
@@ -217,9 +216,7 @@ test.describe("Agent Lifecycle E2E - API + WS + UI", () => {
     await expect(loggedPage.locator(".page")).toBeVisible();
   });
 
-  test("terminate agent via API and verify cleanup", async ({
-    loggedPage,
-  }) => {
+  test("terminate agent via API and verify cleanup", async ({ loggedPage }) => {
     const agentId = `e2e-term-${Date.now()}`;
 
     // Spawn first
@@ -241,11 +238,7 @@ test.describe("Agent Lifecycle E2E - API + WS + UI", () => {
           unknown
         >;
         const state = String(data["state"] ?? data["status"] ?? "");
-        expect([
-          "terminating",
-          "terminated",
-          "failed",
-        ]).toContain(state);
+        expect(["terminating", "terminated", "failed"]).toContain(state);
       }
     }
 
@@ -393,10 +386,9 @@ test.describe("Agent Lifecycle E2E - Error Handling", () => {
   });
 
   test("terminate nonexistent agent returns 404", async ({ loggedPage }) => {
-    const res = await fetch(
-      `${GATEWAY_URL}/agents/nonexistent-agent-xyz`,
-      { method: "DELETE" },
-    );
+    const res = await fetch(`${GATEWAY_URL}/agents/nonexistent-agent-xyz`, {
+      method: "DELETE",
+    });
     expect(res.status).toBe(404);
 
     await loggedPage.goto("/agents");

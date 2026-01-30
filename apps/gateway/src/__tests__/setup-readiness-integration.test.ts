@@ -68,24 +68,20 @@ describe("Setup Routes Integration (no mocks)", () => {
   // Verify endpoint
   // ========================================================================
 
-  it(
-    "POST /setup/verify/:tool returns result for known tool",
-    async () => {
-      const res = await app.request("/setup/verify/dcg", {
-        method: "POST",
-      });
+  it("POST /setup/verify/:tool returns result for known tool", async () => {
+    const res = await app.request("/setup/verify/dcg", {
+      method: "POST",
+    });
 
-      expect(res.status).toBe(200);
-      const body = (await res.json()) as Envelope<{
-        tool: string;
-        available: boolean;
-      }>;
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Envelope<{
+      tool: string;
+      available: boolean;
+    }>;
 
-      expect(body.data.tool).toBe("dcg");
-      expect(typeof body.data.available).toBe("boolean");
-    },
-    30_000,
-  );
+    expect(body.data.tool).toBe("dcg");
+    expect(typeof body.data.available).toBe("boolean");
+  }, 30_000);
 
   it("POST /setup/verify/:tool returns 404 for unknown tool", async () => {
     const res = await app.request("/setup/verify/totally-fake-tool-xyz", {

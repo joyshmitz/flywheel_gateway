@@ -681,9 +681,11 @@ export function useToolRegistry() {
 /**
  * Get tool display info from registry definition.
  */
-export function getToolDisplayInfoFromRegistry(
-  tool: ToolRegistryDefinition,
-): { displayName: string; icon: string; color: string } {
+export function getToolDisplayInfoFromRegistry(tool: ToolRegistryDefinition): {
+  displayName: string;
+  icon: string;
+  color: string;
+} {
   // Default colors by category
   const categoryColors: Record<string, string> = {
     agent: "#CC785C", // Warm brown

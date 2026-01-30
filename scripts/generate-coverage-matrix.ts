@@ -44,8 +44,7 @@ const SERVICES_DIR = path.join(ROOT, "apps/gateway/src/services");
 const ROUTES_DIR = path.join(ROOT, "apps/gateway/src/routes");
 const WEB_DIR = path.join(ROOT, "apps/web/src");
 const MANIFEST_PATH =
-  process.env["ACFS_MANIFEST_PATH"] ??
-  path.join(ROOT, "acfs.manifest.yaml");
+  process.env["ACFS_MANIFEST_PATH"] ?? path.join(ROOT, "acfs.manifest.yaml");
 const OUTPUT_PATH = path.join(ROOT, "docs/coverage-matrix.md");
 
 /** Load manifest tools, falling back to fixture if manifest missing */
@@ -154,8 +153,7 @@ function hasService(toolName: string): boolean {
 /** Check if a route file references a tool */
 function hasRoute(toolName: string): boolean {
   if (!existsSync(ROUTES_DIR)) return false;
-  const routeFiles = require("node:fs")
-    .readdirSync(ROUTES_DIR) as string[];
+  const routeFiles = require("node:fs").readdirSync(ROUTES_DIR) as string[];
   for (const file of routeFiles) {
     if (!file.endsWith(".ts")) continue;
     try {
@@ -186,10 +184,14 @@ function hasUI(toolName: string): boolean {
     const dirPath = path.join(WEB_DIR, dir);
     if (!existsSync(dirPath)) continue;
     try {
-      const files = require("node:fs")
-        .readdirSync(dirPath, { recursive: true }) as string[];
+      const files = require("node:fs").readdirSync(dirPath, {
+        recursive: true,
+      }) as string[];
       for (const file of files) {
-        if (!file.toString().endsWith(".tsx") && !file.toString().endsWith(".ts"))
+        if (
+          !file.toString().endsWith(".tsx") &&
+          !file.toString().endsWith(".ts")
+        )
           continue;
         const content = require("node:fs").readFileSync(
           path.join(dirPath, file.toString()),
@@ -334,15 +336,15 @@ function renderMarkdown(matrix: ToolCoverage[]): string {
     "",
     "| Plane | Description |",
     "|-------|-------------|",
-    '| **Registry** | Tool defined in ACFS manifest or FALLBACK_REGISTRY |',
-    '| **Detection** | installedCheck and verify commands configured |',
-    '| **Install** | Install spec with commands/installer defined |',
-    '| **Client Adapter** | TypeScript client wrapper in `flywheel-clients` |',
-    '| **Gateway Service** | Service layer in `apps/gateway/src/services/` |',
-    '| **API Route** | REST endpoints in `apps/gateway/src/routes/` |',
-    '| **UI Surface** | Web UI pages/components in `apps/web/` |',
-    '| **Metrics/Alerts** | Prometheus metrics and alert rules |',
-    '| **Snapshot** | Included in system snapshot aggregation |',
+    "| **Registry** | Tool defined in ACFS manifest or FALLBACK_REGISTRY |",
+    "| **Detection** | installedCheck and verify commands configured |",
+    "| **Install** | Install spec with commands/installer defined |",
+    "| **Client Adapter** | TypeScript client wrapper in `flywheel-clients` |",
+    "| **Gateway Service** | Service layer in `apps/gateway/src/services/` |",
+    "| **API Route** | REST endpoints in `apps/gateway/src/routes/` |",
+    "| **UI Surface** | Web UI pages/components in `apps/web/` |",
+    "| **Metrics/Alerts** | Prometheus metrics and alert rules |",
+    "| **Snapshot** | Included in system snapshot aggregation |",
     "",
     "---",
     "",
@@ -454,7 +456,9 @@ async function main() {
   } else {
     await writeFile(OUTPUT_PATH, markdown);
     console.log(`✓ Generated ${OUTPUT_PATH}`);
-    console.log(`  ${matrix.length} tools, ${Object.keys(matrix[0] ?? {}).length - 4} integration planes`);
+    console.log(
+      `  ${matrix.length} tools, ${Object.keys(matrix[0] ?? {}).length - 4} integration planes`,
+    );
   }
 }
 

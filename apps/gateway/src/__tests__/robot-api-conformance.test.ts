@@ -43,9 +43,7 @@ function parseDocEndpoints(markdown: string): DocumentedEndpoint[] {
     if (line.trim() === "```http") {
       const nextLine = lines[i + 1]?.trim();
       if (nextLine) {
-        const match = nextLine.match(
-          /^(GET|POST|PUT|PATCH|DELETE)\s+(\S+)/,
-        );
+        const match = nextLine.match(/^(GET|POST|PUT|PATCH|DELETE)\s+(\S+)/);
         if (match) {
           endpoints.push({
             method: match[1]!,
@@ -65,10 +63,7 @@ function parseDocEndpoints(markdown: string): DocumentedEndpoint[] {
 // =============================================================================
 
 describe("Robot-mode API doc parser", () => {
-  const docPath = join(
-    import.meta.dir,
-    "../../../../docs/robot-mode-api.md",
-  );
+  const docPath = join(import.meta.dir, "../../../../docs/robot-mode-api.md");
   let markdown: string;
   let endpoints: DocumentedEndpoint[];
 
@@ -89,9 +84,7 @@ describe("Robot-mode API doc parser", () => {
   });
 
   test("extracts beads endpoints", () => {
-    const beadsEndpoints = endpoints.filter((e) =>
-      e.path.startsWith("/beads"),
-    );
+    const beadsEndpoints = endpoints.filter((e) => e.path.startsWith("/beads"));
     expect(beadsEndpoints.length).toBeGreaterThanOrEqual(5);
 
     const paths = beadsEndpoints.map((e) => `${e.method} ${e.path}`);
@@ -115,16 +108,12 @@ describe("Robot-mode API doc parser", () => {
   });
 
   test("extracts mail endpoints", () => {
-    const mailEndpoints = endpoints.filter((e) =>
-      e.path.startsWith("/mail"),
-    );
+    const mailEndpoints = endpoints.filter((e) => e.path.startsWith("/mail"));
     expect(mailEndpoints.length).toBeGreaterThanOrEqual(2);
   });
 
   test("extracts dcg endpoints", () => {
-    const dcgEndpoints = endpoints.filter((e) =>
-      e.path.startsWith("/dcg"),
-    );
+    const dcgEndpoints = endpoints.filter((e) => e.path.startsWith("/dcg"));
     expect(dcgEndpoints.length).toBeGreaterThanOrEqual(3);
   });
 
@@ -164,10 +153,7 @@ describe("Robot-mode API doc parser", () => {
 // =============================================================================
 
 describe("Route registration conformance", () => {
-  const docPath = join(
-    import.meta.dir,
-    "../../../../docs/robot-mode-api.md",
-  );
+  const docPath = join(import.meta.dir, "../../../../docs/robot-mode-api.md");
 
   let endpoints: DocumentedEndpoint[];
   try {
@@ -193,9 +179,7 @@ describe("Route registration conformance", () => {
     const routesDir = join(import.meta.dir, "../routes");
     const routeFiles = readdirSync(routesDir) as string[];
 
-    const prefixes = new Set(
-      endpoints.map((e) => "/" + e.path.split("/")[1]),
-    );
+    const prefixes = new Set(endpoints.map((e) => `/${e.path.split("/")[1]}`));
 
     for (const prefix of prefixes) {
       const expectedFile = pathToRouteFile[prefix!];
@@ -220,19 +204,19 @@ describe("Route registration conformance", () => {
     // Extract "type" field values from response examples
     const typeRegex = /"type":\s*"([^"]+)"/g;
     const types: string[] = [];
-    let match;
-    while ((match = typeRegex.exec(md)) !== null) {
+    let match = typeRegex.exec(md);
+    while (match !== null) {
       // Skip request body types like "user"
       if (!["subscribe", "ack", "user", "state_changed"].includes(match[1]!)) {
         types.push(match[1]!);
       }
+
+      match = typeRegex.exec(md);
     }
 
     // Response types should use snake_case
     for (const t of types) {
-      expect(t).toMatch(
-        /^[a-z][a-z0-9_]*$/,
-      );
+      expect(t).toMatch(/^[a-z][a-z0-9_]*$/);
     }
   });
 });

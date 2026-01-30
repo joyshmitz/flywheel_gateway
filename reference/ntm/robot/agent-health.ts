@@ -10,11 +10,11 @@
  */
 
 import type {
+  HealthGrade,
+  ProviderUsageInfo,
+  RecommendationAction,
   RobotResponse,
   WorkIndicators,
-  HealthGrade,
-  RecommendationAction,
-  ProviderUsageInfo,
 } from "./types";
 
 // =============================================================================

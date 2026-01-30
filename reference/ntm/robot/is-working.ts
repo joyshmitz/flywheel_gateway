@@ -12,10 +12,10 @@
  */
 
 import type {
+  ConfidenceLevel,
+  RecommendationAction,
   RobotResponse,
   WorkIndicators,
-  RecommendationAction,
-  ConfidenceLevel,
 } from "./types";
 
 // =============================================================================
@@ -400,7 +400,7 @@ export function calculateIsWorkingSummary(
   let idleCount = 0;
   let rateLimitedCount = 0;
   let contextLowCount = 0;
-  let errorCount = 0;
+  const errorCount = 0;
 
   for (const [agentId, status] of Object.entries(agentStatuses)) {
     if (status.is_working) workingCount++;

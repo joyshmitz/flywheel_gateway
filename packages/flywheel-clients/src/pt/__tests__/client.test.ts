@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { PtClientError, createPtClient } from "../index";
+import { createPtClient, PtClientError } from "../index";
 
 function createRunner(stdout: string, exitCode = 0) {
   const calls: { command: string; args: string[] }[] = [];

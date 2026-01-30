@@ -7,10 +7,17 @@
  */
 
 import { Database } from "bun:sqlite";
-import { readFileSync, readdirSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  test,
+} from "bun:test";
+import { readdirSync, readFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { join } from "node:path";
 
 // ---------------------------------------------------------------------------
 // 1. Create temp DB and run migrations BEFORE importing any services
@@ -19,7 +26,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:tes
 const savedDbFile = process.env["DB_FILE_NAME"];
 const savedNodeEnv = process.env["NODE_ENV"];
 
-const dbPath = join(tmpdir(), `flywheel-svc-test-${process.pid}-${Date.now()}.db`);
+const dbPath = join(
+  tmpdir(),
+  `flywheel-svc-test-${process.pid}-${Date.now()}.db`,
+);
 const sqliteDb = new Database(dbPath);
 
 sqliteDb.exec("PRAGMA journal_mode = WAL");

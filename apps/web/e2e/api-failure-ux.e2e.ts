@@ -8,7 +8,7 @@
  * - Retry functionality works
  */
 
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test.describe("E2E: API Failure UX - Dashboard", () => {
   test("should show clear error state when API is unavailable", async ({
@@ -87,7 +87,10 @@ test.describe("E2E: API Failure UX - Dashboard", () => {
     // Give time for toast to appear
     await page.waitForTimeout(1000);
 
-    const toastVisible = await toast.first().isVisible().catch(() => false);
+    const toastVisible = await toast
+      .first()
+      .isVisible()
+      .catch(() => false);
     console.log(`[E2E] Toast visible: ${toastVisible}`);
 
     if (toastVisible) {
@@ -206,7 +209,9 @@ test.describe("E2E: API Failure UX - Dashboard", () => {
       await page.waitForTimeout(1000);
 
       // After successful retry, should see System Status (the panel loaded successfully)
-      const snapshotPanel = page.locator('[data-testid="snapshot-summary-panel"]');
+      const snapshotPanel = page.locator(
+        '[data-testid="snapshot-summary-panel"]',
+      );
       const isSuccess = await snapshotPanel.isVisible().catch(() => false);
       console.log(`[E2E] Snapshot panel visible after retry: ${isSuccess}`);
 
@@ -250,7 +255,10 @@ test.describe("E2E: API Failure UX - Loading States", () => {
 
     const hasLoadingState = await loadingState.isVisible().catch(() => false);
     const hasLoadingText = await loadingText.isVisible().catch(() => false);
-    const hasSpinner = await spinner.first().isVisible().catch(() => false);
+    const hasSpinner = await spinner
+      .first()
+      .isVisible()
+      .catch(() => false);
 
     console.log(`[E2E] Loading state visible: ${hasLoadingState}`);
     console.log(`[E2E] Loading text visible: ${hasLoadingText}`);
@@ -311,7 +319,13 @@ test.describe("E2E: API Failure UX - Loading States", () => {
               capturedAt: new Date().toISOString(),
               brAvailable: true,
               bvAvailable: true,
-              statusCounts: { open: 0, inProgress: 0, blocked: 0, closed: 0, total: 0 },
+              statusCounts: {
+                open: 0,
+                inProgress: 0,
+                blocked: 0,
+                closed: 0,
+                total: 0,
+              },
               typeCounts: {},
               priorityCounts: {},
               actionableCount: 0,
@@ -341,7 +355,9 @@ test.describe("E2E: API Failure UX - Loading States", () => {
     console.log("[E2E] Loading state shown");
 
     // Wait for content to load (after 5s delay)
-    const snapshotPanel = page.locator('[data-testid="snapshot-summary-panel"]');
+    const snapshotPanel = page.locator(
+      '[data-testid="snapshot-summary-panel"]',
+    );
     await expect(snapshotPanel).toBeVisible({ timeout: 10000 });
     console.log("[E2E] Content loaded after slow network");
 
@@ -357,7 +373,9 @@ test.describe("E2E: API Failure UX - Multiple Retries", () => {
 
     await page.route("**/api/system/snapshot**", (route) => {
       failCount++;
-      console.log(`[E2E] API call ${failCount}, failing: ${failCount <= maxFails}`);
+      console.log(
+        `[E2E] API call ${failCount}, failing: ${failCount <= maxFails}`,
+      );
 
       if (failCount <= maxFails) {
         route.fulfill({ status: 500, body: "Server Error" });
@@ -390,7 +408,12 @@ test.describe("E2E: API Failure UX - Multiple Retries", () => {
                 available: true,
                 version: "0.3.0",
                 sessions: [],
-                summary: { totalSessions: 0, totalAgents: 0, attachedCount: 0, byAgentType: {} },
+                summary: {
+                  totalSessions: 0,
+                  totalAgents: 0,
+                  attachedCount: 0,
+                  byAgentType: {},
+                },
                 alerts: [],
               },
               agentMail: {
@@ -405,7 +428,13 @@ test.describe("E2E: API Failure UX - Multiple Retries", () => {
                 capturedAt: new Date().toISOString(),
                 brAvailable: true,
                 bvAvailable: true,
-                statusCounts: { open: 0, inProgress: 0, blocked: 0, closed: 0, total: 0 },
+                statusCounts: {
+                  open: 0,
+                  inProgress: 0,
+                  blocked: 0,
+                  closed: 0,
+                  total: 0,
+                },
                 typeCounts: {},
                 priorityCounts: {},
                 actionableCount: 0,
@@ -444,8 +473,12 @@ test.describe("E2E: API Failure UX - Multiple Retries", () => {
     }
 
     // After enough retries, should eventually succeed
-    const snapshotPanel = page.locator('[data-testid="snapshot-summary-panel"]');
-    const success = await snapshotPanel.isVisible({ timeout: 5000 }).catch(() => false);
+    const snapshotPanel = page.locator(
+      '[data-testid="snapshot-summary-panel"]',
+    );
+    const success = await snapshotPanel
+      .isVisible({ timeout: 5000 })
+      .catch(() => false);
 
     console.log(`[E2E] Success after ${failCount} API calls: ${success}`);
     console.log(`[E2E] Total API calls: ${failCount}`);
