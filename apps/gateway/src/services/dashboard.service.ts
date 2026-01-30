@@ -18,6 +18,7 @@ import type {
   DashboardPermissionEntry,
   DashboardSharing,
   DashboardSummary,
+  DashboardVisibility,
   RefreshInterval,
   UpdateDashboardInput,
   Widget,
@@ -55,6 +56,10 @@ const DEFAULT_SHARING_CONFIG: DashboardSharing = {
 const ALLOWED_REFRESH_INTERVALS = new Set<RefreshInterval>([
   0, 15, 30, 60, 300, 900,
 ]);
+
+function getWidgetCount(value: unknown): number {
+  return Array.isArray(value) ? value.length : 0;
+}
 
 function coerceRefreshInterval(value: number): RefreshInterval {
   return ALLOWED_REFRESH_INTERVALS.has(value as RefreshInterval)
@@ -309,7 +314,7 @@ export async function duplicateDashboard(
 interface ListDashboardsOptions {
   workspaceId?: string;
   ownerId?: string;
-  visibility?: string;
+  visibility?: DashboardVisibility;
   userId?: string; // For filtering accessible dashboards
   limit?: number;
   offset?: number;
@@ -344,7 +349,7 @@ export async function listDashboards(
     conditions.push(eq(dashboards.ownerId, ownerId));
   }
   if (visibility) {
-    conditions.push(eq(dashboards.visibility, visibility as any));
+    conditions.push(eq(dashboards.visibility, visibility));
   }
 
   // TODO: Handle userId permission filtering in SQL or post-filter
@@ -400,8 +405,8 @@ export async function listDashboards(
     name: d.name,
     ...(d.description != null ? { description: d.description } : {}),
     ownerId: d.ownerId,
-    visibility: d.visibility as "private" | "team" | "public",
-    widgetCount: (d.widgets as any[]).length,
+    visibility: d.visibility as DashboardVisibility,
+    widgetCount: getWidgetCount(d.widgets),
     isFavorite: userFavorites.has(d.id),
     createdAt: d.createdAt.toISOString(),
     updatedAt: d.updatedAt.toISOString(),
@@ -591,8 +596,8 @@ export async function listFavorites(
       ? { description: dashboard.description }
       : {}),
     ownerId: dashboard.ownerId,
-    visibility: dashboard.visibility as "private" | "team" | "public",
-    widgetCount: (dashboard.widgets as any[]).length,
+    visibility: dashboard.visibility as DashboardVisibility,
+    widgetCount: getWidgetCount(dashboard.widgets),
     isFavorite: true,
     createdAt: dashboard.createdAt.toISOString(),
     updatedAt: dashboard.updatedAt.toISOString(),
@@ -922,7 +927,7 @@ export async function getDashboardStats(): Promise<{
 }> {
   const allDashboards = await db.select().from(dashboards);
 
-  const byVisibility: Record<string, number> = {
+  const byVisibility: Record<DashboardVisibility, number> = {
     private: 0,
     team: 0,
     public: 0,
@@ -931,9 +936,9 @@ export async function getDashboardStats(): Promise<{
   let totalWidgets = 0;
 
   for (const dashboard of allDashboards) {
-    const visibility = dashboard.visibility as "private" | "team" | "public";
+    const visibility = dashboard.visibility as DashboardVisibility;
     byVisibility[visibility] = (byVisibility[visibility] ?? 0) + 1;
-    totalWidgets += (dashboard.widgets as any[]).length;
+    totalWidgets += getWidgetCount(dashboard.widgets);
   }
 
   return {
