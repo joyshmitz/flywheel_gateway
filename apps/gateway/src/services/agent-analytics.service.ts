@@ -152,7 +152,7 @@ function calculatePercentile(values: number[], percentile: number): number {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
   const index = Math.ceil((percentile / 100) * sorted.length) - 1;
-  return sorted[Math.max(0, index)]!;
+  return sorted[Math.max(0, index)] ?? 0;
 }
 
 function calculateTrend(current: number, previous: number): TrendDirection {
@@ -641,7 +641,11 @@ export async function getQualityMetrics(
       errorTimestamps.sort((a, b) => a - b);
       let totalGap = 0;
       for (let i = 1; i < errorTimestamps.length; i++) {
-        totalGap += errorTimestamps[i]! - errorTimestamps[i - 1]!;
+        const curr = errorTimestamps[i];
+        const prev = errorTimestamps[i - 1];
+        if (curr !== undefined && prev !== undefined) {
+          totalGap += curr - prev;
+        }
       }
       mtbe = totalGap / (errorTimestamps.length - 1);
     }
@@ -926,9 +930,9 @@ export async function getModelComparisonReport(
 
     // Generate recommendations
     const recommendations: string[] = [];
-    if (models.length >= 2) {
-      const best = models[0]!;
-      const worst = models[models.length - 1]!;
+    const best = models[0];
+    const worst = models.at(-1);
+    if (models.length >= 2 && best && worst) {
       if (best.successRate - worst.successRate > 10) {
         recommendations.push(
           `Consider using ${best.model} for complex tasks - ${best.successRate.toFixed(1)}% success rate vs ${worst.successRate.toFixed(1)}% for ${worst.model}`,
