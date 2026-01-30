@@ -6,7 +6,7 @@
  */
 
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { basename, join } from "node:path";
 import type {
   FullConfig,
   FullResult,
@@ -196,7 +196,7 @@ export default class StructuredReporter implements Reporter {
     };
   }
 
-  private buildRunSummary(result: FullResult): RunSummary {
+  private buildRunSummary(_result: FullResult): RunSummary {
     const endTime = Date.now();
     const projects = [...new Set(this.tests.map((t) => t.browser))];
 

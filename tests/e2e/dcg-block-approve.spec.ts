@@ -124,7 +124,7 @@ if (isPlaywright) {
 
     test("pending exception: full approve workflow", async ({ testLogger }) => {
       const dangerousCommand = `rm -rf /tmp/e2e-test-${Date.now()}`;
-      const commandHash = createHash("sha256")
+      const _commandHash = createHash("sha256")
         .update(dangerousCommand)
         .digest("hex");
 

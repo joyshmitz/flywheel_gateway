@@ -343,7 +343,7 @@ function formatDoctorReport(report: DoctorReport, verbose: boolean): string {
 
   lines.push("");
   lines.push(colorize("  Flywheel Gateway - Doctor", "cyan"));
-  lines.push(colorize("  " + "─".repeat(30), "gray"));
+  lines.push(colorize(`  ${"─".repeat(30)}`, "gray"));
   lines.push("");
 
   for (const check of report.checks) {
@@ -355,7 +355,7 @@ function formatDoctorReport(report: DoctorReport, verbose: boolean): string {
   }
 
   lines.push("");
-  lines.push(colorize("  " + "─".repeat(30), "gray"));
+  lines.push(colorize(`  ${"─".repeat(30)}`, "gray"));
 
   const statusColor = report.healthy ? "green" : "red";
   const statusText = report.healthy ? "All checks passed" : "Issues found";
@@ -435,7 +435,7 @@ async function getStatus(): Promise<StatusReport> {
   }
 
   // WebSocket status
-  const wsUrl = gatewayUrl.replace("http", "ws") + "/ws";
+  const wsUrl = `${gatewayUrl.replace("http", "ws")}/ws`;
   const websocket = {
     available: gatewayRunning,
     url: wsUrl,
@@ -472,7 +472,7 @@ function formatStatusReport(report: StatusReport): string {
 
   lines.push("");
   lines.push(colorize("  Flywheel Gateway - Status", "cyan"));
-  lines.push(colorize("  " + "─".repeat(30), "gray"));
+  lines.push(colorize(`  ${"─".repeat(30)}`, "gray"));
   lines.push("");
 
   lines.push(colorize("  Services", "cyan"));

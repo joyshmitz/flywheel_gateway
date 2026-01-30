@@ -226,7 +226,7 @@ export const IDLE_PATTERNS = [
  */
 export function detectWorkState(
   output: string,
-  agentType?: string,
+  _agentType?: string,
 ): {
   is_working: boolean;
   is_idle: boolean;

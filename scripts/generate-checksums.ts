@@ -157,7 +157,7 @@ async function generateChecksums(directory: string): Promise<ChecksumEntry[]> {
   };
   await writeFile(
     join(directory, "checksums.json"),
-    JSON.stringify(manifest, null, 2) + "\n",
+    `${JSON.stringify(manifest, null, 2)}\n`,
   );
   console.log(`Wrote: checksums.json`);
 

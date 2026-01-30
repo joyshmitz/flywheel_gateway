@@ -20,7 +20,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
 import { readFile, unlink, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 
 // ============================================================================
 // Types (inline to avoid import issues in standalone script)
@@ -153,7 +153,7 @@ function secureCompare(a: string, b: string): boolean {
 // ============================================================================
 
 async function fetchLatestRelease(
-  includePrereleases: boolean,
+  _includePrereleases: boolean,
 ): Promise<ReleaseInfo> {
   const { owner, repo, currentVersion } = CONFIG;
 
@@ -356,7 +356,7 @@ async function checkCommand(
 function printCheckResult(result: UpdateCheckResult): void {
   console.log("");
   console.log(colorize("  Flywheel Gateway - Update Check", "cyan"));
-  console.log(colorize("  " + "─".repeat(35), "gray"));
+  console.log(colorize(`  ${"─".repeat(35)}`, "gray"));
   console.log("");
 
   console.log(`  Current version: ${colorize(result.currentVersion, "bold")}`);

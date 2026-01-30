@@ -76,7 +76,7 @@ async function terminateAgentViaAPI(
  * Collect WebSocket messages for a given channel until a condition is met
  * or timeout expires.
  */
-function collectWSMessages(
+function _collectWSMessages(
   wsUrl: string,
   channel: string,
   opts?: { timeoutMs?: number; count?: number },

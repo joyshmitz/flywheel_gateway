@@ -7,7 +7,7 @@
  */
 
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { join, relative } from "node:path";
 import type {
   FullConfig,
   FullResult,
@@ -157,7 +157,7 @@ export default class E2EReporter implements Reporter {
     testLogData.delete(testId);
   }
 
-  onEnd(result: FullResult): void {
+  onEnd(_result: FullResult): void {
     const endTime = Date.now();
     const duration = endTime - this.startTime;
 
@@ -312,7 +312,7 @@ export default class E2EReporter implements Reporter {
 
   private printRunSummary(summary: RunSummary): void {
     const lines = [
-      "\n" + "=".repeat(60),
+      `\n${"=".repeat(60)}`,
       "📊 E2E TEST RUN SUMMARY",
       "=".repeat(60),
       `Run ID: ${summary.runId}`,

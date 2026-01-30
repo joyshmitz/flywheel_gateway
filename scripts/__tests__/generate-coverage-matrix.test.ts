@@ -95,7 +95,7 @@ describe("Coverage matrix structure", () => {
 
   it("phases are in ascending order", () => {
     const phaseMatches = [...content.matchAll(/Phase (\d+)/g)].map((m) =>
-      parseInt(m[1]!),
+      parseInt(m[1]!, 10),
     );
     for (let i = 1; i < phaseMatches.length; i++) {
       expect(phaseMatches[i]!).toBeGreaterThanOrEqual(phaseMatches[i - 1]!);

@@ -5,7 +5,7 @@
  * Captures browser console, network, WebSocket, page errors, and timing metrics.
  */
 
-import type { BrowserContext, CDPSession, Page } from "@playwright/test";
+import type { CDPSession, Page } from "@playwright/test";
 import type {
   ConsoleEntry,
   NetworkEntry,

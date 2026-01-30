@@ -69,7 +69,6 @@ export function installDeterministicIds(prefix = "id"): void {
   }
   const gen = createIdGenerator(prefix);
   installedGenerator = gen;
-  // biome-ignore lint: we intentionally replace a global
   (crypto as any).randomUUID = () => gen();
 }
 
@@ -78,7 +77,6 @@ export function installDeterministicIds(prefix = "id"): void {
  */
 export function restoreDeterministicIds(): void {
   if (originalRandomUUID) {
-    // biome-ignore lint: restore global
     (crypto as any).randomUUID = originalRandomUUID;
     originalRandomUUID = null;
   }

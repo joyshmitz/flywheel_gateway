@@ -401,7 +401,7 @@ if (isPlaywright) {
     });
 
     test("should emit structured WebSocket events", async ({ page }) => {
-      const wsMessages: string[] = [];
+      const _wsMessages: string[] = [];
 
       // Listen for WebSocket messages in dev tools
       await page.goto("/");

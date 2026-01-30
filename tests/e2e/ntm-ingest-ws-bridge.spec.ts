@@ -280,7 +280,7 @@ test.describe("NTM WebSocket bridge", () => {
   test("WebSocket connection can be established", async ({ logEvent }) => {
     logEvent("Testing WebSocket connectivity");
 
-    const wsUrl = GATEWAY_URL.replace(/^http/, "ws") + "/ws";
+    const wsUrl = `${GATEWAY_URL.replace(/^http/, "ws")}/ws`;
 
     try {
       const ws = new WebSocket(wsUrl);
@@ -347,7 +347,7 @@ test.describe("NTM WebSocket bridge", () => {
 
     logEvent("NTM available - checking WS bridge events");
 
-    const wsUrl = GATEWAY_URL.replace(/^http/, "ws") + "/ws";
+    const wsUrl = `${GATEWAY_URL.replace(/^http/, "ws")}/ws`;
     const ws = new WebSocket(wsUrl);
 
     const connected = await new Promise<boolean>((resolve) => {
@@ -373,7 +373,7 @@ test.describe("NTM WebSocket bridge", () => {
     // Collect messages for a short window
     const messages: Array<Record<string, unknown>> = [];
     await new Promise<void>((resolve) => {
-      const timeout = setTimeout(resolve, 5000);
+      const _timeout = setTimeout(resolve, 5000);
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data as string) as Record<
