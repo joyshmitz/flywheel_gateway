@@ -66,7 +66,7 @@ describe("Idempotency Middleware", () => {
 
     test("scopes cache by auth context when present", async () => {
       let callCount = 0;
-      const app = new Hono();
+      const app = new Hono<{ Variables: { auth: unknown } }>();
 
       // Simulate auth middleware populating c.set("auth", ...)
       app.use("*", async (c, next) => {
