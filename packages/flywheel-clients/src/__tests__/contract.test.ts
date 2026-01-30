@@ -1581,7 +1581,9 @@ describe("ntm Client Contract Tests", () => {
       const inv = logger.getLast();
       expect(inv?.args).toContain("--robot-health");
       // Should NOT have session suffix (unlike session health)
-      expect(inv?.args.every((a: string) => !a.includes("--robot-health="))).toBe(true);
+      expect(
+        inv?.args.every((a: string) => !a.includes("--robot-health=")),
+      ).toBe(true);
     });
   });
 
@@ -1606,7 +1608,9 @@ describe("ntm Client Contract Tests", () => {
       expect(result.alerts[0]!.severity).toBe("warning");
 
       const inv = logger.getLast();
-      expect(inv?.args.some((a: string) => a.includes("--robot-alerts=agent-1"))).toBe(true);
+      expect(
+        inv?.args.some((a: string) => a.includes("--robot-alerts=agent-1")),
+      ).toBe(true);
     });
 
     test("passes severity filter", async () => {
@@ -1652,7 +1656,9 @@ describe("ntm Client Contract Tests", () => {
       expect(result.agents[0]!.is_working).toBe(false);
 
       const inv = logger.getLast();
-      expect(inv?.args.some((a: string) => a.includes("--robot-activity=agent-1"))).toBe(true);
+      expect(
+        inv?.args.some((a: string) => a.includes("--robot-activity=agent-1")),
+      ).toBe(true);
     });
   });
 
@@ -1673,7 +1679,10 @@ describe("ntm Client Contract Tests", () => {
       const result = await client.snapshot();
 
       expect(result.ts).toBeDefined();
-      const sessions = result.sessions as Array<{ name: string; agents: unknown[] }>;
+      const sessions = result.sessions as Array<{
+        name: string;
+        agents: unknown[];
+      }>;
       expect(sessions).toHaveLength(1);
       const first = sessions[0];
       if (!first) throw new Error("Expected snapshot() sessions[0]");
@@ -1822,7 +1831,8 @@ describe("ms Client Contract Tests", () => {
       expect(result).toHaveLength(2);
       const first = result[0];
       const second = result[1];
-      if (!first || !second) throw new Error("Expected listKnowledgeBases() items[0..1]");
+      if (!first || !second)
+        throw new Error("Expected listKnowledgeBases() items[0..1]");
       expect(first.name).toBe("skills");
       expect(first.entry_count).toBe(150);
       expect(second.name).toBe("prompts");
