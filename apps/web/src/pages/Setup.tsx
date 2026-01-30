@@ -692,13 +692,12 @@ function InstallStepContent({
             animate="visible"
             style={{ display: "flex", flexDirection: "column", gap: "12px" }}
           >
-            {missingTools.map((tool, i) => (
+            {missingTools.map((tool) => (
               <ToolCard
                 key={tool.name}
                 cli={tool}
                 onInstall={() => onInstall(tool.name)}
                 installing={installingTool === tool.name}
-                index={i}
                 priority={getToolPriority(tool.name, toolCategories)}
                 phase={getToolPhase(tool.name, installOrder)}
                 registryTool={toolMap?.get(tool.name)}
@@ -722,11 +721,10 @@ function InstallStepContent({
             animate="visible"
             className="grid grid--2"
           >
-            {installedTools.map((tool, i) => (
+            {installedTools.map((tool) => (
               <ToolCard
                 key={tool.name}
                 cli={tool}
-                index={i}
                 priority={getToolPriority(tool.name, toolCategories)}
                 phase={getToolPhase(tool.name, installOrder)}
                 registryTool={toolMap?.get(tool.name)}
@@ -903,11 +901,10 @@ function VerifyStepContent({
           animate="visible"
           className="grid grid--2"
         >
-          {allCLIs.map((cli, i) => (
+          {allCLIs.map((cli) => (
             <ToolCard
               key={cli.name}
               cli={cli}
-              index={i}
               priority={getToolPriority(cli.name, status.toolCategories)}
               phase={getToolPhase(cli.name, status.installOrder)}
               registryTool={toolMap?.get(cli.name)}
