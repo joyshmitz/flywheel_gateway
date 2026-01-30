@@ -1994,10 +1994,13 @@ describe("pt Client Contract Tests", () => {
       const result = await client.scan();
 
       expect(result.processes).toHaveLength(2);
-      expect(result.processes[0].pid).toBe(12345);
-      expect(result.processes[0].cpu_percent).toBe(85.5);
-      expect(result.processes[0].flags).toContain("high_cpu");
-      expect(result.processes[1].flags).toContain("zombie");
+      const first = result.processes[0];
+      const second = result.processes[1];
+      if (!first || !second) throw new Error("Expected scan() processes[0..1]");
+      expect(first.pid).toBe(12345);
+      expect(first.cpu_percent).toBe(85.5);
+      expect(first.flags).toContain("high_cpu");
+      expect(second.flags).toContain("zombie");
       expect(result.suspicious_count).toBe(2);
       expect(result.total_scanned).toBe(150);
 
