@@ -99,10 +99,14 @@ const healthTone: Record<string, "positive" | "warning" | "danger" | "muted"> = 
 };
 
 function AgentRow({ agent }: { agent: NtmAgent }) {
+  const inferredType =
+    typeof agent.config?.["type"] === "string" ? agent.config["type"] : undefined;
+  const agentTypeLabel = agent.agentType ?? inferredType ?? "unknown";
+
   return (
     <div className="table__row">
       <span className="mono">{agent.id}</span>
-      <span>{agent.agentType ?? agent.config?.["type"] ?? "unknown"}</span>
+      <span>{agentTypeLabel}</span>
       <span>{agent.variant ?? "—"}</span>
       <span>
         <StatusPill tone={stateTone[agent.activityState] ?? "muted"}>

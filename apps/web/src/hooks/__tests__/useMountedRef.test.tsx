@@ -191,9 +191,7 @@ describe("useMountedRef", () => {
         await new Promise((resolve) => setTimeout(resolve, 50));
       });
 
-      if (stateSkipped === null) {
-        throw new Error("Expected onAttemptSetState to be called");
-      }
+      expect(stateSkipped).not.toBeNull();
       expect(stateSkipped).toBe(false);
       expect(getByTestId("value").textContent).toBe("updated");
     });
@@ -218,9 +216,7 @@ describe("useMountedRef", () => {
         await new Promise((resolve) => setTimeout(resolve, 150));
       });
 
-      if (stateSkipped === null) {
-        throw new Error("Expected onAttemptSetState to be called");
-      }
+      expect(stateSkipped).not.toBeNull();
       expect(stateSkipped).toBe(true);
     });
   });
@@ -246,9 +242,7 @@ describe("useMountedRef", () => {
       unmount();
 
       // The ref should be false during cleanup
-      if (refDuringCleanup === null) {
-        throw new Error("Expected cleanup to run");
-      }
+      expect(refDuringCleanup).not.toBeNull();
       expect(refDuringCleanup).toBe(false);
     });
   });
