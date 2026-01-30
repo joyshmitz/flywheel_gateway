@@ -10,7 +10,7 @@
 
 import type { Widget, WidgetType } from "@flywheel/shared";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { useEffect, useState, type KeyboardEvent } from "react";
+import { type KeyboardEvent, useEffect, useState } from "react";
 import {
   DashboardGrid,
   WIDGET_DEFINITIONS,
@@ -228,6 +228,7 @@ export function DashboardsPage() {
         ) : (
           <div className="dashboards-page__grid">
             {dashboards.map((dashboard) => (
+              // biome-ignore lint/a11y/useSemanticElements: card contains nested button controls
               <div
                 key={dashboard.id}
                 className="dashboards-page__card"
@@ -283,6 +284,7 @@ export function DashboardsPage() {
 
         {/* Create Modal */}
         {showCreateModal && (
+          // biome-ignore lint/a11y/useSemanticElements: modal overlay isn't a semantic button
           <div
             className="dashboards-page__modal-overlay"
             onClick={() => setShowCreateModal(false)}

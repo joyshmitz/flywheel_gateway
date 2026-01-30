@@ -230,6 +230,7 @@ function RepoList({ repos, groups, onRemove, isRemoving }: RepoListProps) {
       <div className="table">
         {filteredRepos.map((repo) => (
           <div key={repo.id}>
+            {/* biome-ignore lint/a11y/useSemanticElements: table row has complex layout */}
             <div
               className="table__row"
               style={{ cursor: "pointer", padding: "12px 0" }}
@@ -561,6 +562,7 @@ function SweepsTab({
         </div>
         {sessions.map((session) => (
           <div key={session.id}>
+            {/* biome-ignore lint/a11y/useSemanticElements: table row has complex layout */}
             <div
               className="table__row"
               style={{ cursor: "pointer" }}
