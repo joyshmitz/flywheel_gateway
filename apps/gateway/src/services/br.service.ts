@@ -179,6 +179,7 @@ export function getBrClient(): BrClient {
     cachedClient = createBrClient({
       runner: createBrCommandRunner(),
       cwd: getBrProjectRoot(),
+      timeout: DEFAULT_TIMEOUT_MS,
     });
   }
   return cachedClient;

@@ -13,7 +13,7 @@ import { Hono } from "hono";
 import { createBeadsRoutes } from "../routes/beads";
 import { createBeadsService } from "../services/beads.service";
 
-const TEST_TIMEOUT = 30000;
+const TEST_TIMEOUT = 60000;
 const LOG_PREFIX = "[beads-filter-parity]";
 
 interface TestLogEntry {
