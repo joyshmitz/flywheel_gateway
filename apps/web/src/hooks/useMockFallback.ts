@@ -22,7 +22,9 @@ export function useAllowMockFallback(): boolean {
   const mockMode = useUiStore((state) => state.mockMode);
 
   // In development, always allow mock fallback
-  const isDevelopment = import.meta.env.DEV;
+  // Use bracket notation for index signature access (TS4111)
+  // DEV is a boolean in Vite, but TypeScript sees it as string | undefined
+  const isDevelopment = Boolean(import.meta.env["DEV"]);
 
   // Explicitly disabling mock mode should disable fallback even in dev
   if (typeof window !== "undefined") {
@@ -40,7 +42,9 @@ export function useAllowMockFallback(): boolean {
  * Checks localStorage directly for mock mode setting.
  */
 export function getAllowMockFallback(): boolean {
-  const isDevelopment = import.meta.env.DEV === true;
+  // Use bracket notation for index signature access (TS4111)
+  // DEV is a boolean in Vite, but TypeScript sees it as string | undefined
+  const isDevelopment = Boolean(import.meta.env["DEV"]);
 
   if (typeof window === "undefined") {
     return isDevelopment;

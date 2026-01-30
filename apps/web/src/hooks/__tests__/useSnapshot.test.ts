@@ -39,25 +39,52 @@ const FIXTURE_SNAPSHOT: SystemSnapshot = {
     summary: {
       totalSessions: 0,
       totalAgents: 0,
-      activeAgents: 0,
-      idleAgents: 0,
+      attachedCount: 0,
+      byAgentType: {
+        claude: 0,
+        codex: 0,
+        gemini: 0,
+        cursor: 0,
+        windsurf: 0,
+        aider: 0,
+      },
     },
+    alerts: [],
   },
   agentMail: {
     capturedAt: "2026-01-29T00:00:00Z",
     available: true,
     agents: [],
-    reservations: { active: 0, expired: 0 },
-    messages: { total: 0, unread: 0, urgent: 0 },
+    reservations: [],
+    messages: {
+      total: 0,
+      unread: 0,
+      byPriority: {
+        low: 0,
+        normal: 0,
+        high: 0,
+        urgent: 0,
+      },
+    },
   },
   beads: {
     capturedAt: "2026-01-29T00:00:00Z",
-    available: true,
-    totalCount: 100,
-    openCount: 10,
-    closedCount: 90,
-    inProgressCount: 2,
-    blockedCount: 1,
+    brAvailable: true,
+    bvAvailable: true,
+    statusCounts: {
+      open: 10,
+      inProgress: 2,
+      blocked: 1,
+      closed: 90,
+      total: 103,
+    },
+    typeCounts: {
+      bug: 0,
+      feature: 0,
+      task: 0,
+      epic: 0,
+      chore: 0,
+    },
     priorityCounts: { p0: 0, p1: 3, p2: 4, p3: 2, p4: 1 },
     actionableCount: 7,
     topRecommendations: [],
@@ -119,9 +146,9 @@ describe("SystemSnapshot API Fixture Shape", () => {
 
   it("has required Beads snapshot fields", () => {
     const { beads } = FIXTURE_SNAPSHOT;
-    expect(typeof beads.totalCount).toBe("number");
-    expect(typeof beads.openCount).toBe("number");
-    expect(typeof beads.closedCount).toBe("number");
+    expect(typeof beads.statusCounts.total).toBe("number");
+    expect(typeof beads.statusCounts.open).toBe("number");
+    expect(typeof beads.statusCounts.closed).toBe("number");
     expect(typeof beads.actionableCount).toBe("number");
     expect(beads.priorityCounts).toBeDefined();
     expect(Array.isArray(beads.topRecommendations)).toBe(true);
