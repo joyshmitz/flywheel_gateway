@@ -24,6 +24,7 @@ import {
 } from "../services/cass.service";
 import {
   sendError,
+  sendGatewayError,
   sendResource,
   sendValidationError,
 } from "../utils/response";
@@ -34,21 +35,6 @@ const cass = new Hono();
 // ============================================================================
 // Error Handling
 // ============================================================================
-
-function respondWithGatewayError(c: Context, error: GatewayError) {
-  const timestamp = new Date().toISOString();
-  const payload = serializeGatewayError(error);
-  return sendError(
-    c,
-    payload.code,
-    payload.message,
-    payload.httpStatus as ContentfulStatusCode,
-    {
-      ...(payload.details && { details: payload.details }),
-      timestamp,
-    },
-  );
-}
 
 function handleError(error: unknown, c: Context) {
   const log = getLogger();
@@ -102,11 +88,11 @@ function handleError(error: unknown, c: Context) {
         gatewayError = toGatewayError(error);
     }
 
-    return respondWithGatewayError(c, gatewayError);
+    return sendGatewayError(c, gatewayError);
   }
 
   log.error({ error }, "Unexpected error in CASS route");
-  return respondWithGatewayError(c, toGatewayError(error));
+  return sendGatewayError(c, toGatewayError(error));
 }
 
 // ============================================================================

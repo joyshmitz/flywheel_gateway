@@ -18,6 +18,10 @@ import {
   wrapResource,
   wrapValidationError,
 } from "@flywheel/shared";
+import {
+  type GatewayError,
+  serializeGatewayError,
+} from "@flywheel/shared/errors";
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { getCorrelationId } from "../middleware/correlation";
@@ -322,4 +326,41 @@ export function sendUnauthorized(
  */
 export function sendNoContent(c: Context) {
   return c.body(null, 204);
+}
+
+/**
+ * Send a GatewayError response with consistent formatting.
+ *
+ * Serializes a GatewayError to the standard API error envelope format.
+ * Use this for errors that originate from gateway infrastructure.
+ *
+ * @param c - Hono context
+ * @param error - The GatewayError to serialize
+ * @returns JSON response with error envelope
+ *
+ * @example
+ * ```typescript
+ * app.get("/resource", async (c) => {
+ *   try {
+ *     // ...
+ *   } catch (error) {
+ *     const gatewayError = toGatewayError(error);
+ *     return sendGatewayError(c, gatewayError);
+ *   }
+ * });
+ * ```
+ */
+export function sendGatewayError(c: Context, error: GatewayError) {
+  const timestamp = new Date().toISOString();
+  const payload = serializeGatewayError(error);
+  return sendError(
+    c,
+    payload.code,
+    payload.message,
+    payload.httpStatus as ContentfulStatusCode,
+    {
+      ...(payload.details && { details: payload.details }),
+      timestamp,
+    },
+  );
 }
