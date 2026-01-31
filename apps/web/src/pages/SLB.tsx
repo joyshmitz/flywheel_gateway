@@ -188,7 +188,9 @@ export function SLBPage() {
             onClick={() => setTab(t.id)}
           >
             {t.label}
-            {t.badge != null && <span className="nav-badge">{t.badge}</span>}
+            {t.badge !== null && t.badge !== undefined && (
+              <span className="nav-badge">{t.badge}</span>
+            )}
           </button>
         ))}
       </div>

@@ -125,8 +125,14 @@ export function DashboardsPage() {
         y: maxY,
         w: Math.min(definition.defaultSize.w, columns),
         h: definition.defaultSize.h,
-        ...(definition.minSize?.w != null && { minW: definition.minSize.w }),
-        ...(definition.minSize?.h != null && { minH: definition.minSize.h }),
+        ...(definition.minSize?.w !== null &&
+          definition.minSize?.w !== undefined && {
+            minW: definition.minSize.w,
+          }),
+        ...(definition.minSize?.h !== null &&
+          definition.minSize?.h !== undefined && {
+            minH: definition.minSize.h,
+          }),
       },
       config: {
         dataSource: {

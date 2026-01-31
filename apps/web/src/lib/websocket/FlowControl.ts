@@ -120,7 +120,7 @@ export class FlowControl {
       timestamp: Date.now(),
       metadata: {
         suggestedRate,
-        ...(queueDepth != null && { queueDepth }),
+        ...(queueDepth !== null && queueDepth !== undefined && { queueDepth }),
       },
     });
   }

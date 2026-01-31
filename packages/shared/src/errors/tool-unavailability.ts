@@ -201,7 +201,7 @@ export function classifyToolUnavailability(
   }
 
   // 2. Check exit code
-  if (input.exitCode != null && input.exitCode in EXIT_CODE_MAP) {
+  if (input.exitCode !== undefined && input.exitCode in EXIT_CODE_MAP) {
     return EXIT_CODE_MAP[input.exitCode]!;
   }
 

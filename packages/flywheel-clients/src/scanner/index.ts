@@ -530,10 +530,12 @@ ${finding.codeSnippet ? `## Code Context\n\`\`\`\n${finding.codeSnippet}\n\`\`\`
       priority,
       type,
       metadata: {
-        ...(finding.id != null && { findingId: finding.id }),
+        ...(finding.id !== null &&
+          finding.id !== undefined && { findingId: finding.id }),
         rule: finding.rule,
         file: finding.file,
-        ...(finding.line != null && { line: finding.line }),
+        ...(finding.line !== null &&
+          finding.line !== undefined && { line: finding.line }),
       },
     };
   };

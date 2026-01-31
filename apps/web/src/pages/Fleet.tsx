@@ -1060,7 +1060,10 @@ export function FleetPage() {
     {
       id: "repos",
       label: "Repositories",
-      ...(reposCount != null && { badge: reposCount }),
+      ...(reposCount !== null &&
+        reposCount !== undefined && {
+          badge: reposCount,
+        }),
     },
     {
       id: "sweeps",

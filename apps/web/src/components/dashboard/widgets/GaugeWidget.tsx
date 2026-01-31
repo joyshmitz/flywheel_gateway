@@ -48,7 +48,12 @@ export function GaugeWidget({ widget: _widget, data }: GaugeWidgetProps) {
   const gaugeData = data.data as GaugeData | null;
 
   useEffect(() => {
-    if (gaugeData == null || !canvasRef.current || !containerRef.current)
+    if (
+      gaugeData === null ||
+      gaugeData === undefined ||
+      !canvasRef.current ||
+      !containerRef.current
+    )
       return;
 
     const canvas = canvasRef.current;
@@ -159,7 +164,7 @@ export function GaugeWidget({ widget: _widget, data }: GaugeWidgetProps) {
     ctx.fillText(String(max), maxLabelX, maxLabelY);
   }, [gaugeData]);
 
-  if (gaugeData == null) {
+  if (gaugeData === null || gaugeData === undefined) {
     return (
       <div className="gauge-widget gauge-widget--empty">No data available</div>
     );

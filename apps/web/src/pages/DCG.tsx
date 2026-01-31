@@ -1016,7 +1016,9 @@ export function DCGPage() {
     {
       id: "pending",
       label: "Pending",
-      ...(pendingCount != null && pendingCount > 0 && { badge: pendingCount }),
+      ...(pendingCount !== null &&
+        pendingCount !== undefined &&
+        pendingCount > 0 && { badge: pendingCount }),
     },
     { id: "stats", label: "Statistics" },
     { id: "config", label: "Configuration" },
@@ -1049,9 +1051,10 @@ export function DCGPage() {
           title="Blocks (24h)"
           value={stats?.overview.blocksLast24h ?? "-"}
           icon={<ShieldAlert size={18} />}
-          {...(stats?.overview.trendVsYesterday != null && {
-            trend: stats.overview.trendVsYesterday,
-          })}
+          {...(stats?.overview.trendVsYesterday !== null &&
+            stats?.overview.trendVsYesterday !== undefined && {
+              trend: stats.overview.trendVsYesterday,
+            })}
         />
         <QuickStatCard
           title="Total Blocks"

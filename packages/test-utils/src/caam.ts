@@ -395,8 +395,9 @@ export function createMockCaamExecutor(
     ],
     cooldowns: config?.cooldowns ?? [],
     version: config?.version ?? "1.0.0-mock",
-    ...(config?.failureScenarios != null && {
-      failureScenarios: config.failureScenarios,
-    }),
+    ...(config?.failureScenarios !== null &&
+      config?.failureScenarios !== undefined && {
+        failureScenarios: config.failureScenarios,
+      }),
   });
 }

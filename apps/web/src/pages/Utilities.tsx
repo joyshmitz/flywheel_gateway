@@ -251,11 +251,12 @@ function CsctfPanel() {
       {mutation.isSuccess && mutation.data.data.success && (
         <div className="result-box">
           {mutation.data.data.title && <p>Title: {mutation.data.data.title}</p>}
-          {mutation.data.data.messageCount != null && (
-            <p className="muted">
-              {mutation.data.data.messageCount} messages exported
-            </p>
-          )}
+          {mutation.data.data.messageCount !== null &&
+            mutation.data.data.messageCount !== undefined && (
+              <p className="muted">
+                {mutation.data.data.messageCount} messages exported
+              </p>
+            )}
           {mutation.data.data.markdownPath && (
             <p>
               Markdown: <code>{mutation.data.data.markdownPath}</code>

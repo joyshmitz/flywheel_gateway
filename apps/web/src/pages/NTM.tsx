@@ -131,7 +131,7 @@ function AgentRow({ agent }: { agent: NtmAgent }) {
         {!agent.health && "—"}
       </span>
       <span>
-        {agent.isWorking != null
+        {agent.isWorking !== null && agent.isWorking !== undefined
           ? agent.isWorking
             ? `Working (${((agent.confidence ?? 0) * 100).toFixed(0)}%)`
             : "Idle"
@@ -236,7 +236,9 @@ export function NTMPage() {
             onClick={() => setTab(t.id)}
           >
             {t.label}
-            {t.badge != null && <span className="nav-badge">{t.badge}</span>}
+            {t.badge !== null && t.badge !== undefined && (
+              <span className="nav-badge">{t.badge}</span>
+            )}
           </button>
         ))}
       </div>

@@ -57,8 +57,8 @@ export function TableWidget({ widget: _widget, data }: TableWidgetProps) {
       const bVal = b[sortKey];
 
       if (aVal === bVal) return 0;
-      if (aVal == null) return 1;
-      if (bVal == null) return -1;
+      if (aVal === null || aVal === undefined) return 1;
+      if (bVal === null || bVal === undefined) return -1;
 
       let comparison = 0;
       if (typeof aVal === "number" && typeof bVal === "number") {
@@ -113,7 +113,11 @@ export function TableWidget({ widget: _widget, data }: TableWidgetProps) {
           ) : (
             sortedRows.map((row, i) => (
               <tr
-                key={row["id"] != null ? String(row["id"]) : `row-${i}`}
+                key={
+                  row["id"] !== null && row["id"] !== undefined
+                    ? String(row["id"])
+                    : `row-${i}`
+                }
                 className="table-widget__tr"
               >
                 {columns.map((col) => (
@@ -137,7 +141,7 @@ function formatValue(
   value: unknown,
   format?: "number" | "currency" | "percent" | "date",
 ): string {
-  if (value == null) return "-";
+  if (value === null || value === undefined) return "-";
 
   switch (format) {
     case "number":

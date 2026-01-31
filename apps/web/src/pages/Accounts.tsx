@@ -364,9 +364,10 @@ export function AccountsPage() {
         title=""
       >
         <OnboardingWizard
-          {...(onboardingProvider != null && {
-            initialProvider: onboardingProvider,
-          })}
+          {...(onboardingProvider !== null &&
+            onboardingProvider !== undefined && {
+              initialProvider: onboardingProvider,
+            })}
           workspaceId="default"
           onComplete={handleOnboardingComplete}
           onCancel={() => setShowOnboarding(false)}

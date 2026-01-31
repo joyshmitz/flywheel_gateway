@@ -115,14 +115,14 @@ export function DataTableCards<T>({
           <>
             <div className="responsive-card__header">
               <div>
-                {primaryValue != null ? (
+                {primaryValue !== null && primaryValue !== undefined ? (
                   <div className="responsive-card__title">
                     {primaryColumn?.cell
                       ? primaryColumn.cell(row, index)
                       : String(primaryValue)}
                   </div>
                 ) : null}
-                {secondaryValue != null ? (
+                {secondaryValue !== null && secondaryValue !== undefined ? (
                   <div className="responsive-card__subtitle">
                     {secondaryColumn?.cell
                       ? secondaryColumn.cell(row, index)
@@ -151,7 +151,7 @@ export function DataTableCards<T>({
                       <span>
                         {column.cell
                           ? column.cell(row, index)
-                          : value != null
+                          : value !== null && value !== undefined
                             ? String(value)
                             : "—"}
                       </span>

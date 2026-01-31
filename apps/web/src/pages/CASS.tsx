@@ -90,7 +90,9 @@ function SearchResultRow({
       <span>{result.agent ?? "—"}</span>
       <span className="result-text">{result.content.slice(0, 200)}</span>
       <span className="muted">
-        {result.score != null ? result.score.toFixed(2) : "—"}
+        {result.score !== null && result.score !== undefined
+          ? result.score.toFixed(2)
+          : "—"}
       </span>
     </div>
   );

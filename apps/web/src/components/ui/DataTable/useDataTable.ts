@@ -55,9 +55,11 @@ function defaultSort<T>(
   const bVal = getNestedValue(b, accessor);
 
   // Handle null/undefined
-  if (aVal == null && bVal == null) return 0;
-  if (aVal == null) return direction === "asc" ? 1 : -1;
-  if (bVal == null) return direction === "asc" ? -1 : 1;
+  const aIsNullish = aVal === null || aVal === undefined;
+  const bIsNullish = bVal === null || bVal === undefined;
+  if (aIsNullish && bIsNullish) return 0;
+  if (aIsNullish) return direction === "asc" ? 1 : -1;
+  if (bIsNullish) return direction === "asc" ? -1 : 1;
 
   // Compare values
   let comparison = 0;
@@ -85,7 +87,7 @@ function matchFilter<T>(row: T, filter: Filter, columns: Column<T>[]): boolean {
   const filterValue = filter.value;
   const operator = filter.operator || "contains";
 
-  if (value == null) return false;
+  if (value === null || value === undefined) return false;
 
   const strValue = String(value).toLowerCase();
   const filterStr = Array.isArray(filterValue)
@@ -234,7 +236,11 @@ export function useDataTable<T>(
       result = result.filter((row) =>
         columns.some((col) => {
           const value = getNestedValue(row, String(col.accessor));
-          return value != null && String(value).toLowerCase().includes(query);
+          return (
+            value !== null &&
+            value !== undefined &&
+            String(value).toLowerCase().includes(query)
+          );
         }),
       );
     }

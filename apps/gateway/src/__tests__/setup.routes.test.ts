@@ -441,7 +441,7 @@ describe("Setup Routes", () => {
 
       // Registry source should be either 'manifest' or 'fallback'
       const { registrySource } = body.data.metadata;
-      if (registrySource == null) {
+      if (registrySource === null || registrySource === undefined) {
         throw new Error("Expected tool registrySource to be present");
       }
       expect(["manifest", "fallback"]).toContain(registrySource);
