@@ -53,7 +53,7 @@ const agentStates = new Map<string, AgentStateRecord>();
 
 /** Event listeners for state changes */
 type StateChangeListener = (event: StateChangeEvent) => void;
-const listeners: StateChangeListener[] = [];
+let listeners: StateChangeListener[] = [];
 
 /**
  * Check if an agent state exists.
@@ -303,23 +303,27 @@ export function getAllAgentStates(): Map<string, AgentStateRecord> {
 /**
  * Register a listener for state change events.
  * Returns an unsubscribe function.
+ *
+ * Uses immutable array updates to prevent iteration issues
+ * when listeners are added/removed during event emission.
  */
 export function onStateChange(listener: StateChangeListener): () => void {
-  listeners.push(listener);
+  listeners = [...listeners, listener];
   return () => {
-    const index = listeners.indexOf(listener);
-    if (index >= 0) {
-      listeners.splice(index, 1);
-    }
+    listeners = listeners.filter((l) => l !== listener);
   };
 }
 
 /**
  * Emit a state change event to all listeners.
+ *
+ * Takes a snapshot of listeners at call time to allow safe
+ * concurrent modification during iteration.
  */
 function emitStateChange(event: StateChangeEvent): void {
   const log = getLogger();
-  for (const listener of listeners) {
+  const snapshot = listeners;
+  for (const listener of snapshot) {
     try {
       listener(event);
     } catch (error) {

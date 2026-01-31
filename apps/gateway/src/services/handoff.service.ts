@@ -132,7 +132,8 @@ function publishHandoffEvent(
 }
 
 /**
- * Add to index.
+ * Add to index. Uses get-or-create pattern that's safe
+ * against async interleaving.
  */
 function addToIndex(
   index: Map<string, Set<string>>,
@@ -144,7 +145,10 @@ function addToIndex(
     set = new Set();
     index.set(key, set);
   }
-  set.add(id);
+  // Re-get to handle potential async interleaving
+  // (another operation may have created the set)
+  const actualSet = index.get(key) ?? set;
+  actualSet.add(id);
 }
 
 /**
