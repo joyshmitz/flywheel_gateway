@@ -26,7 +26,15 @@ function sendMissedMessages(
       message: msg,
       ...(requiresAck && { ackRequired: true }),
     };
-    ws.send(serializeServerMessage(serverMsg));
+    try {
+      ws.send(serializeServerMessage(serverMsg));
+    } catch (err) {
+      logger.warn(
+        { connectionId: ws.data.connectionId, channel: channelStr, error: err },
+        "Failed to send missed message, connection may be closed",
+      );
+      return; // Stop sending if connection is dead
+    }
     ws.data.subscriptions.set(channelStr, msg.cursor);
     if (requiresAck) {
       ws.data.pendingAcks.set(msg.id, {

@@ -10,6 +10,7 @@ import { z } from "zod";
 import {
   AgentListResponseSchema,
   AgentResponseSchema,
+  AgentStateSchema,
   ApiErrorResponseSchema,
   // Beads (BR/BV)
   BeadListResponseSchema,
@@ -216,11 +217,11 @@ registry.registerPath({
   tags: ["Agents"],
   request: {
     query: PaginationQuerySchema.extend({
-      status: z
-        .enum(["spawning", "ready", "busy", "terminated", "error"])
+      state: AgentStateSchema
         .optional()
         .openapi({
-          description: "Filter by agent status",
+          description:
+            "Filter by agent activity state (comma-separated for multiple values)",
         }),
     }),
   },

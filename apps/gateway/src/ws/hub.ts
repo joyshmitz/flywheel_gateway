@@ -172,6 +172,9 @@ export class WebSocketHub {
     const ws = this.connections.get(connectionId);
     if (!ws) return;
 
+    // Clear pending acks to prevent memory leaks
+    ws.data.pendingAcks.clear();
+
     // Unsubscribe from all channels
     for (const channelStr of ws.data.subscriptions.keys()) {
       const subs = this.subscribers.get(channelStr);

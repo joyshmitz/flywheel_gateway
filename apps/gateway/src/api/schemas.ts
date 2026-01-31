@@ -86,9 +86,17 @@ registry.register("ApiErrorResponse", ApiErrorResponseSchema);
 // ============================================================================
 
 export const AgentStateSchema = z
-  .enum(["spawning", "ready", "busy", "terminated", "error"])
+  .enum([
+    "idle",
+    "thinking",
+    "working",
+    "tool_calling",
+    "waiting_input",
+    "error",
+    "stalled",
+  ])
   .openapi({
-    description: "Current state of the agent",
+    description: "Current activity state of the agent",
   });
 
 registry.register("AgentState", AgentStateSchema);
