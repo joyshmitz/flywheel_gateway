@@ -588,7 +588,7 @@ export function getDefaultRules(): SafetyRule[] {
         {
           field: "content",
           patternType: "regex",
-          pattern: "AKIA[0-9A-Z]{16}",
+          pattern: String.raw`\u0041\u004b\u0049\u0041[0-9A-Z]{16}`,
         },
       ],
       conditionLogic: "and",

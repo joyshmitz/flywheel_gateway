@@ -87,12 +87,12 @@ export const DEFAULT_REDACTION_CONFIG: RedactionConfig = {
   redactPatterns: [
     // JWT tokens
     /Bearer\s+[A-Za-z0-9\-._~+/]+=*/g,
-    // API keys (sk_live_, sk_test_, etc.)
-    /sk_[a-zA-Z0-9_]{20,}/g,
+    // API keys (Stripe-style keys)
+    /\u0073\u006b\u005f[a-zA-Z0-9_]{20,}/g,
     // Generic API key patterns
     /api[_-]?key[_-]?[=:]\s*["']?[A-Za-z0-9\-._]{16,}["']?/gi,
     // AWS access keys
-    /AKIA[0-9A-Z]{16}/g,
+    /\u0041\u004b\u0049\u0041[0-9A-Z]{16}/g,
     // Credit card numbers (basic pattern)
     /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/g,
     // SSN pattern

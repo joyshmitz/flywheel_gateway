@@ -81,13 +81,12 @@ const SECRETS_INDEX_FILE = "secrets.yaml";
  * Expected structure:
  *   secrets/
  *     secrets.yaml (index file mapping tool→key→filename)
- *     dcg-api-key.txt
- *     cass-token.txt
+ *     tool-secret.txt
  *
  * Or secrets.yaml can contain inline values:
  *   tools:
  *     dcg:
- *       apiKey: "example-key"
+ *       <key>: "<redacted>"
  */
 export async function loadSecretsFromDir(
   privateDir?: string,
