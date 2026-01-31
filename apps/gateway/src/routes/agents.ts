@@ -36,6 +36,9 @@ import { transformZodError } from "../utils/validation";
 
 const agents = new Hono();
 
+/** Maximum items allowed in comma-separated list parameters */
+const MAX_CSV_ITEMS = 50;
+
 // ============================================================================
 // Validation Schemas
 // ============================================================================
@@ -145,8 +148,8 @@ agents.get("/", async (c) => {
     const cursorParam = c.req.query("cursor");
 
     const result = await listAgents({
-      ...(stateParam && { state: stateParam.split(",") }),
-      ...(driverParam && { driver: driverParam.split(",") }),
+      ...(stateParam && { state: stateParam.split(",").slice(0, MAX_CSV_ITEMS) }),
+      ...(driverParam && { driver: driverParam.split(",").slice(0, MAX_CSV_ITEMS) }),
       ...(createdAfterParam && { createdAfter: createdAfterParam }),
       ...(createdBeforeParam && { createdBefore: createdBeforeParam }),
       limit: safeParseInt(limitParam, 50),

@@ -73,6 +73,9 @@ import { transformZodError } from "../utils/validation";
 
 const dcg = new Hono();
 
+/** Maximum items allowed in comma-separated list parameters */
+const MAX_CSV_ITEMS = 50;
+
 // ============================================================================
 // Validation Schemas
 // ============================================================================
@@ -335,8 +338,11 @@ dcg.get("/blocks", async (c) => {
     // Build options conditionally (for exactOptionalPropertyTypes)
     const options: Parameters<typeof getBlockEvents>[0] = {};
     if (query.agentId !== undefined) options.agentId = query.agentId;
-    if (query.severity !== undefined)
-      options.severity = query.severity.split(",") as DCGSeverity[];
+    if (query.severity !== undefined) {
+      options.severity = query.severity
+        .split(",")
+        .slice(0, MAX_CSV_ITEMS) as DCGSeverity[];
+    }
     if (query.pack !== undefined) options.pack = query.pack;
     if (query.limit !== undefined) options.limit = query.limit;
     if (query.starting_after !== undefined)

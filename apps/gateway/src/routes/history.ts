@@ -34,6 +34,19 @@ import { transformZodError } from "../utils/validation";
 const history = new Hono();
 
 // ============================================================================
+// Constants
+// ============================================================================
+
+/** Maximum items allowed in comma-separated list parameters */
+const MAX_CSV_ITEMS = 50;
+
+/** Maximum output string length for extraction (10MB) */
+const MAX_EXTRACT_OUTPUT_LENGTH = 10_000_000;
+
+/** Maximum custom regex pattern length */
+const MAX_CUSTOM_PATTERN_LENGTH = 1000;
+
+// ============================================================================
 // Validation Schemas
 // ============================================================================
 
@@ -69,9 +82,9 @@ const ExtractSchema = z.object({
     "errors",
     "custom",
   ]),
-  output: z.string(),
-  language: z.string().optional(),
-  customPattern: z.string().optional(),
+  output: z.string().max(MAX_EXTRACT_OUTPUT_LENGTH),
+  language: z.string().max(50).optional(),
+  customPattern: z.string().max(MAX_CUSTOM_PATTERN_LENGTH).optional(),
 });
 
 // ============================================================================
@@ -113,8 +126,10 @@ history.get("/", async (c) => {
     // Build options conditionally (for exactOptionalPropertyTypes)
     const options: HistoryQueryOptions = {};
     if (params.agentId !== undefined) options.agentId = params.agentId;
-    if (params.outcome !== undefined)
-      options.outcome = params.outcome.split(",") as HistoryOutcome[];
+    if (params.outcome !== undefined) {
+      const outcomes = params.outcome.split(",").slice(0, MAX_CSV_ITEMS);
+      options.outcome = outcomes as HistoryOutcome[];
+    }
     if (params.starred === "true") options.starred = true;
     else if (params.starred === "false") options.starred = false;
     if (params.startDate !== undefined)
@@ -122,7 +137,9 @@ history.get("/", async (c) => {
     if (params.endDate !== undefined)
       options.endDate = new Date(params.endDate);
     if (params.search !== undefined) options.search = params.search;
-    if (params.tags !== undefined) options.tags = params.tags.split(",");
+    if (params.tags !== undefined) {
+      options.tags = params.tags.split(",").slice(0, MAX_CSV_ITEMS);
+    }
     if (params.limit !== undefined) options.limit = params.limit;
     if (params.cursor !== undefined) options.cursor = params.cursor;
 

@@ -470,12 +470,19 @@ export function createHubMessage(
   };
 }
 
+/** Maximum allowed size for client WebSocket messages (1MB) */
+const MAX_CLIENT_MESSAGE_SIZE = 1_000_000;
+
 /**
  * Parse a client message from JSON.
  * Returns undefined if parsing fails or message is invalid.
  */
 export function parseClientMessage(json: string): ClientMessage | undefined {
   try {
+    // Reject oversized messages before parsing to prevent DoS
+    if (json.length > MAX_CLIENT_MESSAGE_SIZE) {
+      return undefined;
+    }
     const parsed = JSON.parse(json);
     if (!parsed || typeof parsed !== "object") return undefined;
     if (!("type" in parsed) || typeof parsed.type !== "string")
