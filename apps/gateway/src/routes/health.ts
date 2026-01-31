@@ -138,9 +138,11 @@ async function checkDatabase(): Promise<CheckResult> {
       latencyMs: Math.round(performance.now() - startTime),
     };
   } catch (error) {
+    // Log detailed error for debugging, return generic message to client
+    getLogger().error({ error }, "Database health check failed");
     return {
       status: "fail",
-      message: `Database error: ${error instanceof Error ? error.message : String(error)}`,
+      message: "Database connection error",
       latencyMs: Math.round(performance.now() - startTime),
     };
   }
@@ -322,9 +324,11 @@ async function checkDatabaseHealth(): Promise<ComponentHealth> {
       latencyMs: Math.round(performance.now() - startTime),
     };
   } catch (error) {
+    // Log detailed error for debugging, return generic message to client
+    getLogger().error({ error }, "Database health check failed");
     return {
       status: "unhealthy",
-      message: `Database error: ${error instanceof Error ? error.message : String(error)}`,
+      message: "Database connection error",
       latencyMs: Math.round(performance.now() - startTime),
     };
   }
@@ -448,9 +452,11 @@ async function checkAgentCLIsHealth(): Promise<
       detection,
     };
   } catch (error) {
+    // Log detailed error for debugging, return generic message to client
+    getLogger().error({ error }, "Agent detection health check failed");
     return {
       status: "unhealthy",
-      message: `Detection failed: ${error instanceof Error ? error.message : String(error)}`,
+      message: "Agent detection failed",
       latencyMs: Math.round(performance.now() - startTime),
       detection: null,
     };
