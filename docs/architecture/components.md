@@ -8,17 +8,19 @@ Detailed documentation of Flywheel Gateway's component architecture.
 
 ```
 apps/gateway/src/
-├── index.ts              # Entry point
-├── app.ts                # Hono app configuration
+├── index.ts              # Entry point (Hono + Bun.serve)
+├── startup-warnings.ts   # Startup security warnings
+├── api/                  # OpenAPI + schema helpers
+├── caam/                 # BYOA / CAAM helpers
+├── config/               # Driver + app configuration
+├── jobs/                 # Background jobs
 ├── routes/               # HTTP route handlers
 │   ├── index.ts          # Route aggregation
 │   ├── agents.ts         # Agent CRUD
-│   ├── sessions.ts       # Session management
-│   ├── analytics.ts      # Analytics endpoints
 │   └── ...
 ├── services/             # Business logic
-│   ├── agent.service.ts
-│   ├── session.service.ts
+│   ├── agent.ts
+│   ├── context.service.ts
 │   ├── dcg.service.ts
 │   └── ...
 ├── middleware/           # HTTP middleware
@@ -34,6 +36,7 @@ apps/gateway/src/
 │   ├── migrations/       # SQL migrations
 │   └── index.ts          # DB connection
 ├── models/               # Type definitions
+├── types/                # Internal types
 └── utils/                # Utilities
 ```
 

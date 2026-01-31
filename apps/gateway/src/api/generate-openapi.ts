@@ -217,12 +217,10 @@ registry.registerPath({
   tags: ["Agents"],
   request: {
     query: PaginationQuerySchema.extend({
-      state: AgentStateSchema
-        .optional()
-        .openapi({
-          description:
-            "Filter by agent activity state (comma-separated for multiple values)",
-        }),
+      state: AgentStateSchema.optional().openapi({
+        description:
+          "Filter by agent activity state (comma-separated for multiple values)",
+      }),
     }),
   },
   responses: {
