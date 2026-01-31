@@ -6,13 +6,8 @@
 
 import { CassClientError } from "@flywheel/flywheel-clients";
 import type { GatewayError } from "@flywheel/shared/errors";
-import {
-  createGatewayError,
-  serializeGatewayError,
-  toGatewayError,
-} from "@flywheel/shared/errors";
+import { createGatewayError, toGatewayError } from "@flywheel/shared/errors";
 import { type Context, Hono } from "hono";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
 import { getLogger } from "../middleware/correlation";
 import {
