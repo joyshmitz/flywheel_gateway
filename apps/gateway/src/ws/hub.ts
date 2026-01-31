@@ -905,14 +905,23 @@ export class WebSocketHub {
   broadcast(message: ServerMessage): number {
     const json = serializeServerMessage(message);
     let sent = 0;
+    let failed = 0;
 
     for (const ws of this.connections.values()) {
       try {
         ws.send(json);
         sent++;
       } catch {
-        // Ignore send failures during broadcast
+        failed++;
       }
+    }
+
+    // Log if there were failures for observability
+    if (failed > 0) {
+      logger.warn(
+        { messageType: message.type, sent, failed, total: this.connections.size },
+        "Broadcast had send failures",
+      );
     }
 
     return sent;
