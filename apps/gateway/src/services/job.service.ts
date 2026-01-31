@@ -619,7 +619,9 @@ export class JobService {
     this.emitEvent("job.resumed", job, {});
 
     // Trigger queue processing
-    this.processQueue().catch(() => {});
+    this.processQueue().catch((err) => {
+      baseLogger.error({ error: err }, "Error processing job queue");
+    });
 
     return job;
   }
