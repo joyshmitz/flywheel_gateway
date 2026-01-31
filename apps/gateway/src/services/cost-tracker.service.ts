@@ -10,7 +10,7 @@ import {
   DEFAULT_PAGINATION,
   decodeCursor,
 } from "@flywheel/shared/api/pagination";
-import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lt, lte, or, sql } from "drizzle-orm";
 import { db } from "../db/connection";
 import { costAggregates, costRecords, modelRateCards } from "../db/schema";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
@@ -304,73 +304,111 @@ export async function recordCost(input: CostRecordInput): Promise<CostRecord> {
 export async function getCostRecords(
   filter?: CostFilter,
 ): Promise<CostRecordListResponse> {
-  const conditions = [];
+  const baseConditions = [];
 
   if (filter?.organizationId) {
-    conditions.push(eq(costRecords.organizationId, filter.organizationId));
+    baseConditions.push(eq(costRecords.organizationId, filter.organizationId));
   }
   if (filter?.projectId) {
-    conditions.push(eq(costRecords.projectId, filter.projectId));
+    baseConditions.push(eq(costRecords.projectId, filter.projectId));
   }
   if (filter?.agentId) {
-    conditions.push(eq(costRecords.agentId, filter.agentId));
+    baseConditions.push(eq(costRecords.agentId, filter.agentId));
   }
   if (filter?.model) {
-    conditions.push(eq(costRecords.model, filter.model));
+    baseConditions.push(eq(costRecords.model, filter.model));
   }
   if (filter?.provider) {
-    conditions.push(eq(costRecords.provider, filter.provider));
+    baseConditions.push(eq(costRecords.provider, filter.provider));
   }
   if (filter?.since) {
-    conditions.push(gte(costRecords.timestamp, filter.since));
+    baseConditions.push(gte(costRecords.timestamp, filter.since));
   }
   if (filter?.until) {
-    conditions.push(lte(costRecords.timestamp, filter.until));
+    baseConditions.push(lte(costRecords.timestamp, filter.until));
   }
 
-  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  const baseWhereClause =
+    baseConditions.length > 0 ? and(...baseConditions) : undefined;
 
   // Get total count
   const countResult = await db
     .select({ count: sql<number>`count(*)` })
     .from(costRecords)
-    .where(whereClause);
+    .where(baseWhereClause);
   const total = countResult[0]?.count ?? 0;
 
-  // Determine limit and offset
+  // Determine limit
   const limit = filter?.limit ?? DEFAULT_PAGINATION.limit;
-  let offset = 0;
+
+  let startingAfterCursor:
+    | {
+        id: string;
+        timestamp: Date;
+      }
+    | undefined;
 
   if (filter?.startingAfter) {
     const decoded = decodeCursor(filter.startingAfter);
     if (decoded) {
-      // Find the position of the cursor record
-      const cursorRecord = await db
-        .select({ timestamp: costRecords.timestamp })
-        .from(costRecords)
-        .where(eq(costRecords.id, decoded.id))
-        .limit(1);
+      const cursorId = decoded.id;
 
-      const cursorItem = cursorRecord[0];
-      if (cursorItem) {
-        const cursorTimestamp = cursorItem.timestamp;
-        const countBefore = await db
-          .select({ count: sql<number>`count(*)` })
+      // Prefer sortValue if present (newer cursors can encode timestamp directly).
+      if (typeof decoded.sortValue === "number") {
+        startingAfterCursor = {
+          id: cursorId,
+          timestamp: new Date(decoded.sortValue),
+        };
+      } else {
+        // Backward compat: older cursors only carry the id, so fetch the timestamp.
+        const cursorRecord = await db
+          .select({ timestamp: costRecords.timestamp })
           .from(costRecords)
-          .where(and(whereClause, gte(costRecords.timestamp, cursorTimestamp)));
-        offset = countBefore[0]?.count ?? 0;
+          .where(
+            baseWhereClause
+              ? and(baseWhereClause, eq(costRecords.id, cursorId))
+              : eq(costRecords.id, cursorId),
+          )
+          .limit(1);
+        const cursorItem = cursorRecord[0];
+        if (cursorItem) {
+          startingAfterCursor = {
+            id: cursorId,
+            timestamp: cursorItem.timestamp,
+          };
+        }
       }
     }
   }
+
+  const paginationConditions = [...baseConditions];
+  if (startingAfterCursor) {
+    // Descending order pagination:
+    // - take records strictly older than the cursor timestamp
+    // - if timestamps match, tie-break by id to avoid skipping same-timestamp rows
+    const cursorCondition = or(
+      lt(costRecords.timestamp, startingAfterCursor.timestamp),
+      and(
+        eq(costRecords.timestamp, startingAfterCursor.timestamp),
+        lt(costRecords.id, startingAfterCursor.id),
+      ),
+    );
+    if (cursorCondition) {
+      paginationConditions.push(cursorCondition);
+    }
+  }
+
+  const pageWhereClause =
+    paginationConditions.length > 0 ? and(...paginationConditions) : undefined;
+  const pageWhereClauseOrAll = pageWhereClause ?? sql`1=1`;
 
   // Fetch records (limit + 1 to determine hasMore)
   const rows = await db
     .select()
     .from(costRecords)
-    .where(whereClause)
-    .orderBy(desc(costRecords.timestamp))
-    .limit(limit + 1)
-    .offset(offset);
+    .where(pageWhereClauseOrAll)
+    .orderBy(desc(costRecords.timestamp), desc(costRecords.id))
+    .limit(limit + 1);
 
   const hasMore = rows.length > limit;
   const resultRows = hasMore ? rows.slice(0, limit) : rows;
@@ -415,10 +453,16 @@ export async function getCostRecords(
     const firstItem = resultRows[0]!;
 
     if (hasMore) {
-      result.nextCursor = createCursor(lastItem.id);
+      result.nextCursor = createCursor(
+        lastItem.id,
+        lastItem.timestamp.getTime(),
+      );
     }
-    if (offset > 0) {
-      result.prevCursor = createCursor(firstItem.id);
+    if (startingAfterCursor) {
+      result.prevCursor = createCursor(
+        firstItem.id,
+        firstItem.timestamp.getTime(),
+      );
     }
   }
 
