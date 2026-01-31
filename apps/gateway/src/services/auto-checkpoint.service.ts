@@ -101,6 +101,8 @@ export class AutoCheckpointService {
   private readonly config: AutoCheckpointConfig;
   private state: AutoCheckpointState;
   private intervalTimer: ReturnType<typeof setInterval> | null = null;
+  /** Guard against overlapping interval-triggered checkpoints */
+  private checkpointInProgress = false;
   private stateProvider:
     | (() => Promise<{
         conversationHistory: unknown[];
@@ -155,7 +157,16 @@ export class AutoCheckpointService {
     if (this.config.intervalMinutes > 0) {
       const intervalMs = this.config.intervalMinutes * 60 * 1000;
       this.intervalTimer = setInterval(async () => {
-        await this.tryCheckpoint("interval");
+        // Skip if a checkpoint is already in progress (prevents overlap)
+        if (this.checkpointInProgress) {
+          return;
+        }
+        this.checkpointInProgress = true;
+        try {
+          await this.tryCheckpoint("interval");
+        } finally {
+          this.checkpointInProgress = false;
+        }
       }, intervalMs);
 
       // Ensure the interval doesn't prevent process exit

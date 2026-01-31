@@ -114,6 +114,9 @@ const activeSessions = new Map<
 
 const MAX_LOG_BYTES = 5 * 1024 * 1024;
 
+/** Maximum time to wait for subprocess exit (5 minutes) */
+const SUBPROCESS_TIMEOUT_MS = 5 * 60 * 1000;
+
 /**
  * Safely read a stream up to a limit, draining excess to avoid pipe blocking.
  */
@@ -340,7 +343,26 @@ async function runSyncProcess(
 
           const stdout = await readStreamSafe(proc.stdout, MAX_LOG_BYTES);
           const stderr = await readStreamSafe(proc.stderr, MAX_LOG_BYTES);
-          const exitCode = await proc.exited;
+
+          // Wait for process exit with timeout to prevent indefinite hang
+          let timeoutId: ReturnType<typeof setTimeout> | undefined;
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            timeoutId = setTimeout(() => {
+              try {
+                proc.kill();
+              } catch {
+                // Process may have already exited
+              }
+              reject(new Error(`Subprocess timed out after ${SUBPROCESS_TIMEOUT_MS}ms`));
+            }, SUBPROCESS_TIMEOUT_MS);
+          });
+
+          let exitCode: number;
+          try {
+            exitCode = await Promise.race([proc.exited, timeoutPromise]);
+          } finally {
+            if (timeoutId) clearTimeout(timeoutId);
+          }
 
           activeSyncs.delete(repo.id);
 
