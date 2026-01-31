@@ -164,30 +164,34 @@ export class GraphBridgeService {
         const decoder = new TextDecoder();
         let buffer = "";
 
-        while (this.isRunning) {
-          const { done, value } = await reader.read();
-          if (done) break;
+        try {
+          while (this.isRunning) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          buffer += decoder.decode(value, { stream: true });
+            buffer += decoder.decode(value, { stream: true });
 
-          // Parse SSE events from buffer
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
+            // Parse SSE events from buffer
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
 
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6);
-              try {
-                const event = JSON.parse(data) as ControlPlaneEvent;
-                this.handleEvent(event);
-              } catch (e) {
-                logger.warn(
-                  { data, error: e },
-                  "[GRAPH-BRIDGE] Failed to parse SSE event",
-                );
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                const data = line.slice(6);
+                try {
+                  const event = JSON.parse(data) as ControlPlaneEvent;
+                  this.handleEvent(event);
+                } catch (e) {
+                  logger.warn(
+                    { data, error: e },
+                    "[GRAPH-BRIDGE] Failed to parse SSE event",
+                  );
+                }
               }
             }
           }
+        } finally {
+          reader.releaseLock();
         }
       } catch (error) {
         if (!this.isRunning) return;
