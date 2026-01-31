@@ -308,6 +308,16 @@ export function handleWSMessage(
           }),
         };
         ws.send(serializeServerMessage(backfillResponse));
+
+        // If the channel is currently subscribed, advance the stored cursor to
+        // reflect the last message delivered via backfill. This keeps ping /
+        // introspection cursors aligned with what the client has received.
+        if (
+          replayResult.lastCursor !== undefined &&
+          ws.data.subscriptions.has(channelStr)
+        ) {
+          ws.data.subscriptions.set(channelStr, replayResult.lastCursor);
+        }
         break;
       }
 
