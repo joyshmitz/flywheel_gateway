@@ -372,11 +372,11 @@ export async function decideApproval(
     };
   }
 
-  // Apply decision
+  // Apply decision atomically - include status check in WHERE to prevent race condition
   const status = decision.decision === "approved" ? "approved" : "denied";
   const decidedAt = new Date();
 
-  await db
+  const updated = await db
     .update(approvalRequests)
     .set({
       status,
@@ -384,7 +384,22 @@ export async function decideApproval(
       decidedAt,
       decisionReason: decision.reason,
     })
-    .where(eq(approvalRequests.id, decision.requestId));
+    .where(
+      and(
+        eq(approvalRequests.id, decision.requestId),
+        eq(approvalRequests.status, "pending"),
+      ),
+    )
+    .returning({ id: approvalRequests.id });
+
+  // If no row was updated, another decision was made concurrently
+  if (updated.length === 0) {
+    const currentRequest = await getApproval(decision.requestId);
+    return {
+      success: false,
+      error: `Request was already decided: ${currentRequest?.status ?? "unknown"}`,
+    };
+  }
 
   logger.info(
     {

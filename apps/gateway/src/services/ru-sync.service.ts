@@ -436,6 +436,29 @@ async function runSyncProcess(
             { correlationId, sessionId, repoId: repo.id, error },
             "Sync operation failed",
           );
+          // Update database with failure status
+          try {
+            await db
+              .update(fleetSyncOps)
+              .set({
+                status: "failed",
+                completedAt: new Date(),
+                error:
+                  error instanceof Error ? error.message : "Unknown exception",
+                errorCode: "EXCEPTION",
+              })
+              .where(
+                and(
+                  eq(fleetSyncOps.repoId, repo.id),
+                  eq(fleetSyncOps.correlationId, sessionId),
+                ),
+              );
+          } catch (dbError) {
+            logger.error(
+              { correlationId, sessionId, repoId: repo.id, dbError },
+              "Failed to update sync op status in database",
+            );
+          }
         }
       }),
     );

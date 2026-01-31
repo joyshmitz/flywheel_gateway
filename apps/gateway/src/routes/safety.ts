@@ -156,12 +156,21 @@ function getToolInstallRecommendation(
   const displayName = toolDef?.displayName ?? toolName.toUpperCase();
   const docsUrl = toolDef?.docsUrl;
 
-  // Use install command from manifest if available
+  // Prefer verified installer when available
+  if (toolDef?.verifiedInstaller) {
+    const runner = toolDef.verifiedInstaller.runner;
+    const args = toolDef.verifiedInstaller.args?.join(" ") ?? "";
+    const cmd = `${runner} ${args}`.trim();
+    return `Install ${displayName}: ${cmd}`;
+  }
+
+  // Use install command from manifest if available (legacy)
   if (toolDef?.install?.[0]) {
     const installSpec = toolDef.install[0];
-    const cmd = Array.isArray(installSpec.args)
-      ? `${installSpec.command} ${installSpec.args.join(" ")}`
-      : installSpec.command;
+    const args = Array.isArray(installSpec.args)
+      ? installSpec.args.join(" ")
+      : "";
+    const cmd = `${installSpec.command} ${args}`.trim();
     return `Install ${displayName}: ${cmd}`;
   }
 

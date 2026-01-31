@@ -51,6 +51,25 @@ export class RotationError extends ContextHealthError {
 }
 
 // ============================================================================
+// Secure ID Generation
+// ============================================================================
+
+/**
+ * Generate a cryptographically secure random ID.
+ * Uses crypto.getRandomValues() instead of Math.random() for security.
+ */
+function generateSecureId(prefix: string, length = 8): string {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const randomBytes = new Uint8Array(length);
+  crypto.getRandomValues(randomBytes);
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += chars[randomBytes[i]! % chars.length];
+  }
+  return `${prefix}_${Date.now()}_${result}`;
+}
+
+// ============================================================================
 // In-Memory Session State (for demo - would use DB in production)
 // ============================================================================
 
@@ -669,13 +688,13 @@ export class ContextHealthService {
     log.info({ sessionId, reason }, "Starting session rotation");
 
     // 1. Create checkpoint (simulated)
-    const checkpointId = `chk_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const checkpointId = generateSecureId("chk");
 
     // 2. Build context transfer
     const transfer = await this.buildTransfer(sessionId, state, rotationConfig);
 
     // 3. Create new session
-    const newSessionId = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const newSessionId = generateSecureId("sess");
 
     this.registerSession(newSessionId, {
       model: rotationConfig.newAgent.model ?? state.model,
