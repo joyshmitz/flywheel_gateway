@@ -5,9 +5,8 @@
  * like giil (image download) and csctf (chat conversion).
  */
 
-import { type Context, Hono } from "hono";
+import { Hono } from "hono";
 import { z } from "zod";
-import { getLogger } from "../middleware/correlation";
 import {
   getUtilityStatus,
   installUtility,
@@ -17,15 +16,8 @@ import {
   runGiil,
   updateUtility,
 } from "../services/utilities.service";
-import {
-  sendError,
-  sendInternalError,
-  sendList,
-  sendNotFound,
-  sendResource,
-  sendValidationError,
-} from "../utils/response";
-import { transformZodError } from "../utils/validation";
+import { createRouteErrorHandler } from "../utils/error-handler";
+import { sendList, sendNotFound, sendResource } from "../utils/response";
 
 const utilities = new Hono();
 
@@ -46,24 +38,8 @@ const CsctfRequestSchema = z.object({
   publishToGhPages: z.boolean().optional(),
 });
 
-// ============================================================================
-// Error Handler
-// ============================================================================
-
-function handleError(error: unknown, c: Context) {
-  const log = getLogger();
-
-  if (error instanceof z.ZodError) {
-    return sendValidationError(c, transformZodError(error));
-  }
-
-  if (error instanceof SyntaxError && error.message.includes("JSON")) {
-    return sendError(c, "INVALID_REQUEST", "Invalid JSON in request body", 400);
-  }
-
-  log.error({ error }, "Unexpected error in utilities route");
-  return sendInternalError(c);
-}
+// Use shared error handler
+const handleError = createRouteErrorHandler("utilities");
 
 // ============================================================================
 // List and Status Routes
