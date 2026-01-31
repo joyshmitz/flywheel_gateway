@@ -116,10 +116,7 @@ function handleContextError(error: unknown, c: HonoContext) {
   }
 
   log.error({ error }, "Unexpected error in context route");
-  return sendInternalError(
-    c,
-    error instanceof Error ? error.message : "Internal server error",
-  );
+  return sendInternalError(c);
 }
 
 // ============================================================================

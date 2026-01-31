@@ -180,7 +180,7 @@ knowledge.get("/health", async (c) => {
       {
         status: available ? "unknown" : "unavailable",
         available,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: "Health check failed",
         timestamp: new Date().toISOString(),
       },
       available ? 200 : 503,
