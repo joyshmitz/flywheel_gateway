@@ -100,7 +100,7 @@ function handleError(error: unknown, c: Context) {
     }
 
     log.error({ error: error.message }, "Error in processes route");
-    return sendError(c, "PT_ERROR", error.message, 500);
+    return sendError(c, "PT_ERROR", "Process management command failed", 500);
   }
 
   log.error({ error }, "Unexpected error in processes route");

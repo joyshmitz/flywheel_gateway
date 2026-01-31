@@ -77,7 +77,7 @@ function handleError(error: unknown, c: Context) {
     }
 
     log.error({ error: error.message }, "Error in plans route");
-    return sendError(c, "APR_ERROR", error.message, 500);
+    return sendError(c, "APR_ERROR", "Plan revision command failed", 500);
   }
 
   log.error({ error }, "Unexpected error in plans route");

@@ -70,7 +70,7 @@ function handleError(error: unknown, c: Context) {
     }
 
     log.error({ error: error.message }, "Error in prompts route");
-    return sendError(c, "JFP_ERROR", error.message, 500);
+    return sendError(c, "JFP_ERROR", "Prompt command execution failed", 500);
   }
 
   log.error({ error }, "Unexpected error in prompts route");

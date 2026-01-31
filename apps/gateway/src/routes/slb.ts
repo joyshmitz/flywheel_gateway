@@ -150,7 +150,7 @@ function handleError(error: unknown, c: Context) {
     }
 
     log.error({ error: error.message }, "Error in slb route");
-    return sendError(c, "SLB_ERROR", error.message, 500);
+    return sendError(c, "SLB_ERROR", "SLB command execution failed", 500);
   }
 
   log.error({ error }, "Unexpected error in slb route");
