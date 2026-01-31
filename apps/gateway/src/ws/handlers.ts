@@ -1,7 +1,7 @@
 import type { ServerWebSocket } from "bun";
 import { logger } from "../services/logger";
 import { canSubscribe } from "./authorization";
-import { channelRequiresAck, parseChannel } from "./channels";
+import { channelRequiresAck, channelToString, parseChannel } from "./channels";
 import { type ConnectionData, getHub } from "./hub";
 import {
   createWSError,
@@ -18,6 +18,7 @@ function sendMissedMessages(
   messages: HubMessage[],
 ): void {
   if (!channel) return;
+  const channelStr = channelToString(channel);
   const requiresAck = channelRequiresAck(channel);
   for (const msg of messages) {
     const serverMsg: ServerMessage = {
@@ -26,6 +27,7 @@ function sendMissedMessages(
       ...(requiresAck && { ackRequired: true }),
     };
     ws.send(serializeServerMessage(serverMsg));
+    ws.data.subscriptions.set(channelStr, msg.cursor);
     if (requiresAck) {
       ws.data.pendingAcks.set(msg.id, {
         message: msg,

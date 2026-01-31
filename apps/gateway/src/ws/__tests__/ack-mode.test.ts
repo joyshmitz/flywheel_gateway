@@ -294,7 +294,9 @@ describe("WebSocket Ack Mode", () => {
       const channelStr = "workspace:conflicts:workspace-1";
 
       // First, publish a message without the connection subscribed
-      hub.publish(channel, "conflict.detected", { fileId: "file-1" });
+      const published = hub.publish(channel, "conflict.detected", {
+        fileId: "file-1",
+      });
 
       // Now subscribe and reconnect with old cursor (from beginning)
       hub.subscribe("conn-11", channel);
@@ -306,6 +308,9 @@ describe("WebSocket Ack Mode", () => {
       hub.handleReconnect("conn-11", {
         [channelStr]: "0", // Start from beginning
       });
+
+      // Cursor tracking should reflect what was actually delivered
+      expect(ws.data.subscriptions.get(channelStr)).toBe(published.cursor);
 
       // The reconnect should have tracked the replayed messages as pending acks
       const pending = hub.getPendingAcks("conn-11");

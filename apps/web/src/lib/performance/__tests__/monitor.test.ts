@@ -143,7 +143,7 @@ describe("PerformanceMonitor", () => {
       const requestAnimationFrameMock = mock(() => 1);
       const cancelAnimationFrameMock = mock(() => {});
 
-      globalThis.setInterval = setIntervalMock as typeof setInterval;
+      globalThis.setInterval = setIntervalMock as unknown as typeof setInterval;
       globalThis.clearInterval = clearIntervalMock as typeof clearInterval;
       globalThis.requestAnimationFrame =
         requestAnimationFrameMock as typeof requestAnimationFrame;

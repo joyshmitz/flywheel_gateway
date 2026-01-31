@@ -575,6 +575,7 @@ export class WebSocketHub {
           };
           try {
             ws.send(serializeServerMessage(serverMessage));
+            ws.data.subscriptions.set(channelStr, msg.cursor);
 
             // Track as pending ack if required
             if (requiresAck) {

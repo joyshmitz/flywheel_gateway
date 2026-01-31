@@ -4,7 +4,8 @@ import {
   createGuestAuthContext,
   createInternalAuthContext,
 } from "../ws/authorization";
-import { handleWSOpen } from "../ws/handlers";
+import type { Channel } from "../ws/channels";
+import { handleWSMessage, handleWSOpen } from "../ws/handlers";
 import { type ConnectionData, setHub, WebSocketHub } from "../ws/hub";
 
 function createMockWs(
@@ -49,5 +50,28 @@ describe("ws/handlers handleWSOpen", () => {
     handleWSOpen(ws);
 
     expect(ws.data.subscriptions.get("agent:output:agent-1")).toBe("cursor_1");
+  });
+
+  test("advances stored cursor when subscribing with backfill cursor", () => {
+    const hub = new WebSocketHub();
+    setHub(hub);
+
+    const ws = createMockWs(createInternalAuthContext(), []);
+    handleWSOpen(ws);
+
+    const channel: Channel = { type: "agent:output", agentId: "agent-1" };
+    hub.publish(channel, "output.chunk", { text: "a" });
+    const last = hub.publish(channel, "output.chunk", { text: "b" });
+
+    handleWSMessage(
+      ws,
+      JSON.stringify({
+        type: "subscribe",
+        channel: "agent:output:agent-1",
+        cursor: "0",
+      }),
+    );
+
+    expect(ws.data.subscriptions.get("agent:output:agent-1")).toBe(last.cursor);
   });
 });
