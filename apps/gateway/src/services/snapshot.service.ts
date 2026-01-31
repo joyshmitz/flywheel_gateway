@@ -753,11 +753,17 @@ async function collectEcosystemDetection(): Promise<ToolEcosystemSummary | null>
         available: cli.available,
         detectionMs: cli.durationMs,
       };
-      if (cli.version != null) summary.version = cli.version;
-      if (cli.path != null) summary.path = cli.path;
-      if (cli.authenticated != null) summary.authenticated = cli.authenticated;
-      if (cli.authError != null) summary.authError = cli.authError;
-      if (cli.unavailabilityReason != null)
+      if (cli.version !== undefined && cli.version !== null)
+        summary.version = cli.version;
+      if (cli.path !== undefined && cli.path !== null) summary.path = cli.path;
+      if (cli.authenticated !== undefined && cli.authenticated !== null)
+        summary.authenticated = cli.authenticated;
+      if (cli.authError !== undefined && cli.authError !== null)
+        summary.authError = cli.authError;
+      if (
+        cli.unavailabilityReason !== undefined &&
+        cli.unavailabilityReason !== null
+      )
         summary.unavailabilityReason = cli.unavailabilityReason;
       return summary;
     };
@@ -1045,8 +1051,9 @@ async function collectAgentMailSnapshot(
           try {
             const agent = JSON.parse(line) as AgentMailFileAgent;
             const snapshot = parseAgentMailAgentSnapshot(agent, projectKey);
-            if (!snapshot) continue;
-            agentsById.set(snapshot.agentId, snapshot);
+            if (snapshot) {
+              agentsById.set(snapshot.agentId, snapshot);
+            }
           } catch {
             // Skip malformed lines
           }
