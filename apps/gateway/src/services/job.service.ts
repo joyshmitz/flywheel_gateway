@@ -10,7 +10,7 @@
  * - Checkpointing for resume
  */
 
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "../db/connection";
 import { jobLogs, jobs } from "../db/schema";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
@@ -754,10 +754,16 @@ export class JobService {
     }
 
     // Get pending jobs ordered by priority and creation time
+    const now = new Date();
     const pendingJobs = await db
       .select()
       .from(jobs)
-      .where(eq(jobs.status, "pending"))
+      .where(
+        and(
+          eq(jobs.status, "pending"),
+          or(isNull(jobs.retryNextAt), lte(jobs.retryNextAt, now)),
+        ),
+      )
       .orderBy(desc(jobs.priority), jobs.createdAt)
       .limit(
         this.config.concurrency.global -

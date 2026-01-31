@@ -104,6 +104,25 @@ async function waitForJobStatus(
   );
 }
 
+async function waitForRetryAttempts(
+  service: JobService,
+  jobId: string,
+  expectedAttempts: number,
+  timeoutMs = 5000,
+): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const job = await service.getJob(jobId);
+    if (job?.retry.attempts === expectedAttempts) {
+      return;
+    }
+    await Bun.sleep(50);
+  }
+  throw new Error(
+    `Job ${jobId} did not reach retry attempts ${expectedAttempts} within ${timeoutMs}ms`,
+  );
+}
+
 // ============================================================================
 // Test Setup
 // ============================================================================
@@ -370,6 +389,45 @@ describe("JobService", () => {
   // ==========================================================================
   // Job Retry Tests
   // ==========================================================================
+
+  describe("automatic retry backoff", () => {
+    test("does not start retry before retryNextAt", async () => {
+      await service.stop();
+      _clearJobService();
+      service = initializeJobService({
+        concurrency: { global: 3, perType: {}, perSession: 2 },
+        timeouts: { default: 5000, perType: {} },
+        retry: {
+          maxAttempts: 2,
+          backoffMultiplier: 2,
+          initialBackoffMs: 1000,
+          maxBackoffMs: 2000,
+        },
+        cleanup: { completedRetentionHours: 1, failedRetentionHours: 2 },
+        worker: { pollIntervalMs: 50, shutdownTimeoutMs: 1000 },
+      });
+      service.registerHandler("codebase_scan", new TestHandler());
+      service.registerHandler("context_build", new SlowHandler());
+      service.registerHandler("context_compact", new FailingHandler());
+
+      const job = await service.createJob({
+        type: "context_compact",
+        input: { shouldFail: true },
+      });
+
+      service.start();
+      await waitForRetryAttempts(service, job.id, 1, 5000);
+
+      const first = await service.getJob(job.id);
+      expect(first?.status).toBe("pending");
+      expect(first?.retry.nextRetryAt).toBeDefined();
+
+      await Bun.sleep(200);
+      const mid = await service.getJob(job.id);
+      expect(mid?.retry.attempts).toBe(1);
+      expect(mid?.status).toBe("pending");
+    });
+  });
 
   describe("retryJob", () => {
     test("retries a failed job", async () => {
