@@ -507,6 +507,7 @@ reservations.delete("/:id", async (c) => {
         );
       } catch {
         // No body or invalid body, that's fine if header is provided
+        log.debug({ reservationId: id }, "DELETE body parsing skipped, using header");
       }
     }
 
