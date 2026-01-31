@@ -32,6 +32,7 @@ import {
 import { startNtmWsBridge } from "./services/ntm-ws-bridge.service";
 import { startCleanupJob } from "./services/reservation.service";
 import { startCleanupJob as startSafetyCleanupJob } from "./services/safety.service";
+import { logStartupSecurityWarnings } from "./startup-warnings";
 import {
   createGuestAuthContext,
   createInternalAuthContext,
@@ -69,26 +70,7 @@ if (import.meta.main) {
 
   const port = config.server.port;
   const host = config.server.host;
-
-  // Security warnings for development-only configurations
-  if (process.env["ENABLE_SETUP_INSTALL_UNAUTH"] === "true") {
-    logger.warn(
-      "SECURITY WARNING: ENABLE_SETUP_INSTALL_UNAUTH is enabled. " +
-        "Setup install endpoints are accessible without authentication. " +
-        "This should ONLY be used in local development environments.",
-    );
-  }
-
-  const adminKey = process.env["GATEWAY_ADMIN_KEY"]?.trim();
-  const jwtSecret = process.env["JWT_SECRET"]?.trim();
-  if (!adminKey && !jwtSecret) {
-    logger.warn(
-      "SECURITY WARNING: No authentication configured. " +
-        "GATEWAY_ADMIN_KEY and JWT_SECRET are both unset. " +
-        "All API endpoints are accessible without authentication. " +
-        "This is only appropriate for local development.",
-    );
-  }
+  logStartupSecurityWarnings({ host, port });
 
   // Start background jobs
   startCleanupJob();
