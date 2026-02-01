@@ -1,5 +1,6 @@
 import type { ServerWebSocket } from "bun";
 import { logger } from "../services/logger";
+import { clearConnectionRateLimits } from "../services/ws-event-log.service";
 import { canSubscribe } from "./authorization";
 import { channelRequiresAck, channelToString, parseChannel } from "./channels";
 import { type ConnectionData, getHub } from "./hub";
@@ -359,6 +360,8 @@ export function handleWSMessage(
 export function handleWSClose(ws: ServerWebSocket<ConnectionData>): void {
   const hub = getHub();
   hub.removeConnection(ws.data.connectionId);
+  // Clear replay rate limit tracking for this connection
+  clearConnectionRateLimits(ws.data.connectionId);
 }
 
 /**

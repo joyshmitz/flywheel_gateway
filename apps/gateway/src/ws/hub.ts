@@ -12,12 +12,17 @@
 import type { ServerWebSocket } from "bun";
 import { logger } from "../services/logger";
 import {
+  type PersistableEvent,
+  persistEvent,
+} from "../services/ws-event-log.service";
+import {
   type Channel,
   channelRequiresAck,
   channelToString,
   getChannelTypePrefix,
   parseChannel,
 } from "./channels";
+import { decodeCursor } from "./cursor";
 import {
   type AckResponseMessage,
   type ChannelMessage,
@@ -356,6 +361,27 @@ export class WebSocketHub {
     // Add to ring buffer
     const buffer = this.getOrCreateBuffer(channelStr);
     message.cursor = buffer.push(message);
+
+    // Persist to durable storage (async, non-blocking)
+    const cursorData = decodeCursor(message.cursor);
+    if (cursorData) {
+      const persistable: PersistableEvent = {
+        id: message.id,
+        channel: channelStr,
+        cursor: message.cursor,
+        sequence: cursorData.sequence,
+        messageType: type,
+        payload,
+        metadata,
+      };
+      // Fire-and-forget persistence - don't block the publish path
+      persistEvent(persistable).catch((err) => {
+        logger.warn(
+          { error: err, messageId: message.id, channel: channelStr },
+          "Failed to persist WebSocket event",
+        );
+      });
+    }
 
     // Fan out to subscribers
     const subs = this.subscribers.get(channelStr);

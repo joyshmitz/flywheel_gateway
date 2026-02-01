@@ -39,6 +39,7 @@ import {
 import { startNtmWsBridge } from "./services/ntm-ws-bridge.service";
 import { startCleanupJob } from "./services/reservation.service";
 import { startCleanupJob as startSafetyCleanupJob } from "./services/safety.service";
+import { startCleanupJob as startWsEventLogCleanupJob } from "./services/ws-event-log.service";
 import {
   enforceStartupSecurity,
   logStartupSecurityWarnings,
@@ -94,6 +95,7 @@ if (import.meta.main) {
   startStateCleanupJob();
   startSafetyCleanupJob();
   startHandoffCleanupJob();
+  startWsEventLogCleanupJob();
   startHeartbeat();
   startAgentEvents(getHub());
   await initializeAgentService();

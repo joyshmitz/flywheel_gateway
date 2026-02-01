@@ -1839,3 +1839,153 @@ export const dashboardFavorites = sqliteTable(
     ),
   ],
 );
+
+// ============================================================================
+// WebSocket Event Persistence Tables
+// ============================================================================
+
+/**
+ * WebSocket event log - Durable storage for WebSocket events.
+ *
+ * Enables reliable event replay after client disconnects by persisting
+ * events to SQLite. Supports cursor-based pagination and configurable
+ * retention policies per channel type.
+ *
+ * Features:
+ * - Cursor-based replay for reconnecting clients
+ * - Configurable retention (time and count)
+ * - Channel-specific storage policies
+ * - Authorization audit logging for replays
+ */
+export const wsEventLog = sqliteTable(
+  "ws_event_log",
+  {
+    id: text("id").primaryKey(),
+
+    // Channel identification
+    channel: text("channel").notNull(),
+
+    // Cursor for ordering and replay
+    cursor: text("cursor").notNull(),
+    sequence: integer("sequence").notNull(),
+
+    // Event content
+    messageType: text("message_type").notNull(),
+    payload: text("payload").notNull(), // JSON stringified
+
+    // Metadata for tracing
+    correlationId: text("correlation_id"),
+    agentId: text("agent_id"),
+    workspaceId: text("workspace_id"),
+
+    // Timestamps
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp" }),
+  },
+  (table) => [
+    index("ws_event_log_channel_cursor_idx").on(table.channel, table.cursor),
+    index("ws_event_log_channel_sequence_idx").on(
+      table.channel,
+      table.sequence,
+    ),
+    index("ws_event_log_created_at_idx").on(table.createdAt),
+    index("ws_event_log_expires_at_idx").on(table.expiresAt),
+    index("ws_event_log_correlation_idx").on(table.correlationId),
+  ],
+);
+
+/**
+ * WebSocket replay audit log - Tracks replay requests for authorization
+ * and capacity protection.
+ *
+ * Used to:
+ * - Audit who requested replay and what cursor range
+ * - Enforce max concurrent replay requests per client
+ * - Track snapshot seeding for long-offline clients
+ */
+export const wsReplayAuditLog = sqliteTable(
+  "ws_replay_audit_log",
+  {
+    id: text("id").primaryKey(),
+
+    // Request context
+    connectionId: text("connection_id").notNull(),
+    userId: text("user_id"),
+    channel: text("channel").notNull(),
+
+    // Cursor range
+    fromCursor: text("from_cursor"),
+    toCursor: text("to_cursor"),
+
+    // Result
+    messagesReplayed: integer("messages_replayed").notNull(),
+    cursorExpired: integer("cursor_expired", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    usedSnapshot: integer("used_snapshot", { mode: "boolean" })
+      .notNull()
+      .default(false),
+
+    // Timing
+    requestedAt: integer("requested_at", { mode: "timestamp" }).notNull(),
+    durationMs: integer("duration_ms"),
+
+    // Rate limiting
+    correlationId: text("correlation_id"),
+  },
+  (table) => [
+    index("ws_replay_audit_log_connection_idx").on(table.connectionId),
+    index("ws_replay_audit_log_user_idx").on(table.userId),
+    index("ws_replay_audit_log_channel_idx").on(table.channel),
+    index("ws_replay_audit_log_requested_at_idx").on(table.requestedAt),
+  ],
+);
+
+/**
+ * WebSocket channel config - Per-channel storage and retention settings.
+ *
+ * Allows configuring:
+ * - Whether events should be persisted (some high-volume channels may skip)
+ * - Retention time and max event count
+ * - Snapshot interval for long-offline reconnects
+ */
+export const wsChannelConfig = sqliteTable(
+  "ws_channel_config",
+  {
+    id: text("id").primaryKey(),
+
+    // Channel pattern (can use wildcards like "agent:output:*")
+    channelPattern: text("channel_pattern").notNull().unique(),
+
+    // Persistence settings
+    persistEvents: integer("persist_events", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    retentionMs: integer("retention_ms").notNull().default(300000), // 5 minutes default
+    maxEvents: integer("max_events").notNull().default(10000),
+
+    // Snapshot settings for long-offline reconnects
+    snapshotEnabled: integer("snapshot_enabled", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    snapshotIntervalMs: integer("snapshot_interval_ms"),
+
+    // Rate limiting
+    maxReplayRequestsPerMinute: integer("max_replay_requests_per_minute")
+      .notNull()
+      .default(10),
+
+    // Timestamps
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("ws_channel_config_pattern_idx").on(table.channelPattern),
+  ],
+);
+
+// ============================================================================
+// Alert Channels
+// ============================================================================
+
+export * from "./schema/alert-channels";

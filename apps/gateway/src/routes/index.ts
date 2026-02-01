@@ -5,6 +5,7 @@
 import { Hono } from "hono";
 import { accounts } from "./accounts";
 import { agents } from "./agents";
+import { alertChannels } from "./alert-channels";
 import { alerts } from "./alerts";
 import { analytics } from "./analytics";
 import audit from "./audit";
@@ -42,6 +43,7 @@ import { slb } from "./slb";
 import { supervisor } from "./supervisor";
 import { system } from "./system";
 import { utilities } from "./utilities";
+import { wsReplay } from "./ws-replay";
 import { xf } from "./xf";
 
 const routes = new Hono();
@@ -49,6 +51,7 @@ const routes = new Hono();
 // Mount route groups
 routes.route("/accounts", accounts);
 routes.route("/agents", agents);
+routes.route("/alert-channels", alertChannels);
 routes.route("/alerts", alerts);
 routes.route("/analytics", analytics);
 routes.route("/audit", audit);
@@ -85,6 +88,7 @@ routes.route("/slb", slb);
 routes.route("/supervisor", supervisor);
 routes.route("/system", system);
 routes.route("/utilities", utilities);
+routes.route("/ws", wsReplay);
 routes.route("/xf", xf);
 
 // Mount OpenAPI routes at root level
