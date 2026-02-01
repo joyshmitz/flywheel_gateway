@@ -1,5 +1,3 @@
-"use no memo";
-
 /**
  * Safety Posture hooks for API integration.
  *

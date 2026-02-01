@@ -1,5 +1,3 @@
-"use no memo";
-
 /**
  * RU (Repo Updater) Fleet hooks for API integration.
  *

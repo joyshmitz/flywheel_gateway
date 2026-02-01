@@ -1,5 +1,3 @@
-"use no memo";
-
 /**
  * CAAM (Coding Agent Account Manager) hooks for API integration.
  *
@@ -271,6 +269,8 @@ function useQuery<T>(
   mockData: T,
   deps: unknown[] = [],
 ): UseQueryResult<T> {
+  "use no memo";
+
   const mockMode = useUiStore((state) => state.mockMode);
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -402,6 +402,8 @@ export function usePool(
  * Hook to create a new profile.
  */
 export function useCreateProfile() {
+  "use no memo";
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const mockMode = useUiStore((state) => state.mockMode);
@@ -455,6 +457,8 @@ export function useCreateProfile() {
  * Hook to update a profile.
  */
 export function useUpdateProfile() {
+  "use no memo";
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const mockMode = useUiStore((state) => state.mockMode);
@@ -502,6 +506,8 @@ export function useUpdateProfile() {
  * Hook to delete a profile.
  */
 export function useDeleteProfile() {
+  "use no memo";
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const mockMode = useUiStore((state) => state.mockMode);
@@ -537,6 +543,8 @@ export function useDeleteProfile() {
  * Hook to activate a profile.
  */
 export function useActivateProfile() {
+  "use no memo";
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const mockMode = useUiStore((state) => state.mockMode);
@@ -582,6 +590,8 @@ export function useActivateProfile() {
  * Hook to trigger pool rotation.
  */
 export function useRotatePool() {
+  "use no memo";
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const mockMode = useUiStore((state) => state.mockMode);

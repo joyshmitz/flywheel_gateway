@@ -1,5 +1,3 @@
-"use no memo";
-
 /**
  * Setup hooks for API integration with the setup wizard.
  *
@@ -220,6 +218,8 @@ async function clearCacheApi(): Promise<void> {
  * Hook for fetching and managing readiness status.
  */
 export function useReadiness() {
+  "use no memo";
+
   const [status, setStatus] = useState<ReadinessStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -257,6 +257,8 @@ export function useReadiness() {
  * Hook for fetching available tools.
  */
 export function useTools() {
+  "use no memo";
+
   const [tools, setTools] = useState<ToolInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -286,6 +288,8 @@ export function useTools() {
  * Hook for installing a single tool.
  */
 export function useInstallTool() {
+  "use no memo";
+
   const [installing, setInstalling] = useState(false);
   const [result, setResult] = useState<InstallResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -324,6 +328,8 @@ export function useInstallTool() {
  * Hook for batch installing multiple tools.
  */
 export function useBatchInstall() {
+  "use no memo";
+
   const [installing, setInstalling] = useState(false);
   const [progress, setProgress] = useState<{
     current: number;
@@ -390,6 +396,8 @@ export function useBatchInstall() {
  * Hook for verifying a tool installation.
  */
 export function useVerifyTool() {
+  "use no memo";
+
   const [verifying, setVerifying] = useState(false);
   const [result, setResult] = useState<DetectedCLI | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -420,6 +428,8 @@ export function useVerifyTool() {
  * Hook for clearing detection cache.
  */
 export function useClearCache() {
+  "use no memo";
+
   const [clearing, setClearing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
