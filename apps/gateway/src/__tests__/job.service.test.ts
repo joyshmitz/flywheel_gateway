@@ -296,6 +296,69 @@ describe("JobService", () => {
       const result = await service.listJobs({ limit: 2 });
       expect(result.jobs).toHaveLength(2);
       expect(result.hasMore).toBe(true);
+      expect(result.nextCursor).toBeDefined();
+    });
+
+    test("paginates via cursor without skipping or duplicating", async () => {
+      const created = [
+        await service.createJob({
+          type: "codebase_scan",
+          input: { value: 1 },
+          priority: 3,
+        }),
+        await service.createJob({
+          type: "codebase_scan",
+          input: { value: 2 },
+          priority: 2,
+        }),
+        await service.createJob({
+          type: "codebase_scan",
+          input: { value: 3 },
+          priority: 3,
+        }),
+        await service.createJob({
+          type: "codebase_scan",
+          input: { value: 4 },
+          priority: 1,
+        }),
+        await service.createJob({
+          type: "codebase_scan",
+          input: { value: 5 },
+          priority: 2,
+        }),
+      ];
+
+      // Force deterministic created_at ordering to make the cursor test stable.
+      const base = Date.now() - 10_000;
+      for (let index = 0; index < created.length; index++) {
+        const job = created[index]!;
+        sqlite.run("UPDATE jobs SET created_at = ? WHERE id = ?", [
+          base + index * 1000,
+          job.id,
+        ]);
+      }
+
+      const all = await service.listJobs({ limit: 100 });
+      expect(all.jobs).toHaveLength(5);
+      expect(all.hasMore).toBe(false);
+
+      const collected: string[] = [];
+      let cursor: string | undefined;
+      for (let page = 0; page < 10; page++) {
+        const result = await service.listJobs({
+          limit: 2,
+          ...(cursor ? { cursor } : {}),
+        });
+        for (const job of result.jobs) {
+          collected.push(job.id);
+        }
+        cursor = result.nextCursor;
+        if (!cursor) break;
+      }
+
+      // No duplicates and no missing.
+      expect(new Set(collected).size).toBe(collected.length);
+      expect(collected).toEqual(all.jobs.map((job) => job.id));
     });
   });
 

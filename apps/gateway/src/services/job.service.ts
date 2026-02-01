@@ -10,7 +10,8 @@
  * - Checkpointing for resume
  */
 
-import { and, desc, eq, isNull, lte, or, sql } from "drizzle-orm";
+import { createCursor, decodeCursor } from "@flywheel/shared/api/pagination";
+import { and, desc, eq, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { db } from "../db/connection";
 import { jobLogs, jobs } from "../db/schema";
 import { getCorrelationId, getLogger } from "../middleware/correlation";
@@ -34,6 +35,8 @@ import type { Channel } from "../ws/channels";
 import { getHub } from "../ws/hub";
 import type { MessageType } from "../ws/messages";
 import { logger as baseLogger, createChildLogger } from "./logger";
+
+const JOB_LIST_CURSOR_SHIFT = 10_000_000_000_000;
 
 // ============================================================================
 // Error Classes
@@ -99,14 +102,16 @@ class JobExecutionContext implements JobContext {
   ): Promise<void> {
     // Guard against division by zero - if total is 0, percentage is 0
     const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
+    const previousProgress = this.job.progress;
+    const previousStage = previousProgress.stage;
     this.job.progress = {
       current,
       total,
       percentage,
-      message: message ?? this.job.progress.message,
-      ...(this.job.progress.stage !== null &&
-        this.job.progress.stage !== undefined && {
-          stage: this.job.progress.stage,
+      message: message ?? previousProgress.message,
+      ...(previousStage !== null &&
+        previousStage !== undefined && {
+          stage: previousStage,
         }),
     };
 
@@ -114,8 +119,9 @@ class JobExecutionContext implements JobContext {
   }
 
   async setStage(stage: string): Promise<void> {
-    this.job.progress.stage = stage;
-    await this.service.updateJobProgress(this.job.id, this.job.progress);
+    const progress = this.job.progress;
+    progress.stage = stage;
+    await this.service.updateJobProgress(this.job.id, progress);
   }
 
   async checkpoint(state: unknown): Promise<void> {
@@ -248,12 +254,14 @@ export class JobService {
       baseLogger.error({ error: err }, "Error recovering stale jobs");
     });
 
+    const workerConfig = this.config.worker;
+
     // Start polling for pending jobs
     this.pollInterval = setInterval(() => {
       this.processQueue().catch((err) => {
         baseLogger.error({ error: err }, "Error processing job queue");
       });
-    }, this.config.worker.pollIntervalMs);
+    }, workerConfig.pollIntervalMs);
     // Ensure interval doesn't prevent process exit
     if (this.pollInterval.unref) {
       this.pollInterval.unref();
@@ -280,7 +288,8 @@ export class JobService {
     }
 
     // Wait for running jobs with timeout
-    const deadline = Date.now() + this.config.worker.shutdownTimeoutMs;
+    const workerConfig = this.config.worker;
+    const deadline = Date.now() + workerConfig.shutdownTimeoutMs;
 
     while (this.running.size > 0 && Date.now() < deadline) {
       await Bun.sleep(100);
@@ -327,6 +336,7 @@ export class JobService {
 
     const id = crypto.randomUUID();
     const now = new Date();
+    const retryConfig = this.config.retry;
 
     const job: Job = {
       id,
@@ -343,8 +353,8 @@ export class JobService {
       createdAt: now,
       retry: {
         attempts: 0,
-        maxAttempts: this.config.retry.maxAttempts,
-        backoffMs: this.config.retry.initialBackoffMs,
+        maxAttempts: retryConfig.maxAttempts,
+        backoffMs: retryConfig.initialBackoffMs,
       },
       metadata: input.metadata ?? {},
       correlationId,
@@ -408,9 +418,12 @@ export class JobService {
   /**
    * List jobs with optional filtering.
    */
-  async listJobs(
-    query: ListJobsQuery,
-  ): Promise<{ jobs: Job[]; total: number; hasMore: boolean }> {
+  async listJobs(query: ListJobsQuery): Promise<{
+    jobs: Job[];
+    total: number;
+    hasMore: boolean;
+    nextCursor?: string;
+  }> {
     const conditions = [];
 
     if (query.type) {
@@ -430,23 +443,95 @@ export class JobService {
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [rows, countResult] = await Promise.all([
-      db
-        .select()
-        .from(jobs)
-        .where(whereClause)
-        .orderBy(desc(jobs.priority), desc(jobs.createdAt))
-        .limit(limit + 1),
-      db.select({ count: sql<number>`count(*)` }).from(jobs).where(whereClause),
-    ]);
+    let cursorData:
+      | {
+          id: string;
+          sortValue: number;
+        }
+      | undefined;
+
+    if (query.cursor) {
+      const decoded = decodeCursor(query.cursor);
+      if (decoded) {
+        const cursorId = decoded.id;
+        if (typeof decoded.sortValue === "number") {
+          cursorData = { id: cursorId, sortValue: decoded.sortValue };
+        } else {
+          const [cursorRow] = await db
+            .select({
+              id: jobs.id,
+              priority: jobs.priority,
+              createdAt: jobs.createdAt,
+            })
+            .from(jobs)
+            .where(
+              whereClause
+                ? and(whereClause, eq(jobs.id, cursorId))
+                : eq(jobs.id, cursorId),
+            )
+            .limit(1);
+          if (cursorRow) {
+            cursorData = {
+              id: cursorId,
+              sortValue:
+                cursorRow.priority * JOB_LIST_CURSOR_SHIFT +
+                cursorRow.createdAt.getTime(),
+            };
+          }
+        }
+      }
+    }
+
+    const combinedSortValue = sql<number>`(${jobs.priority} * ${JOB_LIST_CURSOR_SHIFT} + ${jobs.createdAt} * 1000)`;
+    const pageConditions = [...conditions];
+    if (cursorData) {
+      const cursorCondition = or(
+        lt(combinedSortValue, cursorData.sortValue),
+        and(
+          eq(combinedSortValue, cursorData.sortValue),
+          lt(jobs.id, cursorData.id),
+        ),
+      );
+      if (cursorCondition) pageConditions.push(cursorCondition);
+    }
+
+    const pageWhereClause =
+      pageConditions.length > 0 ? and(...pageConditions) : undefined;
+
+    let pageQuery = db
+      .select()
+      .from(jobs)
+      .orderBy(desc(jobs.priority), desc(jobs.createdAt), desc(jobs.id))
+      .limit(limit + 1);
+
+    if (pageWhereClause) {
+      pageQuery = pageQuery.where(pageWhereClause) as typeof pageQuery;
+    }
+
+    let countQuery = db.select({ count: sql<number>`count(*)` }).from(jobs);
+    if (whereClause) {
+      countQuery = countQuery.where(whereClause) as typeof countQuery;
+    }
+
+    const rows = await pageQuery;
+    const countResult = await countQuery;
 
     const hasMore = rows.length > limit;
     const resultRows = hasMore ? rows.slice(0, limit) : rows;
+
+    let nextCursor: string | undefined;
+    if (hasMore && resultRows.length > 0) {
+      const lastRow = resultRows[resultRows.length - 1]!;
+      const sortValue =
+        lastRow.priority * JOB_LIST_CURSOR_SHIFT + lastRow.createdAt.getTime();
+      nextCursor = createCursor(lastRow.id, sortValue);
+    }
 
     return {
       jobs: resultRows.map((row) => this.rowToJob(row)),
       total: countResult[0]?.count ?? 0,
       hasMore,
+      ...(nextCursor ? { nextCursor } : {}),
     };
   }
 
@@ -746,11 +831,11 @@ export class JobService {
   private async processQueue(): Promise<void> {
     if (!this.started) return;
 
+    const { concurrency } = this.config;
+    const globalConcurrency = concurrency.global;
+
     // Check concurrency limits (including starting jobs)
-    if (
-      this.running.size + this.starting.size >=
-      this.config.concurrency.global
-    ) {
+    if (this.running.size + this.starting.size >= globalConcurrency) {
       return;
     }
 
@@ -766,10 +851,7 @@ export class JobService {
         ),
       )
       .orderBy(desc(jobs.priority), jobs.createdAt)
-      .limit(
-        this.config.concurrency.global -
-          (this.running.size + this.starting.size),
-      );
+      .limit(globalConcurrency - (this.running.size + this.starting.size));
 
     for (const row of pendingJobs) {
       const job = this.rowToJob(row);
@@ -797,18 +879,15 @@ export class JobService {
    * Check if a job can be started based on concurrency limits.
    */
   private canRunJob(job: Job): boolean {
+    const { concurrency } = this.config;
+
     // Check global limit
-    if (
-      this.running.size + this.starting.size >=
-      this.config.concurrency.global
-    ) {
+    if (this.running.size + this.starting.size >= concurrency.global) {
       return false;
     }
 
     // Check per-type limit
-    const typeLimit =
-      this.config.concurrency.perType[job.type] ??
-      this.config.concurrency.global;
+    const typeLimit = concurrency.perType[job.type] ?? concurrency.global;
 
     // Count running jobs of this type
     let typeCount = 0;
@@ -834,7 +913,7 @@ export class JobService {
       for (const startingJob of this.starting.values()) {
         if (startingJob.sessionId === job.sessionId) sessionCount++;
       }
-      if (sessionCount >= this.config.concurrency.perSession) {
+      if (sessionCount >= concurrency.perSession) {
         return false;
       }
     }
@@ -933,8 +1012,8 @@ export class JobService {
     });
 
     // Create execution
-    const timeoutMs =
-      this.config.timeouts.perType[job.type] ?? this.config.timeouts.default;
+    const { timeouts } = this.config;
+    const timeoutMs = timeouts.perType[job.type] ?? timeouts.default;
     const execution = new JobExecution(job, handler, this, timeoutMs);
     this.running.set(job.id, execution);
 
@@ -1043,11 +1122,13 @@ export class JobService {
     };
 
     if (isRetryable) {
+      const retryConfig = this.config.retry;
+
       // Schedule retry
       const backoffMs = Math.min(
         job.retry.backoffMs *
-          this.config.retry.backoffMultiplier ** job.retry.attempts,
-        this.config.retry.maxBackoffMs,
+          retryConfig.backoffMultiplier ** job.retry.attempts,
+        retryConfig.maxBackoffMs,
       );
       const desiredRetryAtMs = Date.now() + backoffMs;
       // Drizzle SQLite `timestamp` columns store epoch seconds (floor). Round up
@@ -1212,11 +1293,12 @@ export class JobService {
    * Clean up old completed/failed jobs.
    */
   async cleanup(): Promise<number> {
+    const cleanupConfig = this.config.cleanup;
     const completedCutoff = new Date(
-      Date.now() - this.config.cleanup.completedRetentionHours * 60 * 60 * 1000,
+      Date.now() - cleanupConfig.completedRetentionHours * 60 * 60 * 1000,
     );
     const failedCutoff = new Date(
-      Date.now() - this.config.cleanup.failedRetentionHours * 60 * 60 * 1000,
+      Date.now() - cleanupConfig.failedRetentionHours * 60 * 60 * 1000,
     );
 
     const deletedRows = await db

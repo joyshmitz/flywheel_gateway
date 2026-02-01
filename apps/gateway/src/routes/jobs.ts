@@ -8,6 +8,7 @@
  * - Retrieving job output and logs
  */
 
+import { parseListQuery } from "@flywheel/shared/api/pagination";
 import { Hono } from "hono";
 import { z } from "zod";
 import { getLogger } from "../middleware/correlation";
@@ -92,8 +93,6 @@ const ListJobsQuerySchema = z.object({
     .optional(),
   sessionId: z.string().optional(),
   agentId: z.string().optional(),
-  limit: z.coerce.number().min(1).max(100).default(20),
-  cursor: z.string().optional(),
 });
 
 // ============================================================================
@@ -101,34 +100,57 @@ const ListJobsQuerySchema = z.object({
 // ============================================================================
 
 function jobToResponse(job: Job) {
+  const {
+    id,
+    type,
+    name,
+    status,
+    priority,
+    sessionId,
+    agentId,
+    progress,
+    createdAt,
+    startedAt,
+    completedAt,
+    estimatedDurationMs,
+    actualDurationMs,
+    error,
+    retry,
+    cancellation,
+    metadata,
+    correlationId,
+  } = job;
+
+  const cancellationResponse = cancellation
+    ? {
+        requestedAt: cancellation.requestedAt.toISOString(),
+        requestedBy: cancellation.requestedBy,
+        reason: cancellation.reason,
+      }
+    : undefined;
+
   return {
-    id: job.id,
-    type: job.type,
-    name: job.name,
-    status: job.status,
-    priority: job.priority,
-    sessionId: job.sessionId,
-    agentId: job.agentId,
-    progress: job.progress,
-    createdAt: job.createdAt.toISOString(),
-    startedAt: job.startedAt?.toISOString(),
-    completedAt: job.completedAt?.toISOString(),
-    estimatedDurationMs: job.estimatedDurationMs,
-    actualDurationMs: job.actualDurationMs,
-    error: job.error,
+    id,
+    type,
+    name,
+    status,
+    priority,
+    sessionId,
+    agentId,
+    progress,
+    createdAt: createdAt.toISOString(),
+    startedAt: startedAt?.toISOString(),
+    completedAt: completedAt?.toISOString(),
+    estimatedDurationMs,
+    actualDurationMs,
+    error,
     retry: {
-      attempts: job.retry.attempts,
-      maxAttempts: job.retry.maxAttempts,
+      attempts: retry.attempts,
+      maxAttempts: retry.maxAttempts,
     },
-    cancellation: job.cancellation
-      ? {
-          requestedAt: job.cancellation.requestedAt.toISOString(),
-          requestedBy: job.cancellation.requestedBy,
-          reason: job.cancellation.reason,
-        }
-      : undefined,
-    metadata: job.metadata,
-    correlationId: job.correlationId,
+    cancellation: cancellationResponse,
+    metadata,
+    correlationId,
   };
 }
 
@@ -202,27 +224,38 @@ jobs.get("/", async (c) => {
       return sendValidationError(c, transformZodError(query.error));
     }
 
+    const listQuery = parseListQuery(
+      {
+        limit: c.req.query("limit"),
+        cursor: c.req.query("cursor"),
+      },
+      { defaultLimit: 20, maxLimit: 100 },
+    );
+
     const jobService = getJobService();
     const result = await jobService.listJobs({
-      limit: query.data.limit,
+      limit: listQuery.limit,
       ...(query.data.type && { type: query.data.type as JobType }),
       ...(query.data.status && { status: query.data.status as JobStatus }),
       ...(query.data.sessionId && { sessionId: query.data.sessionId }),
       ...(query.data.agentId && { agentId: query.data.agentId }),
-      ...(query.data.cursor && { cursor: query.data.cursor }),
+      ...(listQuery.cursor && { cursor: listQuery.cursor }),
     });
 
     const ctx = getLinkContext(c);
+    const listOptions: Parameters<typeof sendList>[2] = {
+      hasMore: result.hasMore,
+      total: result.total,
+    };
+    if (result.nextCursor) listOptions.nextCursor = result.nextCursor;
+
     return sendList(
       c,
       result.jobs.map((job) => ({
         ...jobToResponse(job),
         links: jobListLinks({ id: job.id }, ctx),
       })),
-      {
-        hasMore: result.hasMore,
-        total: result.total,
-      },
+      listOptions,
     );
   } catch (error) {
     log.error({ error }, "Failed to list jobs");
