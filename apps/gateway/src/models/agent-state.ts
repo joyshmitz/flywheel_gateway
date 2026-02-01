@@ -51,9 +51,14 @@ export const VALID_TRANSITIONS: Readonly<
 > = {
   [LifecycleState.SPAWNING]: [
     LifecycleState.INITIALIZING,
+    LifecycleState.TERMINATING,
     LifecycleState.FAILED,
   ],
-  [LifecycleState.INITIALIZING]: [LifecycleState.READY, LifecycleState.FAILED],
+  [LifecycleState.INITIALIZING]: [
+    LifecycleState.READY,
+    LifecycleState.TERMINATING,
+    LifecycleState.FAILED,
+  ],
   [LifecycleState.READY]: [
     LifecycleState.EXECUTING,
     LifecycleState.PAUSED,

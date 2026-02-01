@@ -29,6 +29,7 @@ import {
   markAgentExecuting,
   markAgentFailed,
   markAgentIdle,
+  markAgentPaused,
   markAgentReady,
   markAgentTerminated,
   markAgentTerminating,
@@ -128,6 +129,23 @@ async function handleAgentEvents(
             // Ignore invalid transitions
             log.warn({ err, agentId }, "Failed to mark agent idle");
           }
+        } else if (newState === "stalled") {
+          try {
+            markAgentPaused(agentId, "timeout");
+          } catch (err) {
+            // Ignore invalid transitions (e.g. already paused/terminated)
+            log.warn({ err, agentId }, "Failed to mark agent paused");
+          }
+        } else if (newState === "error") {
+          try {
+            markAgentFailed(agentId, "driver_error", {
+              code: "AGENT_ERROR_STATE",
+              message: "Agent entered error state",
+            });
+          } catch (err) {
+            // Ignore invalid transitions (e.g. already failed/terminated)
+            log.warn({ err, agentId }, "Failed to mark agent failed");
+          }
         }
       }
 
@@ -155,6 +173,36 @@ async function handleAgentEvents(
             });
         } catch (err) {
           log.error({ err, agentId }, "Error handling agent termination event");
+        }
+      }
+
+      // 4. Handle tool call events for stats
+      else if (event.type === "tool_call_start") {
+        const record = agents.get(agentId);
+        if (record) {
+          record.toolCalls++;
+        }
+      }
+
+      // 5. Handle error events from driver
+      else if (event.type === "error") {
+        const stateRecord = getAgentState(agentId);
+        if (stateRecord && isTerminalState(stateRecord.currentState)) {
+          continue;
+        }
+
+        const errorMessage =
+          event.error instanceof Error
+            ? event.error.message
+            : String(event.error);
+
+        try {
+          markAgentFailed(agentId, "driver_error", {
+            code: "AGENT_RUNTIME_ERROR",
+            message: errorMessage,
+          });
+        } catch (err) {
+          log.warn({ err, agentId }, "Failed to mark agent failed");
         }
       }
     }

@@ -40,6 +40,12 @@ describe("Agent State Model", () => {
       ).toBe(true);
     });
 
+    test("allows SPAWNING -> TERMINATING", () => {
+      expect(
+        isValidTransition(LifecycleState.SPAWNING, LifecycleState.TERMINATING),
+      ).toBe(true);
+    });
+
     test("rejects SPAWNING -> READY (must go through INITIALIZING)", () => {
       expect(
         isValidTransition(LifecycleState.SPAWNING, LifecycleState.READY),
@@ -49,6 +55,15 @@ describe("Agent State Model", () => {
     test("allows INITIALIZING -> READY", () => {
       expect(
         isValidTransition(LifecycleState.INITIALIZING, LifecycleState.READY),
+      ).toBe(true);
+    });
+
+    test("allows INITIALIZING -> TERMINATING", () => {
+      expect(
+        isValidTransition(
+          LifecycleState.INITIALIZING,
+          LifecycleState.TERMINATING,
+        ),
       ).toBe(true);
     });
 

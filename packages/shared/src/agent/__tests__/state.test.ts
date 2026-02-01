@@ -54,16 +54,18 @@ describe("State constants", () => {
 });
 
 describe("STATE_TRANSITIONS", () => {
-  it("SPAWNING can only go to INITIALIZING or FAILED", () => {
+  it("SPAWNING can only go to INITIALIZING, TERMINATING, or FAILED", () => {
     expect(STATE_TRANSITIONS[AgentState.SPAWNING]).toEqual([
       AgentState.INITIALIZING,
+      AgentState.TERMINATING,
       AgentState.FAILED,
     ]);
   });
 
-  it("INITIALIZING can only go to READY or FAILED", () => {
+  it("INITIALIZING can only go to READY, TERMINATING, or FAILED", () => {
     expect(STATE_TRANSITIONS[AgentState.INITIALIZING]).toEqual([
       AgentState.READY,
+      AgentState.TERMINATING,
       AgentState.FAILED,
     ]);
   });
@@ -113,9 +115,15 @@ describe("isValidTransition", () => {
     expect(
       isValidTransition(AgentState.SPAWNING, AgentState.INITIALIZING),
     ).toBe(true);
+    expect(
+      isValidTransition(AgentState.SPAWNING, AgentState.TERMINATING),
+    ).toBe(true);
     expect(isValidTransition(AgentState.INITIALIZING, AgentState.READY)).toBe(
       true,
     );
+    expect(
+      isValidTransition(AgentState.INITIALIZING, AgentState.TERMINATING),
+    ).toBe(true);
     expect(isValidTransition(AgentState.READY, AgentState.EXECUTING)).toBe(
       true,
     );

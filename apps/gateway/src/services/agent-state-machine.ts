@@ -406,6 +406,16 @@ export function markAgentIdle(agentId: string): StateTransition {
 }
 
 /**
+ * Helper: Transition agent to PAUSED state.
+ */
+export function markAgentPaused(
+  agentId: string,
+  reason: TransitionReason = "pause_requested",
+): StateTransition {
+  return transitionState(agentId, LifecycleState.PAUSED, reason);
+}
+
+/**
  * Helper: Start graceful termination.
  */
 export function markAgentTerminating(agentId: string): StateTransition {

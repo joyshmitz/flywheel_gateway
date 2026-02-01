@@ -63,8 +63,16 @@ export const IDLE_STATES: ReadonlySet<AgentState> = new Set([
 export const STATE_TRANSITIONS: Readonly<
   Record<AgentState, readonly AgentState[]>
 > = {
-  [AgentState.SPAWNING]: [AgentState.INITIALIZING, AgentState.FAILED],
-  [AgentState.INITIALIZING]: [AgentState.READY, AgentState.FAILED],
+  [AgentState.SPAWNING]: [
+    AgentState.INITIALIZING,
+    AgentState.TERMINATING,
+    AgentState.FAILED,
+  ],
+  [AgentState.INITIALIZING]: [
+    AgentState.READY,
+    AgentState.TERMINATING,
+    AgentState.FAILED,
+  ],
   [AgentState.READY]: [
     AgentState.EXECUTING,
     AgentState.PAUSED,
