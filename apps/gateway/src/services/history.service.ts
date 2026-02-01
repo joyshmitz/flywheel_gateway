@@ -9,6 +9,7 @@
  * - Export capabilities
  */
 
+import { createCursor, decodeCursor } from "@flywheel/shared/api/pagination";
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "../db";
 import { history as historyTable } from "../db/schema";
@@ -87,14 +88,7 @@ export interface HistoryQueryOptions {
 
 function generateHistoryId(): string {
   const timestamp = Date.now().toString(36);
-  // Use cryptographically secure random instead of Math.random()
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-  const randomBytes = new Uint8Array(8);
-  crypto.getRandomValues(randomBytes);
-  let random = "";
-  for (const byte of randomBytes) {
-    random += chars.charAt(byte % chars.length);
-  }
+  const random = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
   return `hist_${timestamp}_${random}`;
 }
 
@@ -285,7 +279,7 @@ export async function queryHistory(options: HistoryQueryOptions = {}): Promise<{
   let query = db
     .select()
     .from(historyTable)
-    .orderBy(desc(historyTable.createdAt))
+    .orderBy(desc(historyTable.createdAt), desc(historyTable.id))
     .limit(limit + 1);
 
   if (conditions.length > 0) {
@@ -322,9 +316,13 @@ export async function queryHistory(options: HistoryQueryOptions = {}): Promise<{
 
   // Apply cursor
   if (options.cursor) {
-    const cursorIndex = filtered.findIndex((e) => e.id === options.cursor);
-    if (cursorIndex >= 0) {
-      filtered = filtered.slice(cursorIndex + 1);
+    const decoded = decodeCursor(options.cursor);
+    const cursorId = decoded?.id;
+    if (cursorId) {
+      const cursorIndex = filtered.findIndex((e) => e.id === cursorId);
+      if (cursorIndex >= 0) {
+        filtered = filtered.slice(cursorIndex + 1);
+      }
     }
   }
 
@@ -334,7 +332,12 @@ export async function queryHistory(options: HistoryQueryOptions = {}): Promise<{
 
   // Build pagination conditionally (for exactOptionalPropertyTypes)
   const pagination: { cursor?: string; hasMore: boolean } = { hasMore };
-  if (lastEntry?.id) pagination.cursor = lastEntry.id;
+  if (lastEntry?.id) {
+    pagination.cursor = createCursor(
+      lastEntry.id,
+      lastEntry.timestamp.getTime(),
+    );
+  }
 
   return { entries: result, pagination };
 }

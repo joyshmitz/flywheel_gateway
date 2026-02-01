@@ -34,6 +34,8 @@ export {
   decodeCursor,
   // Cursor functions
   encodeCursor,
+  type ListQuery,
+  type ListSortDirection,
   type NormalizedPaginationParams,
   // Pagination utilities
   normalizePaginationParams,
@@ -42,6 +44,8 @@ export {
   type PaginationMeta,
   // Pagination types
   type PaginationParams,
+  type ParseListQueryOptions,
+  parseListQuery,
   parsePaginationQuery,
 } from "./pagination";
 export {

@@ -112,6 +112,40 @@ export interface PaginationMeta {
 }
 
 // ============================================================================
+// List Query Types
+// ============================================================================
+
+/**
+ * Standard sort direction for list endpoints.
+ */
+export type ListSortDirection = "asc" | "desc";
+
+/**
+ * Parsed list query parameters (limit/cursor/sort/direction).
+ *
+ * This is intentionally **lenient**:
+ * - invalid `limit` falls back to defaults
+ * - `limit` is clamped to [1, maxLimit]
+ * - invalid/expired `cursor` degrades to "no cursor"
+ * - invalid `sort`/`direction` degrades to defaults
+ */
+export interface ListQuery<Sort extends string = string> {
+  limit: number;
+  cursor?: string;
+  cursorPayload?: CursorPayload;
+  sort?: Sort;
+  direction: ListSortDirection;
+}
+
+export interface ParseListQueryOptions<Sort extends string = string> {
+  defaultLimit?: number;
+  maxLimit?: number;
+  defaultDirection?: ListSortDirection;
+  defaultSort?: Sort;
+  allowedSort?: readonly Sort[];
+}
+
+// ============================================================================
 // Cursor Encoding/Decoding
 // ============================================================================
 
@@ -382,6 +416,94 @@ export function parsePaginationQuery(query: {
 
   if (query.ending_before) {
     result.endingBefore = query.ending_before;
+  }
+
+  return result;
+}
+
+/**
+ * Parse list query params from query string values.
+ *
+ * Canonical fields:
+ * - `limit`
+ * - `cursor`
+ * - `sort`
+ * - `direction` ("asc" | "desc")
+ *
+ * @example
+ * ```typescript
+ * const listQuery = parseListQuery({
+ *   limit: c.req.query("limit"),
+ *   cursor: c.req.query("cursor"),
+ *   sort: c.req.query("sort"),
+ *   direction: c.req.query("direction"),
+ * });
+ * ```
+ */
+export function parseListQuery<Sort extends string = string>(
+  query: {
+    limit?: string | undefined;
+    cursor?: string | undefined;
+    sort?: string | undefined;
+    direction?: string | undefined;
+  },
+  options: ParseListQueryOptions<Sort> = {},
+): ListQuery<Sort> {
+  const defaultLimit = options.defaultLimit ?? DEFAULT_PAGINATION.limit;
+  const maxLimit = options.maxLimit ?? 200;
+  const defaultDirection: ListSortDirection =
+    options.defaultDirection ?? "desc";
+
+  let limit = defaultLimit;
+  if (query.limit) {
+    const parsed = Number.parseInt(query.limit, 10);
+    if (!Number.isNaN(parsed)) {
+      limit = parsed;
+    }
+  }
+  limit = Math.min(Math.max(1, limit), maxLimit);
+
+  let cursorPayload: CursorPayload | undefined;
+  const cursor = query.cursor?.trim();
+  if (cursor) {
+    const decoded = decodeCursor(cursor);
+    if (decoded) {
+      cursorPayload = decoded;
+    }
+  }
+
+  const directionRaw = query.direction?.trim().toLowerCase();
+  const direction: ListSortDirection =
+    directionRaw === "asc" || directionRaw === "desc"
+      ? directionRaw
+      : defaultDirection;
+
+  const sortRaw = query.sort?.trim();
+  let sort: Sort | undefined = options.defaultSort;
+  if (sortRaw) {
+    if (
+      options.allowedSort &&
+      options.allowedSort.length > 0 &&
+      !options.allowedSort.includes(sortRaw as Sort)
+    ) {
+      sort = options.defaultSort;
+    } else {
+      sort = sortRaw as Sort;
+    }
+  }
+
+  const result: ListQuery<Sort> = {
+    limit,
+    direction,
+  };
+
+  if (cursorPayload) {
+    result.cursor = cursor!;
+    result.cursorPayload = cursorPayload;
+  }
+
+  if (sort !== undefined) {
+    result.sort = sort;
   }
 
   return result;

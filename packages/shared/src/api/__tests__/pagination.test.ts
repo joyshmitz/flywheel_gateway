@@ -12,6 +12,7 @@ import {
   decodeCursor,
   encodeCursor,
   normalizePaginationParams,
+  parseListQuery,
   parsePaginationQuery,
 } from "../pagination";
 
@@ -298,6 +299,69 @@ describe("pagination", () => {
       expect(result.limit).toBe(50);
       expect(result.startingAfter).toBe("cursor_abc");
       expect(result.endingBefore).toBe("cursor_xyz");
+    });
+  });
+
+  describe("parseListQuery", () => {
+    it("should use defaults for empty query", () => {
+      const result = parseListQuery({});
+
+      expect(result.limit).toBe(DEFAULT_PAGINATION.limit);
+      expect(result.cursor).toBeUndefined();
+      expect(result.sort).toBeUndefined();
+      expect(result.direction).toBe("desc");
+    });
+
+    it("should parse limit and clamp to maxLimit", () => {
+      expect(parseListQuery({ limit: "25" }).limit).toBe(25);
+
+      const clamped = parseListQuery({ limit: "1000" }, { maxLimit: 200 });
+      expect(clamped.limit).toBe(200);
+    });
+
+    it("should fall back to default limit for invalid limit values", () => {
+      const result = parseListQuery(
+        { limit: "not-a-number" },
+        { maxLimit: 200 },
+      );
+      expect(result.limit).toBe(DEFAULT_PAGINATION.limit);
+    });
+
+    it("should drop invalid cursors", () => {
+      const result = parseListQuery({ cursor: "not-valid-base64!!!" });
+      expect(result.cursor).toBeUndefined();
+      expect(result.cursorPayload).toBeUndefined();
+    });
+
+    it("should decode valid cursors and expose payload", () => {
+      const cursor = createCursor("item_123", 1705123456789);
+      const result = parseListQuery({ cursor });
+
+      expect(result.cursor).toBe(cursor);
+      expect(result.cursorPayload?.id).toBe("item_123");
+      expect(result.cursorPayload?.sortValue).toBe(1705123456789);
+    });
+
+    it("should parse direction (case-insensitive) and fall back on invalid", () => {
+      expect(parseListQuery({ direction: "ASC" }).direction).toBe("asc");
+      expect(parseListQuery({ direction: "desc" }).direction).toBe("desc");
+      expect(parseListQuery({ direction: "nope" }).direction).toBe("desc");
+    });
+
+    it("should enforce allowedSort when provided", () => {
+      const allowed = ["created_at", "updated_at"] as const;
+
+      const ok = parseListQuery(
+        { sort: "updated_at" },
+        { allowedSort: allowed, defaultSort: "created_at" },
+      );
+      expect(ok.sort).toBe("updated_at");
+
+      const invalid = parseListQuery(
+        { sort: "not-allowed" },
+        { allowedSort: allowed, defaultSort: "created_at" },
+      );
+      expect(invalid.sort).toBe("created_at");
     });
   });
 

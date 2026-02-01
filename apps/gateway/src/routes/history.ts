@@ -4,6 +4,7 @@
  * Provides endpoints for querying, searching, and managing agent history.
  */
 
+import { parseListQuery } from "@flywheel/shared/api/pagination";
 import { type Context, Hono } from "hono";
 import { z } from "zod";
 import { getLogger } from "../middleware/correlation";
@@ -58,8 +59,6 @@ const QueryParamsSchema = z.object({
   endDate: z.string().datetime().optional(),
   search: z.string().optional(),
   tags: z.string().optional(),
-  limit: z.coerce.number().min(1).max(200).optional(),
-  cursor: z.string().optional(),
 });
 
 const ExportSchema = z.object({
@@ -119,9 +118,15 @@ history.get("/", async (c) => {
       endDate: c.req.query("endDate"),
       search: c.req.query("search"),
       tags: c.req.query("tags"),
-      limit: c.req.query("limit"),
-      cursor: c.req.query("cursor"),
     });
+
+    const listQuery = parseListQuery(
+      {
+        limit: c.req.query("limit"),
+        cursor: c.req.query("cursor"),
+      },
+      { maxLimit: 200 },
+    );
 
     // Build options conditionally (for exactOptionalPropertyTypes)
     const options: HistoryQueryOptions = {};
@@ -140,8 +145,8 @@ history.get("/", async (c) => {
     if (params.tags !== undefined) {
       options.tags = params.tags.split(",").slice(0, MAX_CSV_ITEMS);
     }
-    if (params.limit !== undefined) options.limit = params.limit;
-    if (params.cursor !== undefined) options.cursor = params.cursor;
+    options.limit = listQuery.limit;
+    if (listQuery.cursor !== undefined) options.cursor = listQuery.cursor;
 
     const result = await queryHistory(options);
 
