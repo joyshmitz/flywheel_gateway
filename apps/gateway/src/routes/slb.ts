@@ -43,6 +43,20 @@ const StatusSchema = z.enum([
   "failed",
 ]);
 
+/**
+ * Schema for boolean query parameters.
+ * Note: z.coerce.boolean() uses Boolean() which treats any non-empty string as true,
+ * so "false" would incorrectly become true. This transform handles "true"/"false" strings.
+ */
+const booleanQueryParam = z
+  .string()
+  .optional()
+  .transform((val) => {
+    if (val === "true" || val === "1") return true;
+    if (val === "false" || val === "0") return false;
+    return undefined;
+  });
+
 const ProjectQuerySchema = z.object({
   project: z.string().optional(),
 });
@@ -71,8 +85,8 @@ const CreateRequestSchema = z.object({
 
 const PendingQuerySchema = z.object({
   project: z.string().optional(),
-  reviewPool: z.coerce.boolean().optional(),
-  allProjects: z.coerce.boolean().optional(),
+  reviewPool: booleanQueryParam,
+  allProjects: booleanQueryParam,
 });
 
 const HistoryQuerySchema = z.object({

@@ -32,9 +32,23 @@ const RoundParamSchema = z.object({
   round: z.coerce.number().int().min(0),
 });
 
+/**
+ * Schema for boolean query parameters.
+ * Note: z.coerce.boolean() uses Boolean() which treats any non-empty string as true,
+ * so "false" would incorrectly become true. This transform handles "true"/"false" strings.
+ */
+const booleanQueryParam = z
+  .string()
+  .optional()
+  .transform((val) => {
+    if (val === "true" || val === "1") return true;
+    if (val === "false" || val === "0") return false;
+    return undefined;
+  });
+
 const RoundOptionsSchema = z.object({
   workflow: z.string().optional(),
-  includeImpl: z.coerce.boolean().optional(),
+  includeImpl: booleanQueryParam,
 });
 
 const RunOptionsSchema = z.object({

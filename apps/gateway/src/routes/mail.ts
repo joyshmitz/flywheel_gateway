@@ -110,11 +110,25 @@ const SearchMessagesSchema = z.object({
   limit: z.coerce.number().int().positive().optional(),
 });
 
+/**
+ * Schema for boolean query parameters.
+ * Note: z.coerce.boolean() uses Boolean() which treats any non-empty string as true,
+ * so "false" would incorrectly become true. This transform handles "true"/"false" strings.
+ */
+const booleanQueryParam = z
+  .string()
+  .optional()
+  .transform((val) => {
+    if (val === "true" || val === "1") return true;
+    if (val === "false" || val === "0") return false;
+    return undefined;
+  });
+
 const SummarizeThreadSchema = z.object({
   project_key: z.string().min(1),
   thread_id: z.string().min(1),
-  include_examples: z.coerce.boolean().optional(),
-  llm_mode: z.coerce.boolean().optional(),
+  include_examples: booleanQueryParam,
+  llm_mode: booleanQueryParam,
 });
 
 const ReleaseReservationsSchema = z.object({
@@ -135,7 +149,7 @@ const RenewReservationsSchema = z.object({
 const WhoisSchema = z.object({
   project_key: z.string().min(1),
   agent_name: z.string().min(1),
-  include_recent_commits: z.coerce.boolean().optional(),
+  include_recent_commits: booleanQueryParam,
   commit_limit: z.coerce.number().int().optional(),
 });
 

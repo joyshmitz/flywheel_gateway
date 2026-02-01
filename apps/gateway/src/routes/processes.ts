@@ -54,6 +54,20 @@ const BulkKillBodySchema = z.object({
   waitTimeout: z.coerce.number().int().min(1000).max(30000).optional(),
 });
 
+/**
+ * Schema for boolean query parameters.
+ * Note: z.coerce.boolean() uses Boolean() which treats any non-empty string as true,
+ * so "false" would incorrectly become true. This transform handles "true"/"false" strings.
+ */
+const booleanQueryParam = z
+  .string()
+  .optional()
+  .transform((val) => {
+    if (val === "true" || val === "1") return true;
+    if (val === "false" || val === "0") return false;
+    return undefined;
+  });
+
 // ============================================================================
 // Error Handler
 // ============================================================================
@@ -402,7 +416,7 @@ processes.post("/kill", async (c) => {
 const AgentScanQuerySchema = z.object({
   minRuntimeSeconds: z.coerce.number().int().min(0).optional(),
   minScore: z.coerce.number().int().min(0).max(100).optional(),
-  includeGateway: z.coerce.boolean().optional(),
+  includeGateway: booleanQueryParam,
 });
 
 const CleanupBodySchema = z.object({

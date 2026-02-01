@@ -322,6 +322,7 @@ export class ReservationConflictEngine {
       if (!exclusive && !existing.exclusive) continue;
 
       // Check for pattern overlaps
+      let conflictFoundForExisting = false;
       for (const newPattern of patterns) {
         for (const existingPattern of existing.patterns) {
           if (patternsOverlap(newPattern, existingPattern)) {
@@ -333,9 +334,11 @@ export class ReservationConflictEngine {
               exclusive,
             );
             conflicts.push(conflict);
+            conflictFoundForExisting = true;
             break; // One conflict per existing reservation is enough
           }
         }
+        if (conflictFoundForExisting) break;
       }
     }
 

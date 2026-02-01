@@ -25,6 +25,11 @@ function createMockService() {
         return { reservationId: "res-1", granted: true };
       case "agentmail_health":
         return { status: "ok", timestamp: "2025-01-01T00:00:00.000Z" };
+      case "agentmail_summarize_thread":
+        return {
+          thread_id: "thread-1",
+          summary: { participants: [], key_points: [], action_items: [] },
+        };
       default:
         throw new Error(`Unexpected tool: ${tool}`);
     }
@@ -157,6 +162,23 @@ describe("mail routes", () => {
     expect(calls[0]?.tool).toBe("agentmail_health");
   });
 
+  test("GET /mail/threads/:threadId/summary parses boolean query params safely", async () => {
+    const { app, calls } = createTestApp();
+
+    const res = await app.request(
+      "/mail/threads/thread-1/summary?project_key=proj-1&include_examples=false&llm_mode=false",
+    );
+
+    expect(res.status).toBe(200);
+    expect(calls[0]?.tool).toBe("agentmail_summarize_thread");
+
+    const input = calls[0]?.input as any;
+    expect(input.project_key).toBe("proj-1");
+    expect(input.thread_id).toBe("thread-1");
+    expect(input.include_examples).toBe(false);
+    expect(input.llm_mode).toBe(false);
+  });
+
   test("transport errors map to SYSTEM_UNAVAILABLE", async () => {
     const callTool = async () => {
       throw new Error("down");
@@ -242,6 +264,40 @@ describe("mail routes - conflict engine integration", () => {
     expect(
       data.error.details.conflicts[0].existingReservation.requesterId,
     ).toBe("agent-1");
+  });
+
+  test("POST /mail/reservations returns one conflict per existing reservation", async () => {
+    const { app } = createTestAppWithConflictEngine();
+
+    // Existing broad reservation
+    const res1 = await app.request("/mail/reservations", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        projectId: "proj-1",
+        requesterId: "agent-1",
+        patterns: ["src/**/*.ts"],
+        exclusive: true,
+      }),
+    });
+    expect(res1.status).toBe(201);
+
+    // Two requested patterns overlap the same existing reservation; conflicts should not duplicate.
+    const res2 = await app.request("/mail/reservations", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        projectId: "proj-1",
+        requesterId: "agent-2",
+        patterns: ["src/index.ts", "src/other.ts"],
+        exclusive: true,
+      }),
+    });
+    expect(res2.status).toBe(409);
+
+    const data = await res2.json();
+    expect(data.error.code).toBe("RESERVATION_CONFLICT");
+    expect(data.error.details.conflicts).toHaveLength(1);
   });
 
   test("POST /mail/reservations allows non-overlapping patterns", async () => {
