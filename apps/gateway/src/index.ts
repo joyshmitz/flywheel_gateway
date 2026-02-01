@@ -2,8 +2,10 @@ import {
   createBunNtmCommandRunner,
   createNtmClient,
 } from "@flywheel/flywheel-clients";
+import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { registerDrivers } from "./config/drivers";
+import { db, jobs } from "./db";
 import {
   authMiddleware,
   buildAuthContext,
@@ -13,33 +15,63 @@ import {
 } from "./middleware/auth";
 import { correlationMiddleware } from "./middleware/correlation";
 import { globalErrorHandler } from "./middleware/error-handler";
-import { idempotencyMiddleware } from "./middleware/idempotency";
+import {
+  idempotencyMiddleware,
+  stopIdempotencyCleanup,
+} from "./middleware/idempotency";
 import { loggingMiddleware } from "./middleware/logging";
 import { maintenanceMiddleware } from "./middleware/maintenance";
 import { apiSecurityHeaders } from "./middleware/security-headers";
 import { routes } from "./routes";
 import { initializeAgentService } from "./services/agent";
 import { startAgentEvents } from "./services/agent-events";
-import { startAgentHealthScoreBroadcaster } from "./services/agent-health-score.service";
-import { startStateCleanupJob } from "./services/agent-state-machine";
+import {
+  startAgentHealthScoreBroadcaster,
+  stopAgentHealthScoreBroadcaster,
+} from "./services/agent-health-score.service";
+import {
+  startStateCleanupJob,
+  stopStateCleanupJob,
+} from "./services/agent-state-machine";
 import { initCassService } from "./services/cass.service";
 import { getConfig, loadConfig } from "./services/config.service";
-import { startDCGCleanupJob } from "./services/dcg-pending.service";
-import { startCleanupJob as startHandoffCleanupJob } from "./services/handoff.service";
+import {
+  startDCGCleanupJob,
+  stopDCGCleanupJob,
+} from "./services/dcg-pending.service";
+import {
+  startCleanupJob as startHandoffCleanupJob,
+  stopCleanupJob as stopHandoffCleanupJob,
+} from "./services/handoff.service";
+import { getJobService } from "./services/job.service";
 import { logger } from "./services/logger";
 import {
   getMaintenanceSnapshot,
   getMaintenanceState,
+  startDraining,
 } from "./services/maintenance.service";
 import { registerAgentMailToolCallerFromEnv } from "./services/mcp-agentmail";
 import {
   getNtmIngestService,
   startNtmIngest,
+  stopNtmIngest,
 } from "./services/ntm-ingest.service";
-import { startNtmWsBridge } from "./services/ntm-ws-bridge.service";
-import { startCleanupJob } from "./services/reservation.service";
-import { startCleanupJob as startSafetyCleanupJob } from "./services/safety.service";
-import { startCleanupJob as startWsEventLogCleanupJob } from "./services/ws-event-log.service";
+import {
+  startNtmWsBridge,
+  stopNtmWsBridge,
+} from "./services/ntm-ws-bridge.service";
+import {
+  startCleanupJob as startReservationCleanupJob,
+  stopCleanupJob as stopReservationCleanupJob,
+} from "./services/reservation.service";
+import {
+  startCleanupJob as startSafetyCleanupJob,
+  stopCleanupJob as stopSafetyCleanupJob,
+} from "./services/safety.service";
+import {
+  startCleanupJob as startWsEventLogCleanupJob,
+  stopCleanupJob as stopWsEventLogCleanupJob,
+} from "./services/ws-event-log.service";
 import {
   enforceStartupSecurity,
   logStartupSecurityWarnings,
@@ -49,7 +81,7 @@ import {
   createInternalAuthContext,
 } from "./ws/authorization";
 import { handleWSClose, handleWSMessage, handleWSOpen } from "./ws/handlers";
-import { startHeartbeat } from "./ws/heartbeat";
+import { startHeartbeat, stopHeartbeat } from "./ws/heartbeat";
 import { getHub } from "./ws/hub";
 
 // Register available agent drivers
@@ -90,14 +122,14 @@ if (import.meta.main) {
   enforceStartupSecurity({ host, port });
 
   // Start background jobs
-  startCleanupJob();
+  startReservationCleanupJob();
   startDCGCleanupJob();
   startStateCleanupJob();
   startSafetyCleanupJob();
   startHandoffCleanupJob();
   startWsEventLogCleanupJob();
   startHeartbeat();
-  startAgentEvents(getHub());
+  const agentEvents = startAgentEvents(getHub());
   await initializeAgentService();
   startAgentHealthScoreBroadcaster();
 
@@ -154,7 +186,7 @@ if (import.meta.main) {
     logger.info("Agent Mail MCP tool caller registered");
   }
   logger.info({ host, port }, "Starting Flywheel Gateway");
-  Bun.serve({
+  const bunServer = Bun.serve({
     hostname: host,
     async fetch(req, server) {
       // Handle WebSocket upgrade
@@ -270,4 +302,147 @@ if (import.meta.main) {
       close: handleWSClose,
     },
   });
+
+  let shutdownInProgress = false;
+
+  async function getJobCountsForShutdown(): Promise<{
+    running: number;
+    pending: number;
+  }> {
+    try {
+      const [runningRow, pendingRow] = await Promise.all([
+        db
+          .select({ count: sql<number>`count(*)` })
+          .from(jobs)
+          .where(eq(jobs.status, "running")),
+        db
+          .select({ count: sql<number>`count(*)` })
+          .from(jobs)
+          .where(eq(jobs.status, "pending")),
+      ]);
+      return {
+        running: Number(runningRow[0]?.count ?? 0),
+        pending: Number(pendingRow[0]?.count ?? 0),
+      };
+    } catch {
+      return { running: 0, pending: 0 };
+    }
+  }
+
+  async function initiateShutdown(signal: "SIGINT" | "SIGTERM"): Promise<void> {
+    const deadlineSecondsRaw =
+      process.env["GATEWAY_DRAIN_DEADLINE_SECONDS"]?.trim();
+    const deadlineSeconds = Math.max(
+      1,
+      Math.min(
+        300,
+        deadlineSecondsRaw ? Number.parseInt(deadlineSecondsRaw, 10) || 30 : 30,
+      ),
+    );
+    const startedAt = Date.now();
+    const shutdownDeadlineAt = startedAt + deadlineSeconds * 1000;
+
+    // Enter drain mode first: closes active WebSockets and returns 503 for mutating routes.
+    startDraining({ deadlineSeconds, reason: `shutdown:${signal}` });
+
+    let wsActiveConnections = 0;
+    try {
+      wsActiveConnections = getHub().getStats().activeConnections;
+    } catch {
+      // Hub may not be initialized in all contexts.
+    }
+
+    const maintenanceSnapshot = getMaintenanceSnapshot();
+    const jobCounts = await getJobCountsForShutdown();
+
+    logger.info(
+      {
+        signal,
+        deadlineSeconds,
+        http: { inflightRequests: maintenanceSnapshot.http.inflightRequests },
+        ws: { activeConnections: wsActiveConnections },
+        jobs: jobCounts,
+      },
+      "Shutdown initiated",
+    );
+
+    // Stop accepting new network connections, but do not forcibly close in-flight requests.
+    await bunServer.stop(false);
+
+    // Stop background loops (best-effort, idempotent).
+    stopHeartbeat();
+    stopIdempotencyCleanup();
+    agentEvents.stop();
+    stopAgentHealthScoreBroadcaster();
+    stopStateCleanupJob();
+    stopDCGCleanupJob();
+    stopReservationCleanupJob();
+    stopSafetyCleanupJob();
+    stopHandoffCleanupJob();
+    stopWsEventLogCleanupJob();
+    stopNtmWsBridge();
+    stopNtmIngest();
+
+    // Stop job worker, bounded by the overall shutdown deadline.
+    await Promise.race([
+      getJobService().stop(),
+      Bun.sleep(Math.max(0, shutdownDeadlineAt - Date.now())),
+    ]);
+
+    // Wait for in-flight HTTP requests (bounded).
+    while (Date.now() < shutdownDeadlineAt) {
+      const snapshot = getMaintenanceSnapshot();
+      if (snapshot.http.inflightRequests <= 0) break;
+      await Bun.sleep(100);
+    }
+
+    // If anything is still active, force-close remaining connections.
+    await bunServer.stop(true);
+
+    const finalJobCounts = await getJobCountsForShutdown();
+    const durationMs = Date.now() - startedAt;
+    const finalSnapshot = getMaintenanceSnapshot();
+
+    let finalWsConnections = 0;
+    try {
+      finalWsConnections = getHub().getStats().activeConnections;
+    } catch {
+      // Hub may not be initialized in all contexts.
+    }
+
+    logger.info(
+      {
+        signal,
+        durationMs,
+        http: { inflightRequests: finalSnapshot.http.inflightRequests },
+        ws: { activeConnections: finalWsConnections },
+        jobs: finalJobCounts,
+      },
+      "Shutdown complete",
+    );
+
+    process.exit(0);
+  }
+
+  for (const signal of ["SIGINT", "SIGTERM"] as const) {
+    process.on(signal, () => {
+      if (shutdownInProgress) {
+        logger.warn(
+          { signal },
+          "Second shutdown signal received; forcing exit",
+        );
+        void bunServer.stop(true).finally(() => {
+          process.exit(1);
+        });
+        return;
+      }
+      shutdownInProgress = true;
+      void initiateShutdown(signal).catch((error) => {
+        logger.error({ error, signal }, "Shutdown handler failed");
+        void bunServer.stop(true).finally(() => {
+          process.exit(1);
+        });
+      });
+    });
+  }
 }
