@@ -7,10 +7,19 @@
  */
 
 import { Hono } from "hono";
+import { z } from "zod";
 import { requireAdminMiddleware } from "../middleware/auth";
 import { getLogger } from "../middleware/correlation";
+import {
+  enterMaintenance,
+  exitMaintenance,
+  getMaintenanceSnapshot,
+  startDraining,
+} from "../services/maintenance.service";
 import { getSnapshotService } from "../services/snapshot.service";
-import { sendResource } from "../utils/response";
+import { sendResource, sendValidationError } from "../utils/response";
+import type { AuthContext } from "../ws/hub";
+import { getHub } from "../ws/hub";
 
 const system = new Hono();
 system.use("*", requireAdminMiddleware());
@@ -95,6 +104,107 @@ system.delete("/snapshot/cache", (c) => {
   return sendResource(c, "snapshot_cache_cleared", {
     message: "Snapshot cache cleared successfully",
     timestamp: new Date().toISOString(),
+  });
+});
+
+// ============================================================================
+// Maintenance Mode
+// ============================================================================
+
+const MaintenanceUpdateSchema = z.object({
+  enabled: z.boolean(),
+  deadlineSeconds: z
+    .number()
+    .int()
+    .min(1)
+    .max(60 * 60)
+    .optional(),
+  reason: z.string().max(500).optional(),
+});
+
+/**
+ * GET /system/maintenance - Current maintenance/drain status.
+ */
+system.get("/maintenance", (c) => {
+  const hub = getHub();
+  const wsStats = hub.getStats();
+
+  const snapshot = getMaintenanceSnapshot();
+
+  return sendResource(c, "maintenance_status", {
+    ...snapshot,
+    ws: {
+      activeConnections: wsStats.activeConnections,
+    },
+  });
+});
+
+/**
+ * POST /system/maintenance - Enable/disable maintenance or drain mode.
+ *
+ * Semantics:
+ * - enabled=false: return to normal operation
+ * - enabled=true + deadlineSeconds: enter draining mode (deadline bound)
+ * - enabled=true + no deadlineSeconds: enter maintenance mode
+ */
+system.post("/maintenance", async (c) => {
+  const log = getLogger();
+  const raw = await c.req.json().catch(() => undefined);
+  const parsed = MaintenanceUpdateSchema.safeParse(raw);
+  if (!parsed.success) {
+    return sendValidationError(
+      c,
+      parsed.error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        message: issue.message,
+        code: issue.code,
+      })),
+    );
+  }
+  const input = parsed.data;
+
+  const auth = c.get("auth") as AuthContext | undefined;
+  const actor = {
+    actor: auth?.userId ?? "admin",
+    userId: auth?.userId,
+    apiKeyId: auth?.apiKeyId,
+  };
+
+  if (!input.enabled) {
+    exitMaintenance({ actor });
+    log.info({ enabled: false, actor }, "Maintenance disabled via API");
+  } else if (typeof input.deadlineSeconds === "number") {
+    startDraining({
+      deadlineSeconds: input.deadlineSeconds,
+      reason: input.reason,
+      actor,
+    });
+    log.info(
+      {
+        enabled: true,
+        mode: "draining",
+        deadlineSeconds: input.deadlineSeconds,
+        actor,
+      },
+      "Drain mode enabled via API",
+    );
+  } else {
+    enterMaintenance({ reason: input.reason, actor });
+    log.info(
+      { enabled: true, mode: "maintenance", actor },
+      "Maintenance enabled via API",
+    );
+  }
+
+  const hub = getHub();
+  const wsStats = hub.getStats();
+  const snapshot = getMaintenanceSnapshot();
+
+  return sendResource(c, "maintenance_status", {
+    ...snapshot,
+    ws: {
+      activeConnections: wsStats.activeConnections,
+    },
   });
 });
 

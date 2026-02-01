@@ -5,6 +5,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 import { system } from "../routes/system";
+import { _resetMaintenanceStateForTests } from "../services/maintenance.service";
 import { clearSnapshotServiceInstance } from "../services/snapshot.service";
 
 // ============================================================================
@@ -100,6 +101,22 @@ interface CacheClearedEnvelope {
   requestId?: string;
 }
 
+interface MaintenanceStatusEnvelope {
+  object: string;
+  data: {
+    mode: "running" | "maintenance" | "draining";
+    startedAt: string | null;
+    deadlineAt: string | null;
+    retryAfterSeconds: number | null;
+    reason: string | null;
+    updatedAt: string;
+    updatedBy: unknown;
+    http: { inflightRequests: number };
+    ws: { activeConnections: number };
+  };
+  requestId?: string;
+}
+
 // ============================================================================
 // Tests
 // ============================================================================
@@ -111,10 +128,12 @@ describe("System Routes", () => {
 
   beforeEach(() => {
     clearSnapshotServiceInstance();
+    _resetMaintenanceStateForTests();
   });
 
   afterEach(() => {
     clearSnapshotServiceInstance();
+    _resetMaintenanceStateForTests();
   });
 
   describe("GET /system/snapshot", () => {
@@ -600,6 +619,68 @@ describe("System Routes Contract Tests (bd-2ek6)", () => {
 
       expect(validationLog.valid).toBe(true);
     });
+  });
+
+  describe("GET /system/maintenance", () => {
+    test(
+      "returns running status by default",
+      async () => {
+        const res = await app.request("/system/maintenance");
+        expect(res.status).toBe(200);
+
+        const body = (await res.json()) as MaintenanceStatusEnvelope;
+        expect(body.object).toBe("maintenance_status");
+        expect(body.data.mode).toBe("running");
+        expect(body.data.ws.activeConnections).toBeGreaterThanOrEqual(0);
+        expect(body.data.http.inflightRequests).toBeGreaterThanOrEqual(0);
+      },
+      ROUTES_TEST_TIMEOUT_MS,
+    );
+  });
+
+  describe("POST /system/maintenance", () => {
+    test(
+      "enables and disables maintenance mode",
+      async () => {
+        const enable = await app.request("/system/maintenance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled: true, reason: "deploy" }),
+        });
+        expect(enable.status).toBe(200);
+        const enabledBody = (await enable.json()) as MaintenanceStatusEnvelope;
+        expect(enabledBody.data.mode).toBe("maintenance");
+
+        const disable = await app.request("/system/maintenance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled: false }),
+        });
+        expect(disable.status).toBe(200);
+        const disabledBody =
+          (await disable.json()) as MaintenanceStatusEnvelope;
+        expect(disabledBody.data.mode).toBe("running");
+      },
+      ROUTES_TEST_TIMEOUT_MS,
+    );
+
+    test(
+      "enables draining mode when deadlineSeconds is provided",
+      async () => {
+        const res = await app.request("/system/maintenance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled: true, deadlineSeconds: 10 }),
+        });
+
+        expect(res.status).toBe(200);
+        const body = (await res.json()) as MaintenanceStatusEnvelope;
+        expect(body.data.mode).toBe("draining");
+        expect(body.data.deadlineAt).not.toBeNull();
+        expect(body.data.retryAfterSeconds).not.toBeNull();
+      },
+      ROUTES_TEST_TIMEOUT_MS,
+    );
   });
 });
 

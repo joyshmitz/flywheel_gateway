@@ -15,6 +15,7 @@ import { correlationMiddleware } from "./middleware/correlation";
 import { globalErrorHandler } from "./middleware/error-handler";
 import { idempotencyMiddleware } from "./middleware/idempotency";
 import { loggingMiddleware } from "./middleware/logging";
+import { maintenanceMiddleware } from "./middleware/maintenance";
 import { apiSecurityHeaders } from "./middleware/security-headers";
 import { routes } from "./routes";
 import { initializeAgentService } from "./services/agent";
@@ -56,6 +57,7 @@ app.use("*", correlationMiddleware());
 app.use("*", loggingMiddleware());
 app.use("*", apiSecurityHeaders());
 app.use("*", authMiddleware());
+app.use("*", maintenanceMiddleware());
 app.use(
   "*",
   idempotencyMiddleware({

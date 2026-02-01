@@ -164,6 +164,10 @@ export const ErrorCodes = {
   },
   DAEMON_START_FAILED: { httpStatus: 500, message: "Failed to start daemon" },
 
+  // Maintenance / shutdown
+  MAINTENANCE_MODE: { httpStatus: 503, message: "Service in maintenance mode" },
+  DRAINING: { httpStatus: 503, message: "Service is draining" },
+
   // Validation
   INVALID_REQUEST: { httpStatus: 400, message: "Request validation failed" },
   INVALID_MODEL: { httpStatus: 400, message: "Invalid model type" },
