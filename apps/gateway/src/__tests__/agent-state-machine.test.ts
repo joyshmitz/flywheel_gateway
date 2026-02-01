@@ -141,8 +141,9 @@ describe("Agent State Model", () => {
     test("returns valid targets for SPAWNING", () => {
       const valid = getValidTransitions(LifecycleState.SPAWNING);
       expect(valid).toContain(LifecycleState.INITIALIZING);
+      expect(valid).toContain(LifecycleState.TERMINATING);
       expect(valid).toContain(LifecycleState.FAILED);
-      expect(valid.length).toBe(2);
+      expect(valid.length).toBe(3);
     });
 
     test("returns empty array for terminal states", () => {

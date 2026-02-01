@@ -115,9 +115,9 @@ describe("isValidTransition", () => {
     expect(
       isValidTransition(AgentState.SPAWNING, AgentState.INITIALIZING),
     ).toBe(true);
-    expect(
-      isValidTransition(AgentState.SPAWNING, AgentState.TERMINATING),
-    ).toBe(true);
+    expect(isValidTransition(AgentState.SPAWNING, AgentState.TERMINATING)).toBe(
+      true,
+    );
     expect(isValidTransition(AgentState.INITIALIZING, AgentState.READY)).toBe(
       true,
     );
@@ -375,6 +375,7 @@ describe("AgentStateMachine", () => {
   describe("canTransitionTo", () => {
     it("returns true for valid transitions", () => {
       expect(machine.canTransitionTo(AgentState.INITIALIZING)).toBe(true);
+      expect(machine.canTransitionTo(AgentState.TERMINATING)).toBe(true);
       expect(machine.canTransitionTo(AgentState.FAILED)).toBe(true);
     });
 
@@ -388,6 +389,7 @@ describe("AgentStateMachine", () => {
     it("returns valid transitions for current state", () => {
       const validTransitions = machine.getValidTransitions();
       expect(validTransitions).toContain(AgentState.INITIALIZING);
+      expect(validTransitions).toContain(AgentState.TERMINATING);
       expect(validTransitions).toContain(AgentState.FAILED);
       expect(validTransitions).not.toContain(AgentState.READY);
     });
