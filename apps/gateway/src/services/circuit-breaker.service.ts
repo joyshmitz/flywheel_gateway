@@ -250,6 +250,7 @@ export async function withCircuitBreaker<T>(
   tool: string,
   checkFn: () => Promise<T>,
   fallbackValue: T,
+  options?: { isSuccess?: (result: T) => boolean },
 ): Promise<{ result: T; fromCache: boolean }> {
   if (!shouldCheck(tool)) {
     return { result: fallbackValue, fromCache: true };
@@ -257,7 +258,9 @@ export async function withCircuitBreaker<T>(
 
   try {
     const result = await checkFn();
-    recordSuccess(tool);
+    const isSuccess = options?.isSuccess?.(result) ?? true;
+    if (isSuccess) recordSuccess(tool);
+    else recordFailure(tool);
     return { result, fromCache: false };
   } catch {
     recordFailure(tool);

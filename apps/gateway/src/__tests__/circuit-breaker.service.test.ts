@@ -195,6 +195,24 @@ describe("withCircuitBreaker wrapper", () => {
     expect(fromCache).toBe(false);
   });
 
+  test("records failure when isSuccess predicate returns false (without falling back)", async () => {
+    configureBreaker("predicate-tool", {
+      failureThreshold: 1,
+      initialBackoffMs: 5,
+    });
+
+    const { result, fromCache } = await withCircuitBreaker(
+      "predicate-tool",
+      async () => ({ healthy: false, reason: "not installed" }),
+      { healthy: true, reason: "fallback" },
+      { isSuccess: (r) => r.healthy === true },
+    );
+
+    expect(result.healthy).toBe(false);
+    expect(fromCache).toBe(false);
+    expect(getBreakerStatus("predicate-tool").state).toBe("OPEN");
+  });
+
   test("returns fallback when check throws", async () => {
     const { result, fromCache } = await withCircuitBreaker(
       "fail-tool",
