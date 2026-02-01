@@ -167,7 +167,9 @@ export function CostDashboard() {
       const results = await Promise.allSettled([
         fetchJSON<CostSummary>(`${API_BASE}/summary`),
         fetchJSON<{ items: BudgetStatus[] }>(`${API_BASE}/budget-statuses`),
-        fetchJSON<{ items: TrendDataPoint[] }>(`${API_BASE}/trends/daily?days=30`),
+        fetchJSON<{ items: TrendDataPoint[] }>(
+          `${API_BASE}/trends/daily?days=30`,
+        ),
         fetchJSON<CostBreakdown>(`${API_BASE}/breakdown/model`),
         fetchJSON<Forecast>(`${API_BASE}/forecasts/latest`),
         fetchJSON<{ items: Recommendation[] }>(`${API_BASE}/recommendations`),
@@ -269,7 +271,9 @@ export function CostDashboard() {
     const recsRes = await fetchJSON<{ items: Recommendation[] }>(
       `${API_BASE}/recommendations`,
     ).catch((err) => {
-      console.error("[CostDashboard] Failed to refresh recommendations", { err });
+      console.error("[CostDashboard] Failed to refresh recommendations", {
+        err,
+      });
       return null;
     });
 
