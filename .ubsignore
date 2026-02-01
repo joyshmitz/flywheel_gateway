@@ -1,0 +1,7 @@
+# UBS ignore globs (repo-relative).
+#
+# Keep this list small and targeted. Prefer fixing real issues over hiding them.
+
+# Generated Playwright report artifact (committed for now).
+tests/e2e/tests/e2e/report/**
+
