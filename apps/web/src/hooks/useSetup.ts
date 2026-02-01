@@ -648,6 +648,8 @@ async function fetchToolRegistry(
  * - Install commands and documentation URLs
  */
 export function useToolRegistry() {
+  "use no memo";
+
   const [registry, setRegistry] = useState<ToolRegistryResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

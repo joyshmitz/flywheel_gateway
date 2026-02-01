@@ -163,66 +163,77 @@ export function CostDashboard() {
       setLoading(true);
       setError(null);
 
-      try {
-        // Fetch all data in parallel
-        const [
-          summaryRes,
-          budgetsRes,
-          trendRes,
-          breakdownRes,
-          forecastRes,
-          recsRes,
-          optSummaryRes,
-        ] = await Promise.allSettled([
-          fetchJSON<CostSummary>(`${API_BASE}/summary`),
-          fetchJSON<{ items: BudgetStatus[] }>(`${API_BASE}/budget-statuses`),
-          fetchJSON<{ items: TrendDataPoint[] }>(
-            `${API_BASE}/trends/daily?days=30`,
-          ),
-          fetchJSON<CostBreakdown>(`${API_BASE}/breakdown/model`),
-          fetchJSON<Forecast>(`${API_BASE}/forecasts/latest`),
-          fetchJSON<{ items: Recommendation[] }>(`${API_BASE}/recommendations`),
-          fetchJSON<OptimizationSummary>(`${API_BASE}/recommendations/summary`),
-        ]);
+      // Fetch all data in parallel; settle each request so we can show partial data when possible.
+      const results = await Promise.allSettled([
+        fetchJSON<CostSummary>(`${API_BASE}/summary`),
+        fetchJSON<{ items: BudgetStatus[] }>(`${API_BASE}/budget-statuses`),
+        fetchJSON<{ items: TrendDataPoint[] }>(`${API_BASE}/trends/daily?days=30`),
+        fetchJSON<CostBreakdown>(`${API_BASE}/breakdown/model`),
+        fetchJSON<Forecast>(`${API_BASE}/forecasts/latest`),
+        fetchJSON<{ items: Recommendation[] }>(`${API_BASE}/recommendations`),
+        fetchJSON<OptimizationSummary>(`${API_BASE}/recommendations/summary`),
+      ]);
 
-        // Handle summary
-        if (summaryRes.status === "fulfilled") {
-          setSummary(summaryRes.value);
-        }
+      const [
+        summaryRes,
+        budgetsRes,
+        trendRes,
+        breakdownRes,
+        forecastRes,
+        recsRes,
+        optSummaryRes,
+      ] = results;
 
-        // Handle budgets
-        if (budgetsRes.status === "fulfilled") {
-          setBudgetStatuses(budgetsRes.value.items ?? []);
-        }
+      if (results.every((result) => result.status === "rejected")) {
+        const detail = results
+          .map((result) =>
+            result.status === "rejected"
+              ? result.reason instanceof Error
+                ? result.reason.message
+                : String(result.reason)
+              : null,
+          )
+          .filter((msg): msg is string => Boolean(msg))
+          .join("; ");
 
-        // Handle trend
-        if (trendRes.status === "fulfilled") {
-          setTrendData(trendRes.value.items ?? []);
-        }
+        setError(detail || "Failed to load cost data");
+        setLoading(false);
+        return;
+      }
 
-        // Handle breakdown
-        if (breakdownRes.status === "fulfilled") {
-          setBreakdown(breakdownRes.value);
-        }
+      // Handle summary
+      if (summaryRes.status === "fulfilled") {
+        setSummary(summaryRes.value);
+      }
 
-        // Handle forecast
-        if (forecastRes.status === "fulfilled" && forecastRes.value) {
-          setForecast(forecastRes.value);
-        }
+      // Handle budgets
+      if (budgetsRes.status === "fulfilled") {
+        setBudgetStatuses(budgetsRes.value.items ?? []);
+      }
 
-        // Handle recommendations
-        if (recsRes.status === "fulfilled") {
-          setRecommendations(recsRes.value.items ?? []);
-        }
+      // Handle trend
+      if (trendRes.status === "fulfilled") {
+        setTrendData(trendRes.value.items ?? []);
+      }
 
-        // Handle optimization summary
-        if (optSummaryRes.status === "fulfilled") {
-          setOptimizationSummary(optSummaryRes.value);
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load cost data",
-        );
+      // Handle breakdown
+      if (breakdownRes.status === "fulfilled") {
+        setBreakdown(breakdownRes.value);
+      }
+
+      // Handle forecast
+      if (forecastRes.status === "fulfilled" && forecastRes.value) {
+        setForecast(forecastRes.value);
+      }
+
+      // Handle recommendations
+      if (recsRes.status === "fulfilled") {
+        setRecommendations(recsRes.value.items ?? []);
+      }
+
+      // Handle optimization summary
+      if (optSummaryRes.status === "fulfilled") {
+        setOptimizationSummary(optSummaryRes.value);
       }
 
       setLoading(false);
@@ -236,21 +247,35 @@ export function CostDashboard() {
     id: string,
     status: string,
   ) => {
-    try {
-      await fetch(`${API_BASE}/recommendations/${id}/status`, {
+    const updateResponse = await fetch(
+      `${API_BASE}/recommendations/${id}/status`,
+      {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
+      },
+    ).catch((err) => {
+      console.error("[CostDashboard] Failed to update recommendation status", {
+        id,
+        status,
+        err,
       });
+      return null;
+    });
 
-      // Refresh recommendations
-      const recsRes = await fetchJSON<{ items: Recommendation[] }>(
-        `${API_BASE}/recommendations`,
-      );
-      setRecommendations(recsRes.items ?? []);
-    } catch (err) {
-      console.error("Failed to update recommendation status:", err);
-    }
+    if (!updateResponse?.ok) return;
+
+    // Refresh recommendations
+    const recsRes = await fetchJSON<{ items: Recommendation[] }>(
+      `${API_BASE}/recommendations`,
+    ).catch((err) => {
+      console.error("[CostDashboard] Failed to refresh recommendations", { err });
+      return null;
+    });
+
+    if (!recsRes) return;
+
+    setRecommendations(recsRes.items ?? []);
   };
 
   if (loading) {

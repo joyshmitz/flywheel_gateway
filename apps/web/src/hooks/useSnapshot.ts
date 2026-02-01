@@ -281,6 +281,8 @@ interface UseQueryResult<T> {
 export function useSnapshot(options?: {
   pollingInterval?: number;
 }): UseQueryResult<SystemSnapshot> {
+  "use no memo";
+
   const mockMode = useUiStore((state) => state.mockMode);
   const allowMockFallback = useAllowMockFallback();
   const toastStateRef = useRef<"none" | "mock" | "error">("none");

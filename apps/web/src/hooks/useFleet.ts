@@ -417,6 +417,8 @@ function useQuery<T>(
   mockData: T,
   deps: unknown[] = [],
 ): UseQueryResult<T> {
+  "use no memo";
+
   const mockMode = useUiStore((state) => state.mockMode);
   const allowMockFallback = useAllowMockFallback();
   const toastStateRef = useRef<"none" | "mock" | "error">("none");
@@ -479,6 +481,8 @@ function useQuery<T>(
  * Hook to fetch fleet statistics.
  */
 export function useFleetStats(): UseQueryResult<FleetStats> {
+  "use no memo";
+
   return useQuery("/fleet/stats", mockFleetStats);
 }
 
@@ -490,6 +494,8 @@ export function useFleetRepos(options?: {
   group?: string;
   limit?: number;
 }): UseQueryResult<FleetRepo[]> {
+  "use no memo";
+
   const params = new URLSearchParams();
   if (options?.status) params.set("status", options.status);
   if (options?.group) params.set("group", options.group);
@@ -506,6 +512,8 @@ export function useFleetRepos(options?: {
  * Hook to fetch fleet groups.
  */
 export function useFleetGroups(): UseQueryResult<string[]> {
+  "use no memo";
+
   return useQuery("/fleet/groups", [
     "core",
     "services",
@@ -518,6 +526,8 @@ export function useFleetGroups(): UseQueryResult<string[]> {
  * Hook to fetch repos needing sync.
  */
 export function useReposNeedingSync(): UseQueryResult<FleetRepo[]> {
+  "use no memo";
+
   const needingSync = mockFleetRepos.filter(
     (r) => r.status === "behind" || r.status === "diverged" || !r.isCloned,
   );
@@ -531,6 +541,8 @@ export function useSweepSessions(options?: {
   status?: SweepStatus;
   limit?: number;
 }): UseQueryResult<SweepSession[]> {
+  "use no memo";
+
   const params = new URLSearchParams();
   if (options?.status) params.set("status", options.status);
   if (options?.limit) params.set("limit", String(options.limit));
@@ -547,6 +559,8 @@ export function useSweepSessions(options?: {
 export function useSweepSession(
   sessionId: string,
 ): UseQueryResult<SweepSession | null> {
+  "use no memo";
+
   const session = mockSweepSessions.find((s) => s.id === sessionId) ?? null;
   return useQuery(`/sweeps/${sessionId}`, session, [sessionId]);
 }
@@ -560,6 +574,8 @@ export function useSweepPlans(
     approvalStatus?: PlanApprovalStatus;
   },
 ): UseQueryResult<SweepPlan[]> {
+  "use no memo";
+
   const params = new URLSearchParams();
   if (options?.approvalStatus)
     params.set("approvalStatus", options.approvalStatus);
@@ -579,6 +595,8 @@ export function useSweepPlans(
  * Hook to start a new sweep.
  */
 export function useStartSweep() {
+  "use no memo";
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const mockMode = useUiStore((state) => state.mockMode);
@@ -639,6 +657,8 @@ export function useStartSweep() {
  * Hook to approve a sweep session.
  */
 export function useApproveSweep() {
+  "use no memo";
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const mockMode = useUiStore((state) => state.mockMode);
@@ -677,6 +697,8 @@ export function useApproveSweep() {
  * Hook to cancel a sweep session.
  */
 export function useCancelSweep() {
+  "use no memo";
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const mockMode = useUiStore((state) => state.mockMode);
@@ -714,6 +736,8 @@ export function useCancelSweep() {
  * Hook to approve a plan.
  */
 export function useApprovePlan() {
+  "use no memo";
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const mockMode = useUiStore((state) => state.mockMode);

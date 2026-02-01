@@ -173,6 +173,8 @@ interface UseQueryResult<T> {
  * Hook to fetch safety posture status.
  */
 export function useSafetyPosture(): UseQueryResult<SafetyPostureResponse> {
+  "use no memo";
+
   const mockMode = useUiStore((state) => state.mockMode);
   const [data, setData] = useState<SafetyPostureResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
