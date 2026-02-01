@@ -1,6 +1,38 @@
+import { createServer } from "node:net";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
 
 process.env["PLAYWRIGHT_TEST"] = "1";
+
+async function pickAvailablePort(preferredPort: number): Promise<number> {
+  const tryListen = (port: number) =>
+    new Promise<number>((resolve, reject) => {
+      const server = createServer();
+      server.unref();
+      server.once("error", reject);
+      server.listen(port, "127.0.0.1", () => {
+        const address = server.address();
+        const resolvedPort =
+          typeof address === "object" && address ? address.port : port;
+        server.close(() => resolve(resolvedPort));
+      });
+    });
+
+  try {
+    return await tryListen(preferredPort);
+  } catch {
+    // Fall back to an ephemeral port (0) if the preferred port is taken.
+    return await tryListen(0);
+  }
+}
+
+const gatewayAdminKey = process.env["E2E_GATEWAY_ADMIN_KEY"] ?? "e2e-admin-key";
+const gatewayPort = await pickAvailablePort(
+  Number(process.env["E2E_GATEWAY_PORT"] ?? 3456),
+);
+const gatewayTarget = `http://127.0.0.1:${gatewayPort}`;
+const repoRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 
 /**
  * Playwright configuration with enhanced logging and diagnostics.
@@ -25,11 +57,11 @@ export default defineConfig({
   // Enhanced reporting with structured JSON logs
   reporter: [
     ["list", { printSteps: true }],
-    ["html", { open: "never", outputFolder: "tests/e2e/report" }],
+    ["html", { open: "never", outputFolder: "report" }],
     [
       "./lib/reporter.ts",
       {
-        outputDir: "tests/e2e/logs",
+        outputDir: "logs",
         includeConsole: true,
         includeNetwork: true,
         includeWebSocket: true,
@@ -53,7 +85,7 @@ export default defineConfig({
   },
 
   // Output directories
-  outputDir: "tests/e2e/results",
+  outputDir: "results",
 
   // Parallel execution
   fullyParallel: true,
@@ -85,18 +117,25 @@ export default defineConfig({
   webServer: [
     {
       command: "bun scripts/e2e-server.ts",
-      url: "http://localhost:3456/health",
+      url: `http://localhost:${gatewayPort}/health`,
+      cwd: repoRoot,
       reuseExistingServer: !process.env["CI"],
       timeout: 30_000,
       env: {
-        E2E_GATEWAY_PORT: "3456",
+        E2E_GATEWAY_PORT: String(gatewayPort),
+        E2E_GATEWAY_ADMIN_KEY: gatewayAdminKey,
       },
     },
     {
       command: "bun run dev:web",
       url: "http://localhost:5173",
+      cwd: repoRoot,
       reuseExistingServer: !process.env["CI"],
       timeout: 30_000,
+      env: {
+        VITE_GATEWAY_TARGET: gatewayTarget,
+        VITE_GATEWAY_TOKEN: gatewayAdminKey,
+      },
     },
   ],
 });

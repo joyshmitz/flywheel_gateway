@@ -73,6 +73,9 @@ tests/e2e/logs/
 tests/e2e/results/
 tests/e2e/report/
 
+# Legacy nested Playwright output path (should not be used going forward)
+tests/e2e/tests/e2e/
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Logs
 # ═══════════════════════════════════════════════════════════════════════════════

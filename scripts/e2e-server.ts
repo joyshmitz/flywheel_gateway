@@ -20,11 +20,18 @@
  */
 
 import { Database } from "bun:sqlite";
-import { readdirSync, readFileSync, unlinkSync } from "node:fs";
+import {
+  cpSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const PORT = Number(process.env["E2E_GATEWAY_PORT"] ?? 3456);
+const ADMIN_KEY = process.env["E2E_GATEWAY_ADMIN_KEY"] ?? "e2e-admin-key";
 const MIGRATIONS_DIR = join(
   import.meta.dir,
   "../apps/gateway/src/db/migrations",
@@ -34,7 +41,20 @@ const MIGRATIONS_DIR = join(
 // 1. Create temp DB and run migrations
 // ---------------------------------------------------------------------------
 
-const dbPath = join(tmpdir(), `flywheel-e2e-${process.pid}-${Date.now()}.db`);
+const repoRoot = join(import.meta.dir, "..");
+const workspaceRoot = mkdtempSync(join(tmpdir(), "flywheel-e2e-"));
+
+// Isolate Beads/BR/BV state for E2E runs so tests don't mutate the repo's real
+// `.beads/` directory via /beads CRUD endpoints.
+try {
+  cpSync(join(repoRoot, ".beads"), join(workspaceRoot, ".beads"), {
+    recursive: true,
+  });
+} catch {
+  // If the repo doesn't have .beads yet, the gateway will create it on demand.
+}
+
+const dbPath = join(workspaceRoot, "gateway.db");
 const sqliteDb = new Database(dbPath);
 
 sqliteDb.exec("PRAGMA journal_mode = WAL");
@@ -94,7 +114,8 @@ sqliteDb.close();
 
 process.env["DB_FILE_NAME"] = dbPath;
 process.env["NODE_ENV"] = "test";
-process.env["GATEWAY_ADMIN_KEY"] = "e2e-admin-key";
+process.env["GATEWAY_ADMIN_KEY"] = ADMIN_KEY;
+process.env["BEADS_PROJECT_ROOT"] = workspaceRoot;
 
 // Dynamic import so it picks up the env vars
 const { default: app } = await import("../apps/gateway/src/index");
@@ -118,13 +139,20 @@ function cleanup() {
   } catch {
     /* ignore */
   }
-  for (const suffix of ["", "-wal", "-shm"]) {
-    try {
-      unlinkSync(`${dbPath}${suffix}`);
-    } catch {
-      /* ignore */
+
+  // Safety: only delete under the OS temp dir.
+  try {
+    const tmp = tmpdir();
+    if (
+      workspaceRoot.startsWith(tmp) &&
+      workspaceRoot.includes("flywheel-e2e-")
+    ) {
+      rmSync(workspaceRoot, { recursive: true, force: true });
     }
+  } catch {
+    /* ignore */
   }
+
   console.log("Cleanup complete.");
   process.exit(0);
 }
