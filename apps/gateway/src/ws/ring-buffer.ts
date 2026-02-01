@@ -374,6 +374,10 @@ export const BUFFER_CONFIGS: Record<string, RingBufferConfig> = {
     capacity: 120,
     ttlMs: 120000, // 2 minutes
   },
+  "system:circuits": {
+    capacity: 200,
+    ttlMs: 600000, // 10 minutes
+  },
   "system:dcg": {
     capacity: 100, // DCG block updates
     ttlMs: 300000, // 5 minutes

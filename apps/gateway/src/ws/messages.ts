@@ -120,6 +120,8 @@ export type MessageType =
   | "git.sync.retrying"
   | "git.sync.failed"
   | "git.sync.cancelled"
+  // Circuit breakers
+  | "circuit.state_changed"
   // System
   | "health.ping"
   | "error"

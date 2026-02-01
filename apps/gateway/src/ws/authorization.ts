@@ -110,6 +110,7 @@ export function canSubscribe(
     // System channels: require admin access
     case "system:health":
     case "system:metrics":
+    case "system:circuits":
     case "system:dcg":
     case "system:fleet":
     case "system:supervisor":
@@ -227,6 +228,7 @@ export function canPublish(
     // System channels: only admin/system can publish
     case "system:health":
     case "system:metrics":
+    case "system:circuits":
     case "system:dcg":
     case "system:fleet":
     case "system:supervisor":

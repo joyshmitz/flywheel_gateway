@@ -31,7 +31,7 @@ import {
   type HealthDiagnostics,
 } from "../services/tool-health-diagnostics.service";
 import { loadToolRegistry } from "../services/tool-registry.service";
-import { sendResource } from "../utils/response";
+import { sendList, sendResource } from "../utils/response";
 import { getHub, type HubStats } from "../ws/hub";
 
 const health = new Hono();
@@ -61,6 +61,18 @@ health.get("/", (c) => {
     uptimeSeconds: runtimeInfo.uptimeSeconds,
     timestamp: new Date().toISOString(),
   });
+});
+
+/**
+ * GET /health/circuits - Circuit breaker states
+ *
+ * Returns the current circuit breaker statuses for tracked tools/services.
+ */
+health.get("/circuits", (c) => {
+  const statuses = getAllBreakerStatuses().sort((a, b) =>
+    a.tool.localeCompare(b.tool),
+  );
+  return sendList(c, statuses);
 });
 
 /**

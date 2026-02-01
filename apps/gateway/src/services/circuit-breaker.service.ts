@@ -17,6 +17,8 @@
  *   HALF_OPEN + probe failure                        → OPEN (double backoff)
  */
 
+import type { Channel } from "../ws/channels";
+import { getHub } from "../ws/hub";
 import { logger } from "./logger";
 
 // ============================================================================
@@ -105,6 +107,24 @@ function getOrCreateBreaker(tool: string): BreakerState {
   return b;
 }
 
+function publishCircuitStateChanged(
+  tool: string,
+  previousState: CircuitState,
+): void {
+  try {
+    const hub = getHub();
+    const channel: Channel = { type: "system:circuits" };
+    hub.publish(
+      channel,
+      "circuit.state_changed",
+      { tool, previousState, status: getBreakerStatus(tool) },
+      {},
+    );
+  } catch {
+    // Hub may not be initialized in all contexts
+  }
+}
+
 // ============================================================================
 // Public API
 // ============================================================================
@@ -133,11 +153,13 @@ export function shouldCheck(tool: string): boolean {
   if (b.state === "OPEN") {
     // Check if backoff has elapsed
     if (b.nextRetryAt && Date.now() >= b.nextRetryAt.getTime()) {
+      const previousState = b.state;
       b.state = "HALF_OPEN";
       logger.info(
         { tool, previousBackoffMs: b.currentBackoffMs },
         "circuit-breaker: transitioning to HALF_OPEN",
       );
+      publishCircuitStateChanged(tool, previousState);
       return true;
     }
     return false;
@@ -169,6 +191,7 @@ export function recordSuccess(tool: string): void {
       { tool, previousState: prevState },
       "circuit-breaker: CLOSED (recovered)",
     );
+    publishCircuitStateChanged(tool, prevState);
   }
 }
 
@@ -177,6 +200,7 @@ export function recordSuccess(tool: string): void {
  */
 export function recordFailure(tool: string): void {
   const b = getOrCreateBreaker(tool);
+  const prevState = b.state;
   const cfg = getConfig(tool);
 
   b.totalChecks++;
@@ -197,6 +221,7 @@ export function recordFailure(tool: string): void {
       { tool, backoffMs: b.currentBackoffMs },
       "circuit-breaker: OPEN (probe failed, backoff increased)",
     );
+    publishCircuitStateChanged(tool, prevState);
     return;
   }
 
@@ -211,6 +236,7 @@ export function recordFailure(tool: string): void {
       },
       "circuit-breaker: OPEN (failure threshold reached)",
     );
+    publishCircuitStateChanged(tool, prevState);
   }
 }
 
@@ -277,6 +303,7 @@ export function getAllBreakerStatuses(): CircuitBreakerStatus[] {
 export function resetBreaker(tool: string): void {
   const b = breakers.get(tool);
   if (b) {
+    const previousState = b.state;
     const cfg = getConfig(tool);
     b.state = "CLOSED";
     b.consecutiveFailures = 0;
@@ -284,6 +311,9 @@ export function resetBreaker(tool: string): void {
     b.currentBackoffMs = cfg.initialBackoffMs;
     b.nextRetryAt = null;
     logger.info({ tool }, "circuit-breaker: manually reset to CLOSED");
+    if (previousState !== "CLOSED") {
+      publishCircuitStateChanged(tool, previousState);
+    }
   }
 }
 
