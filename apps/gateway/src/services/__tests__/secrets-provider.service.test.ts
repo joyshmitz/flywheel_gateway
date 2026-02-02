@@ -109,7 +109,7 @@ describe("FileSecretsProvider", () => {
     writeFileSync(join(dir, "secrets", fileName), `${fileValue}\n`);
     writeFileSync(
       join(dir, "secrets", "secrets.yaml"),
-      `tools:\n  dcg:\n    apiKey: "file:${fileName}"\n`,
+      `tools:\n  dcg:\n    apiKey: file:${fileName}\n`,
     );
 
     const provider = new FileSecretsProvider({
