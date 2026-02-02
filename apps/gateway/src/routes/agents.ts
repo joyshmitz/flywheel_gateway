@@ -3,6 +3,7 @@
  */
 
 import { type ErrorCode, getHttpStatus } from "@flywheel/shared";
+import { parseListQuery } from "@flywheel/shared/api/pagination";
 import { type Context, Hono } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
@@ -147,8 +148,14 @@ agents.get("/", async (c) => {
     const driverParam = c.req.query("driver");
     const createdAfterParam = c.req.query("createdAfter");
     const createdBeforeParam = c.req.query("createdBefore");
-    const limitParam = c.req.query("limit");
-    const cursorParam = c.req.query("cursor");
+
+    const listQuery = parseListQuery(
+      {
+        limit: c.req.query("limit"),
+        cursor: c.req.query("cursor"),
+      },
+      { defaultLimit: 50, maxLimit: 100 },
+    );
 
     const result = await listAgents({
       ...(stateParam && {
@@ -159,8 +166,8 @@ agents.get("/", async (c) => {
       }),
       ...(createdAfterParam && { createdAfter: createdAfterParam }),
       ...(createdBeforeParam && { createdBefore: createdBeforeParam }),
-      limit: safeParseInt(limitParam, 50),
-      ...(cursorParam && { cursor: cursorParam }),
+      limit: listQuery.limit,
+      ...(listQuery.cursor && { cursor: listQuery.cursor }),
     });
 
     const ctx = getLinkContext(c);
@@ -172,12 +179,12 @@ agents.get("/", async (c) => {
     }));
 
     const listOptions: Parameters<typeof sendList>[2] = {
-      hasMore: result.pagination?.hasMore ?? false,
+      hasMore: result.pagination.hasMore,
     };
-    if (result.pagination?.cursor) {
-      listOptions.nextCursor = result.pagination.cursor;
+    if (result.pagination.nextCursor) {
+      listOptions.nextCursor = result.pagination.nextCursor;
     }
-    if (result.pagination?.total !== undefined) {
+    if (result.pagination.total !== undefined) {
       listOptions.total = result.pagination.total;
     }
 
@@ -218,12 +225,17 @@ agents.get("/detected", async (c) => {
  */
 agents.get("/health-scores", async (c) => {
   try {
-    const limitParam = c.req.query("limit");
-    const cursorParam = c.req.query("cursor");
+    const listQuery = parseListQuery(
+      {
+        limit: c.req.query("limit"),
+        cursor: c.req.query("cursor"),
+      },
+      { defaultLimit: 1000, maxLimit: 1000 },
+    );
 
     const agentsList = await listAgents({
-      limit: safeParseInt(limitParam, 1000),
-      ...(cursorParam && { cursor: cursorParam }),
+      limit: listQuery.limit,
+      ...(listQuery.cursor && { cursor: listQuery.cursor }),
     });
 
     const agentIds = agentsList.agents.map((a) => a.agentId);
@@ -232,8 +244,8 @@ agents.get("/health-scores", async (c) => {
 
     return sendList(c, scores, {
       hasMore: agentsList.pagination.hasMore,
-      ...(agentsList.pagination.cursor && {
-        nextCursor: agentsList.pagination.cursor,
+      ...(agentsList.pagination.nextCursor && {
+        nextCursor: agentsList.pagination.nextCursor,
       }),
       total: agentsList.pagination.total,
     });

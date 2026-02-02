@@ -2,12 +2,21 @@
  * Tests for agent routes.
  */
 
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 import { agents as agentRoutes } from "../routes/agents";
+import { _clearAgentsForTest, _registerAgentForTest } from "../services/agent";
 
 describe("Agent Routes", () => {
   const app = new Hono().route("/agents", agentRoutes);
+
+  beforeEach(() => {
+    _clearAgentsForTest();
+  });
+
+  afterEach(() => {
+    _clearAgentsForTest();
+  });
 
   describe("GET /agents", () => {
     test("returns list of agents with canonical envelope", async () => {
@@ -30,6 +39,39 @@ describe("Agent Routes", () => {
 
       // Canonical list envelope has hasMore at top level
       expect(typeof body.hasMore).toBe("boolean");
+    });
+
+    test("paginates with a stable opaque cursor (no skip/dup)", async () => {
+      const ts = new Date("2025-01-01T00:00:00.000Z");
+
+      _registerAgentForTest({ id: "agent_1000_aaaa", createdAt: ts });
+      _registerAgentForTest({ id: "agent_1000_bbbb", createdAt: ts });
+      _registerAgentForTest({ id: "agent_1000_cccc", createdAt: ts });
+      _registerAgentForTest({
+        id: "agent_0900_zzzz",
+        createdAt: new Date("2024-12-31T23:59:59.000Z"),
+      });
+
+      const page1Res = await app.request("/agents?limit=2");
+      expect(page1Res.status).toBe(200);
+      const page1 = await page1Res.json();
+      expect(page1.data.map((a: { agentId: string }) => a.agentId)).toEqual([
+        "agent_1000_cccc",
+        "agent_1000_bbbb",
+      ]);
+      expect(page1.hasMore).toBe(true);
+      expect(page1.nextCursor).toBeDefined();
+      expect(page1.nextCursor).not.toMatch(/^\\d+$/);
+
+      const cursor = encodeURIComponent(page1.nextCursor as string);
+      const page2Res = await app.request(`/agents?limit=2&cursor=${cursor}`);
+      expect(page2Res.status).toBe(200);
+      const page2 = await page2Res.json();
+      expect(page2.data.map((a: { agentId: string }) => a.agentId)).toEqual([
+        "agent_1000_aaaa",
+        "agent_0900_zzzz",
+      ]);
+      expect(page2.hasMore).toBe(false);
     });
   });
 

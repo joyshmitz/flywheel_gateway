@@ -6,11 +6,15 @@
  */
 
 import {
+  type ActivityState,
   type Agent,
   type AgentConfig,
   type AgentDriver,
+  type AgentDriverType,
+  type ModelProvider,
   selectDriver,
 } from "@flywheel/agent-drivers";
+import { createCursor, decodeCursor } from "@flywheel/shared/api/pagination";
 import { eq, not } from "drizzle-orm";
 import { agents as agentsTable, db } from "../db";
 import { getLogger } from "../middleware/correlation";
@@ -265,8 +269,9 @@ async function getDriver(): Promise<AgentDriver> {
  * Generate a cryptographically secure unique agent ID.
  */
 function generateAgentId(): string {
-  const randomBytes = new Uint8Array(6);
-  crypto.getRandomValues(randomBytes);
+  const randomBytes = crypto.getRandomValues(
+    new Uint8Array([0, 0, 0, 0, 0, 0]),
+  );
   const random = Array.from(randomBytes)
     .map((b) => b.toString(36).padStart(2, "0"))
     .join("")
@@ -471,18 +476,18 @@ export async function listAgents(options: {
     lastActivityAt: string;
   }>;
   pagination: {
-    cursor?: string;
+    nextCursor?: string;
     hasMore: boolean;
     total: number;
   };
 }> {
-  const limit = options.limit ?? 50;
+  const limit = Math.min(Math.max(1, options.limit ?? 50), 1000);
   let agentList = Array.from(agents.values());
-  if (agentList.length > 0) {
-    const drv = await getDriver();
-    await Promise.all(
-      agentList.map((record) => refreshAgentRecord(record, drv)),
-    );
+  const drv = driver;
+  if (agentList.length > 0 && drv) {
+    for (const record of agentList) {
+      await refreshAgentRecord(record, drv);
+    }
   }
 
   // Filter by state
@@ -514,23 +519,58 @@ export async function listAgents(options: {
   }
 
   // Sort by createdAt descending
-  agentList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  agentList.sort((a, b) => {
+    const timeDiff = b.createdAt.getTime() - a.createdAt.getTime();
+    if (timeDiff !== 0) return timeDiff;
+    return b.agent.id.localeCompare(a.agent.id);
+  });
 
-  // Apply pagination
   const total = agentList.length;
-  let startIndex = 0;
+
+  // Apply cursor
   if (options.cursor) {
-    const parsed = parseInt(options.cursor, 10);
-    if (!Number.isNaN(parsed)) {
-      startIndex = parsed;
+    const decoded = decodeCursor(options.cursor);
+    const cursorId = decoded?.id;
+    const cursorSortValueRaw = decoded?.sortValue;
+
+    let cursorCreatedAtMs: number | undefined;
+    if (typeof cursorSortValueRaw === "number") {
+      cursorCreatedAtMs = cursorSortValueRaw;
+    } else if (typeof cursorSortValueRaw === "string") {
+      const parsed = Number.parseInt(cursorSortValueRaw, 10);
+      if (!Number.isNaN(parsed)) {
+        cursorCreatedAtMs = parsed;
+      }
+    }
+
+    if (cursorId && cursorCreatedAtMs !== undefined) {
+      agentList = agentList.filter((record) => {
+        const createdAtMs = record.createdAt.getTime();
+        if (createdAtMs < cursorCreatedAtMs) return true;
+        if (createdAtMs > cursorCreatedAtMs) return false;
+        return record.agent.id.localeCompare(cursorId) < 0;
+      });
+    } else if (cursorId) {
+      const cursorIndex = agentList.findIndex(
+        (record) => record.agent.id === cursorId,
+      );
+      if (cursorIndex >= 0) {
+        agentList = agentList.slice(cursorIndex + 1);
+      }
     }
   }
-  const paginatedList = agentList.slice(startIndex, startIndex + limit);
-  const hasMore = startIndex + limit < total;
-  const nextCursor = hasMore ? String(startIndex + limit) : undefined;
+
+  const page = agentList.slice(0, limit + 1);
+  const hasMore = page.length > limit;
+  const pageAgents = hasMore ? page.slice(0, limit) : page;
+  const lastRecord = pageAgents[pageAgents.length - 1];
+  const nextCursor =
+    hasMore && lastRecord
+      ? createCursor(lastRecord.agent.id, lastRecord.createdAt.getTime())
+      : undefined;
 
   return {
-    agents: paginatedList.map((r) => ({
+    agents: pageAgents.map((r) => ({
       agentId: r.agent.id,
       state: r.agent.activityState,
       driver: r.agent.driverType,
@@ -538,7 +578,7 @@ export async function listAgents(options: {
       lastActivityAt: r.agent.lastActivityAt.toISOString(),
     })),
     pagination: {
-      ...(nextCursor && { cursor: nextCursor }),
+      ...(nextCursor && { nextCursor }),
       hasMore,
       total,
     },
@@ -1091,4 +1131,62 @@ export async function initializeAgentService(): Promise<void> {
   }
 
   log.info({ restored, cleaned }, "Agent service initialization complete");
+}
+
+// ============================================================================
+// Test Helpers
+// ============================================================================
+
+export function _clearAgentsForTest(): void {
+  for (const controller of activeMonitors.values()) {
+    controller.abort();
+  }
+  activeMonitors.clear();
+  agents.clear();
+}
+
+export function _registerAgentForTest(input: {
+  id: string;
+  createdAt: Date;
+  lastActivityAt?: Date;
+  activityState?: ActivityState;
+  driverType?: AgentDriverType;
+  driverId?: string;
+  provider?: ModelProvider;
+  model?: string;
+  workingDirectory?: string;
+  name?: string;
+}): void {
+  const createdAt = input.createdAt;
+
+  const record: AgentRecord = {
+    agent: {
+      id: input.id,
+      driverId: input.driverId ?? "test-driver",
+      driverType: input.driverType ?? "mock",
+      activityState: input.activityState ?? "idle",
+      tokenUsage: {
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+      },
+      contextHealth: "healthy",
+      config: {
+        id: input.id,
+        ...(input.name && { name: input.name }),
+        provider: input.provider ?? "claude",
+        model: input.model ?? "test-model",
+        workingDirectory: input.workingDirectory ?? "/tmp",
+      } satisfies AgentConfig,
+      startedAt: createdAt,
+      lastActivityAt: input.lastActivityAt ?? createdAt,
+    } satisfies Agent,
+    createdAt,
+    timeout: 3600000,
+    messagesReceived: 0,
+    messagesSent: 0,
+    toolCalls: 0,
+  };
+
+  agents.set(input.id, record);
 }
