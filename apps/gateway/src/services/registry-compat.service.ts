@@ -135,7 +135,9 @@ function getToolField(tool: ToolDefinition, field: string): string | undefined {
         return `${tool.verifiedInstaller.runner} ${args}`.trim();
       }
       if (tool.install?.[0]) {
-        return tool.install[0].command;
+        const spec = tool.install[0];
+        const args = spec.args?.join(" ") ?? "";
+        return `${spec.command} ${args}`.trim();
       }
       return undefined;
     case "installUrl":

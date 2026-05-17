@@ -176,9 +176,9 @@ function getToolInstallRecommendation(
 
   // Fallback recommendations
   const fallbacks: Record<SafetyToolName, string> = {
-    dcg: "Install DCG to prevent dangerous command execution: cargo install dcg",
+    dcg: "Install DCG to prevent dangerous command execution: curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/destructive_command_guard/main/install.sh | bash",
     slb: "Install SLB for two-person authorization: go install github.com/Dicklesworthstone/slb@latest",
-    ubs: "Install UBS for static analysis scanning: cargo install ubs",
+    ubs: "Install UBS for static analysis scanning: curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/ultimate_bug_scanner/main/install.sh | bash",
   };
 
   const recommendation = fallbacks[toolName];
