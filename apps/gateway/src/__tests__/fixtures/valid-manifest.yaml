@@ -72,7 +72,7 @@ tools:
     optional: false
     enabledByDefault: true
     phase: 0
-    docsUrl: "https://github.com/Dicklesworthstone/ubs"
+    docsUrl: "https://github.com/Dicklesworthstone/ultimate_bug_scanner"
     verify:
       command: ["ubs", "--version"]
       expectedExitCodes: [0]
@@ -140,7 +140,7 @@ tools:
     optional: true
     enabledByDefault: true
     phase: 2
-    docsUrl: "https://github.com/Dicklesworthstone/cass"
+    docsUrl: "https://github.com/Dicklesworthstone/coding_agent_session_search"
     verify:
       command: ["cass", "--version"]
       expectedExitCodes: [0]
