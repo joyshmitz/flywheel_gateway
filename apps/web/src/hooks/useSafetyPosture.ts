@@ -129,7 +129,7 @@ const mockSafetyPosture: SafetyPostureResponse = {
     overallHealthy: false,
     issues: ["UBS (Ultimate Bug Scanner) is not installed"],
     recommendations: [
-      "Install UBS for static analysis scanning: cargo install ubs",
+      "Install UBS for static analysis scanning: curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/ultimate_bug_scanner/main/install.sh | bash",
     ],
   },
 };

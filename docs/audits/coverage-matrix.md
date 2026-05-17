@@ -120,7 +120,7 @@ Inclusion in unified system snapshot for state tracking.
 |-------|----------|
 | Registry | `tool-registry.service.ts:73-100` - Phase 0 (critical), required |
 | Detection | `agent-detection.service.ts:160-170` - Fallback tools |
-| Install | Registry: cargo install dcg |
+| Install | Registry: `curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/destructive_command_guard/main/install.sh \| bash` |
 | Client Adapter | ❌ Missing - direct CLI invocation in service |
 | Gateway Service | Multiple: `dcg.service.ts`, `dcg-cli.service.ts`, `dcg-config.service.ts` |
 | API Route | `routes/dcg.ts` (24 KB) - blocks, allowlist, exceptions |
@@ -150,7 +150,7 @@ Inclusion in unified system snapshot for state tracking.
 |-------|----------|
 | Registry | `tool-registry.service.ts:131-154` - Required, phase 0 |
 | Detection | `agent-detection.service.ts:172-182` |
-| Install | `cargo install ubs` |
+| Install | `curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/ultimate_bug_scanner/main/install.sh \| bash` |
 | Client Adapter | ❌ Missing |
 | Gateway Service | `ubs.service.ts` (16 KB) |
 | API Route | `routes/ubs.ts` - scans, findings |

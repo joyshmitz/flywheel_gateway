@@ -530,7 +530,9 @@ async function collectToolHealthSnapshot(
 
       if (!dcgResult.installed) {
         issues.push("DCG (Destructive Command Guard) is not installed");
-        recommendations.push("Install DCG: cargo install dcg");
+        recommendations.push(
+          "Install DCG: curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/destructive_command_guard/main/install.sh | bash",
+        );
       }
       if (!slbResult.installed) {
         issues.push("SLB (Simultaneous Launch Button) is not installed");
@@ -540,7 +542,9 @@ async function collectToolHealthSnapshot(
       }
       if (!ubsResult.installed) {
         issues.push("UBS (Ultimate Bug Scanner) is not installed");
-        recommendations.push("Install UBS: cargo install ubs");
+        recommendations.push(
+          "Install UBS: curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/ultimate_bug_scanner/main/install.sh | bash",
+        );
       }
       if (checksumInfo.isStale) {
         issues.push("ACFS checksums are stale (older than 7 days)");

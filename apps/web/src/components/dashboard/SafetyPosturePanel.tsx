@@ -476,7 +476,7 @@ export function SafetyPosturePanel() {
             name="DCG"
             description="Destructive Command Guard prevents dangerous command execution"
             status={data.tools.dcg}
-            installCommand="cargo install dcg"
+            installCommand="curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/destructive_command_guard/main/install.sh | bash"
           />
           <ToolStatusCard
             name="SLB"
@@ -488,7 +488,7 @@ export function SafetyPosturePanel() {
             name="UBS"
             description="Ultimate Bug Scanner performs static analysis on code changes"
             status={data.tools.ubs}
-            installCommand="cargo install ubs"
+            installCommand="curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/ultimate_bug_scanner/main/install.sh | bash"
           />
         </motion.div>
       </div>
@@ -522,7 +522,7 @@ export function SafetyPosturePanel() {
             <ChevronRight size={14} />
           </a>
           <a
-            href="https://github.com/Dicklesworthstone/dcg"
+            href="https://github.com/Dicklesworthstone/destructive_command_guard"
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn--sm btn--ghost"

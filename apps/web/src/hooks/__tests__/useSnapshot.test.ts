@@ -223,7 +223,9 @@ describe("API Response Processing", () => {
         ubs: { installed: false, version: null, healthy: false, latencyMs: 3 },
         status: "degraded",
         issues: ["UBS is not installed"],
-        recommendations: ["Install UBS: cargo install ubs"],
+        recommendations: [
+          "Install UBS: curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/ultimate_bug_scanner/main/install.sh | bash",
+        ],
       },
     };
 
