@@ -210,8 +210,8 @@ const TOOL_INFO: Record<string, ToolInfo> = {
     description: "Destructive Command Guard - safety guardrails",
     category: "tool",
     installCommand:
-      "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/dcg/main/install.sh | bash",
-    docsUrl: "https://github.com/Dicklesworthstone/dcg",
+      "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/destructive_command_guard/main/install.sh | bash",
+    docsUrl: "https://github.com/Dicklesworthstone/destructive_command_guard",
   },
   ubs: {
     name: "ubs",
@@ -219,8 +219,8 @@ const TOOL_INFO: Record<string, ToolInfo> = {
     description: "Ultimate Bug Scanner - code quality analysis",
     category: "tool",
     installCommand:
-      "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/ubs/main/install.sh | bash",
-    docsUrl: "https://github.com/Dicklesworthstone/ubs",
+      "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/ultimate_bug_scanner/main/install.sh | bash",
+    docsUrl: "https://github.com/Dicklesworthstone/ultimate_bug_scanner",
   },
   cass: {
     name: "cass",
@@ -228,8 +228,8 @@ const TOOL_INFO: Record<string, ToolInfo> = {
     description: "Cross-Agent Session Search",
     category: "tool",
     installCommand:
-      "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/cass/main/install.sh | bash",
-    docsUrl: "https://github.com/Dicklesworthstone/cass",
+      "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/coding_agent_session_search/main/install.sh | bash",
+    docsUrl: "https://github.com/Dicklesworthstone/coding_agent_session_search",
   },
   cm: {
     name: "cm",
@@ -237,8 +237,8 @@ const TOOL_INFO: Record<string, ToolInfo> = {
     description: "Context Memory for persistent agent memory",
     category: "tool",
     installCommand:
-      "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/cm/main/install.sh | bash",
-    docsUrl: "https://github.com/Dicklesworthstone/cm",
+      "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/cass_memory_system/main/install.sh | bash",
+    docsUrl: "https://github.com/Dicklesworthstone/cass_memory_system",
   },
   br: {
     name: "br",
@@ -255,8 +255,8 @@ const TOOL_INFO: Record<string, ToolInfo> = {
     description: "Graph-aware issue triage engine",
     category: "tool",
     installCommand:
-      "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/bv/main/install.sh | bash",
-    docsUrl: "https://github.com/Dicklesworthstone/bv",
+      "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/beads_viewer/main/install.sh | bash",
+    docsUrl: "https://github.com/Dicklesworthstone/beads_viewer",
   },
   ru: {
     name: "ru",
@@ -264,8 +264,8 @@ const TOOL_INFO: Record<string, ToolInfo> = {
     description: "Repository management utilities",
     category: "tool",
     installCommand:
-      "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/ru/main/install.sh | bash",
-    docsUrl: "https://github.com/Dicklesworthstone/ru",
+      "curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/repo_updater/main/install.sh | bash",
+    docsUrl: "https://github.com/Dicklesworthstone/repo_updater",
   },
 };
 

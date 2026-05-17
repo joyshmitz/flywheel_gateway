@@ -80,13 +80,13 @@ const FALLBACK_REGISTRY: ToolRegistry = {
       optional: false,
       enabledByDefault: true,
       phase: 0, // Install first for safety
-      docsUrl: "https://github.com/Dicklesworthstone/dcg",
+      docsUrl: "https://github.com/Dicklesworthstone/destructive_command_guard",
       install: [
         {
           command: "curl",
           args: [
             "-fsSL",
-            "https://raw.githubusercontent.com/Dicklesworthstone/dcg/main/install.sh",
+            "https://raw.githubusercontent.com/Dicklesworthstone/destructive_command_guard/main/install.sh",
             "|",
             "bash",
           ],
@@ -153,11 +153,16 @@ const FALLBACK_REGISTRY: ToolRegistry = {
       optional: false,
       enabledByDefault: true,
       phase: 0, // Install first for safety
-      docsUrl: "https://github.com/Dicklesworthstone/ubs",
+      docsUrl: "https://github.com/Dicklesworthstone/ultimate_bug_scanner",
       install: [
         {
-          command: "cargo",
-          args: ["install", "ubs"],
+          command: "curl",
+          args: [
+            "-fsSL",
+            "https://raw.githubusercontent.com/Dicklesworthstone/ultimate_bug_scanner/main/install.sh",
+            "|",
+            "bash",
+          ],
         },
       ],
       verify: {
@@ -226,13 +231,13 @@ const FALLBACK_REGISTRY: ToolRegistry = {
       optional: true,
       enabledByDefault: true,
       phase: 2,
-      docsUrl: "https://github.com/Dicklesworthstone/bv",
+      docsUrl: "https://github.com/Dicklesworthstone/beads_viewer",
       install: [
         {
           command: "curl",
           args: [
             "-fsSL",
-            "https://raw.githubusercontent.com/Dicklesworthstone/bv/main/install.sh",
+            "https://raw.githubusercontent.com/Dicklesworthstone/beads_viewer/main/install.sh",
             "|",
             "bash",
           ],
